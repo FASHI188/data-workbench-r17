@@ -58,6 +58,30 @@ jobs:
           cat data/fetch_stderr.log || true
           exit 0
 
+      - name: Capture raw SZSE control workbook for parser diagnosis
+        if: env.fetch_exit_code == '0'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import requests
+          from pathlib import Path
+          from openpyxl import load_workbook
+          from io import BytesIO
+          url='https://www.szse.cn/api/report/ShowReport?SHOWTYPE=xlsx&CATALOGID=1110&TABKEY=tab1'
+          headers={'User-Agent':'Mozilla/5.0','Referer':'https://www.szse.cn/certificate/maind/'}
+          raw=requests.get(url,headers=headers,timeout=45).content
+          Path('data/szse_control.xlsx').write_bytes(raw)
+          wb=load_workbook(BytesIO(raw),read_only=True,data_only=True)
+          lines=[]
+          for ws in wb.worksheets:
+              lines.append(f'SHEET={ws.title}')
+              for i,row in enumerate(ws.iter_rows(values_only=True),start=1):
+                  lines.append(f'{i}: {row!r}')
+                  if i>=25: break
+          Path('data/szse_control_preview.txt').write_text('\n'.join(lines),encoding='utf-8')
+          print('\n'.join(lines))
+          PY
+
       - name: Reconcile against independent exchange-owned controls
         if: env.fetch_exit_code == '0'
         shell: bash
@@ -97,6 +121,8 @@ jobs:
             data/reconcile_stdout.log
             data/reconcile_stderr.log
             data/audit_stderr.log
+            data/szse_control.xlsx
+            data/szse_control_preview.txt
           if-no-files-found: warn
           retention-days: 7
 
