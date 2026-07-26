@@ -1,0 +1,54 @@
+{
+  "status": "RECONCILED",
+  "g1_reconciled": true,
+  "sse": {
+    "primary_count": 1698,
+    "control_count": 1698,
+    "set_equal": true,
+    "only_primary_count": 0,
+    "only_control_count": 0,
+    "only_primary_sample": [],
+    "only_control_sample": [],
+    "control_url": "https://yunhq.sse.com.cn:32042/v1/sh1/list/exchange/equity?select=code%2Cname%2Ccpxxsubtype%2Ccpxxprodusta&begin=0&end=5000",
+    "control_sha256": "7cc71c4aa68c6cc35a0cc0be5c5f58b9f454a7d3007150d2765798341c59678e",
+    "quote_diagnostics": {
+      "date": 20260724,
+      "time": 162905,
+      "total_equities": 2350,
+      "subtype_counts": {
+        "ASH": 1698,
+        "KSH": 611,
+        "BSH": 41
+      },
+      "ash_rows": 1698,
+      "classification_basis": "SSE technical specification: CPXXSubType ASH = RMB-traded main-board stock"
+    }
+  },
+  "szse": {
+    "primary_count": 1493,
+    "control_count": 1493,
+    "set_equal": true,
+    "only_primary_count": 0,
+    "only_control_count": 0,
+    "only_primary_sample": [],
+    "only_control_sample": [],
+    "control_url": "https://www.szse.cn/api/report/ShowReport?SHOWTYPE=xlsx&CATALOGID=1110&TABKEY=tab1",
+    "control_sha256": "f6b17d44b59ee9d651cf021ccb72fc707f5ab7b7dd924ed3c3c56580958ae817",
+    "xlsx_diagnostics": {
+      "sheets": [
+        "A股列表"
+      ],
+      "sheet": "A股列表",
+      "header_row_1based": 1,
+      "mapping": {
+        "code": 4,
+        "board": 0
+      },
+      "board_values": [
+        "主板",
+        "创业板"
+      ],
+      "main_a_rows": 1493
+    }
+  }
+}

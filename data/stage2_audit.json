@@ -4,10 +4,8 @@
   "alpha_training_allowed": false,
   "results": {
     "G1": {
-      "pass": false,
-      "errors": [
-        "missing independent data/current_master/reconciliation.json"
-      ]
+      "pass": true,
+      "errors": []
     },
     "G2": {
       "pass": false,
