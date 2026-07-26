@@ -1,0 +1,19 @@
+{
+  "fetched_at_utc": "2026-07-26T16:05:11.585508+00:00",
+  "scope": "SSE_MAIN_A + SZSE_MAIN_A only",
+  "sse": {
+    "rows": 1698,
+    "sha256_raw": "c2c5c385f146b7c177ff51369610499cf4bad02a2a0f4756e8cf27ab2d1c7534",
+    "url": "https://query.sse.com.cn/sseQuery/commonQuery.do?jsonCallBack=jsonpCallback123456&STOCK_TYPE=1&REG_PROVINCE=&CSRC_CODE=&STOCK_CODE=&sqlId=COMMON_SSE_CP_GPJCTPZ_GPLB_GP_L&COMPANY_STATUS=2%2C4%2C5%2C7%2C8&type=inParams&isPagination=true&pageHelp.cacheSize=1&pageHelp.beginPage=1&pageHelp.pageSize=4000&pageHelp.pageNo=1&pageHelp.endPage=1"
+  },
+  "szse": {
+    "rows": 20,
+    "sha256_raw": "441e21dadcff2433d43ada86b24b3eb9d563ee546ef8831534136c1fb1ff5587",
+    "url": "https://www.szse.cn/api/report/ShowReport/data?SHOWTYPE=JSON&CATALOGID=1110&TABKEY=tab1&PAGENO=1"
+  },
+  "hard_gate_status": "PASS_CANDIDATE",
+  "notes": [
+    "PASS_CANDIDATE is not Stage2 PASS until official aggregate/control totals reconcile.",
+    "Network or parser failure is fatal; zero-row imports never count as success."
+  ]
+}

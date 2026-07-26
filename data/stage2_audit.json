@@ -1,0 +1,37 @@
+{
+  "stage": "2B",
+  "all_hard_gates_pass": false,
+  "alpha_training_allowed": false,
+  "results": {
+    "G1": {
+      "pass": false,
+      "errors": [
+        "implausibly small SZSE main-A universe: 20"
+      ]
+    },
+    "G2": {
+      "pass": false,
+      "errors": [
+        "G2 evidence chain not implemented yet"
+      ]
+    },
+    "G3": {
+      "pass": false,
+      "errors": [
+        "G3 evidence chain not implemented yet"
+      ]
+    },
+    "G4": {
+      "pass": false,
+      "errors": [
+        "G4 evidence chain not implemented yet"
+      ]
+    },
+    "G5": {
+      "pass": false,
+      "errors": [
+        "G5 evidence chain not implemented yet"
+      ]
+    }
+  }
+}

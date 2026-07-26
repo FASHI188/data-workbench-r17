@@ -1,0 +1,87 @@
+{
+  "results": [
+    {
+      "id": "sse_current_sql",
+      "url": "https://query.sse.com.cn/sseQuery/commonQuery.do?jsonCallBack=jsonpCallback123456&STOCK_TYPE=1&REG_PROVINCE=&CSRC_CODE=&STOCK_CODE=&sqlId=COMMON_SSE_CP_GPJCTPZ_GPLB_GP_L&COMPANY_STATUS=2%2C4%2C5%2C7%2C8&type=inParams&isPagination=true&pageHelp.cacheSize=1&pageHelp.beginPage=1&pageHelp.pageSize=25&pageHelp.pageNo=1&pageHelp.endPage=1",
+      "warm_status": 200,
+      "cookies_after_warm": [],
+      "status": 200,
+      "final_url": "https://query.sse.com.cn/sseQuery/commonQuery.do?jsonCallBack=jsonpCallback123456&STOCK_TYPE=1&REG_PROVINCE=&CSRC_CODE=&STOCK_CODE=&sqlId=COMMON_SSE_CP_GPJCTPZ_GPLB_GP_L&COMPANY_STATUS=2%2C4%2C5%2C7%2C8&type=inParams&isPagination=true&pageHelp.cacheSize=1&pageHelp.beginPage=1&pageHelp.pageSize=25&pageHelp.pageNo=1&pageHelp.endPage=1",
+      "content_type": "application/json;charset=UTF-8",
+      "length": 29591,
+      "sha256": "29bf66208580ec207c32e6fa488baeb95d4de6394dd7f8fecbd0a37d9db51b76",
+      "prefix": "jsonpCallback123456({\"actionErrors\":[],\"actionMessages\":[],\"fieldErrors\":{},\"isPagination\":\"true\",\"jsonCallBack\":\"jsonpCallback123456\",\"locale\":\"zh_CN\",\"pageHelp\":{\"beginPage\":1,\"cacheSize\":1,\"data\":[{\"COMPANY_ABBR_EN\":\"SPD BANK\",\"STOCK_TYP"
+    },
+    {
+      "id": "sse_legacy_list",
+      "url": "https://query.sse.com.cn/security/stock/getStockListData2.do?jsonCallBack=jsonpCallback123456&isPagination=true&stockCode=&csrcCode=&areaName=&stockType=1&pageHelp.cacheSize=1&pageHelp.beginPage=1&pageHelp.pageSize=25&pageHelp.pageNo=1&pageHelp.endPage=1",
+      "warm_status": 200,
+      "cookies_after_warm": [],
+      "status": 200,
+      "final_url": "https://query.sse.com.cn/security/stock/getStockListData2.do?jsonCallBack=jsonpCallback123456&isPagination=true&stockCode=&csrcCode=&areaName=&stockType=1&pageHelp.cacheSize=1&pageHelp.beginPage=1&pageHelp.pageSize=25&pageHelp.pageNo=1&pageHelp.endPage=1",
+      "content_type": "application/json;charset=UTF-8",
+      "length": 19293,
+      "sha256": "1b3695755c3b457e4bc589663cae75e9b4e87607a42508c314c57fe08e930cb4",
+      "prefix": "jsonpCallback123456({\"areaName\":\"\",\"csrcCode\":\"\",\"downloadFileName\":null,\"execlStream\":null,\"jsonCallBack\":\"jsonpCallback123456\",\"pageHelp\":{\"beginPage\":1,\"cacheSize\":1,\"data\":[{\"LISTING_BOARD\":\"0\",\"COMPANY_ABBR\":\"浦发银行\",\"END_SHARE_C"
+    },
+    {
+      "id": "sse_legacy_download",
+      "url": "https://query.sse.com.cn/security/stock/downloadStockListFile.do?csrcCode=&stockCode=&areaName=&stockType=1",
+      "warm_status": 200,
+      "cookies_after_warm": [],
+      "status": 200,
+      "final_url": "https://query.sse.com.cn/security/stock/downloadStockListFile.do?csrcCode=&stockCode=&areaName=&stockType=1",
+      "content_type": "application/vnd.ms-excel;charset=gb2312",
+      "length": 85824,
+      "sha256": "32e44ea286b159ff1de6a4b92114e95875834fff45c874262bd3867537b520c3",
+      "prefix": "��˾���� \t��˾��� \t����\t���\t��������\t\n600000\t  �ַ�����\t  600000\t  �ַ�����\t  1999-11-10\t  \n600004\t  ���ƻ���\t  600004\t  ���ƻ���\t  2003-04-28\t  \n600006\t  ����ɷ�\t  600006\t  ����ɷ�\t  1999-07-27\t  \n600007\t  �й���ó\t  600007\t  �й���ó\t"
+    },
+    {
+      "id": "sse_quote_https_32042",
+      "url": "https://yunhq.sse.com.cn:32042/v1/sh1/list/exchange/equity?select=code%2Cname%2Ccpxxsubtype%2Ccpxxprodusta&begin=0&end=5",
+      "warm_status": 200,
+      "cookies_after_warm": [],
+      "status": 200,
+      "final_url": "https://yunhq.sse.com.cn:32042/v1/sh1/list/exchange/equity?select=code%2Cname%2Ccpxxsubtype%2Ccpxxprodusta&begin=0&end=5",
+      "content_type": "application/json;charset=UTF-8",
+      "length": 345,
+      "sha256": "85fedb4ae7a9a44e77dac7f1c829454675591550a9ed8c51bc865ef3c79ce321",
+      "prefix": "{\"date\":20260724,\"time\":162905,\"total\":2350,\"begin\":0,\"end\":5,\"list\":[[\"600000\",\"浦发银行\",\"ASH\",\"   D  F  N          \"],[\"600004\",\"XD白云机\",\"ASH\",\"  RD  F  N          \"],[\"600006\",\"东风股份\",\"ASH\",\"   D  F  N          \"],[\"6000"
+    },
+    {
+      "id": "sse_quote_http_32041",
+      "url": "http://yunhq.sse.com.cn:32041/v1/sh1/list/exchange/equity?select=code%2Cname%2Ccpxxsubtype%2Ccpxxprodusta&begin=0&end=5",
+      "warm_status": 200,
+      "cookies_after_warm": [],
+      "status": 200,
+      "final_url": "http://yunhq.sse.com.cn:32041/v1/sh1/list/exchange/equity?select=code%2Cname%2Ccpxxsubtype%2Ccpxxprodusta&begin=0&end=5",
+      "content_type": "application/json;charset=UTF-8",
+      "length": 345,
+      "sha256": "85fedb4ae7a9a44e77dac7f1c829454675591550a9ed8c51bc865ef3c79ce321",
+      "prefix": "{\"date\":20260724,\"time\":162905,\"total\":2350,\"begin\":0,\"end\":5,\"list\":[[\"600000\",\"浦发银行\",\"ASH\",\"   D  F  N          \"],[\"600004\",\"XD白云机\",\"ASH\",\"  RD  F  N          \"],[\"600006\",\"东风股份\",\"ASH\",\"   D  F  N          \"],[\"6000"
+    },
+    {
+      "id": "szse_json",
+      "url": "https://www.szse.cn/api/report/ShowReport/data?SHOWTYPE=JSON&CATALOGID=1110&TABKEY=tab1&PAGENO=1",
+      "warm_error": "ConnectionError: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "status": 200,
+      "final_url": "https://www.szse.cn/api/report/ShowReport/data?SHOWTYPE=JSON&CATALOGID=1110&TABKEY=tab1&PAGENO=1",
+      "content_type": "application/json",
+      "length": 21476,
+      "sha256": "441e21dadcff2433d43ada86b24b3eb9d563ee546ef8831534136c1fb1ff5587",
+      "prefix": "[{\"metadata\":{\"catalogid\":\"1110\",\"name\":\"A股列表\",\"excel\":\"xlsx\",\"pagetype\":\"tabs\",\"subname\":\"2026-07-24 \",\"tabkey\":\"tab1\",\"pagesize\":20,\"pageno\":1,\"pagecount\":145,\"recordcount\":2892,\"showrecordcount\":false,\"header\":\"\\n        \\n\\t\\t<tab"
+    },
+    {
+      "id": "szse_xlsx",
+      "url": "https://www.szse.cn/api/report/ShowReport?SHOWTYPE=xlsx&CATALOGID=1110&TABKEY=tab1",
+      "warm_status": 200,
+      "cookies_after_warm": [],
+      "status": 200,
+      "final_url": "https://www.szse.cn/api/report/ShowReport?SHOWTYPE=xlsx&CATALOGID=1110&TABKEY=tab1",
+      "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=GBK",
+      "length": 542778,
+      "sha256": "9f528443332189bcae2fb05e1ffe6b3d74891d44ba4e0d67f8514a1910d084d4",
+      "prefix": "PK\u0003\u0004\u0014\u0000\b\b\b\u0000�\u0000�\\\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0013\u0000\u0000\u0000[Content_Types].xml�S�n�0\u0010����*6�PU\u0015�C\u001f�\u0016��\u0003\\{�X�%����]\u00078�R�\nq�cfgfW�d�q�ZCB\u0013|��|�*�*h㻆},^�{Va�^K\u001b<4l\u000b�f��b\u001b\u0001+��ذ>�� \u0004�\u001e�D\u001e\"xBڐ��tL��R-e\u0007�v4�\u0013*�\f>׹h���\tZ���z��\u0017��\u0018�Q2S,���H��\u000b�\u0004v�`o\"�\u0010�U�\u001bRٵC(2q��qa9S�\u001b\r"
+    }
+  ]
+}
