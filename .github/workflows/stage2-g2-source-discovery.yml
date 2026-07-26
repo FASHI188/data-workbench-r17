@@ -1,0 +1,50 @@
+name: Stage2 G2 Lifecycle Source Discovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/probe_lifecycle_sources.py'
+      - '.github/workflows/stage2-g2-source-discovery.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/probe_lifecycle_sources.py'
+      - '.github/workflows/stage2-g2-source-discovery.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Probe public exchange lifecycle sources
+        run: python scripts/probe_lifecycle_sources.py > data/lifecycle_probe/stdout.log 2> data/lifecycle_probe/stderr.log
+      - name: Show compact candidate summary
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open('data/lifecycle_probe/report.json',encoding='utf-8'))
+          for k,v in r['targets'].items():
+              print('\n###',k,v['url'])
+              print('page_urlish=',v.get('page_urlish',[])[:30])
+              for s in v.get('scripts',[]):
+                  if s.get('matches') or s.get('urlish'):
+                      print('SCRIPT',s['url'])
+                      for x in s.get('urlish',[])[:20]: print(' URL',x)
+                      for x in s.get('matches',[])[:20]: print(' HIT',x[:500])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage2-g2-source-discovery
+          path: data/lifecycle_probe
+          retention-days: 7
