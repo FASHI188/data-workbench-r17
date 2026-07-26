@@ -42,17 +42,29 @@ jobs:
         run: pytest -q
 
       - name: Fetch current official exchange master candidate
-        run: python scripts/fetch_exchange_master.py --allow-derived-szse-board
+        shell: bash
+        run: |
+          mkdir -p data
+          set +e
+          python scripts/fetch_exchange_master.py --allow-derived-szse-board > data/fetch_stdout.log 2> data/fetch_stderr.log
+          code=$?
+          echo "fetch_exit_code=$code" >> "$GITHUB_ENV"
+          echo "--- fetch stdout ---"
+          cat data/fetch_stdout.log || true
+          echo "--- fetch stderr ---"
+          cat data/fetch_stderr.log || true
+          exit 0
 
       - name: Run fail-closed Stage2 audit
         shell: bash
         run: |
           mkdir -p data
           set +e
-          python scripts/audit_stage2.py > data/stage2_audit.json
+          python scripts/audit_stage2.py > data/stage2_audit.json 2> data/audit_stderr.log
           code=$?
           echo "audit_exit_code=$code" >> "$GITHUB_ENV"
-          cat data/stage2_audit.json
+          cat data/stage2_audit.json || true
+          cat data/audit_stderr.log || true
           exit 0
 
       - name: Upload candidate and audit evidence
@@ -62,10 +74,14 @@ jobs:
           path: |
             data/current_master
             data/stage2_audit.json
+            data/fetch_stdout.log
+            data/fetch_stderr.log
+            data/audit_stderr.log
+          if-no-files-found: warn
           retention-days: 7
 
       - name: Commit frozen candidate and audit evidence
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && env.fetch_exit_code == '0'
         shell: bash
         run: |
           git config user.name "stage2-bot"
@@ -77,3 +93,9 @@ jobs:
           fi
           git commit -m "stage2: freeze official current-master candidate [skip ci]"
           git push
+
+      - name: Mark fetch failure after evidence upload
+        if: env.fetch_exit_code != '0'
+        run: |
+          echo "Official-master fetch failed; evidence artifact was uploaded."
+          exit 1
