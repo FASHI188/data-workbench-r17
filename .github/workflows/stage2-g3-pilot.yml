@@ -1,0 +1,56 @@
+name: Stage2 G3 Production Builder Pilot
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/build_g3_ohlcv.py'
+      - 'tests/test_build_g3_ohlcv.py'
+      - 'config/g3_pilot_trigger.json'
+      - '.github/workflows/stage2-g3-pilot.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests openpyxl pytest
+      - name: Regression tests
+        run: pytest -q
+      - name: SSE production-format pilot shard
+        run: python scripts/build_g3_ohlcv.py sse-shard --shard 0 --shards 32 --out build/g3/sse
+      - name: SZSE production-format pilot year 2015
+        run: python scripts/build_g3_ohlcv.py szse-year --year 2015 --out build/g3/szse
+      - name: Pilot integrity summary
+        shell: bash
+        run: |
+          python - <<'PY'
+          import gzip,csv,json,glob,hashlib,os
+          out={}
+          for p in sorted(glob.glob('build/g3/**/*.csv.gz',recursive=True)):
+              with gzip.open(p,'rt',encoding='utf-8',newline='') as f:
+                  rows=list(csv.DictReader(f))
+              out[p]={
+                  'rows':len(rows),
+                  'sha256':hashlib.sha256(open(p,'rb').read()).hexdigest(),
+                  'first':rows[:1],
+                  'last':rows[-1:],
+                  'codes':len({r['code'] for r in rows}),
+                  'dates':len({r['trade_date'] for r in rows}),
+              }
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          open('build/g3/pilot_summary.json','w',encoding='utf-8').write(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage2-g3-production-pilot
+          path: build/g3
+          retention-days: 14
