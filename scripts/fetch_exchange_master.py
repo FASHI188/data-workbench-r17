@@ -2,16 +2,18 @@
 """Fetch current SSE/SZSE A-share master lists from official exchange endpoints.
 
 Stage-2B rule: source rows are preserved; normalization never upgrades evidence.
-Network failures are errors, not empty successful imports.
+Network failures, pagination truncation and empty imports are errors.
 """
 from __future__ import annotations
 
 import argparse
 import csv
 import hashlib
+import html
 import json
 import re
 import sys
+import time
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,10 +33,11 @@ SSE_API = (
     "&pageHelp.pageNo=1&pageHelp.endPage=1"
 )
 SZSE_PAGE = "https://www.szse.cn/certificate/maind/"
-SZSE_API = (
+SZSE_API_BASE = (
     "https://www.szse.cn/api/report/ShowReport/data"
-    "?SHOWTYPE=JSON&CATALOGID=1110&TABKEY=tab1&PAGENO=1"
+    "?SHOWTYPE=JSON&CATALOGID=1110&TABKEY=tab1&PAGENO={page}"
 )
+SZSE_API = SZSE_API_BASE.format(page=1)
 
 
 @dataclass(frozen=True)
@@ -54,16 +57,57 @@ def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def get(url: str, referer: str, timeout: int = 30) -> bytes:
-    r = requests.get(
-        url,
-        headers={"User-Agent": UA, "Referer": referer, "Accept": "*/*"},
-        timeout=timeout,
+def make_session() -> requests.Session:
+    s = requests.Session()
+    s.headers.update(
+        {
+            "User-Agent": UA,
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.7",
+            "Connection": "keep-alive",
+        }
     )
-    r.raise_for_status()
-    if not r.content:
-        raise RuntimeError(f"empty response: {url}")
-    return r.content
+    return s
+
+
+def warm(session: requests.Session, url: str) -> None:
+    """Best-effort page warmup. The exchange API remains the evidence source."""
+    try:
+        session.get(url, timeout=20)
+    except requests.RequestException:
+        pass
+
+
+def get(
+    url: str,
+    referer: str,
+    *,
+    origin: str | None = None,
+    session: requests.Session | None = None,
+    timeout: int = 30,
+    attempts: int = 3,
+) -> bytes:
+    s = session or make_session()
+    headers = {
+        "Referer": referer,
+        "Accept": "*/*",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+    if origin:
+        headers["Origin"] = origin
+    last: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            r = s.get(url, headers=headers, timeout=timeout)
+            r.raise_for_status()
+            if not r.content:
+                raise RuntimeError(f"empty response: {url}")
+            return r.content
+        except (requests.RequestException, RuntimeError) as exc:
+            last = exc
+            if attempt < attempts:
+                time.sleep(0.5 * attempt)
+    assert last is not None
+    raise last
 
 
 def parse_jsonp(raw: bytes) -> dict[str, Any]:
@@ -85,6 +129,12 @@ def first_nonempty(d: dict[str, Any], keys: Iterable[str]) -> str | None:
     return None
 
 
+def clean_text(value: str) -> str:
+    value = html.unescape(value)
+    value = re.sub(r"<[^>]*>", "", value)
+    return re.sub(r"\s+", " ", value).strip()
+
+
 def sse_rows(payload: dict[str, Any]) -> list[MasterRow]:
     raw_rows = payload.get("result") or payload.get("data") or []
     if not isinstance(raw_rows, list):
@@ -104,14 +154,13 @@ def sse_rows(payload: dict[str, Any]) -> list[MasterRow]:
             continue
         if not name:
             raise ValueError(f"SSE row missing name for {code}")
-        # STOCK_TYPE=1 is the exchange's own main-board A-share selection.
         out.append(
             MasterRow(
                 exchange="SSE",
                 board="MAIN",
                 security_type="A_SHARE",
                 code=code,
-                name=name,
+                name=clean_text(name),
                 listing_date=first_nonempty(row, ["LIST_DATE", "LISTING_DATE", "A_LIST_DATE"]),
                 source_url=SSE_API,
                 source_row_json=json.dumps(row, ensure_ascii=False, sort_keys=True),
@@ -131,13 +180,16 @@ def walk_dicts(obj: Any) -> Iterable[dict[str, Any]]:
             yield from walk_dicts(value)
 
 
-def szse_rows(payload: Any) -> list[MasterRow]:
-    """Parse SZSE CATALOGID=1110 conservatively.
+def szse_metadata(payload: Any) -> dict[str, Any]:
+    for row in walk_dicts(payload):
+        meta = row.get("metadata")
+        if isinstance(meta, dict) and str(meta.get("catalogid")) == "1110":
+            return meta
+    raise ValueError("SZSE metadata catalogid=1110 not found")
 
-    Prefer explicit code fields. Main-board classification uses explicit board text when
-    present; only if absent, the documented Shenzhen code family fallback is used and
-    tagged as DERIVED_CODE_PREFIX so audit can reject it if a stronger source is required.
-    """
+
+def szse_rows(payload: Any, source_url: str = SZSE_API) -> list[MasterRow]:
+    """Parse one or more SZSE CATALOGID=1110 payloads conservatively."""
     out: dict[str, MasterRow] = {}
     for row in walk_dicts(payload):
         code = first_nonempty(row, ["agdm", "zqdm", "gsdm", "code", "A股代码", "证券代码"])
@@ -145,7 +197,7 @@ def szse_rows(payload: Any) -> list[MasterRow]:
         if not code or not re.fullmatch(r"\d{6}", code) or not name:
             continue
 
-        board_text = first_nonempty(row, ["bk", "ssbk", "board", "板块", "市场板块"]) or ""
+        board_text = clean_text(first_nonempty(row, ["bk", "ssbk", "board", "板块", "市场板块"]) or "")
         if "创业" in board_text or code.startswith(("300", "301")):
             continue
         if "主板" in board_text:
@@ -160,13 +212,60 @@ def szse_rows(payload: Any) -> list[MasterRow]:
             board="MAIN",
             security_type="A_SHARE",
             code=code,
-            name=name,
+            name=clean_text(name),
             listing_date=first_nonempty(row, ["agssrq", "ssrq", "listingDate", "上市日期"]),
-            source_url=SZSE_API,
+            source_url=source_url,
             source_row_json=json.dumps(row, ensure_ascii=False, sort_keys=True),
             board_basis=basis,
         )
     return sorted(out.values(), key=lambda x: x.code)
+
+
+def fetch_sse() -> tuple[bytes, list[MasterRow]]:
+    s = make_session()
+    warm(s, SSE_PAGE)
+    raw = get(SSE_API, SSE_PAGE, origin="https://www.sse.com.cn", session=s)
+    rows = sorted(sse_rows(parse_jsonp(raw)), key=lambda x: x.code)
+    return raw, rows
+
+
+def fetch_szse_all() -> tuple[list[bytes], list[MasterRow], dict[str, Any]]:
+    s = make_session()
+    warm(s, SZSE_PAGE)
+
+    page1_url = SZSE_API_BASE.format(page=1)
+    raw1 = get(page1_url, SZSE_PAGE, origin="https://www.szse.cn", session=s)
+    payload1 = json.loads(raw1.decode("utf-8"))
+    meta = szse_metadata(payload1)
+    pagecount = int(meta.get("pagecount") or 0)
+    recordcount = int(meta.get("recordcount") or 0)
+    if pagecount < 1 or recordcount < 1:
+        raise RuntimeError(f"invalid SZSE pagination metadata: {meta}")
+
+    raws = [raw1]
+    rows_by_code: dict[str, MasterRow] = {r.code: r for r in szse_rows(payload1, page1_url)}
+    for page in range(2, pagecount + 1):
+        url = SZSE_API_BASE.format(page=page)
+        raw = get(url, SZSE_PAGE, origin="https://www.szse.cn", session=s)
+        payload = json.loads(raw.decode("utf-8"))
+        raws.append(raw)
+        for r in szse_rows(payload, url):
+            rows_by_code[r.code] = r
+
+    # Count every A-share row before main-board filtering to detect pagination truncation.
+    all_codes: set[str] = set()
+    for raw in raws:
+        payload = json.loads(raw.decode("utf-8"))
+        for row in walk_dicts(payload):
+            code = first_nonempty(row, ["agdm"])
+            if code and re.fullmatch(r"\d{6}", code):
+                all_codes.add(code)
+    if len(all_codes) != recordcount:
+        raise RuntimeError(
+            f"SZSE pagination incomplete: metadata recordcount={recordcount}, unique A-share rows={len(all_codes)}"
+        )
+
+    return raws, sorted(rows_by_code.values(), key=lambda x: x.code), meta
 
 
 def write_csv(path: Path, rows: list[MasterRow]) -> None:
@@ -188,11 +287,8 @@ def main() -> int:
     out = Path(args.out)
     fetched_at = datetime.now(timezone.utc).isoformat()
 
-    sse_raw = get(SSE_API, SSE_PAGE)
-    szse_raw = get(SZSE_API, SZSE_PAGE)
-    sse = sorted(sse_rows(parse_jsonp(sse_raw)), key=lambda x: x.code)
-    szse_payload = json.loads(szse_raw.decode("utf-8"))
-    szse = szse_rows(szse_payload)
+    sse_raw, sse = fetch_sse()
+    szse_raws, szse, szse_meta = fetch_szse_all()
 
     if not sse:
         raise RuntimeError("SSE import produced zero rows")
@@ -205,15 +301,31 @@ def main() -> int:
     write_csv(out / "szse_main_a.csv", szse)
     write_csv(out / "cn_main_a.csv", sorted(sse + szse, key=lambda x: (x.exchange, x.code)))
 
+    szse_digest = hashlib.sha256()
+    for raw in szse_raws:
+        szse_digest.update(raw)
+        szse_digest.update(b"\n")
+
     manifest = {
         "fetched_at_utc": fetched_at,
         "scope": "SSE_MAIN_A + SZSE_MAIN_A only",
-        "sse": {"rows": len(sse), "sha256_raw": sha256_bytes(sse_raw), "url": SSE_API},
-        "szse": {"rows": len(szse), "sha256_raw": sha256_bytes(szse_raw), "url": SZSE_API},
+        "sse": {
+            "rows": len(sse),
+            "sha256_raw": sha256_bytes(sse_raw),
+            "url": SSE_API,
+        },
+        "szse": {
+            "rows": len(szse),
+            "sha256_all_pages": szse_digest.hexdigest(),
+            "pagecount": int(szse_meta.get("pagecount") or 0),
+            "recordcount_all_a": int(szse_meta.get("recordcount") or 0),
+            "as_of": str(szse_meta.get("subname") or "").strip(),
+            "url_template": SZSE_API_BASE,
+        },
         "hard_gate_status": "PASS_CANDIDATE",
         "notes": [
-            "PASS_CANDIDATE is not Stage2 PASS until official aggregate/control totals reconcile.",
-            "Network or parser failure is fatal; zero-row imports never count as success.",
+            "PASS_CANDIDATE is not Stage2 PASS until independent official controls reconcile.",
+            "Network, parser or pagination failure is fatal; zero-row and truncated imports never count as success.",
         ],
     }
     out.mkdir(parents=True, exist_ok=True)
