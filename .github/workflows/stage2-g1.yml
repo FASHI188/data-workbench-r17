@@ -1,0 +1,61 @@
+name: Stage2 G1 Official Master
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/fetch_exchange_master.py'
+      - 'scripts/audit_stage2.py'
+      - 'tests/**'
+      - 'config/stage2_hard_gates.json'
+      - '.github/workflows/stage2-g1.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-current-master:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install test/runtime dependencies
+        run: python -m pip install --disable-pip-version-check requests pytest
+
+      - name: Regression tests
+        run: pytest -q
+
+      - name: Fetch current official exchange master candidate
+        run: python scripts/fetch_exchange_master.py --allow-derived-szse-board
+
+      - name: Run fail-closed Stage2 audit
+        shell: bash
+        run: |
+          mkdir -p data
+          set +e
+          python scripts/audit_stage2.py > data/stage2_audit.json
+          code=$?
+          echo "audit_exit_code=$code" >> "$GITHUB_ENV"
+          cat data/stage2_audit.json
+          exit 0
+
+      - name: Commit frozen candidate and audit evidence
+        shell: bash
+        run: |
+          git config user.name "stage2-bot"
+          git config user.email "stage2-bot@users.noreply.github.com"
+          git add data/current_master data/stage2_audit.json
+          if git diff --cached --quiet; then
+            echo "No data change"
+            exit 0
+          fi
+          git commit -m "stage2: freeze official current-master candidate [skip ci]"
+          git push
