@@ -2,14 +2,14 @@
 """Independent same-exchange reconciliation for Stage2 G1.
 
 Primary row-level master:
-- SSE: current SQL JSONP endpoint
+- SSE: current SQL JSONP stock-list endpoint
 - SZSE: paginated CATALOGID=1110 JSON
 
 Independent exchange-owned controls:
-- SSE: official A-share stock-list download file
-- SZSE: official A-share XLSX download
+- SSE: official real-time equity quote list; CPXXSubType=ASH means RMB-traded main-board stock
+- SZSE: official A-share XLSX download with explicit board column
 
-G1 only reconciles when the primary and control MAIN-A code sets match exactly.
+G1 only reconciles when primary and independent-control MAIN-A code sets match exactly.
 """
 from __future__ import annotations
 
@@ -26,9 +26,12 @@ import requests
 from openpyxl import load_workbook
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142 Safari/537.36"
-SSE_PAGE = "https://www.sse.com.cn/assortment/stock/list/share/"
+SSE_PAGE = "https://www.sse.com.cn/market/price/trends/"
 SZSE_PAGE = "https://www.szse.cn/certificate/maind/"
-SSE_CONTROL = "https://query.sse.com.cn/security/stock/downloadStockListFile.do?csrcCode=&stockCode=&areaName=&stockType=1"
+SSE_CONTROL = (
+    "https://yunhq.sse.com.cn:32042/v1/sh1/list/exchange/equity"
+    "?select=code%2Cname%2Ccpxxsubtype%2Ccpxxprodusta&begin=0&end=5000"
+)
 SZSE_CONTROL = "https://www.szse.cn/api/report/ShowReport?SHOWTYPE=xlsx&CATALOGID=1110&TABKEY=tab1"
 
 
@@ -63,20 +66,41 @@ def read_primary_codes(path: Path, exchange: str) -> set[str]:
     return codes
 
 
-def parse_sse_download(raw: bytes) -> set[str]:
-    text = raw.decode("gb18030", errors="strict")
+def parse_sse_quote(raw: bytes) -> tuple[set[str], dict[str, object]]:
+    payload = json.loads(raw.decode("utf-8"))
+    rows = payload.get("list")
+    total = int(payload.get("total") or 0)
+    if not isinstance(rows, list):
+        raise ValueError("SSE quote control list is not an array")
+    if total <= 0:
+        raise ValueError(f"invalid SSE quote total={total}")
+    if len(rows) != total:
+        raise RuntimeError(f"SSE quote control truncated: total={total}, rows={len(rows)}")
+
+    subtype_counts: dict[str, int] = {}
     codes: set[str] = set()
-    for line in text.splitlines():
-        cells = [x.strip().strip('"') for x in re.split(r"\t|,", line)]
-        code = next((x for x in cells[:4] if re.fullmatch(r"6\d{5}", x)), None)
-        if not code:
+    for row in rows:
+        if not isinstance(row, list) or len(row) < 3:
+            raise ValueError(f"malformed SSE quote row: {row!r}")
+        code = str(row[0]).strip()
+        subtype = str(row[2]).strip()
+        subtype_counts[subtype] = subtype_counts.get(subtype, 0) + 1
+        if subtype != "ASH":
             continue
-        if code.startswith(("688", "689")):
-            continue
+        if not re.fullmatch(r"6\d{5}", code):
+            raise ValueError(f"invalid ASH code from SSE quote control: {code!r}")
         codes.add(code)
+
     if len(codes) < 1500:
-        raise RuntimeError(f"implausibly small SSE control set: {len(codes)}")
-    return codes
+        raise RuntimeError(f"implausibly small SSE ASH control set: {len(codes)}")
+    return codes, {
+        "date": payload.get("date"),
+        "time": payload.get("time"),
+        "total_equities": total,
+        "subtype_counts": subtype_counts,
+        "ash_rows": len(codes),
+        "classification_basis": "SSE technical specification: CPXXSubType ASH = RMB-traded main-board stock",
+    }
 
 
 def norm_cell(v: object) -> str:
@@ -105,9 +129,8 @@ def find_header(rows: Iterable[tuple[object, ...]]) -> tuple[int, dict[str, int]
 
 
 def parse_szse_xlsx(raw: bytes) -> tuple[set[str], dict[str, object]]:
-    # The exchange workbook currently declares worksheet dimension A1 even though
-    # sheet1.xml contains the full table. openpyxl read_only mode trusts that bad
-    # dimension and yields only A1. Normal mode parses the actual XML cells.
+    # SZSE currently writes worksheet dimension=A1 despite a full XML table.
+    # Normal mode parses actual cell XML; read_only mode would trust A1 and truncate.
     wb = load_workbook(BytesIO(raw), read_only=False, data_only=True)
     diagnostics: dict[str, object] = {"sheets": wb.sheetnames}
     best_codes: set[str] = set()
@@ -118,6 +141,9 @@ def parse_szse_xlsx(raw: bytes) -> tuple[set[str], dict[str, object]]:
             header_idx, mapping, rows = find_header(ws.iter_rows(values_only=True))
         except ValueError:
             continue
+        if "board" not in mapping:
+            raise ValueError(f"SZSE XLSX sheet {ws.title!r} has no explicit board column")
+
         codes: set[str] = set()
         board_values: set[str] = set()
         for row in rows[header_idx + 1 :]:
@@ -126,15 +152,9 @@ def parse_szse_xlsx(raw: bytes) -> tuple[set[str], dict[str, object]]:
             code = norm_cell(row[mapping["code"]])
             if not re.fullmatch(r"\d{6}", code):
                 continue
-            board = ""
-            if "board" in mapping and mapping["board"] < len(row):
-                board = norm_cell(row[mapping["board"]])
-                if board:
-                    board_values.add(board)
-            if "board" not in mapping:
-                raise ValueError(f"SZSE XLSX sheet {ws.title!r} has no explicit board column")
-            if "创业" in board:
-                continue
+            board = norm_cell(row[mapping["board"]]) if mapping["board"] < len(row) else ""
+            if board:
+                board_values.add(board)
             if "主板" in board:
                 codes.add(code)
 
@@ -170,20 +190,24 @@ def diff(primary: set[str], control: set[str]) -> dict[str, object]:
 
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
-    master = root / "data" / "current_master"
-    out_path = root / "data" / "current_master" / "reconciliation.json"
+    master = root / "data/current_master"
+    out_path = master / "reconciliation.json"
 
     sse_primary = read_primary_codes(master / "sse_main_a.csv", "SSE")
     szse_primary = read_primary_codes(master / "szse_main_a.csv", "SZSE")
 
     sse_raw = fetch(SSE_CONTROL, SSE_PAGE)
     szse_raw = fetch(SZSE_CONTROL, SZSE_PAGE)
-    sse_control = parse_sse_download(sse_raw)
+    sse_control, sse_diag = parse_sse_quote(sse_raw)
     szse_control, szse_diag = parse_szse_xlsx(szse_raw)
 
     sse_result = diff(sse_primary, sse_control)
     szse_result = diff(szse_primary, szse_control)
-    sse_result.update({"control_url": SSE_CONTROL, "control_sha256": sha256(sse_raw)})
+    sse_result.update({
+        "control_url": SSE_CONTROL,
+        "control_sha256": sha256(sse_raw),
+        "quote_diagnostics": sse_diag,
+    })
     szse_result.update({
         "control_url": SZSE_CONTROL,
         "control_sha256": sha256(szse_raw),
