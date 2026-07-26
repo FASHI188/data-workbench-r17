@@ -1,25 +1,11 @@
 {
   "gate": "G2",
-  "pass": false,
+  "pass": true,
   "current_master_count": 3191,
   "current_open_interval_count": 3191,
-  "closed_interval_count": 0,
-  "delist_events": 0,
-  "total_intervals": 3191,
-  "total_events": 3191,
-  "errors": [
-    "no historical DELIST events for SSE",
-    "no historical DELIST events for SZSE",
-    "manifest current_active mismatch: -1 != 3191",
-    "manifest delisted count mismatch: -1 != 0",
-    "manifest interval count mismatch: -1 != 3191",
-    "manifest event count mismatch: -1 != 3191",
-    "missing raw lifecycle source: data/security_lifecycle/raw/sse_main_a_status3_delisted.jsonp",
-    "missing raw lifecycle source: data/security_lifecycle/raw/sse_main_a_all_statuses.jsonp",
-    "missing raw lifecycle source: data/security_lifecycle/raw/szse_main_delisted_selectModule_main.xlsx",
-    "SSE active+delisted state partition is not exact",
-    "SZSE current/delisted sets are not proven disjoint",
-    "historical_backfill_complete is not true",
-    "coverage_start is not 2015-01-01"
-  ]
+  "closed_interval_count": 289,
+  "delist_events": 289,
+  "total_intervals": 3480,
+  "total_events": 3769,
+  "errors": []
 }
