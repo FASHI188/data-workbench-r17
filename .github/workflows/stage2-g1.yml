@@ -5,16 +5,24 @@ on:
   push:
     branches: [main]
     paths:
-      - 'scripts/**'
-      - 'tests/**'
-      - 'config/**'
+      - 'scripts/fetch_exchange_master.py'
+      - 'scripts/reconcile_current_master.py'
+      - 'scripts/probe_exchange_sources.py'
+      - 'scripts/audit_stage2.py'
+      - 'scripts/audit_security_history.py'
+      - 'tests/test_fetch_exchange_master.py'
+      - 'config/stage2_hard_gates.json'
       - '.github/workflows/stage2-g1.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'scripts/**'
-      - 'tests/**'
-      - 'config/**'
+      - 'scripts/fetch_exchange_master.py'
+      - 'scripts/reconcile_current_master.py'
+      - 'scripts/probe_exchange_sources.py'
+      - 'scripts/audit_stage2.py'
+      - 'scripts/audit_security_history.py'
+      - 'tests/test_fetch_exchange_master.py'
+      - 'config/stage2_hard_gates.json'
       - '.github/workflows/stage2-g1.yml'
 
 permissions:
