@@ -10,6 +10,14 @@ on:
       - 'scripts/audit_security_history.py'
       - 'tests/test_fetch_historical_lifecycle.py'
       - '.github/workflows/stage2-g2-historical.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/fetch_historical_lifecycle.py'
+      - 'scripts/build_security_history.py'
+      - 'scripts/audit_security_history.py'
+      - 'tests/test_fetch_historical_lifecycle.py'
+      - '.github/workflows/stage2-g2-historical.yml'
 
 permissions:
   contents: write
