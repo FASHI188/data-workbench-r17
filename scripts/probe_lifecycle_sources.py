@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Discover exchange-owned machine sources for historical LIST/DELIST events.
 
-Diagnostics only: this script never writes lifecycle facts. It downloads the public
-SSE delisting page / SZSE company-notice page plus referenced JavaScript assets and
-extracts candidate API URLs, sqlId/catalog identifiers, and lifecycle-related snippets.
+Diagnostics only: this script never writes lifecycle facts. Each target and referenced
+asset is fail-soft so one blocked URL cannot hide evidence from the other exchange.
 """
 from __future__ import annotations
 
@@ -15,7 +14,7 @@ from urllib.parse import urljoin
 
 import requests
 
-PROBE_VERSION = "V3.2.18-g2-source-probe-1"
+PROBE_VERSION = "V3.2.18-g2-source-probe-2"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142 Safari/537.36"
 TARGETS = {
     "sse_delisting": "https://www.sse.com.cn/assortment/stock/list/delisting/",
@@ -68,8 +67,17 @@ def main() -> int:
     report: dict[str, object] = {"probe_version": PROBE_VERSION, "targets": {}}
 
     for key, url in TARGETS.items():
-        raw = get(session, url)
-        body = text(raw)
+        try:
+            raw = get(session, url)
+            body = text(raw)
+        except Exception as exc:
+            report["targets"][key] = {
+                "url": url,
+                "status": "ERROR",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+            continue
+
         (outdir / f"{key}.html").write_bytes(raw)
         scripts = [urljoin(url, x) for x in SCRIPT_RE.findall(body)]
         target_report: dict[str, object] = {
@@ -79,6 +87,7 @@ def main() -> int:
             "sha256": hashlib.sha256(raw).hexdigest(),
             "page_snippets": snippets(body),
             "page_urlish": sorted({x for x in URLISH.findall(body) if KEYS.search(x)})[:300],
+            "script_count": len(scripts),
             "scripts": [],
         }
         for i, script_url in enumerate(scripts):
