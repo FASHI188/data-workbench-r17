@@ -1,15 +1,26 @@
 {
-  "version": "V3.2.17-recovery",
+  "version": "V3.2.18-g1-reconciled",
   "stage": "2B",
   "alpha_training_allowed": false,
   "scope": ["SSE_MAIN_A", "SZSE_MAIN_A"],
   "excluded": ["STAR", "CHINEXT", "BSE", "NEEQ"],
   "hard_gates": [
-    {"id": "G1", "name": "current_official_master", "status": "IN_PROGRESS"},
-    {"id": "G2", "name": "survivorship_free_security_history_2015_present", "status": "FAIL"},
+    {"id": "G1", "name": "current_official_master", "status": "PASS"},
+    {"id": "G2", "name": "survivorship_free_security_history_2015_present", "status": "IN_PROGRESS"},
     {"id": "G3", "name": "complete_daily_ohlcv_2015_present", "status": "FAIL"},
     {"id": "G4", "name": "daily_security_state_st_suspension_price_limits", "status": "FAIL"},
     {"id": "G5", "name": "complete_corporate_actions_and_adjustment_chain", "status": "FAIL"}
   ],
+  "g1_evidence": {
+    "effective_date": "2026-07-24",
+    "sse_primary_count": 1698,
+    "sse_independent_control_count": 1698,
+    "sse_code_set_diff": 0,
+    "szse_primary_count": 1493,
+    "szse_independent_control_count": 1493,
+    "szse_code_set_diff": 0,
+    "validation_pr": 3,
+    "validation_run": 30210255532
+  },
   "retrospective_evidence_policy": "RETROSPECTIVE_EVIDENCE_ONLY never satisfies point-in-time completeness gates"
 }
