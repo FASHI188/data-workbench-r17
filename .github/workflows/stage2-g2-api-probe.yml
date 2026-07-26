@@ -24,6 +24,7 @@ jobs:
       - name: Probe direct exchange APIs
         shell: bash
         run: |
+          echo "G2 lifecycle API probe run 1"
           mkdir -p data/lifecycle_api_probe
           python scripts/probe_lifecycle_api_candidates.py > data/lifecycle_api_probe/stdout.log 2> data/lifecycle_api_probe/stderr.log
       - name: Upload probe evidence
