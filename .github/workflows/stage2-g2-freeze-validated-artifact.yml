@@ -1,0 +1,62 @@
+name: Stage2 G2 Freeze Validated Artifact
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [stage2-g2-final-validation]
+    paths:
+      - '.github/workflows/stage2-g2-freeze-validated-artifact.yml'
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  freeze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VALIDATED_RUN_ID: '30211291770'
+      VALIDATED_ARTIFACT: 'stage2-g2-historical-evidence'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Replace lifecycle evidence with the already validated artifact
+        shell: bash
+        run: |
+          rm -rf data/security_lifecycle
+          mkdir -p data/security_lifecycle
+          gh run download "$VALIDATED_RUN_ID" -R "$GITHUB_REPOSITORY" -n "$VALIDATED_ARTIFACT" -D data/security_lifecycle
+
+      - name: Verify frozen artifact identity and G2 audit
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/security_lifecycle/g2_audit.json')
+          r=json.loads(p.read_text(encoding='utf-8'))
+          assert r['pass'] is True and r['errors'] == [], r
+          assert r['current_master_count'] == 3191, r
+          assert r['current_open_interval_count'] == 3191, r
+          assert r['closed_interval_count'] == 289, r
+          assert r['delist_events'] == 289, r
+          assert r['total_intervals'] == 3480, r
+          assert r['total_events'] == 3769, r
+          m=json.loads(Path('data/security_lifecycle/manifest.json').read_text(encoding='utf-8'))
+          assert m['counts']['sse_delisted_a_all_history'] == 143, m
+          assert m['counts']['szse_delisted_a_all_history'] == 146, m
+          assert m['controls']['szse']['class_counts'] == {'MAIN_A': 146, 'MAIN_B': 21}, m
+          print('validated G2 artifact checks passed')
+          PY
+          python scripts/audit_security_history.py
+
+      - name: Commit validated evidence to the branch
+        shell: bash
+        run: |
+          git config user.name "stage2-bot"
+          git config user.email "stage2-bot@users.noreply.github.com"
+          git add data/security_lifecycle
+          git commit -m "stage2: freeze validated G2 lifecycle evidence [skip ci]"
+          git push
