@@ -1,7 +1,7 @@
 {
   "version": "V3.2.19-g2-historical-lifecycle",
   "status": "HISTORICAL_BACKFILL_COMPLETE_CANDIDATE",
-  "source_fetched_at_utc": "2026-07-26T16:49:18.890648+00:00",
+  "source_fetched_at_utc": "2026-07-26T16:52:14.369930+00:00",
   "coverage_start": "2015-01-01",
   "coverage_end": "2026-07-24",
   "historical_backfill_complete": true,
@@ -34,7 +34,7 @@
         "MAIN_B": 21
       },
       "delisted_a_count": 146,
-      "source_sha256": "027b41450608a8e37b8835555a9d846f2e34fd43830fe2d3f6eacf3e74f6fd43",
+      "source_sha256": "03a98ecd6e0dc6581f6d8b7d5de0c0670eb61695f9622d154b8f3b61e7812e1b",
       "source_url": "https://www.szse.cn/api/report/ShowReport?SHOWTYPE=xlsx&CATALOGID=1793_ssgs&TABKEY=tab2&selectModule=main",
       "current_count": 1493,
       "current_delisted_disjoint": true
