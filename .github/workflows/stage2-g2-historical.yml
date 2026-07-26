@@ -3,7 +3,7 @@ name: Stage2 G2 Historical Lifecycle
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, stage2-g2-final-validation]
     paths:
       - 'scripts/fetch_historical_lifecycle.py'
       - 'scripts/build_security_history.py'
