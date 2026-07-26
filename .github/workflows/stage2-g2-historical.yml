@@ -10,6 +10,14 @@ on:
       - 'scripts/audit_security_history.py'
       - 'tests/test_fetch_historical_lifecycle.py'
       - '.github/workflows/stage2-g2-historical.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/fetch_historical_lifecycle.py'
+      - 'scripts/build_security_history.py'
+      - 'scripts/audit_security_history.py'
+      - 'tests/test_fetch_historical_lifecycle.py'
+      - '.github/workflows/stage2-g2-historical.yml'
 
 permissions:
   contents: write
@@ -27,23 +35,54 @@ jobs:
         run: python -m pip install --disable-pip-version-check requests openpyxl pytest
       - name: Regression tests
         run: pytest -q
+
       - name: Fetch official historical lifecycle sources and build event ledger
-        run: python scripts/fetch_historical_lifecycle.py
-      - name: Build survivorship-free lifecycle intervals
-        run: python scripts/build_security_history.py
-      - name: Audit G2
         shell: bash
         run: |
-          python scripts/audit_security_history.py > data/security_lifecycle/g2_audit.json
-          cat data/security_lifecycle/g2_audit.json
-      - name: Upload G2 evidence
+          mkdir -p data/security_lifecycle/debug
+          set +e
+          python scripts/fetch_historical_lifecycle.py > data/security_lifecycle/debug/import_stdout.log 2> data/security_lifecycle/debug/import_stderr.log
+          code=$?
+          echo "import_exit_code=$code" >> "$GITHUB_ENV"
+          cat data/security_lifecycle/debug/import_stdout.log || true
+          cat data/security_lifecycle/debug/import_stderr.log || true
+          exit 0
+
+      - name: Build survivorship-free lifecycle intervals
+        if: env.import_exit_code == '0'
+        shell: bash
+        run: |
+          set +e
+          python scripts/build_security_history.py > data/security_lifecycle/debug/build_stdout.log 2> data/security_lifecycle/debug/build_stderr.log
+          code=$?
+          echo "build_exit_code=$code" >> "$GITHUB_ENV"
+          cat data/security_lifecycle/debug/build_stdout.log || true
+          cat data/security_lifecycle/debug/build_stderr.log || true
+          exit 0
+
+      - name: Audit G2
+        if: env.import_exit_code == '0' && env.build_exit_code == '0'
+        shell: bash
+        run: |
+          set +e
+          python scripts/audit_security_history.py > data/security_lifecycle/g2_audit.json 2> data/security_lifecycle/debug/audit_stderr.log
+          code=$?
+          echo "audit_exit_code=$code" >> "$GITHUB_ENV"
+          cat data/security_lifecycle/g2_audit.json || true
+          cat data/security_lifecycle/debug/audit_stderr.log || true
+          exit 0
+
+      - name: Upload G2 evidence and failure diagnostics
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: stage2-g2-historical-evidence
           path: data/security_lifecycle
+          if-no-files-found: warn
           retention-days: 14
+
       - name: Commit frozen G2 evidence
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && env.import_exit_code == '0' && env.build_exit_code == '0' && env.audit_exit_code == '0'
         shell: bash
         run: |
           git config user.name "stage2-bot"
@@ -55,3 +94,9 @@ jobs:
           fi
           git commit -m "stage2: freeze G2 historical lifecycle evidence [skip ci]"
           git push
+
+      - name: Fail closed after diagnostics are preserved
+        if: env.import_exit_code != '0' || env.build_exit_code != '0' || env.audit_exit_code != '0'
+        run: |
+          echo "G2 validation failed; diagnostics and partial evidence were preserved."
+          exit 1
