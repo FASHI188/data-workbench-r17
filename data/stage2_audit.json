@@ -4,10 +4,8 @@
   "alpha_training_allowed": false,
   "results": {
     "G1": {
-      "pass": false,
-      "errors": [
-        "implausibly small SZSE main-A universe: 20"
-      ]
+      "pass": true,
+      "errors": []
     },
     "G2": {
       "pass": false,
