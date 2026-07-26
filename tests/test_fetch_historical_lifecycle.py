@@ -24,6 +24,7 @@ def workbook_bytes(rows):
 
 
 def test_szse_official_code_range_classification():
+    assert m.szse_security_class("000000") == "UNKNOWN"
     assert m.szse_security_class("000004") == "MAIN_A"
     assert m.szse_security_class("002001") == "MAIN_A"
     assert m.szse_security_class("003001") == "MAIN_A"
