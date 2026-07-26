@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SecurityLifecycleEvent",
+  "type": "object",
+  "required": [
+    "exchange", "code", "event_type", "effective_date",
+    "source_url", "source_sha256", "evidence_class"
+  ],
+  "properties": {
+    "exchange": {"enum": ["SSE", "SZSE"]},
+    "code": {"type": "string", "pattern": "^[0-9]{6}$"},
+    "event_type": {"enum": ["LIST", "DELIST", "RENAME"]},
+    "effective_date": {"type": "string", "format": "date"},
+    "announced_at": {"type": ["string", "null"]},
+    "name": {"type": ["string", "null"]},
+    "source_url": {"type": "string", "minLength": 1},
+    "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "evidence_class": {
+      "enum": ["POINT_IN_TIME_PRIMARY", "RETROSPECTIVE_PRIMARY", "SECONDARY_CROSSCHECK"]
+    },
+    "source_payload": {"type": ["string", "null"]}
+  },
+  "additionalProperties": false
+}
