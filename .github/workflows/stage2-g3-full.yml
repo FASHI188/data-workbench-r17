@@ -1,0 +1,107 @@
+name: Stage2 G3 Full Official OHLCV
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/build_g3_ohlcv.py'
+      - 'scripts/audit_g3_ohlcv.py'
+      - 'tests/test_build_g3_ohlcv.py'
+      - 'config/g3_full_trigger.json'
+      - '.github/workflows/stage2-g3-full.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests openpyxl pytest
+      - run: pytest -q
+
+  sse:
+    needs: tests
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests openpyxl
+      - name: Build SSE shard ${{ matrix.shard }}/8
+        run: python scripts/build_g3_ohlcv.py sse-shard --shard ${{ matrix.shard }} --shards 8 --out build/g3/sse
+      - uses: actions/upload-artifact@v4
+        with:
+          name: g3-sse-${{ matrix.shard }}
+          path: build/g3/sse
+          compression-level: 0
+          retention-days: 14
+
+  szse:
+    needs: tests
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        year: [2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests openpyxl
+      - name: Build SZSE year ${{ matrix.year }}
+        run: python scripts/build_g3_ohlcv.py szse-year --year ${{ matrix.year }} --out build/g3/szse
+      - uses: actions/upload-artifact@v4
+        with:
+          name: g3-szse-${{ matrix.year }}
+          path: build/g3/szse
+          compression-level: 0
+          retention-days: 14
+
+  audit:
+    needs: [sse, szse]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download SSE shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: g3-sse-*
+          path: build/g3/sse
+          merge-multiple: true
+      - name: Download SZSE years
+        uses: actions/download-artifact@v4
+        with:
+          pattern: g3-szse-*
+          path: build/g3/szse
+          merge-multiple: true
+      - name: Audit full G3 dataset
+        run: python scripts/audit_g3_ohlcv.py --root build/g3 --out data/ohlcv
+      - name: Upload audited G3 dataset artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage2-g3-official-ohlcv
+          path: |
+            build/g3
+            data/ohlcv
+          compression-level: 0
+          retention-days: 90
