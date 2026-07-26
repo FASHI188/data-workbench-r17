@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/build_g3_ohlcv.py'
+      - 'scripts/run_g3_rate_limited.py'
       - 'tests/test_build_g3_ohlcv.py'
       - 'config/g3_pilot_trigger.json'
       - '.github/workflows/stage2-g3-pilot.yml'
@@ -26,14 +27,14 @@ jobs:
       - name: Regression tests
         run: pytest -q
       - name: SSE production-format pilot shard
-        run: python scripts/build_g3_ohlcv.py sse-shard --shard 0 --shards 32 --out build/g3/sse
+        run: python scripts/run_g3_rate_limited.py sse-shard --shard 0 --shards 64 --out build/g3/sse
       - name: SZSE production-format pilot year 2015
-        run: python scripts/build_g3_ohlcv.py szse-year --year 2015 --out build/g3/szse
+        run: python scripts/run_g3_rate_limited.py szse-year --year 2015 --out build/g3/szse
       - name: Pilot integrity summary
         shell: bash
         run: |
           python - <<'PY'
-          import gzip,csv,json,glob,hashlib,os
+          import gzip,csv,json,glob,hashlib
           out={}
           for p in sorted(glob.glob('build/g3/**/*.csv.gz',recursive=True)):
               with gzip.open(p,'rt',encoding='utf-8',newline='') as f:
