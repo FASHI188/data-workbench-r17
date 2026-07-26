@@ -97,8 +97,14 @@ def sse_rows(payload: dict[str, Any]) -> list[MasterRow]:
         name = first_nonempty(row, ["COMPANY_ABBR", "SEC_NAME_CN", "SECURITY_ABBR_A"])
         if not code or not re.fullmatch(r"6\d{5}", code):
             continue
+        if code.startswith(("688", "689")):
+            continue
+        list_board = first_nonempty(row, ["LIST_BOARD", "BOARD_CODE"])
+        if list_board not in (None, "1"):
+            continue
         if not name:
             raise ValueError(f"SSE row missing name for {code}")
+        # STOCK_TYPE=1 is the exchange's own main-board A-share selection.
         out.append(
             MasterRow(
                 exchange="SSE",
@@ -129,8 +135,8 @@ def szse_rows(payload: Any) -> list[MasterRow]:
     """Parse SZSE CATALOGID=1110 conservatively.
 
     Prefer explicit code fields. Main-board classification uses explicit board text when
-    present; only if absent, the Shenzhen code-family fallback is used and tagged as
-    DERIVED_CODE_PREFIX so audit can reject it if a stronger source is required.
+    present; only if absent, the documented Shenzhen code family fallback is used and
+    tagged as DERIVED_CODE_PREFIX so audit can reject it if a stronger source is required.
     """
     out: dict[str, MasterRow] = {}
     for row in walk_dicts(payload):
@@ -207,8 +213,8 @@ def main() -> int:
         "hard_gate_status": "PASS_CANDIDATE",
         "notes": [
             "PASS_CANDIDATE is not Stage2 PASS until official aggregate/control totals reconcile.",
-            "Network or parser failure is fatal; zero-row imports never count as success."
-        ]
+            "Network or parser failure is fatal; zero-row imports never count as success.",
+        ],
     }
     out.mkdir(parents=True, exist_ok=True)
     (out / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
