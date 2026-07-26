@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -76,17 +77,45 @@ def audit_g1() -> tuple[bool, list[str]]:
     return not errors, errors
 
 
+def audit_g2() -> tuple[bool, list[str], dict]:
+    """Re-run the dedicated G2 audit instead of trusting a stale saved result."""
+    script = ROOT / "scripts" / "audit_security_history.py"
+    if not script.exists():
+        return False, ["missing scripts/audit_security_history.py"], {}
+    proc = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    try:
+        report = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        return False, [f"G2 audit produced invalid JSON; stderr={proc.stderr.strip()[:1000]}"], {}
+
+    errors = list(report.get("errors") or [])
+    if proc.returncode != 0 and not errors:
+        errors.append(f"G2 audit exited {proc.returncode}: {proc.stderr.strip()[:1000]}")
+    ok = proc.returncode == 0 and report.get("pass") is True and not errors
+    return ok, errors, report
+
+
 def main() -> int:
     cfg = load_json(CONFIG)
-    results = {}
+    results: dict[str, dict] = {}
+
     g1_ok, g1_errors = audit_g1()
     results["G1"] = {"pass": g1_ok, "errors": g1_errors}
 
-    # G2-G5 remain fail-closed until their dedicated evidence chains exist.
+    g2_ok, g2_errors, g2_report = audit_g2()
+    results["G2"] = {"pass": g2_ok, "errors": g2_errors, "details": g2_report}
+
+    # G3-G5 remain fail-closed until their dedicated evidence chains exist and pass.
     for gate in cfg["hard_gates"]:
         gid = gate["id"]
-        if gid != "G1":
-            results[gid] = {"pass": False, "errors": [f"{gid} evidence chain not implemented yet"]}
+        if gid not in {"G1", "G2"}:
+            results[gid] = {"pass": False, "errors": [f"{gid} evidence chain not implemented or not passed yet"]}
 
     all_pass = all(v["pass"] for v in results.values())
     report = {
