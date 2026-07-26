@@ -20,14 +20,29 @@ def audit_g1() -> tuple[bool, list[str]]:
     errors: list[str] = []
     manifest_path = MASTER_DIR / "manifest.json"
     combined_path = MASTER_DIR / "cn_main_a.csv"
+    reconciliation_path = MASTER_DIR / "reconciliation.json"
     if not manifest_path.exists():
         return False, ["missing data/current_master/manifest.json"]
     if not combined_path.exists():
         return False, ["missing data/current_master/cn_main_a.csv"]
+    if not reconciliation_path.exists():
+        return False, ["missing independent data/current_master/reconciliation.json"]
 
     manifest = load_json(manifest_path)
     if manifest.get("hard_gate_status") != "PASS_CANDIDATE":
         errors.append("current-master manifest is not PASS_CANDIDATE")
+
+    reconciliation = load_json(reconciliation_path)
+    if reconciliation.get("status") != "RECONCILED" or reconciliation.get("g1_reconciled") is not True:
+        errors.append("independent exchange-owned master reconciliation did not pass")
+    for exchange_key in ("sse", "szse"):
+        section = reconciliation.get(exchange_key, {})
+        if section.get("set_equal") is not True:
+            errors.append(f"{exchange_key.upper()} primary/control code sets differ")
+        if section.get("primary_count") != section.get("control_count"):
+            errors.append(f"{exchange_key.upper()} primary/control counts differ")
+        if not section.get("control_sha256"):
+            errors.append(f"{exchange_key.upper()} control SHA-256 missing")
 
     rows = list(csv.DictReader(combined_path.open(encoding="utf-8")))
     if not rows:
