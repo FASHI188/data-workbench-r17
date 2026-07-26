@@ -1,13 +1,13 @@
 {
-  "version": "V3.2.18-g1-reconciled",
+  "version": "V3.2.19-g2-lifecycle-reconciled",
   "stage": "2B",
   "alpha_training_allowed": false,
   "scope": ["SSE_MAIN_A", "SZSE_MAIN_A"],
   "excluded": ["STAR", "CHINEXT", "BSE", "NEEQ"],
   "hard_gates": [
     {"id": "G1", "name": "current_official_master", "status": "PASS"},
-    {"id": "G2", "name": "survivorship_free_security_history_2015_present", "status": "IN_PROGRESS"},
-    {"id": "G3", "name": "complete_daily_ohlcv_2015_present", "status": "FAIL"},
+    {"id": "G2", "name": "survivorship_free_security_history_2015_present", "status": "PASS"},
+    {"id": "G3", "name": "complete_daily_ohlcv_2015_present", "status": "IN_PROGRESS"},
     {"id": "G4", "name": "daily_security_state_st_suspension_price_limits", "status": "FAIL"},
     {"id": "G5", "name": "complete_corporate_actions_and_adjustment_chain", "status": "FAIL"}
   ],
@@ -21,6 +21,19 @@
     "szse_code_set_diff": 0,
     "validation_pr": 3,
     "validation_run": 30210255532
+  },
+  "g2_evidence": {
+    "coverage_start": "2015-01-01",
+    "coverage_end": "2026-07-24",
+    "current_open_intervals": 3191,
+    "historical_closed_intervals": 289,
+    "sse_delisted_main_a": 143,
+    "szse_delisted_main_a": 146,
+    "szse_excluded_main_b": 21,
+    "total_intervals": 3480,
+    "total_events": 3769,
+    "audit_errors": 0,
+    "frozen_commit": "a995d73c45af7095c39782301925eea88db7eaf1"
   },
   "retrospective_evidence_policy": "RETROSPECTIVE_EVIDENCE_ONLY never satisfies point-in-time completeness gates"
 }
