@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/probe_ohlcv_sources.py'
+      - 'scripts/probe_szse_ohlcv_depth.py'
       - 'config/g3_probe_trigger.json'
       - '.github/workflows/stage2-g3-source-probe.yml'
 
@@ -15,7 +16,7 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,6 +28,9 @@ jobs:
         run: |
           mkdir -p data/ohlcv_probe
           python scripts/probe_ohlcv_sources.py > data/ohlcv_probe/stdout.log 2> data/ohlcv_probe/stderr.log
+      - name: Deep-probe SZSE history/snapshot continuity
+        shell: bash
+        run: python scripts/probe_szse_ohlcv_depth.py > data/ohlcv_probe/szse_depth_stdout.log 2> data/ohlcv_probe/szse_depth_stderr.log
       - uses: actions/upload-artifact@v4
         with:
           name: stage2-g3-ohlcv-source-probe
