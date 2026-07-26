@@ -1,7 +1,7 @@
 {
   "version": "V3.2.19-g2-historical-lifecycle",
   "status": "HISTORICAL_BACKFILL_COMPLETE_CANDIDATE",
-  "source_fetched_at_utc": "2026-07-26T16:52:14.369930+00:00",
+  "source_fetched_at_utc": "2026-07-26T16:50:15.949443+00:00",
   "coverage_start": "2015-01-01",
   "coverage_end": "2026-07-24",
   "historical_backfill_complete": true,
