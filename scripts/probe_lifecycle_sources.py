@@ -15,6 +15,7 @@ from urllib.parse import urljoin
 
 import requests
 
+PROBE_VERSION = "V3.2.18-g2-source-probe-1"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142 Safari/537.36"
 TARGETS = {
     "sse_delisting": "https://www.sse.com.cn/assortment/stock/list/delisting/",
@@ -64,7 +65,7 @@ def main() -> int:
     outdir = Path("data/lifecycle_probe")
     outdir.mkdir(parents=True, exist_ok=True)
     session = requests.Session()
-    report: dict[str, object] = {"targets": {}}
+    report: dict[str, object] = {"probe_version": PROBE_VERSION, "targets": {}}
 
     for key, url in TARGETS.items():
         raw = get(session, url)
