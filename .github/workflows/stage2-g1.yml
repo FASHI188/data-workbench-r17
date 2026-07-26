@@ -8,7 +8,15 @@ on:
       - 'scripts/fetch_exchange_master.py'
       - 'scripts/audit_stage2.py'
       - 'tests/**'
-      - 'config/stage2_hard_gates.json'
+      - 'config/**'
+      - '.github/workflows/stage2-g1.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/fetch_exchange_master.py'
+      - 'scripts/audit_stage2.py'
+      - 'tests/**'
+      - 'config/**'
       - '.github/workflows/stage2-g1.yml'
 
 permissions:
@@ -47,7 +55,17 @@ jobs:
           cat data/stage2_audit.json
           exit 0
 
+      - name: Upload candidate and audit evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage2-g1-evidence
+          path: |
+            data/current_master
+            data/stage2_audit.json
+          retention-days: 7
+
       - name: Commit frozen candidate and audit evidence
+        if: github.event_name == 'push'
         shell: bash
         run: |
           git config user.name "stage2-bot"
