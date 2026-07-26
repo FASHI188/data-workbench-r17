@@ -6,6 +6,10 @@ on:
     branches: [stage2-g2-final-validation]
     paths:
       - '.github/workflows/stage2-g2-historical.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage2-g2-historical.yml'
 
 permissions:
   actions: read
@@ -21,12 +25,16 @@ jobs:
       VALIDATED_ARTIFACT: 'stage2-g2-historical-evidence'
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: stage2-g2-final-validation
+
       - name: Download the already validated G2 evidence
         shell: bash
         run: |
           rm -rf data/security_lifecycle
           mkdir -p data/security_lifecycle
           gh run download "$VALIDATED_RUN_ID" -R "$GITHUB_REPOSITORY" -n "$VALIDATED_ARTIFACT" -D data/security_lifecycle
+
       - name: Re-audit the frozen evidence
         shell: bash
         run: |
@@ -52,11 +60,16 @@ jobs:
           print('artifact identity checks passed')
           PY
           python scripts/audit_security_history.py
-      - name: Commit validated G2 evidence
+
+      - name: Commit validated G2 evidence to validation branch
         shell: bash
         run: |
           git config user.name "stage2-bot"
           git config user.email "stage2-bot@users.noreply.github.com"
           git add data/security_lifecycle
+          if git diff --cached --quiet; then
+            echo "validated evidence already frozen"
+            exit 0
+          fi
           git commit -m "stage2: freeze validated G2 lifecycle evidence [skip ci]"
-          git push
+          git push origin HEAD:stage2-g2-final-validation
