@@ -23,7 +23,7 @@ permissions:
 jobs:
   build-current-master:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install test/runtime dependencies
-        run: python -m pip install --disable-pip-version-check requests pytest
+        run: python -m pip install --disable-pip-version-check requests pytest openpyxl
 
       - name: Regression tests
         run: pytest -q
@@ -56,6 +56,18 @@ jobs:
           echo "fetch_exit_code=$code" >> "$GITHUB_ENV"
           cat data/fetch_stdout.log || true
           cat data/fetch_stderr.log || true
+          exit 0
+
+      - name: Reconcile against independent exchange-owned controls
+        if: env.fetch_exit_code == '0'
+        shell: bash
+        run: |
+          set +e
+          python scripts/reconcile_current_master.py > data/reconcile_stdout.log 2> data/reconcile_stderr.log
+          code=$?
+          echo "reconcile_exit_code=$code" >> "$GITHUB_ENV"
+          cat data/reconcile_stdout.log || true
+          cat data/reconcile_stderr.log || true
           exit 0
 
       - name: Run fail-closed Stage2 audit
@@ -82,6 +94,8 @@ jobs:
             data/source_probe_stderr.log
             data/fetch_stdout.log
             data/fetch_stderr.log
+            data/reconcile_stdout.log
+            data/reconcile_stderr.log
             data/audit_stderr.log
           if-no-files-found: warn
           retention-days: 7
@@ -100,8 +114,8 @@ jobs:
           git commit -m "stage2: freeze official current-master candidate [skip ci]"
           git push
 
-      - name: Mark fetch failure after evidence upload
-        if: env.fetch_exit_code != '0'
+      - name: Mark G1 acquisition or reconciliation failure after evidence upload
+        if: env.fetch_exit_code != '0' || env.reconcile_exit_code != '0'
         run: |
-          echo "Official-master fetch failed; evidence artifact was uploaded."
+          echo "G1 official acquisition/reconciliation failed; evidence artifact was uploaded."
           exit 1
