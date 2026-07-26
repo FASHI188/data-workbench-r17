@@ -1,0 +1,34 @@
+name: Stage2 G3 SZSE Bulk Historical Day Probe
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/probe_szse_daily_history_bulk.py'
+      - 'config/g3_bulk_probe_trigger.json'
+      - '.github/workflows/stage2-g3-bulk-history-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests openpyxl
+      - name: Probe full-market historical single-day XLSX
+        shell: bash
+        run: |
+          mkdir -p data/ohlcv_probe
+          python scripts/probe_szse_daily_history_bulk.py > data/ohlcv_probe/szse_daily_history_bulk_stdout.log 2> data/ohlcv_probe/szse_daily_history_bulk_stderr.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage2-g3-szse-bulk-history-probe
+          path: data/ohlcv_probe
+          retention-days: 7
