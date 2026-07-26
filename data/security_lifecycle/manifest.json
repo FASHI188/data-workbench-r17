@@ -1,0 +1,13 @@
+{
+  "version": "V3.2.18-g2-current-bootstrap",
+  "status": "CURRENT_ONLY_BOOTSTRAP",
+  "as_of": "2026-07-24",
+  "coverage_start": null,
+  "coverage_end": "2026-07-24",
+  "historical_backfill_complete": false,
+  "notes": [
+    "Current exchange master seeds LIST events for securities still active as of 2026-07-24.",
+    "Evidence class is RETROSPECTIVE_PRIMARY.",
+    "This bootstrap does not include securities delisted before the current snapshot and cannot satisfy G2."
+  ]
+}

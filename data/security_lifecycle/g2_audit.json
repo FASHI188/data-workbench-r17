@@ -1,0 +1,13 @@
+{
+  "gate": "G2",
+  "pass": false,
+  "current_master_count": 3191,
+  "current_open_interval_count": 3191,
+  "delist_events": 0,
+  "errors": [
+    "no historical DELIST events for SSE",
+    "no historical DELIST events for SZSE",
+    "historical_backfill_complete is not true",
+    "coverage_start is not 2015-01-01"
+  ]
+}
