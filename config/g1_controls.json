@@ -1,0 +1,23 @@
+{
+  "as_of": "2026-07-26",
+  "controls": {
+    "SZSE_MAIN_A_2026_06_30": {
+      "count": 1495,
+      "source": "https://docs.static.szse.cn/www/market/periodical/month/W020260706503107057748.html",
+      "status": "OFFICIAL_MONTH_END_CONTROL"
+    },
+    "SZSE_MAIN_A_POST_2026_06_30_EVENTS": [
+      {
+        "event": "LIST",
+        "effective_date": "2026-07-02",
+        "code": "001248",
+        "name": "华润新能源",
+        "source": "https://www.szse.cn/disclosure/notice/company/t20260701_621407.html"
+      }
+    ]
+  },
+  "notes": [
+    "This file is a control ledger, not a substitute for the row-level official master.",
+    "Current count must be reconciled against all July main-board listing/delisting events before G1 PASS."
+  ]
+}
