@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/build_g3_ohlcv.py'
+      - 'scripts/run_g3_rate_limited.py'
       - 'scripts/audit_g3_ohlcv.py'
       - 'tests/test_build_g3_ohlcv.py'
       - 'config/g3_full_trigger.json'
@@ -29,7 +30,7 @@ jobs:
     needs: tests
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 2
       matrix:
         shard: [0,1,2,3,4,5,6,7]
     runs-on: ubuntu-latest
@@ -41,7 +42,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install --disable-pip-version-check requests openpyxl
       - name: Build SSE shard ${{ matrix.shard }}/8
-        run: python scripts/build_g3_ohlcv.py sse-shard --shard ${{ matrix.shard }} --shards 8 --out build/g3/sse
+        run: python scripts/run_g3_rate_limited.py sse-shard --shard ${{ matrix.shard }} --shards 8 --out build/g3/sse
       - uses: actions/upload-artifact@v4
         with:
           name: g3-sse-${{ matrix.shard }}
@@ -53,7 +54,7 @@ jobs:
     needs: tests
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 1
       matrix:
         year: [2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026]
     runs-on: ubuntu-latest
@@ -65,7 +66,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install --disable-pip-version-check requests openpyxl
       - name: Build SZSE year ${{ matrix.year }}
-        run: python scripts/build_g3_ohlcv.py szse-year --year ${{ matrix.year }} --out build/g3/szse
+        run: python scripts/run_g3_rate_limited.py szse-year --year ${{ matrix.year }} --out build/g3/szse
       - uses: actions/upload-artifact@v4
         with:
           name: g3-szse-${{ matrix.year }}
