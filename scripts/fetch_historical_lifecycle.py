@@ -17,7 +17,8 @@ import html
 import json
 import re
 import sys
-from dataclasses import dataclass, asdict
+import time
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from io import BytesIO
 from pathlib import Path
@@ -84,22 +85,38 @@ def parse_jsonp(raw: bytes) -> dict:
     return obj
 
 
-def http_get(url: str, referer: str) -> bytes:
-    r = requests.get(
-        url,
-        headers={
-            "User-Agent": UA,
-            "Referer": referer,
-            "Accept": "*/*",
-            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.7",
-            "X-Requested-With": "XMLHttpRequest",
-        },
-        timeout=60,
-    )
-    r.raise_for_status()
-    if not r.content:
-        raise RuntimeError(f"empty response: {url}")
-    return r.content
+def http_get(url: str, referer: str, attempts: int = 5) -> bytes:
+    """Fetch exchange evidence with bounded retries for transient resets/timeouts.
+
+    Evidence rules are unchanged: every successful response still must pass the
+    downstream schema, set-partition and hash checks. Retries only address transport
+    instability and never turn an invalid payload into a valid one.
+    """
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            r = requests.get(
+                url,
+                headers={
+                    "User-Agent": UA,
+                    "Referer": referer,
+                    "Accept": "*/*",
+                    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.7",
+                    "Connection": "close",
+                },
+                timeout=60,
+            )
+            r.raise_for_status()
+            if not r.content:
+                raise RuntimeError(f"empty response: {url}")
+            return r.content
+        except (requests.RequestException, RuntimeError) as exc:
+            last_error = exc
+            if attempt >= attempts:
+                break
+            time.sleep(min(0.5 * (2 ** (attempt - 1)), 4.0))
+    assert last_error is not None
+    raise last_error
 
 
 def sse_url(status: str) -> str:
