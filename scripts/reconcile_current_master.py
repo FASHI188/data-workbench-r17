@@ -105,7 +105,10 @@ def find_header(rows: Iterable[tuple[object, ...]]) -> tuple[int, dict[str, int]
 
 
 def parse_szse_xlsx(raw: bytes) -> tuple[set[str], dict[str, object]]:
-    wb = load_workbook(BytesIO(raw), read_only=True, data_only=True)
+    # The exchange workbook currently declares worksheet dimension A1 even though
+    # sheet1.xml contains the full table. openpyxl read_only mode trusts that bad
+    # dimension and yields only A1. Normal mode parses the actual XML cells.
+    wb = load_workbook(BytesIO(raw), read_only=False, data_only=True)
     diagnostics: dict[str, object] = {"sheets": wb.sheetnames}
     best_codes: set[str] = set()
     best_diag: dict[str, object] | None = None
@@ -128,7 +131,6 @@ def parse_szse_xlsx(raw: bytes) -> tuple[set[str], dict[str, object]]:
                 board = norm_cell(row[mapping["board"]])
                 if board:
                     board_values.add(board)
-            # This control must not infer main board solely from code prefixes.
             if "board" not in mapping:
                 raise ValueError(f"SZSE XLSX sheet {ws.title!r} has no explicit board column")
             if "创业" in board:
