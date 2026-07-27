@@ -1,0 +1,46 @@
+name: Stage2 G5 Finalize Frozen Official Chain
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/audit_g5_baostock_factor_control.py'
+      - 'scripts/finalize_g5_audit.py'
+      - '.github/workflows/stage2-g5-finalize-frozen.yml'
+      - 'config/g5_finalize_trigger.json'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN: '30234301114'
+      FACTOR_RUN: '30232698608'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download frozen official ledger and adjustment chain
+        run: |
+          gh run download "$SOURCE_RUN" -R "$GITHUB_REPOSITORY" -n g5-final-official-ledger -D data/g5-official
+          gh run download "$SOURCE_RUN" -R "$GITHUB_REPOSITORY" -n g5-final-adjustment-chain -D data/g5-adjustment
+      - name: Download independent BaoStock factor evidence
+        run: gh run download "$FACTOR_RUN" -R "$GITHUB_REPOSITORY" -p 'g5-actions-*' -D factor-control
+      - name: Re-run official-event-centric independent factor audit
+        run: python scripts/audit_g5_baostock_factor_control.py --factor-root factor-control --chain data/g5-adjustment/g5_adjustment_chain.csv.gz --out data/g5-control
+      - name: Final G5 hard audit
+        run: python scripts/finalize_g5_audit.py --official-audit data/g5-official/g5_official_action_audit.json --adjustment-audit data/g5-adjustment/g5_adjustment_audit.json --control-audit data/g5-control/g5_baostock_control.json --out data/corporate_actions
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage2-g5-final-evidence-v2
+          path: |
+            data/g5-official
+            data/g5-adjustment
+            data/g5-control
+            data/corporate_actions
+          retention-days: 90
+          compression-level: 0
