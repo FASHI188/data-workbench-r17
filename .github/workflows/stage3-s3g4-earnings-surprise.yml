@@ -1,0 +1,64 @@
+name: Stage3 S3G4 Official Earnings Guidance Surprise
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  ANNOUNCEMENT_RUN: 'TO_BE_LOCKED_AFTER_S3G2_PASS'
+  FINANCIAL_RAW_RUN: 'TO_BE_LOCKED_AFTER_S3G1J_PASS'
+  FORECAST_PROBE_RUN: 'TO_BE_LOCKED_AFTER_S3G4A_PASS'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Lock upstream hard-gate runs
+        shell: bash
+        run: |
+          set -euo pipefail
+          for v in ANNOUNCEMENT_RUN FINANCIAL_RAW_RUN FORECAST_PROBE_RUN; do
+            eval val="\$$v"
+            case "$val" in TO_BE_LOCKED*) echo "$v is not locked"; exit 1;; esac
+            test "$(gh run view "$val" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+          done
+      - name: Restore announcement and financial raw artifacts
+        run: |
+          rm -rf announcements financial
+          gh run download "$ANNOUNCEMENT_RUN" -R "$GITHUB_REPOSITORY" -n stage3-s3g2-announcement-ledger-final -D announcements
+          gh run download "$FINANCIAL_RAW_RUN" -R "$GITHUB_REPOSITORY" -n stage3-s3g1j-financial-raw-final -D financial
+          test -f announcements/stage3_announcement_ledger.csv.gz
+          test -f financial/stage3_financial_raw_values.csv.gz
+          test -f financial/stage3_financial_documents.csv.gz
+      - name: Build PIT official guidance-vs-actual surprise ledger
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_surprise
+          python scripts/build_stage3_earnings_surprise.py \
+            --announcements announcements/stage3_announcement_ledger.csv.gz \
+            --financial-values financial/stage3_financial_raw_values.csv.gz \
+            --financial-documents financial/stage3_financial_documents.csv.gz \
+            --out data/stage3_surprise \
+            > data/stage3_surprise/stdout.log 2> data/stage3_surprise/stderr.log
+          code=$?;echo "S3G4_EXIT=$code" >> "$GITHUB_ENV";cat data/stage3_surprise/stage3_earnings_surprise_audit.json || true;cat data/stage3_surprise/stderr.log || true;exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g4-earnings-surprise-final
+          path: data/stage3_surprise
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve fail-closed surprise status
+        if: env.S3G4_EXIT != '0'
+        run: exit 1
