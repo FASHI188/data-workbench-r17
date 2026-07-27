@@ -6,9 +6,14 @@ on:
     branches: [main]
     paths:
       - 'scripts/build_g4_security_state_single_session.py'
-      - 'scripts/audit_g4_security_state.py'
       - '.github/workflows/stage2-g4-full.yml'
       - 'config/g4_full_trigger.json'
+
+# Full BaoStock rebuilds are expensive and must never fan out from an audit-only change.
+# Newer full-rebuild requests supersede older ones from the same PR/branch.
+concurrency:
+  group: stage2-g4-full-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
