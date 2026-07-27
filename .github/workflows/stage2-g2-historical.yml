@@ -10,6 +10,7 @@ on:
       - 'scripts/build_security_history.py'
       - 'scripts/audit_security_history.py'
       - 'tests/test_fetch_historical_lifecycle.py'
+      - 'tests/test_security_code_transitions.py'
       - '.github/workflows/stage2-g2-historical.yml'
   push:
     branches: [main]
@@ -19,6 +20,7 @@ on:
       - 'scripts/build_security_history.py'
       - 'scripts/audit_security_history.py'
       - 'tests/test_fetch_historical_lifecycle.py'
+      - 'tests/test_security_code_transitions.py'
       - '.github/workflows/stage2-g2-historical.yml'
 
 permissions:
