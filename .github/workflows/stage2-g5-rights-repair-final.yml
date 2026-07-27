@@ -6,6 +6,12 @@ on:
     branches: [agent/stage2-security-identity-final]
     paths:
       - 'config/g5_identity_final_trigger.json'
+  pull_request:
+    branches: [main]
+    types: [synchronize, reopened]
+    paths:
+      - 'config/g5_identity_final_trigger.json'
+      - '.github/workflows/stage2-g5-rights-repair-final.yml'
 
 permissions:
   contents: read
