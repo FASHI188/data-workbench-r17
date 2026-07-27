@@ -1,0 +1,144 @@
+name: Stage2 G5 Rights Repair and Finalize
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/build_g5_cninfo_rights_supplement.py'
+      - 'scripts/merge_g5_cninfo_primary.py'
+      - 'scripts/build_g5_adjustment_from_g3.py'
+      - 'scripts/audit_g5_baostock_factor_control.py'
+      - 'scripts/finalize_g5_audit.py'
+      - '.github/workflows/stage2-g5-rights-repair-final.yml'
+      - 'config/g5_rights_repair_trigger.json'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  szse-rights:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        shard: [0,1,2,3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests akshare py-mini-racer
+      - run: python scripts/build_g5_cninfo_rights_supplement.py --shard ${{ matrix.shard }} --shards 4 --out build/g5-rights
+      - uses: actions/upload-artifact@v4
+        with:
+          name: g5-rights-szse-${{ matrix.shard }}
+          path: build/g5-rights
+          retention-days: 30
+          compression-level: 0
+
+  merge:
+    needs: szse-rights
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN: '30234301114'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download frozen primary CNINFO and SSE native source artifacts
+        shell: bash
+        run: |
+          mkdir -p build/g5-final data/g5-official
+          gh run download "$SOURCE_RUN" -R "$GITHUB_REPOSITORY" -n g5-final-sse-control -D build/g5-final
+          for i in 0 1 2 3 4 5 6 7; do
+            gh run download "$SOURCE_RUN" -R "$GITHUB_REPOSITORY" -n "g5-final-cninfo-$i" -D build/g5-final
+          done
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: g5-rights-szse-*
+          path: build/g5-final
+          merge-multiple: true
+      - name: Merge and reconcile official action ledger
+        run: python scripts/merge_g5_cninfo_primary.py --root build/g5-final --out data/g5-official
+      - uses: actions/upload-artifact@v4
+        with:
+          name: g5-repaired-official-ledger
+          path: data/g5-official
+          retention-days: 90
+          compression-level: 0
+
+  adjustment:
+    needs: merge
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: g5-repaired-official-ledger
+          path: data/g5-official
+      - name: Download frozen G3 official OHLCV artifact
+        run: gh run download 30212684512 -R "$GITHUB_REPOSITORY" -n stage2-g3-official-ohlcv -D g3
+      - run: python scripts/build_g5_adjustment_from_g3.py --actions data/g5-official/g5_official_actions.csv.gz --g3-root g3 --out data/g5-adjustment
+      - uses: actions/upload-artifact@v4
+        with:
+          name: g5-repaired-adjustment-chain
+          path: data/g5-adjustment
+          retention-days: 90
+          compression-level: 0
+
+  factor-control:
+    needs: adjustment
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: g5-repaired-adjustment-chain
+          path: data/g5-adjustment
+      - name: Download independent BaoStock factor evidence
+        run: gh run download 30232698608 -R "$GITHUB_REPOSITORY" -p 'g5-actions-*' -D factor-control
+      - run: python scripts/audit_g5_baostock_factor_control.py --factor-root factor-control --chain data/g5-adjustment/g5_adjustment_chain.csv.gz --out data/g5-control
+      - uses: actions/upload-artifact@v4
+        with:
+          name: g5-repaired-factor-control
+          path: data/g5-control
+          retention-days: 90
+
+  finalize:
+    needs: [merge, adjustment, factor-control]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: g5-repaired-official-ledger
+          path: data/g5-official
+      - uses: actions/download-artifact@v4
+        with:
+          name: g5-repaired-adjustment-chain
+          path: data/g5-adjustment
+      - uses: actions/download-artifact@v4
+        with:
+          name: g5-repaired-factor-control
+          path: data/g5-control
+      - run: python scripts/finalize_g5_audit.py --official-audit data/g5-official/g5_official_action_audit.json --adjustment-audit data/g5-adjustment/g5_adjustment_audit.json --control-audit data/g5-control/g5_baostock_control.json --out data/corporate_actions
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage2-g5-final-evidence-v3
+          path: |
+            data/g5-official
+            data/g5-adjustment
+            data/g5-control
+            data/corporate_actions
+          retention-days: 90
+          compression-level: 0
