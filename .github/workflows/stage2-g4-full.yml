@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'scripts/build_g4_security_state.py'
+      - 'scripts/build_g4_security_state_single_session.py'
       - 'scripts/audit_g4_security_state.py'
       - '.github/workflows/stage2-g4-full.yml'
       - 'config/g4_full_trigger.json'
@@ -14,57 +14,45 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      max-parallel: 8
-      matrix:
-        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+  build-and-audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: python -m pip install --disable-pip-version-check baostock pandas
-      - name: Build G4 shard with preserved diagnostics
+      - name: Build all G4 state in one BaoStock session
         shell: bash
         run: |
-          mkdir -p build/g4
+          mkdir -p build/g4-single data/security_state
           set +e
-          python scripts/build_g4_security_state.py --shard ${{ matrix.shard }} --shards 16 --out build/g4 > build/g4/stdout-${{ matrix.shard }}.log 2> build/g4/stderr-${{ matrix.shard }}.log
+          python scripts/build_g4_security_state_single_session.py > build/g4-single/stdout.log 2> build/g4-single/stderr.log
           code=$?
           echo "G4_EXIT=$code" >> "$GITHUB_ENV"
-          cat build/g4/stdout-${{ matrix.shard }}.log || true
-          cat build/g4/stderr-${{ matrix.shard }}.log || true
+          cat build/g4-single/stdout.log || true
+          cat build/g4-single/stderr.log || true
           exit 0
-      - uses: actions/upload-artifact@v4
-        with:
-          name: g4-state-${{ matrix.shard }}
-          path: build/g4
-          compression-level: 0
-          retention-days: 30
-      - name: Fail closed after diagnostics are preserved
-        if: env.G4_EXIT != '0'
-        run: exit 1
-  audit:
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: g4-state-*
-          path: build/g4
-          merge-multiple: true
-      - run: python scripts/audit_g4_security_state.py --root build/g4 --out data/security_state
+      - name: Audit G4
+        if: env.G4_EXIT == '0'
+        shell: bash
+        run: |
+          set +e
+          python scripts/audit_g4_security_state.py --root build/g4-single --out data/security_state > data/security_state/audit_stdout.log 2> data/security_state/audit_stderr.log
+          code=$?
+          echo "G4_AUDIT_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/security_state/g4_audit.json || true
+          cat data/security_state/audit_stderr.log || true
+          exit 0
       - uses: actions/upload-artifact@v4
         with:
           name: stage2-g4-daily-security-state
           path: |
-            build/g4
+            build/g4-single
             data/security_state
           compression-level: 0
           retention-days: 90
+      - name: Fail closed after evidence preserved
+        if: env.G4_EXIT != '0' || env.G4_AUDIT_EXIT != '0'
+        run: exit 1
