@@ -1,0 +1,132 @@
+name: Stage3 S3G1J Full Original-PDF Financial Values
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    types: [reopened, synchronize]
+    paths:
+      - 'scripts/extract_stage3_financial_pdf_values.py'
+      - 'scripts/finalize_stage3_financial_pdf_values.py'
+      - 'scripts/stage3_financial_pdf_parser.py'
+      - '.github/workflows/stage3-s3g1j-full-financial-pdf-values.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  REPORT_VERSIONS_RUN: '30270405448'
+  POPULATION_PROBE_RUN: 'TO_BE_LOCKED_AFTER_S3G1I_PASS'
+
+jobs:
+  lock-inputs:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require Stage2 V3.2.25 and S3G1G version-selection success
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          m=json.load(open('data/stage2_final/manifest.json',encoding='utf-8'))
+          assert m['version']=='V3.2.25-stage2-final-freeze'
+          assert m['stage2_dataset_fingerprint']=='f17f7ab63f4532dda635eb7366e7df7bf5497a5ce814410105312bccb53125bb'
+          assert m['all_hard_gates_pass'] is True
+          PY
+          test "$(gh run view "$REPORT_VERSIONS_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+          test "$POPULATION_PROBE_RUN" != TO_BE_LOCKED_AFTER_S3G1I_PASS
+          test "$(gh run view "$POPULATION_PROBE_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+
+  extract:
+    needs: lock-inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63]
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Restore canonical version ledger
+        run: |
+          rm -rf versions
+          gh run download "$REPORT_VERSIONS_RUN" -R "$GITHUB_REPOSITORY" -n stage3-s3g1g-financial-report-versions -D versions
+          test -f versions/stage3_financial_report_versions.csv.gz
+      - name: Extract original filing PDF values
+        shell: bash
+        run: |
+          set +e
+          out="build/stage3-financial-values/shard${{ matrix.shard }}"
+          mkdir -p "$out"
+          python scripts/extract_stage3_financial_pdf_values.py \
+            --versions versions/stage3_financial_report_versions.csv.gz \
+            --shard ${{ matrix.shard }} --shards 64 --out "$out" \
+            > "$out/stdout.log" 2> "$out/stderr.log"
+          code=$?
+          echo "S3G1J_SHARD_EXIT=$code" >> "$GITHUB_ENV"
+          cat "$out"/financial_extract_shard*.manifest.json || true
+          tail -100 "$out/stderr.log" || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-financial-values-${{ matrix.shard }}
+          path: build/stage3-financial-values/shard${{ matrix.shard }}
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve shard fail-closed status
+        if: env.S3G1J_SHARD_EXIT != '0'
+        run: exit 1
+
+  finalize:
+    needs: extract
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g1j-financial-values-*
+          path: build/stage3-financial-values/all
+          merge-multiple: true
+      - name: Restore canonical version ledger
+        run: |
+          rm -rf versions
+          gh run download "$REPORT_VERSIONS_RUN" -R "$GITHUB_REPOSITORY" -n stage3-s3g1g-financial-report-versions -D versions
+      - name: Final financial-value PIT/provenance audit
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_financial_raw
+          python scripts/finalize_stage3_financial_pdf_values.py \
+            --root build/stage3-financial-values/all \
+            --versions versions/stage3_financial_report_versions.csv.gz \
+            --stage2-manifest data/stage2_final/manifest.json \
+            --out data/stage3_financial_raw \
+            > data/stage3_financial_raw/stdout.log 2> data/stage3_financial_raw/stderr.log
+          code=$?
+          echo "S3G1J_FINAL_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_financial_raw/stage3_financial_raw_audit.json || true
+          cat data/stage3_financial_raw/stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-financial-raw-final
+          path: data/stage3_financial_raw
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve final fail-closed status
+        if: env.S3G1J_FINAL_EXIT != '0'
+        run: exit 1
