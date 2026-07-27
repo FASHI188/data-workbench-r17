@@ -50,6 +50,10 @@
     "S3G4_EARNINGS_SURPRISE": {
       "run_id": null,
       "artifact": "stage3-s3g4-earnings-surprise-final"
+    },
+    "S3GU_TRADING_UNIVERSE_POLICY": {
+      "run_id": null,
+      "artifact": "stage3-s3gu-trading-universe-policy"
     }
   },
   "merge_allowed_only_when_all_run_ids_locked_and_all_gates_pass": true
