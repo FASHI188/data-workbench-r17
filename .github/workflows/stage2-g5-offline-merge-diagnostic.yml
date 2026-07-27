@@ -1,0 +1,54 @@
+name: Stage2 G5 Offline Merge Diagnostic
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/merge_g5_cninfo_primary.py'
+      - '.github/workflows/stage2-g5-offline-merge-diagnostic.yml'
+      - 'config/g5_offline_merge_trigger.json'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN: '30234301114'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download frozen G5 source artifacts
+        shell: bash
+        run: |
+          mkdir -p build/g5-final data/g5-official
+          gh run download "$SOURCE_RUN" -R "$GITHUB_REPOSITORY" -n g5-final-sse-control -D build/g5-final
+          for i in 0 1 2 3 4 5 6 7; do
+            gh run download "$SOURCE_RUN" -R "$GITHUB_REPOSITORY" -n "g5-final-cninfo-$i" -D build/g5-final
+          done
+      - name: Run merge with preserved diagnostics
+        shell: bash
+        run: |
+          set +e
+          python scripts/merge_g5_cninfo_primary.py --root build/g5-final --out data/g5-official > data/g5-official/stdout.log 2> data/g5-official/stderr.log
+          code=$?
+          echo "MERGE_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/g5-official/stdout.log || true
+          cat data/g5-official/stderr.log || true
+          cat data/g5-official/g5_official_action_audit.json || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage2-g5-offline-merge-diagnostic
+          path: |
+            data/g5-official
+            build/g5-final/*.manifest.json
+          retention-days: 14
+          compression-level: 0
+      - name: Preserve fail-closed status
+        if: env.MERGE_EXIT != '0'
+        run: exit 1
