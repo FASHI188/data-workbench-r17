@@ -20,5 +20,16 @@
     "source_url": "https://static.cninfo.com.cn/finalpage/2019-12-16/1207164397.PDF",
     "source_sha256": "46160431c51df23c30b3be802eb140492255128fb166d103ed735a62f303ab05",
     "evidence_class": "POINT_IN_TIME_PRIMARY"
+  },
+  {
+    "exchange": "SSE",
+    "old_code": "601313",
+    "new_code": "601360",
+    "effective_date": "2018-02-28",
+    "old_name": "江南嘉捷",
+    "new_name": "三六零",
+    "source_url": "https://static.cninfo.com.cn/finalpage/2018-02-02/1204386750.PDF",
+    "source_sha256": "08b8003c482b5ff09f2f200ab8cff9c766d025953aae1802ea6c709066064ffd",
+    "evidence_class": "POINT_IN_TIME_PRIMARY"
   }
 ]
