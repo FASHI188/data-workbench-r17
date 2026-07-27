@@ -31,8 +31,18 @@ jobs:
           src=$(dirname "$(find frozen-g4 -name 'g4_state_shard00.csv.gz' -print -quit)")
           test -n "$src"
           python scripts/reclassify_g4_delisting_rules.py --input "$src" --out build/g4-final
-      - name: Final G4 hard audit
-        run: python scripts/audit_g4_security_state.py --root build/g4-final --out data/security_state
+      - name: Final G4 hard audit with preserved diagnostics
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/security_state
+          python scripts/audit_g4_security_state.py --root build/g4-final --out data/security_state > data/security_state/audit_stdout.log 2> data/security_state/audit_stderr.log
+          code=$?
+          echo "G4_AUDIT_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/security_state/audit_stdout.log || true
+          cat data/security_state/audit_stderr.log || true
+          cat data/security_state/g4_audit.json || true
+          exit 0
       - uses: actions/upload-artifact@v4
         with:
           name: stage2-g4-final-evidence
@@ -41,3 +51,6 @@ jobs:
             data/security_state
           retention-days: 90
           compression-level: 0
+      - name: Preserve fail-closed status
+        if: env.G4_AUDIT_EXIT != '0'
+        run: exit 1
