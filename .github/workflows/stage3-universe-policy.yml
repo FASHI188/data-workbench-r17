@@ -1,0 +1,31 @@
+name: Stage3 S3GU Trading Universe Policy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [stage3-point-in-time-features]
+    paths:
+      - 'config/trading_universe_policy.json'
+      - 'scripts/stage3_trading_universe.py'
+      - 'scripts/audit_stage3_trading_universe.py'
+      - 'tests/test_stage3_trading_universe.py'
+      - '.github/workflows/stage3-universe-policy.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest tests.test_stage3_trading_universe -v
+      - run: python scripts/audit_stage3_trading_universe.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3gu-trading-universe-policy
+          path: data/stage3_universe
+          retention-days: 90
