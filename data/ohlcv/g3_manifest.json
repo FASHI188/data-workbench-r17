@@ -1,0 +1,25 @@
+{
+  "version": "V3.2.20-g3-official-ohlcv",
+  "status": "PASS",
+  "coverage_start": "2015-01-01",
+  "coverage_end": "2026-07-24",
+  "scope": "SSE_MAIN_A + SZSE_MAIN_A",
+  "storage_policy": "Normalized bulk OHLCV remains in authenticated GitHub Actions artifacts; repository stores audit metadata and dataset fingerprint.",
+  "sources": {
+    "SSE": "official yunhq dayk per lifecycle security",
+    "SZSE_pre_2025_07": "official CATALOGID=1815_stock single-day full-market XLSX",
+    "SZSE_from_2025_07": "official CATALOGID=1815_stock_snapshot single-day full-market XLSX"
+  },
+  "validated_run": 30212684512,
+  "validated_artifact_id": 8635500847,
+  "validated_artifact_sha256": "d83c42b62978c0f456545cea312f7de85e4912ef19ab849427495395fb0bca2e",
+  "audit": {
+    "pass": true,
+    "sse_rows": 4082770,
+    "szse_rows": 3953495,
+    "total_rows": 8036265,
+    "trading_days": 2808,
+    "dataset_fingerprint": "06bbce0b9531b63d8e794844b6ff7ce889cf8ced259bd8e7f87ae923dd41c991",
+    "errors": []
+  }
+}
