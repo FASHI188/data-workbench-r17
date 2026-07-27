@@ -1,0 +1,89 @@
+{
+  "version": "V3.2.24-stage2-final-freeze",
+  "status": "PASS",
+  "frozen_at_utc": "2026-07-27T09:44:00Z",
+  "all_hard_gates_pass": true,
+  "alpha_training_allowed": true,
+  "fingerprint_algorithm": "SHA-256 over canonical JSON of fingerprint_basis (UTF-8, sort_keys=true, separators=(,,:))",
+  "stage2_dataset_fingerprint": "8f741365327e5b187794cf2755c4768dddf69cbb2c4c0814129efd7a410fd922",
+  "fingerprint_basis": {
+    "scope": "SSE_MAIN_A + SZSE_MAIN_A",
+    "coverage_start": "2015-01-01",
+    "coverage_end": "2026-07-24",
+    "source_branch": "agent/stage2-security-identity-final",
+    "source_commit": "2a37d7c565f3d6a4610927a5e9cb897affba6cfa",
+    "gates": {
+      "G1": {
+        "run_id": 30252345692,
+        "head_commit": "33a8ad5dc5ead42c8b5551d7a34f8406ce16ec43",
+        "artifact_name": "stage2-g1-evidence",
+        "artifact_digest": "338f1d387c2f5dc702a4635db5ba0fe25c832151cfa2d212611308b1545cd7f3",
+        "pass": true,
+        "current_security_count": 3191,
+        "sse_current_count": 1698,
+        "szse_current_count": 1493,
+        "current_master_sha256": "dea4193bed1e36a78307876e8a3762ffa505a0f37f920518ef7033431af3ed51",
+        "reconciliation_sha256": "6e40a21944c7e22b3739c5b71144d44d186da397490ab9139510fbfc9186d11a"
+      },
+      "G2": {
+        "run_id": 30242396006,
+        "head_commit": "d5b217a847dfbeda3130dc258e50c017c1ed4018",
+        "artifact_name": "stage2-g2-historical-evidence",
+        "artifact_digest": "a8c21866da7727dea3a1bdce8eaecd7159a3d1a372c982e658af3e665b43a66a",
+        "pass": true,
+        "current_open_interval_count": 3191,
+        "closed_interval_count": 291,
+        "total_intervals": 3482,
+        "code_transitions": 2,
+        "security_intervals_sha256": "855835d153b52bc20ffde055cab20154534d3e1301815fa24a54d6e0cd2ace6f"
+      },
+      "G3": {
+        "run_id": 30242395968,
+        "head_commit": "d5b217a847dfbeda3130dc258e50c017c1ed4018",
+        "artifact_name": "stage2-g3-identity-repaired-ohlcv",
+        "artifact_digest": "2ed43f0c2e2d4dc1d2aecf77be6ce821cd113cd33e09073ea49fe5945b629404",
+        "pass": true,
+        "rows": 8038444,
+        "trading_days": 2808,
+        "dataset_fingerprint": "e5798ebe30bdb9973d95344cb24677a54b97bb6c6e28124e92d1b155d9b60c23"
+      },
+      "G4": {
+        "run_id": 30247029348,
+        "head_commit": "9a969e344c33148f9a14add0fbd4bf0d8228577e",
+        "artifact_name": "stage2-g4-identity-final-evidence",
+        "artifact_digest": "dae9ed87d7bdbaa6f4a31a61bde69655413d0f0d9e8891244b97f835d24f4973",
+        "pass": true,
+        "security_count": 3401,
+        "state_rows": 8124206,
+        "tradable_states_missing_g3": 0,
+        "dataset_fingerprint": "72bfe8f43c80390cc649b899decfde3ff5194852cdb83da771c270981971a8ac"
+      },
+      "G5": {
+        "run_id": 30253313420,
+        "head_commit": "2a37d7c565f3d6a4610927a5e9cb897affba6cfa",
+        "artifact_name": "stage2-g5-identity-final-evidence",
+        "artifact_digest": "1f7db49756a85388de587cd11d72d538a71c9db61f74aebb5e6c9651c2e4d959",
+        "pass": true,
+        "official_action_events": 25914,
+        "adjustment_events": 25914,
+        "material_share_distribution_semantic_override_count": 53,
+        "material_nonshare_discrepancy_count": 0,
+        "factor_ratio_mismatches": 0,
+        "g3_dataset_fingerprint": "e5798ebe30bdb9973d95344cb24677a54b97bb6c6e28124e92d1b155d9b60c23",
+        "dataset_fingerprint": "61c567618f651a1b17f4fc7d1660035a70e707d1f51be4f9bc0fb1b33d863a7e"
+      }
+    },
+    "cross_gate_checks": {
+      "g1_current_set_equals_g2_open_intervals": true,
+      "g1_only_count": 0,
+      "g2_open_only_count": 0,
+      "g3_zero_row_601268_explained_by_g4": true,
+      "g4_tradable_states_missing_g3": 0,
+      "g5_official_action_count_equals_adjustment_count": true,
+      "g5_g3_fingerprint_matches_g3": true,
+      "g5_factor_ratio_mismatches": 0,
+      "g5_material_nonshare_discrepancies": 0
+    }
+  },
+  "errors": []
+}
