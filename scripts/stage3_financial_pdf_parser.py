@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import io
 import re
 from dataclasses import dataclass, asdict
 from decimal import Decimal, InvalidOperation
@@ -85,6 +84,29 @@ def detect_unit(text: str) -> tuple[str, Decimal]:
     return unit, UNIT_MULTIPLIERS[unit]
 
 
+def semantic_row_match(combined: str, alias: str, concept: str) -> bool:
+    c = norm(combined)
+    a = norm(alias)
+    pos = c.find(a)
+    if pos < 0:
+        return False
+    # A metric label should begin near the left side of its row.  This rejects
+    # narrative references and most percentage/change columns.
+    if pos > 10:
+        return False
+    if concept == "TOTAL_LIABILITIES" and ("流动负债合计" in c or "非流动负债合计" in c):
+        return False
+    if concept == "TOTAL_ASSETS" and any(x in c for x in ("平均总资产收益率", "总资产收益率")):
+        return False
+    if concept == "TOTAL_EQUITY" and c.startswith("归属于"):
+        return False
+    if concept == "OPERATING_COST" and any(x in c for x in ("营业成本比", "营业成本率", "营业成本变动")):
+        return False
+    if concept == "OPERATING_REVENUE" and any(x in c for x in ("营业收入比", "营业收入增长", "营业收入变动原因")):
+        return False
+    return True
+
+
 def numeric_tokens_after_alias(combined: str, alias: str) -> list[tuple[str, Decimal]]:
     compact = norm(combined)
     a = norm(alias)
@@ -148,9 +170,8 @@ def find_metric_in_pages(
                 if i + width > len(lines):
                     continue
                 combined = " ".join(lines[i:i+width])
-                ncombined = norm(combined)
                 for alias in aliases:
-                    if norm(alias) not in ncombined:
+                    if not semantic_row_match(combined, alias, concept):
                         continue
                     nums = numeric_tokens_after_alias(combined, alias)
                     if not nums:
@@ -185,7 +206,6 @@ def candidate_statement_pages(doc: fitz.Document) -> list[int]:
             pages.extend(range(max(0, base - 3), min(doc.page_count, base + 18)))
     # Quarterly/interim reports usually place statements near the front.
     pages.extend(range(0, min(doc.page_count, 28)))
-    # Deduplicate while preserving order.
     out = []
     seen = set()
     for p in pages:
@@ -205,13 +225,11 @@ def parse_pdf_bytes(raw: bytes) -> dict:
     for concept, aliases in TIER2_ALIASES.items():
         obs[concept] = find_metric_in_pages(doc, statement_pages, aliases, concept, "STATEMENT_OR_EARLY_DISCLOSURE")
 
-    # If parent-equity was not in the summary, try consolidated statement pages.
     if obs["EQUITY_ATTRIBUTABLE_TO_PARENT"].status != "FOUND":
         obs["EQUITY_ATTRIBUTABLE_TO_PARENT"] = find_metric_in_pages(
             doc, statement_pages, TIER1_ALIASES["EQUITY_ATTRIBUTABLE_TO_PARENT"],
             "EQUITY_ATTRIBUTABLE_TO_PARENT", "STATEMENT_FALLBACK"
         )
-    # Total assets also gets a statement fallback.
     if obs["TOTAL_ASSETS"].status != "FOUND":
         obs["TOTAL_ASSETS"] = find_metric_in_pages(
             doc, statement_pages, TIER1_ALIASES["TOTAL_ASSETS"], "TOTAL_ASSETS", "STATEMENT_FALLBACK"
