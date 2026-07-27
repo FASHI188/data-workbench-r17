@@ -1,0 +1,56 @@
+name: Stage3 S3G1G Financial Report Version Selection
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    types: [reopened, synchronize]
+    paths:
+      - 'scripts/select_stage3_financial_report_versions.py'
+      - '.github/workflows/stage3-s3g1g-report-version-selection.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  FILING_LEDGER_RUN: '30265340486'
+
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore final S3G1E filing ledger
+        run: |
+          rm -rf filing-ledger
+          gh run download "$FILING_LEDGER_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1e-periodic-filing-ledger-final -D filing-ledger
+          test -f filing-ledger/stage3_periodic_filing_ledger.csv.gz
+      - name: Select canonical revision-level report documents
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_financial_versions
+          python scripts/select_stage3_financial_report_versions.py \
+            --ledger filing-ledger/stage3_periodic_filing_ledger.csv.gz \
+            --out data/stage3_financial_versions \
+            > data/stage3_financial_versions/stdout.log \
+            2> data/stage3_financial_versions/stderr.log
+          code=$?
+          echo "S3G1G_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_financial_versions/stage3_financial_report_versions_audit.json || true
+          cat data/stage3_financial_versions/stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1g-financial-report-versions
+          path: data/stage3_financial_versions
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve fail-closed version-selection status
+        if: env.S3G1G_EXIT != '0'
+        run: exit 1
