@@ -1,5 +1,6 @@
 name: Stage3 S3G1D CNINFO Financial API Request Probe
 
+# Explicit post-creation push trigger.
 on:
   workflow_dispatch:
   push:
