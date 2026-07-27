@@ -1,11 +1,29 @@
 {
   "gate": "G2",
-  "pass": true,
+  "pass": false,
   "current_master_count": 3191,
   "current_open_interval_count": 3191,
-  "closed_interval_count": 289,
-  "delist_events": 289,
-  "total_intervals": 3480,
-  "total_events": 3769,
-  "errors": []
+  "closed_interval_count": 2,
+  "delist_events": 0,
+  "code_transitions": 2,
+  "total_intervals": 3193,
+  "total_events": 3191,
+  "errors": [
+    "no historical DELIST events for SSE",
+    "no historical DELIST events for SZSE",
+    "transition manifest control missing: 000022->001872",
+    "transition manifest control missing: 000043->001914",
+    "manifest current_active mismatch: -1 != 3191",
+    "manifest delisted count mismatch: -1 != 0",
+    "manifest interval count mismatch: -1 != 3193",
+    "manifest event count mismatch: -1 != 3191",
+    "manifest code-transition count mismatch: -1 != 2",
+    "raw source SHA mismatch: sse_main_a_status3_delisted.jsonp",
+    "raw source SHA mismatch: sse_main_a_all_statuses.jsonp",
+    "raw source SHA mismatch: szse_main_delisted_selectModule_main.xlsx",
+    "SSE active+delisted state partition is not exact",
+    "SZSE current/delisted sets are not proven disjoint",
+    "historical_backfill_complete is not true",
+    "coverage_start is not 2015-01-01"
+  ]
 }

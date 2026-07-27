@@ -1,48 +1,13 @@
 {
-  "version": "V3.2.19-g2-historical-lifecycle",
-  "status": "HISTORICAL_BACKFILL_COMPLETE_CANDIDATE",
-  "source_fetched_at_utc": "2026-07-26T16:49:18.890648+00:00",
-  "coverage_start": "2015-01-01",
+  "version": "V3.2.18-g2-current-bootstrap",
+  "status": "CURRENT_ONLY_BOOTSTRAP",
+  "as_of": "2026-07-24",
+  "coverage_start": null,
   "coverage_end": "2026-07-24",
-  "historical_backfill_complete": true,
-  "scope": "SSE_MAIN_A + SZSE_MAIN_A",
-  "counts": {
-    "current_active": 3191,
-    "sse_current_active": 1698,
-    "szse_current_active": 1493,
-    "sse_delisted_a_all_history": 143,
-    "szse_delisted_a_all_history": 146,
-    "delisted_a_all_history": 289,
-    "lifecycle_events": 3769,
-    "expected_intervals": 3480
-  },
-  "controls": {
-    "sse": {
-      "delisted_count": 143,
-      "current_count": 1698,
-      "all_status_count": 1841,
-      "state_partition_exact": true,
-      "delisted_source_sha256": "cb60ec7252189f6412f336762f1b72eb81b585d3944129139c416b93be2759e8",
-      "all_status_source_sha256": "e21cc19e42acdb4b3dd1b1edd6742c82d2024f12ce23b294bd4c6817359e7db5",
-      "delisted_url": "https://query.sse.com.cn/sseQuery/commonQuery.do?jsonCallBack=cb_lifecycle_123&STOCK_TYPE=1&REG_PROVINCE=&CSRC_CODE=&STOCK_CODE=&sqlId=COMMON_SSE_CP_GPJCTPZ_GPLB_GP_L&COMPANY_STATUS=3&type=inParams&isPagination=true&pageHelp.cacheSize=1&pageHelp.beginPage=1&pageHelp.pageSize=5000&pageHelp.pageNo=1&pageHelp.endPage=1",
-      "all_status_url": "https://query.sse.com.cn/sseQuery/commonQuery.do?jsonCallBack=cb_lifecycle_123&STOCK_TYPE=1&REG_PROVINCE=&CSRC_CODE=&STOCK_CODE=&sqlId=COMMON_SSE_CP_GPJCTPZ_GPLB_GP_L&COMPANY_STATUS=&type=inParams&isPagination=true&pageHelp.cacheSize=1&pageHelp.beginPage=1&pageHelp.pageSize=5000&pageHelp.pageNo=1&pageHelp.endPage=1"
-    },
-    "szse": {
-      "workbook_rows_ex_header": 167,
-      "class_counts": {
-        "MAIN_A": 146,
-        "MAIN_B": 21
-      },
-      "delisted_a_count": 146,
-      "source_sha256": "027b41450608a8e37b8835555a9d846f2e34fd43830fe2d3f6eacf3e74f6fd43",
-      "source_url": "https://www.szse.cn/api/report/ShowReport?SHOWTYPE=xlsx&CATALOGID=1793_ssgs&TABKEY=tab2&selectModule=main",
-      "current_count": 1493,
-      "current_delisted_disjoint": true
-    }
-  },
-  "evidence_policy": {
-    "historical_exchange_lists": "RETROSPECTIVE_PRIMARY",
-    "current_active_seed": "RETROSPECTIVE_PRIMARY",
-    "point_in_time_claim": "No announcement is treated as known before its publication time; this gate reconstructs membership intervals only."
-  }
+  "historical_backfill_complete": false,
+  "notes": [
+    "Current exchange master seeds LIST events for securities still active as of 2026-07-24.",
+    "Evidence class is RETROSPECTIVE_PRIMARY.",
+    "This bootstrap does not include securities delisted before the current snapshot and cannot satisfy G2."
+  ]
 }
