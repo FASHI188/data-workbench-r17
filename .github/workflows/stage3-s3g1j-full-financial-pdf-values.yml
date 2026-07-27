@@ -2,14 +2,6 @@ name: Stage3 S3G1J Full Original-PDF Financial Values
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main]
-    types: [reopened, synchronize]
-    paths:
-      - 'scripts/extract_stage3_financial_pdf_values.py'
-      - 'scripts/finalize_stage3_financial_pdf_values.py'
-      - 'scripts/stage3_financial_pdf_parser.py'
-      - '.github/workflows/stage3-s3g1j-full-financial-pdf-values.yml'
 
 permissions:
   contents: read
