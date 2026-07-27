@@ -1,0 +1,30 @@
+name: Audit 601313 to 601360 Transition Evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    types: [reopened, synchronize]
+    paths:
+      - 'scripts/probe_transition_601313_601360.py'
+      - '.github/workflows/probe-transition-601313-601360.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests
+      - run: python scripts/probe_transition_601313_601360.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: transition-601313-601360-evidence
+          path: data/stage3_source_probe/transition_601313_601360.json
+          retention-days: 90
