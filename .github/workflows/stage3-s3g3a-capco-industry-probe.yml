@@ -1,0 +1,39 @@
+name: Stage3 S3G3A CAPCO Industry History Probe
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    types: [reopened, synchronize]
+    paths:
+      - 'scripts/probe_stage3_capco_industry_history.py'
+      - '.github/workflows/stage3-s3g3a-capco-industry-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests beautifulsoup4 pymupdf
+      - name: Discover official historical CAPCO industry classifications
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_source_probe
+          python scripts/probe_stage3_capco_industry_history.py > data/stage3_source_probe/capco_stdout.log 2> data/stage3_source_probe/capco_stderr.log
+          code=$?;echo "S3G3A_EXIT=$code" >> "$GITHUB_ENV";cat data/stage3_source_probe/capco_industry_history_probe.json || true;cat data/stage3_source_probe/capco_stderr.log || true;exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g3a-capco-industry-history-probe
+          path: data/stage3_source_probe
+          retention-days: 90
+      - name: Preserve fail-closed source-probe status
+        if: env.S3G3A_EXIT != '0'
+        run: exit 1
