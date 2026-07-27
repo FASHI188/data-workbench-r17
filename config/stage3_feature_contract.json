@@ -3,8 +3,8 @@
   "stage": 3,
   "status": "CONTRACT_ONLY_NOT_STAGE3_PASS",
   "depends_on_stage2": {
-    "version": "V3.2.24-stage2-final-freeze",
-    "dataset_fingerprint": "8f741365327e5b187794cf2755c4768dddf69cbb2c4c0814129efd7a410fd922",
+    "version": "V3.2.25-stage2-final-freeze",
+    "dataset_fingerprint": "f17f7ab63f4532dda635eb7366e7df7bf5497a5ce814410105312bccb53125bb",
     "required": true
   },
   "scope": "SSE_MAIN_A + SZSE_MAIN_A",
