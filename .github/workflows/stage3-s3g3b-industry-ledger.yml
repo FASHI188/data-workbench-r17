@@ -1,0 +1,59 @@
+name: Stage3 S3G3B Point-In-Time Industry Classification Ledger
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  G2_RUN: '30262550161'
+  G2_SHA: '2edf62f2d773b198ba1f02e996a741736e1b91830261723faeaa370a4f020ea7'
+  G3_RUN: '30263014914'
+  SOURCE_PROBE_RUN: 'TO_BE_LOCKED_AFTER_S3G3A_PASS'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests beautifulsoup4 pymupdf
+      - name: Require official source probe PASS
+        run: |
+          test "$SOURCE_PROBE_RUN" != TO_BE_LOCKED_AFTER_S3G3A_PASS
+          test "$(gh run view "$SOURCE_PROBE_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+      - name: Restore Stage2 V3.2.25 G2/G3
+        run: |
+          rm -rf g2 g3
+          gh run download "$G2_RUN" -R "$GITHUB_REPOSITORY" -n stage2-g2-historical-evidence -D g2
+          echo "$G2_SHA  g2/security_intervals.csv" | sha256sum -c -
+          gh run download "$G3_RUN" -R "$GITHUB_REPOSITORY" -n stage2-g3-sse-601313-repaired-ohlcv -D g3
+      - name: Build historical official industry snapshot ledger
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_industry
+          python scripts/build_stage3_capco_industry_ledger.py \
+            --g2-intervals g2/security_intervals.csv --g3-root g3 --out data/stage3_industry \
+            > data/stage3_industry/stdout.log 2> data/stage3_industry/stderr.log
+          code=$?
+          echo "S3G3B_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_industry/stage3_industry_classification_audit.json || true
+          cat data/stage3_industry/stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g3b-industry-classification-ledger
+          path: data/stage3_industry
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve fail-closed industry-ledger status
+        if: env.S3G3B_EXIT != '0'
+        run: exit 1
