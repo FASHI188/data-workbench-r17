@@ -1,0 +1,41 @@
+name: Stage3 S3G0 Point-In-Time Feature Contract
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [stage3-point-in-time-features]
+    paths:
+      - 'config/stage3_feature_contract.json'
+      - 'scripts/stage3_time_policy.py'
+      - 'scripts/audit_stage3_feature_contract.py'
+      - 'tests/test_stage3_time_policy.py'
+      - '.github/workflows/stage3-feature-contract.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'config/stage3_feature_contract.json'
+      - 'scripts/stage3_time_policy.py'
+      - 'scripts/audit_stage3_feature_contract.py'
+      - 'tests/test_stage3_time_policy.py'
+      - '.github/workflows/stage3-feature-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Timing-policy regression tests
+        run: python -m unittest tests.test_stage3_time_policy -v
+      - name: Stage2 dependency and Stage3 contract hard audit
+        run: python scripts/audit_stage3_feature_contract.py --out data/stage3_contract
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g0-contract-evidence
+          path: data/stage3_contract
+          retention-days: 90
