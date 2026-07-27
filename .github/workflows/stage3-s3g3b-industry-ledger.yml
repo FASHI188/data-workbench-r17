@@ -40,9 +40,12 @@ jobs:
         run: |
           set +e
           mkdir -p data/stage3_industry
-          python scripts/build_stage3_capco_industry_ledger.py \
-            --g2-intervals g2/security_intervals.csv --g3-root g3 --out data/stage3_industry \
-            > data/stage3_industry/stdout.log 2> data/stage3_industry/stderr.log
+          python scripts/build_stage3_capco_industry_ledger_v2.py \
+            --g2-intervals g2/security_intervals.csv \
+            --g3-root g3 \
+            --out data/stage3_industry \
+            > data/stage3_industry/stdout.log \
+            2> data/stage3_industry/stderr.log
           code=$?
           echo "S3G3B_EXIT=$code" >> "$GITHUB_ENV"
           cat data/stage3_industry/stage3_industry_classification_audit.json || true
