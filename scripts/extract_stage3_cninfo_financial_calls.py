@@ -11,11 +11,11 @@ import requests
 ROOT = Path(__file__).resolve().parents[1]
 URL = "https://webapi.cninfo.com.cn/shgs/company.js"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142 Safari/537.36"
-TARGETS = {
-    "KEY_RATIOS": "#Key-Financial-Ratios-table",
-    "BALANCE_SHEET": "#Balance-Sheet-table",
-    "INCOME_STATEMENT": "#Income-Statement-table",
-    "CASH_FLOW": "#Cash-Flow-Statement-table",
+EXPECTED = {
+    "KEY_RATIOS": "sysapi/p_sysapi1140",
+    "BALANCE_SHEET": "sysapi/p_sysapi1143",
+    "INCOME_STATEMENT": "sysapi/p_sysapi1141",
+    "CASH_FLOW": "sysapi/p_sysapi1142",
 }
 
 
@@ -45,84 +45,12 @@ def decode(raw: bytes) -> str:
     return raw.decode("latin1")
 
 
-def balanced_object(text: str, start: int) -> str | None:
-    """Return a JS object literal beginning at/after start using brace/string balancing."""
-    i = text.find("{", start)
-    if i < 0:
+def one(pattern: str, text: str, label: str, errors: list[str]) -> str | None:
+    m = re.search(pattern, text)
+    if not m:
+        errors.append(f"cannot extract {label}")
         return None
-    depth = 0
-    quote = None
-    esc = False
-    for j in range(i, len(text)):
-        ch = text[j]
-        if quote:
-            if esc:
-                esc = False
-            elif ch == "\\":
-                esc = True
-            elif ch == quote:
-                quote = None
-            continue
-        if ch in ('"', "'"):
-            quote = ch
-            continue
-        if ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                return text[i : j + 1]
-    return None
-
-
-def parse_calls(text: str) -> list[dict]:
-    calls = []
-    token = "loadBootstrapTableData("
-    pos = 0
-    while True:
-        i = text.find(token, pos)
-        if i < 0:
-            break
-        obj = balanced_object(text, i + len(token))
-        if obj:
-            table = re.search(r'''table\s*:\s*["']([^"']+)["']''', obj)
-            api = re.search(r'''apiName\s*:\s*["']([^"']+)["']''', obj)
-            url_param = re.search(r'''urlParam\s*:\s*\{([^}]*)\}''', obj)
-            calls.append(
-                {
-                    "offset": i,
-                    "table": table.group(1) if table else None,
-                    "api_name": api.group(1) if api else None,
-                    "url_param_raw": url_param.group(1) if url_param else None,
-                    "object_literal": obj,
-                }
-            )
-        pos = i + len(token)
-    return calls
-
-
-def target_contexts(text: str) -> list[dict]:
-    out = []
-    for label, needle in TARGETS.items():
-        for m in re.finditer(re.escape(needle), text):
-            a = max(0, m.start() - 12000)
-            b = min(len(text), m.end() + 12000)
-            ctx = text[a:b]
-            out.append(
-                {
-                    "target": label,
-                    "needle": needle,
-                    "offset": m.start(),
-                    "endpoint_tokens": sorted(
-                        set(re.findall(r'''(?:stock/p_stock\d+|sysapi/p_sysapi\d+|p_stock\d+|p_sysapi\d+)''', ctx))
-                    ),
-                    "api_name_tokens": sorted(
-                        set(re.findall(r'''apiName\s*:\s*["']([^"']+)["']''', ctx))
-                    ),
-                    "context": ctx,
-                }
-            )
-    return out
+    return m.group(1)
 
 
 def main() -> int:
@@ -130,30 +58,94 @@ def main() -> int:
     outdir.mkdir(parents=True, exist_ok=True)
     r = fetch()
     text = decode(r.content)
-    calls = parse_calls(text)
-    contexts = target_contexts(text)
+    errors: list[str] = []
 
-    mapping = {}
-    for label, target in TARGETS.items():
-        exact = [c for c in calls if c.get("table") == target]
-        mapping[label] = exact
+    # The official current company.js dynamically routes three statement boxes through
+    # one variable (o) and uses a dedicated variable (l) for the key-ratio table.
+    balance = one(
+        r'''"Balance-Sheet"===\w+\)\w+="([^"]+)"''',
+        text,
+        "Balance-Sheet API",
+        errors,
+    )
+    income = one(
+        r'''"Income-Statement"===\w+\)\w+="([^"]+)"''',
+        text,
+        "Income-Statement API",
+        errors,
+    )
+    cash = one(
+        r'''"Cash-Flow-Statement"===\w+\)\w+="([^"]+)"''',
+        text,
+        "Cash-Flow-Statement API",
+        errors,
+    )
+    key = one(
+        r'''#Key-Financial-Ratios-table",\w+=\$\(this\)\.attr\("data-rtype"\),\w+="([^"]+)"''',
+        text,
+        "Key-Financial-Ratios API",
+        errors,
+    )
 
-    errors = []
-    for label in TARGETS:
-        if not mapping[label]:
-            errors.append(f"No exact loadBootstrapTableData call found for {label}")
-        elif not any(c.get("api_name") for c in mapping[label]):
-            errors.append(f"Exact call for {label} has no apiName")
+    actual = {
+        "KEY_RATIOS": key,
+        "BALANCE_SHEET": balance,
+        "INCOME_STATEMENT": income,
+        "CASH_FLOW": cash,
+    }
+
+    # Require the same point-in-time request contract shown by the official F10 JS.
+    statement_contract = re.search(
+        r'''loadBootstrapTableData\(\{table:\w+,apiName:\w+,urlParam:\{scode:[^,}]+,sign:[^,}]+,rtype:[^}]+\},initTable:!1\}\)''',
+        text,
+    )
+    key_contract = re.search(
+        r'''loadBootstrapTableData\(\{table:\w+,apiName:\w+,urlParam:\{scode:[^,}]+,sign:[^,}]+,rtype:[^}]+\},initTable:!1\}\)''',
+        text[text.find("#Key-Financial-Ratios-table") :],
+    )
+    sign_source = re.search(r'''sign:([A-Za-z0-9_.$]+\.F002N)''', text)
+
+    if not statement_contract:
+        errors.append("cannot verify statement request contract scode+sign+rtype")
+    if not key_contract:
+        errors.append("cannot verify key-ratio request contract scode+sign+rtype")
+    if not sign_source:
+        errors.append("cannot verify sign source ending in F002N")
+
+    for label, expected in EXPECTED.items():
+        if actual.get(label) != expected:
+            errors.append(
+                f"{label} API mismatch expected={expected} actual={actual.get(label)}"
+            )
+
+    endpoint_contexts = {}
+    for label, api in actual.items():
+        if not api:
+            continue
+        i = text.find(api)
+        endpoint_contexts[label] = text[max(0, i - 1800) : min(len(text), i + 4200)]
 
     report = {
-        "gate": "S3G1C2_EXACT_CNINFO_FINANCIAL_TABLE_CALLS",
+        "gate": "S3G1C2_EXACT_CNINFO_FINANCIAL_TABLE_CALLS_V2",
         "pass": not errors,
         "source_url": URL,
         "source_bytes": len(r.content),
         "source_sha256": sha(r.content),
-        "total_load_bootstrap_calls": len(calls),
-        "target_mapping": mapping,
-        "target_contexts": contexts,
+        "mapping": actual,
+        "expected_mapping": EXPECTED,
+        "request_contract": {
+            "required_params": ["scode", "sign", "rtype"],
+            "rtype_semantics_from_official_ui": {
+                "1": "Q1",
+                "2": "SEMI_ANNUAL",
+                "3": "Q3",
+                "4": "ANNUAL",
+            },
+            "sign_source_expression": sign_source.group(1) if sign_source else None,
+            "statement_contract_verified": bool(statement_contract),
+            "key_ratio_contract_verified": bool(key_contract),
+        },
+        "endpoint_contexts": endpoint_contexts,
         "errors": errors,
     }
     (outdir / "cninfo_financial_table_calls.json").write_text(
@@ -165,18 +157,8 @@ def main() -> int:
                 "gate": report["gate"],
                 "pass": report["pass"],
                 "source_sha256": report["source_sha256"],
-                "total_load_bootstrap_calls": report["total_load_bootstrap_calls"],
-                "mapping": {
-                    k: [
-                        {
-                            "table": x.get("table"),
-                            "api_name": x.get("api_name"),
-                            "url_param_raw": x.get("url_param_raw"),
-                        }
-                        for x in v
-                    ]
-                    for k, v in mapping.items()
-                },
+                "mapping": actual,
+                "request_contract": report["request_contract"],
                 "errors": errors,
             },
             ensure_ascii=False,
