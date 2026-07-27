@@ -47,9 +47,18 @@ SAMPLES = [
     {
         "name": "000001_2018_SEMI_OLDER_FORMAT",
         "url": "https://static.cninfo.com.cn/finalpage/2018-08-16/1205289447.PDF",
-        "expected": {},
-        "required_tier1": 5,
-        "required_tier2": 1
+        "expected": {
+            "OPERATING_REVENUE": "57241000000",
+            "NET_PROFIT_ATTRIBUTABLE_TO_PARENT": "13372000000",
+            "NET_PROFIT_EX_NONRECURRING_ATTRIBUTABLE_TO_PARENT": "13326000000",
+            "NET_CASH_FLOW_FROM_OPERATING_ACTIVITIES": "7455000000",
+            "TOTAL_ASSETS": "3367399000000",
+            "EQUITY_ATTRIBUTABLE_TO_PARENT": "208188000000",
+            "TOTAL_LIABILITIES": "3139258000000",
+            "TOTAL_EQUITY": "228141000000"
+        },
+        "required_tier1": 6,
+        "required_tier2": 2
     },
     {
         "name": "600519_2015_Q3_OLDER_FORMAT",
