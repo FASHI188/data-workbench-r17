@@ -20,8 +20,8 @@ permissions:
   actions: read
 
 env:
-  G2_FROZEN_RUN: '30242396006'
-  G2_INTERVALS_SHA256: '855835d153b52bc20ffde055cab20154534d3e1301815fa24a54d6e0cd2ace6f'
+  G2_FROZEN_RUN: '30262550161'
+  G2_INTERVALS_SHA256: '2edf62f2d773b198ba1f02e996a741736e1b91830261723faeaa370a4f020ea7'
 
 jobs:
   filing-source-probe:
