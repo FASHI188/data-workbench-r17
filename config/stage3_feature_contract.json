@@ -8,6 +8,14 @@
     "required": true
   },
   "scope": "SSE_MAIN_A + SZSE_MAIN_A",
+  "trading_universe_policy": {
+    "config": "config/trading_universe_policy.json",
+    "allowed_boards": ["SSE_MAIN_A", "SZSE_MAIN_A"],
+    "excluded_boards": ["SSE_STAR", "SZSE_CHINEXT", "BSE", "NEEQ"],
+    "eligible_price_rule": "point_in_time_unadjusted_price < 70.0 CNY",
+    "apply_to_raw_history": false,
+    "apply_to_training_backtest_and_live_candidates": true
+  },
   "timezone": "Asia/Shanghai",
   "daily_feature_cutoff_local": "15:00:00",
   "feature_families": [
@@ -60,6 +68,7 @@
     "revisions_are_append_only": true,
     "surprise_requires_prior_expectation": true,
     "unknown_publication_time_cannot_be_assumed_intraday": true,
-    "feature_source_and_methodology_version_are_auditable": true
+    "feature_source_and_methodology_version_are_auditable": true,
+    "training_backtest_live_universe_must_obey_trading_universe_policy": true
   }
 }
