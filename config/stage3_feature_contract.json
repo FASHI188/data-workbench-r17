@@ -1,0 +1,65 @@
+{
+  "version": "V3.3.0-stage3-pit-feature-contract",
+  "stage": 3,
+  "status": "CONTRACT_ONLY_NOT_STAGE3_PASS",
+  "depends_on_stage2": {
+    "version": "V3.2.24-stage2-final-freeze",
+    "dataset_fingerprint": "8f741365327e5b187794cf2755c4768dddf69cbb2c4c0814129efd7a410fd922",
+    "required": true
+  },
+  "scope": "SSE_MAIN_A + SZSE_MAIN_A",
+  "timezone": "Asia/Shanghai",
+  "daily_feature_cutoff_local": "15:00:00",
+  "feature_families": [
+    "FINANCIAL_REPORT",
+    "ANNOUNCEMENT",
+    "INDUSTRY",
+    "EVENT_SURPRISE"
+  ],
+  "required_fields": [
+    "exchange",
+    "code",
+    "feature_family",
+    "feature_name",
+    "economic_date",
+    "source_published_at",
+    "available_at",
+    "effective_session",
+    "revision_id",
+    "source_url",
+    "source_sha256",
+    "raw_value",
+    "unit",
+    "methodology_version"
+  ],
+  "optional_fields": [
+    "period_start",
+    "period_end",
+    "source_first_seen_at",
+    "expectation_available_at",
+    "expectation_value",
+    "surprise_value",
+    "standardized_value",
+    "provenance_json"
+  ],
+  "timing_policy": {
+    "timestamped_source": "available_at equals the earliest independently verifiable official publication timestamp. A feature may enter a daily session only when available_at is no later than that session's configured cutoff.",
+    "date_only_source": "When an official source exposes a publication date but no trustworthy time, the record is conservatively unavailable for that date and effective_session is the first later trading session.",
+    "non_trading_day_source": "A publication on a non-trading day becomes effective on the first subsequent trading session.",
+    "after_cutoff_source": "A publication after the configured daily cutoff becomes effective on the first subsequent trading session.",
+    "revision_policy": "Original and revised observations are immutable separate versions. A later revision/restatement must never overwrite values previously visible to an earlier session.",
+    "surprise_policy": "Surprise features require an expectation observation whose expectation_available_at is strictly earlier than the actual observation's available_at. Otherwise surprise_value is prohibited.",
+    "training_join_policy": "Training or backtest joins must select the latest revision with available_at <= signal cutoff for that session. Economic period end/date alone is never a join key for information availability."
+  },
+  "hard_gates": {
+    "stage2_fingerprint_exact_match": true,
+    "all_records_have_source_sha256": true,
+    "all_records_have_available_at": true,
+    "no_effective_session_before_availability": true,
+    "date_only_sources_use_conservative_next_session": true,
+    "revisions_are_append_only": true,
+    "surprise_requires_prior_expectation": true,
+    "unknown_publication_time_cannot_be_assumed_intraday": true,
+    "feature_source_and_methodology_version_are_auditable": true
+  }
+}
