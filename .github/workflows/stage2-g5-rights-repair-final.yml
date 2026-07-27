@@ -2,52 +2,57 @@ name: Stage2 G5 Rights Repair and Finalize
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main]
-    types: [opened, reopened, synchronize, ready_for_review]
+  push:
+    branches: [agent/stage2-security-identity-final]
     paths:
-      - 'config/security_code_transitions.json'
-      - 'config/g5_suspended_reference_bootstrap.json'
-      - 'scripts/merge_g5_cninfo_primary.py'
-      - 'scripts/build_g5_adjustment_from_g3.py'
-      - 'scripts/audit_g5_baostock_factor_control.py'
-      - 'scripts/finalize_g5_audit.py'
-      - '.github/workflows/stage2-g5-rights-repair-final.yml'
+      - 'config/g5_identity_final_trigger.json'
 
 permissions:
   contents: read
   actions: read
 
 jobs:
-  wait-g4:
+  lock-g4:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
     outputs:
       g4_run: ${{ steps.lock.outputs.g4_run }}
     env:
       GH_TOKEN: ${{ github.token }}
-      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
     steps:
-      - name: Wait for the same-head G4 identity hard gate and lock its run
+      - uses: actions/checkout@v4
+      - name: Lock an explicitly approved successful G4 identity run
         id: lock
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$EXPECTED_HEAD"
-          for n in $(seq 1 100); do
-            found=$(gh run list -R "$GITHUB_REPOSITORY" -w "Stage2 G4 Code Identity Final" --branch "${{ github.head_ref }}" --status success --limit 20 --json databaseId,headSha,conclusion --jq '.[] | select(.headSha == env.EXPECTED_HEAD and .conclusion == "success") | .databaseId' | head -1)
-            if [ -n "$found" ]; then
-              echo "Locked G4 identity run: $found for head $EXPECTED_HEAD"
-              echo "g4_run=$found" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            sleep 30
-          done
-          echo "No successful same-head G4 identity hard gate appeared" >&2
-          exit 1
+          run=$(python - <<'PY'
+          import json
+          x=json.load(open('config/g5_identity_final_trigger.json',encoding='utf-8'))
+          v=x.get('g4_run')
+          assert isinstance(v,int) and v>0, x
+          print(v)
+          PY
+          )
+          conclusion=$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')
+          branch=$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json headBranch --jq '.headBranch')
+          test "$conclusion" = "success"
+          test "$branch" = "agent/stage2-security-identity-final"
+          gh run download "$run" -R "$GITHUB_REPOSITORY" -n stage2-g4-identity-final-evidence -D /tmp/g4-lock-check
+          test -f "$(find /tmp/g4-lock-check -name g4_audit.json -print -quit)"
+          python - <<'PY'
+          import json,glob
+          p=glob.glob('/tmp/g4-lock-check/**/g4_audit.json',recursive=True)[0]
+          r=json.load(open(p,encoding='utf-8'))
+          assert r.get('pass') is True, r
+          assert r.get('tradable_states_missing_g3') == 0, r
+          assert r.get('601268_all_suspended') is True, r
+          assert r.get('600656_2016_05_12_nontrading') is True, r
+          assert not r.get('errors'), r
+          PY
+          echo "g4_run=$run" >> "$GITHUB_OUTPUT"
 
   merge:
-    needs: wait-g4
+    needs: lock-g4
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -93,20 +98,20 @@ jobs:
         run: exit 1
 
   adjustment:
-    needs: [wait-g4, merge]
+    needs: [lock-g4, merge]
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
       GH_TOKEN: ${{ github.token }}
       G3_IDENTITY_RUN: '30242011746'
-      G4_IDENTITY_RUN: ${{ needs.wait-g4.outputs.g4_run }}
+      G4_IDENTITY_RUN: ${{ needs.lock-g4.outputs.g4_run }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: g5-identity-official-ledger
           path: data/g5-official
-      - name: Download repaired G3 and same-head G4 evidence
+      - name: Download repaired G3 and approved G4 evidence
         shell: bash
         run: |
           gh run download "$G3_IDENTITY_RUN" -R "$GITHUB_REPOSITORY" -n stage2-g3-identity-repaired-ohlcv -D g3-identity
@@ -186,7 +191,7 @@ jobs:
         run: exit 1
 
   finalize:
-    needs: [wait-g4, merge, adjustment, factor-control]
+    needs: [lock-g4, merge, adjustment, factor-control]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
