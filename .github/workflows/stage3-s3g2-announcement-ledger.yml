@@ -2,9 +2,8 @@ name: Stage3 S3G2 Point-In-Time Announcement Ledger
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main]
-    types: [reopened, synchronize]
+  push:
+    branches: [stage3-point-in-time-features]
     paths:
       - 'scripts/build_stage3_announcement_ledger.py'
       - 'scripts/finalize_stage3_announcement_ledger.py'
@@ -47,9 +46,16 @@ jobs:
         shell: bash
         run: |
           set +e
-          out="build/stage3-announcements/shard${{ matrix.shard }}";mkdir -p "$out"
-          python scripts/build_stage3_announcement_ledger.py --shard ${{ matrix.shard }} --shards 16 --out "$out" > "$out/stdout.log" 2> "$out/stderr.log"
-          code=$?;echo "S3G2_SHARD_EXIT=$code" >> "$GITHUB_ENV";cat "$out"/announcement_ledger_shard*.manifest.json || true;tail -100 "$out/stderr.log" || true;exit 0
+          out="build/stage3-announcements/shard${{ matrix.shard }}"
+          mkdir -p "$out"
+          python scripts/build_stage3_announcement_ledger.py \
+            --shard ${{ matrix.shard }} --shards 16 --out "$out" \
+            > "$out/stdout.log" 2> "$out/stderr.log"
+          code=$?
+          echo "S3G2_SHARD_EXIT=$code" >> "$GITHUB_ENV"
+          cat "$out"/announcement_ledger_shard*.manifest.json || true
+          tail -100 "$out/stderr.log" || true
+          exit 0
       - uses: actions/upload-artifact@v4
         with:
           name: stage3-s3g2-announcement-${{ matrix.shard }}
@@ -84,8 +90,18 @@ jobs:
         run: |
           set +e
           mkdir -p data/stage3_announcements
-          python scripts/finalize_stage3_announcement_ledger.py --root build/stage3-announcements/all --g2-intervals g2/security_intervals.csv --g3-root g3 --out data/stage3_announcements > data/stage3_announcements/stdout.log 2> data/stage3_announcements/stderr.log
-          code=$?;echo "S3G2_FINAL_EXIT=$code" >> "$GITHUB_ENV";cat data/stage3_announcements/stage3_announcement_ledger_audit.json || true;cat data/stage3_announcements/stderr.log || true;exit 0
+          python scripts/finalize_stage3_announcement_ledger.py \
+            --root build/stage3-announcements/all \
+            --g2-intervals g2/security_intervals.csv \
+            --g3-root g3 \
+            --out data/stage3_announcements \
+            > data/stage3_announcements/stdout.log \
+            2> data/stage3_announcements/stderr.log
+          code=$?
+          echo "S3G2_FINAL_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_announcements/stage3_announcement_ledger_audit.json || true
+          cat data/stage3_announcements/stderr.log || true
+          exit 0
       - uses: actions/upload-artifact@v4
         with:
           name: stage3-s3g2-announcement-ledger-final
