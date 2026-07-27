@@ -61,6 +61,28 @@ class AvailabilityTests(unittest.TestCase):
             "000022",
         )
 
+    def test_sse_601313_to_601360_filing_identity_transition(self):
+        intervals = {
+            ("SSE", "601313"): (date(2012, 1, 16), date(2018, 2, 28)),
+            ("SSE", "601360"): (date(2018, 2, 28), None),
+        }
+        transitions = [
+            {
+                "exchange": "SSE",
+                "old_code": "601313",
+                "new_code": "601360",
+                "effective_date": "2018-02-28",
+            }
+        ]
+        self.assertEqual(
+            remap_effective_code("SSE", "601313", date(2018, 2, 14), intervals, transitions),
+            "601313",
+        )
+        self.assertEqual(
+            remap_effective_code("SSE", "601313", date(2018, 2, 28), intervals, transitions),
+            "601360",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
