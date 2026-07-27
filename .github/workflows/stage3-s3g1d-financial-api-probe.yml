@@ -1,0 +1,45 @@
+name: Stage3 S3G1D CNINFO Financial API Request Probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [stage3-point-in-time-features]
+    paths:
+      - 'scripts/probe_stage3_cninfo_financial_api_requests.py'
+      - '.github/workflows/stage3-s3g1d-financial-api-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install CNINFO request runtime
+        run: python -m pip install --disable-pip-version-check requests akshare py-mini-racer
+      - name: Probe structured financial APIs and revision semantics
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_source_probe
+          python scripts/probe_stage3_cninfo_financial_api_requests.py \
+            > data/stage3_source_probe/financial_request_stdout.log \
+            2> data/stage3_source_probe/financial_request_stderr.log
+          code=$?
+          echo "S3G1D_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_source_probe/cninfo_financial_api_request_probe.json || true
+          cat data/stage3_source_probe/financial_request_stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1d-financial-api-request-probe
+          path: data/stage3_source_probe
+          retention-days: 90
+      - name: Preserve fail-closed request-probe status
+        if: env.S3G1D_EXIT != '0'
+        run: exit 1
