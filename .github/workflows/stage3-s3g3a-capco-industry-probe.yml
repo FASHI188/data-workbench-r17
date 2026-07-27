@@ -2,9 +2,8 @@ name: Stage3 S3G3A CAPCO Industry History Probe
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main]
-    types: [reopened, synchronize]
+  push:
+    branches: [stage3-point-in-time-features]
     paths:
       - 'scripts/probe_stage3_capco_industry_history.py'
       - '.github/workflows/stage3-s3g3a-capco-industry-probe.yml'
@@ -27,8 +26,14 @@ jobs:
         run: |
           set +e
           mkdir -p data/stage3_source_probe
-          python scripts/probe_stage3_capco_industry_history.py > data/stage3_source_probe/capco_stdout.log 2> data/stage3_source_probe/capco_stderr.log
-          code=$?;echo "S3G3A_EXIT=$code" >> "$GITHUB_ENV";cat data/stage3_source_probe/capco_industry_history_probe.json || true;cat data/stage3_source_probe/capco_stderr.log || true;exit 0
+          python scripts/probe_stage3_capco_industry_history.py \
+            > data/stage3_source_probe/capco_stdout.log \
+            2> data/stage3_source_probe/capco_stderr.log
+          code=$?
+          echo "S3G3A_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_source_probe/capco_industry_history_probe.json || true
+          cat data/stage3_source_probe/capco_stderr.log || true
+          exit 0
       - uses: actions/upload-artifact@v4
         with:
           name: stage3-s3g3a-capco-industry-history-probe
