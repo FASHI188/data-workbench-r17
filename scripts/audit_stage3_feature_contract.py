@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,6 +40,14 @@ REQUIRED_GATES = {
     "unknown_publication_time_cannot_be_assumed_intraday",
     "feature_source_and_methodology_version_are_auditable",
 }
+FORBIDDEN_AUTHORITATIVE = {
+    "AKSHARE_WRAPPER_OUTPUT",
+    "EASTMONEY",
+    "TONGHUASHUN",
+    "SINA_FINANCE",
+    "MEDIA_REPRINT",
+    "SELF_MEDIA",
+}
 
 
 def canonical_sha(obj: object) -> str:
@@ -48,30 +55,44 @@ def canonical_sha(obj: object) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def flatten_primary(node: object) -> set[str]:
+    out: set[str] = set()
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "primary" and isinstance(value, list):
+                out.update(str(x) for x in value)
+            else:
+                out.update(flatten_primary(value))
+    elif isinstance(node, list):
+        for value in node:
+            out.update(flatten_primary(value))
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--contract", default="config/stage3_feature_contract.json")
+    ap.add_argument("--source-authority", default="config/stage3_source_authority.json")
     ap.add_argument("--stage2-manifest", default="data/stage2_final/manifest.json")
     ap.add_argument("--out", default="data/stage3_contract")
     args = ap.parse_args()
 
     contract_path = ROOT / args.contract
+    authority_path = ROOT / args.source_authority
     stage2_path = ROOT / args.stage2_manifest
     out = ROOT / args.out
     out.mkdir(parents=True, exist_ok=True)
     errors: list[str] = []
 
-    if not contract_path.exists():
+    contract = json.loads(contract_path.read_text(encoding="utf-8")) if contract_path.exists() else {}
+    authority = json.loads(authority_path.read_text(encoding="utf-8")) if authority_path.exists() else {}
+    stage2 = json.loads(stage2_path.read_text(encoding="utf-8")) if stage2_path.exists() else {}
+    if not contract:
         errors.append(f"missing contract: {contract_path}")
-        contract = {}
-    else:
-        contract = json.loads(contract_path.read_text(encoding="utf-8"))
-
-    if not stage2_path.exists():
+    if not authority:
+        errors.append(f"missing source authority: {authority_path}")
+    if not stage2:
         errors.append(f"missing Stage2 manifest: {stage2_path}")
-        stage2 = {}
-    else:
-        stage2 = json.loads(stage2_path.read_text(encoding="utf-8"))
 
     dependency = contract.get("depends_on_stage2") or {}
     expected_fp = dependency.get("dataset_fingerprint")
@@ -86,6 +107,17 @@ def main() -> int:
     families = set(contract.get("feature_families") or [])
     if families != REQUIRED_FAMILIES:
         errors.append(f"feature families mismatch: {sorted(families)}")
+
+    authority_families = set((authority.get("families") or {}).keys())
+    if authority_families != REQUIRED_FAMILIES:
+        errors.append(f"source-authority families mismatch: {sorted(authority_families)}")
+    primary_sources = flatten_primary(authority.get("families") or {})
+    forbidden_primary = sorted(primary_sources & FORBIDDEN_AUTHORITATIVE)
+    if forbidden_primary:
+        errors.append(f"non-authoritative sources configured as primary: {forbidden_primary}")
+    declared_non_authoritative = set(authority.get("non_authoritative_by_default") or [])
+    if not FORBIDDEN_AUTHORITATIVE.issubset(declared_non_authoritative):
+        errors.append("source-authority config does not explicitly demote all default non-authoritative sources")
 
     fields = set(contract.get("required_fields") or [])
     missing_fields = sorted(REQUIRED_FIELDS - fields)
@@ -114,10 +146,13 @@ def main() -> int:
         "gate": "S3G0_POINT_IN_TIME_FEATURE_CONTRACT",
         "pass": not errors,
         "stage3_version": contract.get("version"),
+        "source_authority_version": authority.get("version"),
         "stage2_version": stage2.get("version"),
         "stage2_dataset_fingerprint": actual_fp,
         "contract_sha256": canonical_sha(contract) if contract else None,
+        "source_authority_sha256": canonical_sha(authority) if authority else None,
         "feature_families": sorted(families),
+        "primary_sources": sorted(primary_sources),
         "required_field_count": len(fields),
         "hard_gate_count": sum(1 for v in gates.values() if v is True),
         "errors": errors,
