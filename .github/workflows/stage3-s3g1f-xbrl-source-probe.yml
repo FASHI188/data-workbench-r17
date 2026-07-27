@@ -1,0 +1,31 @@
+name: Stage3 S3G1F Official XBRL Source Discovery
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    types: [reopened, synchronize]
+    paths:
+      - 'scripts/probe_stage3_xbrl_sources.py'
+      - '.github/workflows/stage3-s3g1f-xbrl-source-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Probe official SSE/SZSE XBRL portals
+        run: python scripts/probe_stage3_xbrl_sources.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1f-xbrl-source-probe
+          path: data/stage3_source_probe/xbrl_source_probe.json
+          retention-days: 90
