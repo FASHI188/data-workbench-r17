@@ -44,6 +44,40 @@ def test_code_transition_splits_inherited_entity_history_by_effective_code():
     assert by_code["001872"].list_evidence_class == "POINT_IN_TIME_PRIMARY"
 
 
+def test_sse_transition_601313_to_601360_uses_same_code_time_semantics():
+    events = [
+        m.Event(
+            exchange="SSE",
+            code="601360",
+            event_type="LIST",
+            effective_date=date(2012, 1, 16),
+            name="三六零",
+            source_url="https://example.invalid/current",
+            source_sha256="a" * 64,
+            evidence_class="RETROSPECTIVE_PRIMARY",
+        )
+    ]
+    transition = [{
+        "exchange": "SSE",
+        "old_code": "601313",
+        "new_code": "601360",
+        "effective_date": "2018-02-28",
+        "old_name": "江南嘉捷",
+        "new_name": "三六零",
+        "source_url": "https://example.invalid/change.pdf",
+        "source_sha256": "b" * 64,
+        "evidence_class": "POINT_IN_TIME_PRIMARY",
+    }]
+    rows = m.apply_code_transitions(m.build_intervals(events), transition)
+    by_code = {r.code: r for r in rows}
+    assert by_code["601313"].listed_from == "2012-01-16"
+    assert by_code["601313"].listed_to_exclusive == "2018-02-28"
+    assert by_code["601313"].delist_evidence_class == "POINT_IN_TIME_PRIMARY"
+    assert by_code["601360"].listed_from == "2018-02-28"
+    assert by_code["601360"].listed_to_exclusive is None
+    assert by_code["601360"].list_evidence_class == "POINT_IN_TIME_PRIMARY"
+
+
 def test_transition_rejects_existing_predecessor_identity():
     base = [
         m.Interval("SZSE", "000022", "old", "1993-05-05", None, "RETROSPECTIVE_PRIMARY", None),

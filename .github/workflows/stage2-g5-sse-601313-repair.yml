@@ -1,0 +1,251 @@
+name: Stage2 G5 SSE 601313 Identity Repair
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    types: [reopened, synchronize]
+    paths:
+      - 'config/security_code_transitions.json'
+      - '.github/workflows/stage2-g5-sse-601313-repair.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  G2_REPAIR_RUN: '30262550161'
+  G3_REPAIR_RUN: '30263014914'
+  G4_REPAIR_RUN: '30263162968'
+  PRIMARY_SOURCE_RUN: '30234301114'
+  RIGHTS_SOURCE_RUN: '30240202162'
+  FACTOR_SOURCE_RUN: '30232698608'
+
+jobs:
+  lock-g4:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify repaired G4 hard gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          conclusion=$(gh run view "$G4_REPAIR_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')
+          test "$conclusion" = "success"
+          rm -rf /tmp/g4-check
+          gh run download "$G4_REPAIR_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage2-g4-sse-601313-repaired-state -D /tmp/g4-check
+          python - <<'PY'
+          import glob,json
+          p=glob.glob('/tmp/g4-check/**/g4_audit.json',recursive=True)[0]
+          r=json.load(open(p,encoding='utf-8'))
+          assert r.get('pass') is True, r
+          assert r.get('tradable_states_missing_g3') == 0, r
+          assert r.get('601268_all_suspended') is True, r
+          assert r.get('600656_2016_05_12_nontrading') is True, r
+          assert not r.get('errors'), r
+          print(json.dumps(r,ensure_ascii=False))
+          PY
+
+  merge:
+    needs: lock-g4
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore corrected G2 lifecycle
+        run: |
+          rm -rf g2
+          gh run download "$G2_REPAIR_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage2-g2-historical-evidence -D g2
+          cp g2/security_intervals.csv data/security_lifecycle/security_intervals.csv
+      - name: Restore frozen official corporate-action source evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/g5-final data/g5-official
+          gh run download "$PRIMARY_SOURCE_RUN" -R "$GITHUB_REPOSITORY" -n g5-final-sse-control -D build/g5-final
+          for i in 0 1 2 3 4 5 6 7; do
+            gh run download "$PRIMARY_SOURCE_RUN" -R "$GITHUB_REPOSITORY" -n "g5-final-cninfo-$i" -D build/g5-final
+          done
+          for i in 0 1 2 3; do
+            gh run download "$RIGHTS_SOURCE_RUN" -R "$GITHUB_REPOSITORY" -n "g5-rights-szse-$i" -D build/g5-final
+          done
+      - name: Re-merge official action ledger under corrected code-time identity
+        shell: bash
+        run: |
+          set +e
+          python scripts/merge_g5_cninfo_primary.py \
+            --root build/g5-final --out data/g5-official \
+            > data/g5-official/merge_stdout.log \
+            2> data/g5-official/merge_stderr.log
+          code=$?
+          echo "G5_MERGE_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/g5-official/g5_official_action_audit.json || true
+          cat data/g5-official/merge_stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: g5-601313-official-ledger
+          path: data/g5-official
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve merge fail-closed status
+        if: env.G5_MERGE_EXIT != '0'
+        run: exit 1
+
+  adjustment:
+    needs: [lock-g4, merge]
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: g5-601313-official-ledger
+          path: data/g5-official
+      - name: Restore repaired G3 and G4 evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download "$G3_REPAIR_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage2-g3-sse-601313-repaired-ohlcv -D g3-repair
+          gh run download "$G4_REPAIR_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage2-g4-sse-601313-repaired-state -D g4-repair
+      - name: Verify audited 600649 suspended reference source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY' > /tmp/bootstrap.env
+          import json
+          x=json.load(open('config/g5_suspended_reference_bootstrap.json',encoding='utf-8'))
+          assert len(x)==1
+          r=x[0]
+          print('URL='+r['source_url'])
+          print('SHA='+r['source_sha256'])
+          PY
+          source /tmp/bootstrap.env
+          curl -L --fail --retry 3 --retry-delay 2 -A 'Mozilla/5.0' -e 'https://www.cninfo.com.cn/' "$URL" -o /tmp/600649_control.pdf
+          echo "$SHA  /tmp/600649_control.pdf" | sha256sum -c -
+      - name: Build repaired adjustment chain
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/g5-adjustment
+          szdir=$(find g3-repair -path '*/build/g3/szse' -type d -print -quit)
+          g3root=$(dirname "$(dirname "$(dirname "$szdir")")")
+          g4root=$(dirname "$(find g4-repair -name 'g4_state_shard00.csv.gz' -print -quit)")
+          test -n "$g3root" && test -n "$g4root"
+          python scripts/build_g5_adjustment_from_g3.py \
+            --actions data/g5-official/g5_official_actions.csv.gz \
+            --g3-root "$g3root" --g4-root "$g4root" \
+            --out data/g5-adjustment \
+            > data/g5-adjustment/adjustment_stdout.log \
+            2> data/g5-adjustment/adjustment_stderr.log
+          code=$?
+          echo "G5_ADJUSTMENT_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/g5-adjustment/g5_adjustment_audit.json || true
+          cat data/g5-adjustment/adjustment_stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: g5-601313-adjustment-chain
+          path: data/g5-adjustment
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve adjustment fail-closed status
+        if: env.G5_ADJUSTMENT_EXIT != '0'
+        run: exit 1
+
+  factor-control:
+    needs: adjustment
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: g5-601313-adjustment-chain
+          path: data/g5-adjustment
+      - name: Restore independent BaoStock factor evidence
+        run: gh run download "$FACTOR_SOURCE_RUN" -R "$GITHUB_REPOSITORY" -p 'g5-actions-*' -D factor-control
+      - name: Audit independent factors under repaired code-time identity
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/g5-control
+          python scripts/audit_g5_baostock_factor_control.py \
+            --factor-root factor-control \
+            --chain data/g5-adjustment/g5_adjustment_chain.csv.gz \
+            --out data/g5-control \
+            > data/g5-control/factor_stdout.log \
+            2> data/g5-control/factor_stderr.log
+          code=$?
+          echo "G5_FACTOR_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/g5-control/g5_baostock_control.json || true
+          cat data/g5-control/factor_stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: g5-601313-factor-control
+          path: data/g5-control
+          retention-days: 90
+      - name: Preserve factor fail-closed status
+        if: env.G5_FACTOR_EXIT != '0'
+        run: exit 1
+
+  finalize:
+    needs: [merge, adjustment, factor-control]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: g5-601313-official-ledger
+          path: data/g5-official
+      - uses: actions/download-artifact@v4
+        with:
+          name: g5-601313-adjustment-chain
+          path: data/g5-adjustment
+      - uses: actions/download-artifact@v4
+        with:
+          name: g5-601313-factor-control
+          path: data/g5-control
+      - name: Final G5 hard audit
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/corporate_actions
+          python scripts/finalize_g5_audit.py \
+            --official-audit data/g5-official/g5_official_action_audit.json \
+            --adjustment-audit data/g5-adjustment/g5_adjustment_audit.json \
+            --control-audit data/g5-control/g5_baostock_control.json \
+            --out data/corporate_actions \
+            > data/corporate_actions/finalize_stdout.log \
+            2> data/corporate_actions/finalize_stderr.log
+          code=$?
+          echo "G5_FINAL_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/corporate_actions/g5_audit.json || true
+          cat data/corporate_actions/finalize_stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage2-g5-sse-601313-repaired-evidence
+          path: |
+            data/g5-official
+            data/g5-adjustment
+            data/g5-control
+            data/corporate_actions
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve final G5 fail-closed status
+        if: env.G5_FINAL_EXIT != '0'
+        run: exit 1

@@ -1,0 +1,85 @@
+name: Stage2 V3.2.25 Final Freeze Audit
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    types: [reopened, synchronize]
+    paths:
+      - 'data/stage2_final/manifest.json'
+      - 'data/stage2_final/SHA256SUMS.txt'
+      - 'scripts/audit_stage2_final_freeze_v325.py'
+      - '.github/workflows/stage2-final-freeze-v325.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  G1_RUN: '30252345692'
+  G2_RUN: '30262550161'
+  G3_RUN: '30263014914'
+  G4_RUN: '30263162968'
+  G5_RUN: '30263750483'
+
+jobs:
+  freeze-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify fixed run conclusions, head commits and artifact digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_run() {
+            run="$1"; head="$2"; artifact="$3"; digest="$4"
+            conclusion=$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')
+            headsha=$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json headSha --jq '.headSha')
+            test "$conclusion" = "success"
+            test "$headsha" = "$head"
+            actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq ".artifacts[] | select(.name==\"$artifact\") | .digest")
+            test "$actual" = "sha256:$digest"
+          }
+          verify_run "$G1_RUN" 33a8ad5dc5ead42c8b5551d7a34f8406ce16ec43 stage2-g1-evidence 338f1d387c2f5dc702a4635db5ba0fe25c832151cfa2d212611308b1545cd7f3
+          verify_run "$G2_RUN" bfdfac032a93418f1715196950fe541b833e6a0f stage2-g2-historical-evidence 652193c9ce18ad9e4cc93b8050910a1fb8b91c849bfdd990e9ee5f860ac147dd
+          verify_run "$G3_RUN" e14f78b219d719d3d94d5fb079438c21dcb17ea3 stage2-g3-sse-601313-repaired-ohlcv bf977d4f379d421bd198865b90df90caef7ba6cfb5d6d1af96e5487300c1a2f8
+          verify_run "$G4_RUN" 78eac953c46b7419f7cd8f0c8a2bb40e338830d5 stage2-g4-sse-601313-repaired-state 3343a1a42e5debf19d4a9595067cad50d808c979c8ae98f0ae8abbc09f1772cd
+          verify_run "$G5_RUN" 012b49a0cee5067e92f9c199a95d6786d1e87057 stage2-g5-sse-601313-repaired-evidence 139d2a3b2fa39cea1e1d2c5d2d26268bda515413b1129af9d95251fa20799ae9
+      - name: Restore fixed G2-G5 hard-gate evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf evidence
+          mkdir -p evidence/g2 evidence/g3 evidence/g4 evidence/g5
+          gh run download "$G2_RUN" -R "$GITHUB_REPOSITORY" -n stage2-g2-historical-evidence -D evidence/g2
+          gh run download "$G3_RUN" -R "$GITHUB_REPOSITORY" -n stage2-g3-sse-601313-repaired-ohlcv -D evidence/g3
+          gh run download "$G4_RUN" -R "$GITHUB_REPOSITORY" -n stage2-g4-sse-601313-repaired-state -D evidence/g4
+          gh run download "$G5_RUN" -R "$GITHUB_REPOSITORY" -n stage2-g5-sse-601313-repaired-evidence -D evidence/g5
+      - name: Recompute final fingerprint and cross-audit downloaded evidence
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage2_final_audit
+          python scripts/audit_stage2_final_freeze_v325.py \
+            --manifest data/stage2_final/manifest.json \
+            --sums data/stage2_final/SHA256SUMS.txt \
+            --g2 evidence/g2 --g3 evidence/g3 --g4 evidence/g4 --g5 evidence/g5 \
+            --out data/stage2_final_audit \
+            > data/stage2_final_audit/stdout.log \
+            2> data/stage2_final_audit/stderr.log
+          code=$?
+          echo "STAGE2_FREEZE_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage2_final_audit/stage2_final_freeze_audit.json || true
+          cat data/stage2_final_audit/stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage2-v3.2.25-final-freeze-audit
+          path: data/stage2_final_audit
+          retention-days: 90
+      - name: Preserve final fail-closed freeze status
+        if: env.STAGE2_FREEZE_EXIT != '0'
+        run: exit 1
