@@ -1,0 +1,56 @@
+{
+  "version": "V3.3.5-stage3-final-lock",
+  "status": "NOT_READY",
+  "stage2": {
+    "version": "V3.2.25-stage2-final-freeze",
+    "fingerprint": "f17f7ab63f4532dda635eb7366e7df7bf5497a5ce814410105312bccb53125bb"
+  },
+  "trading_universe_policy": "config/trading_universe_policy.json",
+  "required_gates": {
+    "S3G0_POINT_IN_TIME_FEATURE_CONTRACT": {
+      "run_id": 30265340598,
+      "artifact": "stage3-s3g0-contract-evidence"
+    },
+    "S3G1E_PERIODIC_FILING_LEDGER": {
+      "run_id": 30265340486,
+      "artifact": "stage3-s3g1e-periodic-filing-ledger-final"
+    },
+    "S3G1G_REPORT_VERSION_SELECTION": {
+      "run_id": 30270405448,
+      "artifact": "stage3-s3g1g-financial-report-versions"
+    },
+    "S3G1H_PDF_PARSER_PROBE": {
+      "run_id": 30269769293,
+      "artifact": "stage3-s3g1h-financial-pdf-parser-probe"
+    },
+    "S3G1I_POPULATION_PDF_PROBE": {
+      "run_id": null,
+      "artifact": "stage3-s3g1i-financial-pdf-population-probe"
+    },
+    "S3G1J_FINANCIAL_RAW_VALUES": {
+      "run_id": null,
+      "artifact": "stage3-s3g1j-financial-raw-final"
+    },
+    "S3G2_ANNOUNCEMENT_LEDGER": {
+      "run_id": null,
+      "artifact": "stage3-s3g2-announcement-ledger-final"
+    },
+    "S3G3A_INDUSTRY_SOURCE_PROBE": {
+      "run_id": null,
+      "artifact": "stage3-s3g3a-capco-industry-history-probe"
+    },
+    "S3G3B_INDUSTRY_LEDGER": {
+      "run_id": null,
+      "artifact": "stage3-s3g3b-industry-classification-ledger"
+    },
+    "S3G4A_FORECAST_PARSER_PROBE": {
+      "run_id": null,
+      "artifact": "stage3-s3g4a-earnings-forecast-parser-probe"
+    },
+    "S3G4_EARNINGS_SURPRISE": {
+      "run_id": null,
+      "artifact": "stage3-s3g4-earnings-surprise-final"
+    }
+  },
+  "merge_allowed_only_when_all_run_ids_locked_and_all_gates_pass": true
+}
