@@ -57,7 +57,7 @@ jobs:
     timeout-minutes: 30
     env:
       GH_TOKEN: ${{ github.token }}
-      G2_SOURCE_RUN: '30241666738'
+      G2_SOURCE_RUN: '30242396006'
       PRIMARY_SOURCE_RUN: '30234301114'
       RIGHTS_SOURCE_RUN: '30240202162'
     steps:
@@ -103,7 +103,7 @@ jobs:
     timeout-minutes: 55
     env:
       GH_TOKEN: ${{ github.token }}
-      G3_IDENTITY_RUN: '30242011746'
+      G3_IDENTITY_RUN: '30242395968'
       G4_IDENTITY_RUN: ${{ needs.lock-g4.outputs.g4_run }}
     steps:
       - uses: actions/checkout@v4
