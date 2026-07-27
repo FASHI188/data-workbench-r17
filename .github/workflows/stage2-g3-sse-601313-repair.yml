@@ -1,0 +1,92 @@
+name: Stage2 G3 SSE 601313 Identity Repair
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'config/security_code_transitions.json'
+      - 'scripts/repair_g3_sse_code_transition.py'
+      - 'scripts/audit_g3_code_identity.py'
+      - '.github/workflows/stage2-g3-sse-601313-repair.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  G2_REPAIR_RUN: '30262550161'
+  G3_FROZEN_RUN: '30242395968'
+
+jobs:
+  repair-and-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests openpyxl
+      - name: Restore corrected G2 lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf g2
+          gh run download "$G2_REPAIR_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage2-g2-historical-evidence -D g2
+          cp g2/security_intervals.csv data/security_lifecycle/security_intervals.csv
+      - name: Restore frozen G3 official OHLCV
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf g3-download frozen-g3
+          gh run download "$G3_FROZEN_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage2-g3-identity-repaired-ohlcv -D g3-download
+          test -d g3-download/frozen-g3/build/g3
+          mv g3-download/frozen-g3 frozen-g3
+      - name: Repair only the affected SSE code-time rows
+        run: |
+          mkdir -p data/ohlcv
+          python scripts/repair_g3_sse_code_transition.py \
+            --root frozen-g3/build/g3 \
+            --out data/ohlcv
+      - name: Full G3 hard audit with preserved diagnostics
+        shell: bash
+        run: |
+          set +e
+          python scripts/audit_g3_ohlcv.py \
+            --root frozen-g3/build/g3 --out data/ohlcv \
+            > data/ohlcv/g3_audit_stdout.log \
+            2> data/ohlcv/g3_audit_stderr.log
+          code=$?
+          echo "G3_AUDIT_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/ohlcv/g3_audit.json || true
+          cat data/ohlcv/g3_audit_stderr.log || true
+          exit 0
+      - name: All-exchange code-time identity hard audit
+        shell: bash
+        run: |
+          set +e
+          python scripts/audit_g3_code_identity.py \
+            --root frozen-g3/build/g3 --out data/ohlcv \
+            > data/ohlcv/g3_identity_stdout.log \
+            2> data/ohlcv/g3_identity_stderr.log
+          code=$?
+          echo "G3_IDENTITY_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/ohlcv/g3_code_identity_audit.json || true
+          cat data/ohlcv/g3_identity_stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage2-g3-sse-601313-repaired-ohlcv
+          path: |
+            frozen-g3/build/g3
+            data/ohlcv
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve fail-closed G3 status
+        if: env.G3_AUDIT_EXIT != '0' || env.G3_IDENTITY_EXIT != '0'
+        run: exit 1
