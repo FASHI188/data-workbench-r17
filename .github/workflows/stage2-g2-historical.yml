@@ -2,9 +2,19 @@ name: Stage2 G2 Historical Lifecycle
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'config/security_code_transitions.json'
+      - 'scripts/fetch_historical_lifecycle.py'
+      - 'scripts/build_security_history.py'
+      - 'scripts/audit_security_history.py'
+      - 'tests/test_fetch_historical_lifecycle.py'
+      - '.github/workflows/stage2-g2-historical.yml'
   push:
     branches: [main]
     paths:
+      - 'config/security_code_transitions.json'
       - 'scripts/fetch_historical_lifecycle.py'
       - 'scripts/build_security_history.py'
       - 'scripts/audit_security_history.py'
@@ -17,7 +27,7 @@ permissions:
 jobs:
   build-and-audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,21 +39,30 @@ jobs:
         run: pytest -q
       - name: Fetch official historical lifecycle sources and build event ledger
         run: python scripts/fetch_historical_lifecycle.py
-      - name: Build survivorship-free lifecycle intervals
+      - name: Build survivorship-free code-time lifecycle intervals
         run: python scripts/build_security_history.py
-      - name: Audit G2
+      - name: Audit G2 with preserved diagnostics
         shell: bash
         run: |
-          python scripts/audit_security_history.py > data/security_lifecycle/g2_audit.json
-          cat data/security_lifecycle/g2_audit.json
+          set +e
+          python scripts/audit_security_history.py > data/security_lifecycle/g2_audit.json 2> data/security_lifecycle/g2_audit_stderr.log
+          code=$?
+          echo "G2_AUDIT_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/security_lifecycle/g2_audit.json || true
+          cat data/security_lifecycle/g2_audit_stderr.log || true
+          exit 0
       - name: Upload G2 evidence
         uses: actions/upload-artifact@v4
         with:
           name: stage2-g2-historical-evidence
           path: data/security_lifecycle
-          retention-days: 14
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve G2 fail-closed status
+        if: env.G2_AUDIT_EXIT != '0'
+        run: exit 1
       - name: Commit frozen G2 evidence
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && env.G2_AUDIT_EXIT == '0'
         shell: bash
         run: |
           git config user.name "stage2-bot"
@@ -53,5 +72,5 @@ jobs:
             echo "No G2 evidence change"
             exit 0
           fi
-          git commit -m "stage2: freeze G2 historical lifecycle evidence [skip ci]"
+          git commit -m "stage2: freeze G2 code-time lifecycle evidence [skip ci]"
           git push
