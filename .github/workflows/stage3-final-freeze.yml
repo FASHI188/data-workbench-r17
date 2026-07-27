@@ -1,0 +1,79 @@
+name: Stage3 V3.3.5 Final Freeze
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  LOCK_FILE: config/stage3_final_lock.json
+
+jobs:
+  freeze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require every final run ID to be locked
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
+          missing=[k for k,v in x['required_gates'].items() if not v.get('run_id')]
+          assert not missing, missing
+          assert x['stage2']['version']=='V3.2.25-stage2-final-freeze'
+          assert x['stage2']['fingerprint']=='f17f7ab63f4532dda635eb7366e7df7bf5497a5ce814410105312bccb53125bb'
+          PY
+      - name: Verify run conclusions, capture artifact digests and download evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf evidence data/stage3_final
+          mkdir -p evidence data/stage3_final
+          python - <<'PY' > /tmp/gates.tsv
+          import json
+          x=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
+          for gate,v in x['required_gates'].items():
+              print(gate, v['run_id'], v['artifact'], sep='\t')
+          PY
+          echo '{}' > /tmp/digests.json
+          while IFS=$'\t' read -r gate run artifact; do
+            conclusion=$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)
+            test "$conclusion" = success
+            digest=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq ".artifacts[] | select(.name==\"$artifact\") | .digest")
+            test -n "$digest"
+            mkdir -p "evidence/$gate"
+            gh run download "$run" -R "$GITHUB_REPOSITORY" -n "$artifact" -D "evidence/$gate"
+            python - "$artifact" "$digest" <<'PY'
+          import json,sys
+          p='/tmp/digests.json';x=json.load(open(p));x[sys.argv[1]]=sys.argv[2].removeprefix('sha256:');json.dump(x,open(p,'w'))
+          PY
+          done < /tmp/gates.tsv
+          cp /tmp/digests.json data/stage3_final/artifact_digests.json
+      - name: Recompute Stage3 canonical fingerprint and cross-gate audit
+        shell: bash
+        run: |
+          set +e
+          python scripts/finalize_stage3_freeze.py \
+            --lock config/stage3_final_lock.json \
+            --evidence evidence \
+            --digests data/stage3_final/artifact_digests.json \
+            --stage2-manifest data/stage2_final/manifest.json \
+            --universe-policy config/trading_universe_policy.json \
+            --out data/stage3_final \
+            > data/stage3_final/stdout.log 2> data/stage3_final/stderr.log
+          code=$?;echo "STAGE3_FINAL_EXIT=$code" >> "$GITHUB_ENV";cat data/stage3_final/stage3_final_audit.json || true;cat data/stage3_final/stderr.log || true;exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-v3.3.5-final-freeze
+          path: data/stage3_final
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve fail-closed Stage3 final status
+        if: env.STAGE3_FINAL_EXIT != '0'
+        run: exit 1
