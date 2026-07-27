@@ -1,0 +1,49 @@
+name: Stage3 S3G1C CNINFO Financial API Discovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [stage3-point-in-time-features]
+    paths:
+      - 'scripts/discover_stage3_cninfo_financial_api.py'
+      - '.github/workflows/stage3-s3g1c-financial-api-discovery.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/discover_stage3_cninfo_financial_api.py'
+      - '.github/workflows/stage3-s3g1c-financial-api-discovery.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Discover current official CNINFO financial-analysis API contracts
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_source_probe
+          python scripts/discover_stage3_cninfo_financial_api.py \
+            > data/stage3_source_probe/financial_api_stdout.log \
+            2> data/stage3_source_probe/financial_api_stderr.log
+          code=$?
+          echo "S3G1C_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_source_probe/cninfo_financial_api_discovery.json || true
+          cat data/stage3_source_probe/financial_api_stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1c-financial-api-discovery
+          path: data/stage3_source_probe
+          retention-days: 90
+      - name: Preserve fail-closed discovery status
+        if: env.S3G1C_EXIT != '0'
+        run: exit 1
