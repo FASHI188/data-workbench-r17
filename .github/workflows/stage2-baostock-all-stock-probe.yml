@@ -1,0 +1,30 @@
+name: Stage2 BaoStock Full Market State Probe
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/probe_baostock_all_stock.py'
+      - '.github/workflows/stage2-baostock-all-stock-probe.yml'
+      - 'config/baostock_all_stock_probe_trigger.json'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check baostock pandas
+      - run: python scripts/probe_baostock_all_stock.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage2-baostock-all-stock-probe
+          path: data/baostock_all_stock_probe
+          retention-days: 7
