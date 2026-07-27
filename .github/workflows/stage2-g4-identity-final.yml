@@ -1,0 +1,65 @@
+name: Stage2 G4 Code Identity Final
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'config/security_code_transitions.json'
+      - 'scripts/reclassify_g4_delisting_rules.py'
+      - 'scripts/audit_g4_security_state.py'
+      - '.github/workflows/stage2-g4-identity-final.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+      G2_SOURCE_RUN: '30241666738'
+      G3_IDENTITY_RUN: '30242011746'
+      G4_FROZEN_RUN: '30233614162'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download corrected G2 lifecycle evidence
+        run: |
+          gh run download "$G2_SOURCE_RUN" -R "$GITHUB_REPOSITORY" -n stage2-g2-historical-evidence -D g2
+          cp g2/security_intervals.csv data/security_lifecycle/security_intervals.csv
+      - name: Download repaired G3 official OHLCV
+        run: gh run download "$G3_IDENTITY_RUN" -R "$GITHUB_REPOSITORY" -n stage2-g3-identity-repaired-ohlcv -D g3-identity
+      - name: Download frozen G4 source state
+        run: gh run download "$G4_FROZEN_RUN" -R "$GITHUB_REPOSITORY" -n stage2-g4-daily-security-state -D frozen-g4
+      - name: Reclassify code identity, delisting/relisting rules and official nontrading overrides
+        shell: bash
+        run: |
+          src=$(dirname "$(find frozen-g4 -name 'g4_state_shard00.csv.gz' -print -quit)")
+          test -n "$src"
+          python scripts/reclassify_g4_delisting_rules.py --input "$src" --out build/g4-identity-final
+      - name: Final G4 hard audit against repaired G3
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/security_state
+          g3root=$(dirname "$(find g3-identity -path '*/szse' -type d -print -quit)")
+          test -n "$g3root"
+          python scripts/audit_g4_security_state.py --root build/g4-identity-final --g3-root "$g3root" --out data/security_state > data/security_state/audit_stdout.log 2> data/security_state/audit_stderr.log
+          code=$?
+          echo "G4_IDENTITY_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/security_state/g4_audit.json || true
+          cat data/security_state/audit_stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage2-g4-identity-final-evidence
+          path: |
+            build/g4-identity-final
+            data/security_state
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve G4 fail-closed status
+        if: env.G4_IDENTITY_EXIT != '0'
+        run: exit 1
