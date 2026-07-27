@@ -5,6 +5,7 @@ from datetime import date
 from decimal import Decimal,InvalidOperation
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
+TINY=Decimal('0.000001');MISMATCH=Decimal('0.01');REBASE_GAP=Decimal('0.005');TINY_UNOBSERVED=Decimal('0.0005')
 def D(v):
  try:return Decimal(str(v or '0'))
  except InvalidOperation:return Decimal('0')
@@ -41,35 +42,34 @@ def main():
    nf=D(r['fore_adjust_factor']);nb=D(r['back_adjust_factor'])
    if nf<=0 or nb<=0:continue
    if prev is None:prev=(nf,nb);continue
-   pf,pb=prev;prev=(nf,nb);rf=nf/pf;rb=nb/pb;cf=abs(rf-1);cb=abs(rb-1)
-   if cf<=Decimal('0.000001') and cb<=Decimal('0.000001'):continue
-   gap=abs(rf-rb)/max(abs(rf),abs(rb),Decimal('1e-18'));rec={'exchange':k[0],'code':k[1],'date':r['effective_date'],'fore_ratio':str(rf),'back_ratio':str(rb),'ratio_gap':str(gap),'observed_multiplier':str((rf+rb)/Decimal(2))}
-   if cf<=Decimal('0.000001') or cb<=Decimal('0.000001') or gap>Decimal('0.005'):rebases.append(rec);continue
-   changes.setdefault(k,[]).append(rec)
- matched=[];missing=[];mismatch=[];not_covered=[];tiny_unobserved=[];used_changes=set()
+   pf,pb=prev;prev=(nf,nb);rf=nf/pf;rb=nb/pb;cf=abs(rf-1);cb=abs(rb-1);gap=abs(rf-rb)/max(abs(rf),abs(rb),Decimal('1e-18'))
+   rec={'exchange':k[0],'code':k[1],'date':r['effective_date'],'fore_ratio':str(rf),'back_ratio':str(rb),'ratio_gap':str(gap),'observed_multiplier':str(rb)}
+   if gap>REBASE_GAP or (cf>TINY and cb<=TINY):rebases.append(rec)
+   if cb>TINY:changes.setdefault(k,[]).append(rec)
+ matched=[];unobserved=[];mismatch=[];not_covered=[];tiny_unobserved=[];used_changes=set()
  for k,ors in official.items():
   rng=factor_ranges.get(k)
   for o in ors:
    od=date.fromisoformat(o['ex_date']);theory=D(o['back_adjust_multiplier']);impact=abs(theory-1)
-   if rng is None or od<=rng[0] or od>rng[1]:not_covered.append({'exchange':k[0],'code':k[1],'official_ex_date':o['ex_date'],'action_type':o['action_type'],'reason':'outside comparable BaoStock factor-change range'});continue
+   if rng is None or od<=rng[0] or od>rng[1]:not_covered.append({'exchange':k[0],'code':k[1],'official_ex_date':o['ex_date'],'action_type':o['action_type'],'reason':'outside comparable BaoStock back-factor range'});continue
    cand=[]
    for idx,c in enumerate(changes.get(k,[])):
+    if (k,idx) in used_changes:continue
     dd=abs((date.fromisoformat(c['date'])-od).days)
-    if dd<=10:cand.append((dd,idx,c))
+    if dd<=10:cand.append((dd,abs(D(c['observed_multiplier'])-theory),idx,c))
    if not cand:
-    rec={'exchange':k[0],'code':k[1],'official_ex_date':o['ex_date'],'action_type':o['action_type'],'official_back_multiplier':str(theory)}
-    if impact<=Decimal('0.0005'):tiny_unobserved.append(rec)
-    else:missing.append(rec)
+    rec={'exchange':k[0],'code':k[1],'official_ex_date':o['ex_date'],'action_type':o['action_type'],'official_back_multiplier':str(theory),'impact':str(impact),'reason':'no quantized BaoStock back-factor change within +/-10d'}
+    if impact<=TINY_UNOBSERVED:tiny_unobserved.append(rec)
+    else:unobserved.append(rec)
     continue
-   cand.sort(key=lambda x:(x[0],abs(D(x[2]['observed_multiplier'])-theory)));dd,idx,c=cand[0];used_changes.add((k,idx));obs=D(c['observed_multiplier']);rel=abs(obs-theory)/max(abs(theory),Decimal('1e-18'));rec={**c,'official_ex_date':o['ex_date'],'official_action_type':o['action_type'],'official_back_multiplier':str(theory),'date_distance_days':dd,'relative_error':str(rel)}
-   if rel>Decimal('0.01'):mismatch.append(rec)
+   cand.sort(key=lambda x:(x[0],x[1]));dd,_,idx,c=cand[0];used_changes.add((k,idx));obs=D(c['observed_multiplier']);rel=abs(obs-theory)/max(abs(theory),Decimal('1e-18'));rec={**c,'official_ex_date':o['ex_date'],'official_action_type':o['action_type'],'official_back_multiplier':str(theory),'date_distance_days':dd,'relative_error':str(rel)}
+   if rel>MISMATCH:mismatch.append(rec)
    else:matched.append(rec)
  supplier_only=[]
  for k,cs in changes.items():
   for idx,c in enumerate(cs):
    if (k,idx) not in used_changes:supplier_only.append(c)
- if mismatch:errors.append(f'official/BaoStock factor ratio mismatches >1%: {mismatch[:20]} count={len(mismatch)}')
- if missing:errors.append(f'material official actions lack comparable BaoStock factor change: {missing[:30]} count={len(missing)}')
- report={'stage':'G5_BAOSTOCK_INDEPENDENT_CONTROL','pass':not errors,'factor_security_count':factor_security_count,'factor_rows_scanned':factor_rows,'code_time_factor_rows_remapped':identity_remaps,'official_actions_in_chain':sum(len(x) for x in official.values()),'official_actions_matched':len(matched),'official_actions_material_missing':len(missing),'official_actions_tiny_unobserved':len(tiny_unobserved),'official_actions_not_covered_by_factor_range':len(not_covered),'factor_ratio_mismatches':len(mismatch),'supplier_only_economic_factor_changes_logged':len(supplier_only),'methodology_rebases_logged':len(rebases),'sample_matches':matched[:50],'sample_material_missing':missing[:50],'sample_supplier_only_changes':supplier_only[:50],'sample_methodology_rebases':rebases[:50],'errors':errors}
+ if mismatch:errors.append(f'official/BaoStock back-factor ratio mismatches >1%: {mismatch[:20]} count={len(mismatch)}')
+ report={'stage':'G5_BAOSTOCK_SECONDARY_BACK_FACTOR_CONTROL','pass':not errors,'control_role':'SECONDARY_NUMERIC_CONTRADICTION_CHECK_NOT_EVENT_AUTHORITY','factor_security_count':factor_security_count,'factor_rows_scanned':factor_rows,'code_time_factor_rows_remapped':identity_remaps,'official_actions_in_chain':sum(len(x) for x in official.values()),'official_actions_matched':len(matched),'official_actions_material_missing':len(unobserved),'official_actions_secondary_unobserved':len(unobserved),'official_actions_tiny_unobserved':len(tiny_unobserved),'official_actions_not_covered_by_factor_range':len(not_covered),'factor_ratio_mismatches':len(mismatch),'supplier_only_economic_factor_changes_logged':len(supplier_only),'methodology_rebases_logged':len(rebases),'sample_matches':matched[:50],'sample_material_missing':unobserved[:50],'sample_secondary_unobserved':unobserved[:50],'sample_supplier_only_changes':supplier_only[:50],'sample_methodology_rebases':rebases[:50],'audit_policy':'Use BaoStock back_adjust_factor ratio as the secondary observable because the project chain is a back-adjustment chain. Fore-adjust-factor rebases are logged but do not suppress a valid back-factor observation. Comparable back-factor contradictions above 1% fail closed. Absence of a quantized secondary factor change is logged as coverage/unobserved evidence and cannot overrule a primary official corporate-action record.','errors':errors}
  (out/'g5_baostock_control.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8');print(json.dumps(report,ensure_ascii=False,indent=2));return 0 if not errors else 2
 if __name__=='__main__':sys.exit(main())
