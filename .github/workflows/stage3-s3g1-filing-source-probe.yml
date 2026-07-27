@@ -1,0 +1,52 @@
+name: Stage3 S3G1A Official Filing Source Probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [stage3-point-in-time-features]
+    paths:
+      - 'scripts/probe_stage3_cninfo_filing_source.py'
+      - 'config/security_code_transitions.json'
+      - '.github/workflows/stage3-s3g1-filing-source-probe.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/probe_stage3_cninfo_filing_source.py'
+      - 'config/security_code_transitions.json'
+      - '.github/workflows/stage3-s3g1-filing-source-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  filing-source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime dependency
+        run: python -m pip install --disable-pip-version-check requests
+      - name: Probe CNINFO periodic filing source and preserve diagnostics
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_source_probe
+          python scripts/probe_stage3_cninfo_filing_source.py \
+            > data/stage3_source_probe/stdout.log \
+            2> data/stage3_source_probe/stderr.log
+          code=$?
+          echo "S3G1A_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_source_probe/cninfo_periodic_filing_probe.json || true
+          cat data/stage3_source_probe/stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1a-filing-source-probe
+          path: data/stage3_source_probe
+          retention-days: 90
+      - name: Preserve fail-closed probe status
+        if: env.S3G1A_EXIT != '0'
+        run: exit 1
