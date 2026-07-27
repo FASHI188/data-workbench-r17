@@ -1,5 +1,5 @@
 {
-  "version": "V3.2.19-g2-lifecycle-reconciled",
+  "version": "V3.2.20-g3-official-ohlcv",
   "stage": "2B",
   "alpha_training_allowed": false,
   "scope": ["SSE_MAIN_A", "SZSE_MAIN_A"],
@@ -7,8 +7,8 @@
   "hard_gates": [
     {"id": "G1", "name": "current_official_master", "status": "PASS"},
     {"id": "G2", "name": "survivorship_free_security_history_2015_present", "status": "PASS"},
-    {"id": "G3", "name": "complete_daily_ohlcv_2015_present", "status": "IN_PROGRESS"},
-    {"id": "G4", "name": "daily_security_state_st_suspension_price_limits", "status": "FAIL"},
+    {"id": "G3", "name": "complete_daily_ohlcv_2015_present", "status": "PASS"},
+    {"id": "G4", "name": "daily_security_state_st_suspension_price_limits", "status": "IN_PROGRESS"},
     {"id": "G5", "name": "complete_corporate_actions_and_adjustment_chain", "status": "FAIL"}
   ],
   "g1_evidence": {
@@ -34,6 +34,19 @@
     "total_events": 3769,
     "audit_errors": 0,
     "frozen_commit": "a995d73c45af7095c39782301925eea88db7eaf1"
+  },
+  "g3_evidence": {
+    "coverage_start": "2015-01-01",
+    "coverage_end": "2026-07-24",
+    "sse_rows": 4082770,
+    "szse_rows": 3953495,
+    "total_rows": 8036265,
+    "trading_days": 2808,
+    "dataset_fingerprint": "06bbce0b9531b63d8e794844b6ff7ce889cf8ced259bd8e7f87ae923dd41c991",
+    "validated_run": 30212684512,
+    "validated_artifact_id": 8635500847,
+    "audit_errors": 0,
+    "deferred_to_g4": ["SSE:601268 zero trade rows", "individual non-trade days"]
   },
   "retrospective_evidence_policy": "RETROSPECTIVE_EVIDENCE_ONLY never satisfies point-in-time completeness gates"
 }
