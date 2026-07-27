@@ -1,0 +1,17 @@
+{
+  "gate": "G3",
+  "pass": true,
+  "coverage_start": "2015-01-01",
+  "coverage_end": "2026-07-24",
+  "sse_source_securities": 1799,
+  "sse_securities_with_trade_rows": 1798,
+  "sse_rows": 4082770,
+  "szse_rows": 3953495,
+  "total_rows": 8036265,
+  "trading_days": 2808,
+  "dataset_fingerprint": "06bbce0b9531b63d8e794844b6ff7ce889cf8ced259bd8e7f87ae923dd41c991",
+  "zero_sse_codes_requiring_g4": ["601268"],
+  "individual_nontrade_days_deferred_to_g4": true,
+  "errors": [],
+  "warnings": ["SSE lifecycle securities with zero normalized trade rows require G4 state explanation: 1; sample=['601268']"]
+}
