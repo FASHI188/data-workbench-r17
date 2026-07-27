@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'scripts/build_g5_adjustment_chain.py'
+      - 'scripts/build_g5_adjustment_chain_single_session.py'
       - 'scripts/audit_g5_adjustment_chain.py'
       - '.github/workflows/stage2-g5-full.yml'
       - 'config/g5_full_trigger.json'
@@ -14,58 +14,45 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      max-parallel: 8
-      matrix:
-        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+  build-and-audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: python -m pip install --disable-pip-version-check baostock pandas
-      - name: Build G5 shard with preserved diagnostics
+      - name: Build all G5 actions in one BaoStock session
         shell: bash
         run: |
-          mkdir -p build/g5
+          mkdir -p build/g5-single data/corporate_actions
           set +e
-          python scripts/build_g5_adjustment_chain.py --shard ${{ matrix.shard }} --shards 16 --out build/g5 > build/g5/stdout-${{ matrix.shard }}.log 2> build/g5/stderr-${{ matrix.shard }}.log
+          python scripts/build_g5_adjustment_chain_single_session.py > build/g5-single/stdout.log 2> build/g5-single/stderr.log
           code=$?
           echo "G5_EXIT=$code" >> "$GITHUB_ENV"
-          cat build/g5/stdout-${{ matrix.shard }}.log || true
-          cat build/g5/stderr-${{ matrix.shard }}.log || true
+          cat build/g5-single/stdout.log || true
+          cat build/g5-single/stderr.log || true
+          exit 0
+      - name: Audit G5
+        if: env.G5_EXIT == '0'
+        shell: bash
+        run: |
+          set +e
+          python scripts/audit_g5_adjustment_chain.py --root build/g5-single --out data/corporate_actions > data/corporate_actions/audit_stdout.log 2> data/corporate_actions/audit_stderr.log
+          code=$?
+          echo "G5_AUDIT_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/corporate_actions/g5_audit.json || true
+          cat data/corporate_actions/audit_stderr.log || true
           exit 0
       - uses: actions/upload-artifact@v4
         with:
-          name: g5-actions-${{ matrix.shard }}
-          path: build/g5
-          compression-level: 0
-          retention-days: 30
-      - name: Fail closed after diagnostics are preserved
-        if: env.G5_EXIT != '0'
-        run: exit 1
-  audit:
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: g5-actions-*
-          path: build/g5
-          merge-multiple: true
-      - run: python scripts/audit_g5_adjustment_chain.py --root build/g5 --out data/corporate_actions
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
           name: stage2-g5-corporate-action-adjustment-chain
           path: |
-            build/g5
+            build/g5-single
             data/corporate_actions
           compression-level: 0
           retention-days: 90
+      - name: Fail closed after evidence preserved
+        if: env.G5_EXIT != '0' || env.G5_AUDIT_EXIT != '0'
+        run: exit 1
