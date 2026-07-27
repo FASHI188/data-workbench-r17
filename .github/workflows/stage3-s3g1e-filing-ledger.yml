@@ -7,6 +7,7 @@ on:
     paths:
       - 'scripts/build_stage3_filing_ledger.py'
       - 'scripts/finalize_stage3_filing_ledger.py'
+      - 'scripts/finalize_stage3_filing_ledger_v325.py'
       - 'tests/test_stage3_filing_ledger.py'
       - '.github/workflows/stage3-s3g1e-filing-ledger.yml'
   pull_request:
@@ -15,6 +16,7 @@ on:
     paths:
       - 'scripts/build_stage3_filing_ledger.py'
       - 'scripts/finalize_stage3_filing_ledger.py'
+      - 'scripts/finalize_stage3_filing_ledger_v325.py'
       - 'tests/test_stage3_filing_ledger.py'
       - '.github/workflows/stage3-s3g1e-filing-ledger.yml'
 
@@ -23,9 +25,9 @@ permissions:
   actions: read
 
 env:
-  G2_FROZEN_RUN: '30242396006'
-  G2_INTERVALS_SHA256: '855835d153b52bc20ffde055cab20154534d3e1301815fa24a54d6e0cd2ace6f'
-  G3_FROZEN_RUN: '30242395968'
+  G2_FROZEN_RUN: '30262550161'
+  G2_INTERVALS_SHA256: '2edf62f2d773b198ba1f02e996a741736e1b91830261723faeaa370a4f020ea7'
+  G3_FROZEN_RUN: '30263014914'
 
 jobs:
   tests:
@@ -102,7 +104,7 @@ jobs:
           pattern: stage3-s3g1e-filing-ledger-*
           path: build/stage3-filings/all
           merge-multiple: true
-      - name: Restore frozen G2 and G3 dependencies
+      - name: Restore frozen Stage2 V3.2.25 G2 and G3 dependencies
         shell: bash
         run: |
           set -euo pipefail
@@ -111,13 +113,13 @@ jobs:
             -n stage2-g2-historical-evidence -D /tmp/stage2-g2
           echo "$G2_INTERVALS_SHA256  /tmp/stage2-g2/security_intervals.csv" | sha256sum -c -
           gh run download "$G3_FROZEN_RUN" -R "$GITHUB_REPOSITORY" \
-            -n stage2-g3-identity-repaired-ohlcv -D /tmp/stage2-g3
+            -n stage2-g3-sse-601313-repaired-ohlcv -D /tmp/stage2-g3
       - name: Finalize availability, revision chains and code-time identity
         shell: bash
         run: |
           set +e
           mkdir -p data/stage3_filings
-          python scripts/finalize_stage3_filing_ledger.py \
+          python scripts/finalize_stage3_filing_ledger_v325.py \
             --root build/stage3-filings/all \
             --g2-intervals /tmp/stage2-g2/security_intervals.csv \
             --g3-root /tmp/stage2-g3 \
