@@ -7,7 +7,7 @@ from pathlib import Path
 import baostock as bs
 
 ROOT=Path(__file__).resolve().parents[1]
-START=date(2015,1,1); END=date(2026,7,24); REGISTRATION_MAIN=date(2023,4,10); ST_10PCT=date(2026,7,6); SHARDS=16
+START=date(2015,1,1); END=date(2026,7,24); REGISTRATION_MAIN=date(2023,4,10); ST_10PCT=date(2026,7,6); DELIST_REFORM=date(2020,12,31); SHARDS=16
 FIELDS=['exchange','code','trade_date','tradable','risk_warning','preclose','pct_chg','limit_rule','limit_up_rate','limit_down_rate','evidence']
 
 def sha(b:bytes)->str:return hashlib.sha256(b).hexdigest()
@@ -31,12 +31,11 @@ def query(code,a,b):
  return rows
 
 def delisting_period(rows,listed_to):
- """Infer the final delisting-consolidation trading block from point-in-time state.
+ """Infer final delisting-consolidation block and its historical rule regime.
 
- Old regime: 30 trading days, every day limited to 10%.
- New 2020-12-31 regime: 15 trading days; first trading day has no daily price limit,
- later days remain 10%. Transitional 2021 companies governed by old rules are therefore
- identified by the actual 30-day final trading block, not calendar date alone.
+ Pre-2020-reform regime: 30 trading days, all days at 10%.
+ New rules published 2020-12-31: 15 trading days, first day no daily price limit, later 10%.
+ Transitional 2021 issuers can still use old rules, so a >15-day observed final block stays old-regime.
  """
  if not listed_to or not rows:return None
  near=[r for r in rows if 0 < (listed_to-date.fromisoformat(r['date'])).days <=120]
@@ -52,9 +51,9 @@ def delisting_period(rows,listed_to):
    if 1<=len(later)<=30:
     candidate=later;break
  if not candidate:return None
- n=len(candidate)
- # Exchange transitional rules make the observed 30-vs-15 trading-day structure decisive.
- regime='OLD_30DAY_ALL_10PCT' if n>15 else 'NEW_15DAY_FIRST_NO_LIMIT'
+ n=len(candidate);first=date.fromisoformat(candidate[0])
+ if first < DELIST_REFORM or n>15:regime='OLD_30DAY_ALL_10PCT'
+ else:regime='NEW_15DAY_FIRST_NO_LIMIT'
  return {'first_date':candidate[0],'last_date':candidate[-1],'trade_dates':set(candidate),'trade_days':n,'regime':regime}
 
 def base_rule(r,listed_from,trade_index,delist):
