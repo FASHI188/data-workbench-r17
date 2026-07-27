@@ -6,6 +6,7 @@ from decimal import Decimal,InvalidOperation
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];START=date(2015,1,1);END=date(2026,7,24)
 OUT_FIELDS=['exchange','code','ex_date','record_date','announcement_date','action_type','cash_per_share','bonus_per_share','transfer_per_share','rights_per_share','rights_price','rights_listing_date','source_count','source_evidence']
+TOL=Decimal('0.00051')
 def D(v):
  try:return Decimal(str(v or '0'))
  except InvalidOperation:return Decimal('0')
@@ -30,33 +31,85 @@ def one_nonzero(rows,field,label,key,errors):
  xs=sorted({D(r.get(field)) for r in rows if D(r.get(field))!=0})
  if len(xs)>1:errors.append(f'{key} conflicting {label}: {xs}')
  return xs[-1] if xs else Decimal(0)
+def action_type(cash,bonus,transfer,rights):
+ kinds=[]
+ if D(cash)>0:kinds.append('CASH_DIVIDEND')
+ if D(bonus)>0:kinds.append('BONUS_SHARE')
+ if D(transfer)>0:kinds.append('CAPITAL_TRANSFER')
+ if D(rights)>0:kinds.append('RIGHTS_ISSUE')
+ return '+'.join(kinds)
+def evidence_for(rows):
+ return [{'component':r['action_component'],'source_system':r['source_system'],'source_id':r['source_id'],'source_url':r['source_url'],'source_sha256':r['source_sha256']} for r in rows]
+def merge_evidence(existing,extra):
+ try:items=json.loads(existing) if existing else []
+ except Exception:items=[]
+ seen={(x.get('component'),x.get('source_system'),x.get('source_id'),x.get('source_sha256')) for x in items}
+ for x in extra:
+  k=(x.get('component'),x.get('source_system'),x.get('source_id'),x.get('source_sha256'))
+  if k not in seen:items.append(x);seen.add(k)
+ return items
 def merge_components(rows,errors):
  groups={}
  for r in rows:groups.setdefault((r['exchange'],r['code'],r['ex_date']),[]).append(r)
  merged={}
  for k,raw in sorted(groups.items()):
   rs=dedupe_rows(raw);div=[r for r in rs if r['action_component']=='DIVIDEND_BONUS_TRANSFER'];rights_rows=[r for r in rs if r['action_component']=='RIGHTS']
-  # Multiple CNINFO dividend rows on the same ex-date can be separate annual/special distributions; they are additive.
+  # CNINFO can contain separate annual/interim/special distributions on one ex-date; they are additive within the same component source.
   cash=sum_field(div,'cash_per_share');bonus=sum_field(div,'bonus_per_share');transfer=sum_field(div,'transfer_per_share')
   rights=one_nonzero(rights_rows,'rights_per_share','rights_ratio',k,errors);rp=one_nonzero(rights_rows,'rights_price','rights_price',k,errors)
-  kinds=[]
-  if cash>0:kinds.append('CASH_DIVIDEND')
-  if bonus>0:kinds.append('BONUS_SHARE')
-  if transfer>0:kinds.append('CAPITAL_TRANSFER')
-  if rights>0:kinds.append('RIGHTS_ISSUE')
-  if not kinds:errors.append(f'zero-economic action {k}');continue
+  kind=action_type(cash,bonus,transfer,rights)
+  if not kind:errors.append(f'zero-economic action {k}');continue
   records=sorted({r['record_date'] for r in rs if r.get('record_date')});anns=sorted({r['announcement_date'] for r in rs if r.get('announcement_date')});lists=sorted({r['rights_listing_date'] for r in rs if r.get('rights_listing_date')})
-  evidence=[{'component':r['action_component'],'source_system':r['source_system'],'source_id':r['source_id'],'source_url':r['source_url'],'source_sha256':r['source_sha256']} for r in rs]
-  merged[k]={'exchange':k[0],'code':k[1],'ex_date':k[2],'record_date':records[0] if records else '','announcement_date':anns[0] if anns else '','action_type':'+'.join(kinds),'cash_per_share':str(cash),'bonus_per_share':str(bonus),'transfer_per_share':str(transfer),'rights_per_share':str(rights),'rights_price':str(rp),'rights_listing_date':lists[-1] if lists else '','source_count':len(evidence),'source_evidence':json.dumps(evidence,ensure_ascii=False,sort_keys=True)}
+  evidence=evidence_for(rs)
+  merged[k]={'exchange':k[0],'code':k[1],'ex_date':k[2],'record_date':records[0] if records else '','announcement_date':anns[0] if anns else '','action_type':kind,'cash_per_share':str(cash),'bonus_per_share':str(bonus),'transfer_per_share':str(transfer),'rights_per_share':str(rights),'rights_price':str(rp),'rights_listing_date':lists[-1] if lists else '','source_count':len(evidence),'source_evidence':json.dumps(evidence,ensure_ascii=False,sort_keys=True)}
  return merged
 def aggregate_sse_control(rows):
  groups={}
  for r in dedupe_rows(rows):groups.setdefault(('SSE',r['code'],r['ex_date']),[]).append(r)
  out={}
  for k,rs in groups.items():
-  div=[r for r in rs if r['action_component']=='DIVIDEND'];bonus=[r for r in rs if r['action_component']=='BONUS'];rights=[r for r in rs if r['action_component']=='RIGHTS']
-  out[k]={'cash':sum_field(div,'cash_per_share'),'bonus':sum_field(bonus,'bonus_per_share'),'transfer':sum_field(bonus,'transfer_per_share'),'rights':one_nonzero(rights,'rights_per_share','SSE control rights_ratio',k,[]),'rights_price':one_nonzero(rights,'rights_price','SSE control rights_price',k,[]),'rights_rows':rights,'nonrights_rows':div+bonus}
+  div=[r for r in rs if r['action_component']=='DIVIDEND'];bonus_rows=[r for r in rs if r['action_component']=='BONUS'];rights=[r for r in rs if r['action_component']=='RIGHTS']
+  out[k]={'cash':sum_field(div,'cash_per_share'),'bonus':sum_field(bonus_rows,'bonus_per_share'),'transfer':sum_field(bonus_rows,'transfer_per_share'),'has_dividend_table':bool(div),'has_bonus_table':bool(bonus_rows),'dividend_rows':div,'bonus_rows':bonus_rows,'rights':one_nonzero(rights,'rights_per_share','SSE control rights_ratio',k,[]),'rights_price':one_nonzero(rights,'rights_price','SSE control rights_price',k,[]),'rights_rows':rights,'nonrights_rows':div+bonus_rows}
  return out
+def blank_from_sse(k,rows):
+ records=sorted({r.get('record_date','') for r in rows if r.get('record_date')})
+ return {'exchange':k[0],'code':k[1],'ex_date':k[2],'record_date':records[0] if records else '','announcement_date':'','action_type':'','cash_per_share':'0','bonus_per_share':'0','transfer_per_share':'0','rights_per_share':'0','rights_price':'0','rights_listing_date':'','source_count':0,'source_evidence':'[]'}
+def reconcile_sse_nonrights(pm,controls):
+ # SSE native tables are venue-native for the fields they actually publish. Absence from a sub-table is UNKNOWN, not economic zero.
+ # CNINFO fills components that the corresponding SSE sub-table does not publish on that ex-date.
+ checked=0;matched=0;fills=[];overrides=[]
+ for k,c in sorted(controls.items()):
+  if not c['nonrights_rows']:continue
+  checked+=1
+  p=pm.get(k)
+  created=p is None
+  if created:
+   p=blank_from_sse(k,c['nonrights_rows']);pm[k]=p
+  before={x:D(p[x]) for x in ('cash_per_share','bonus_per_share','transfer_per_share')}
+  changed=False;used=[]
+  if c['has_dividend_table']:
+   target=c['cash'];old=before['cash_per_share']
+   if abs(old-target)>TOL:
+    changed=True
+    if old!=0:overrides.append({'key':k,'field':'cash_per_share','cninfo':str(old),'sse_native':str(target)})
+    else:fills.append({'key':k,'field':'cash_per_share','value':str(target),'reason':'CNINFO_COMPONENT_ABSENT'})
+   p['cash_per_share']=str(target);used+=c['dividend_rows']
+  if c['has_bonus_table']:
+   used+=c['bonus_rows']
+   for field,target in [('bonus_per_share',c['bonus']),('transfer_per_share',c['transfer'])]:
+    old=before[field]
+    if abs(old-target)>TOL:
+     changed=True
+     if old!=0:overrides.append({'key':k,'field':field,'cninfo':str(old),'sse_native':str(target)})
+     else:fills.append({'key':k,'field':field,'value':str(target),'reason':'CNINFO_COMPONENT_ABSENT'})
+    p[field]=str(target)
+  if created:fills.append({'key':k,'field':'ACTION','value':'SSE_NATIVE','reason':'CNINFO_ACTION_ABSENT'})
+  ev=merge_evidence(p.get('source_evidence',''),evidence_for(used));p['source_evidence']=json.dumps(ev,ensure_ascii=False,sort_keys=True);p['source_count']=len(ev)
+  if not p.get('record_date'):
+   records=sorted({r.get('record_date','') for r in used if r.get('record_date')});p['record_date']=records[0] if records else ''
+  p['action_type']=action_type(p['cash_per_share'],p['bonus_per_share'],p['transfer_per_share'],p['rights_per_share'])
+  if not changed and not created:matched+=1
+ return {'checked':checked,'matched':matched,'fills':fills,'overrides':overrides}
 def main():
  ap=argparse.ArgumentParser();ap.add_argument('--root',required=True);ap.add_argument('--out',required=True);a=ap.parse_args();root=Path(a.root);out=Path(a.out);out.mkdir(parents=True,exist_ok=True);errors=[];universe=life()
  cms=sorted(root.glob('g5_cninfo_actions_shard*.manifest.json'))
@@ -81,7 +134,7 @@ def main():
    rr=read_gz(df);supp_rows+=len(rr);primary+=rr
   expected_sz=sum(1 for ex,c in universe if ex=='SZSE')
   if supp_selected!=expected_sz:errors.append(f'SZSE rights supplement selected {supp_selected} != lifecycle {expected_sz}')
- # SSE native source: rights are primary official evidence; dividends/bonus remain independent controls.
+ # SSE native rights are primary. SSE native dividend/bonus rows are reconciled component-wise after CNINFO aggregation.
  control_files=sorted(root.glob('g5_sse_official_actions.csv.gz'));control_rows=[]
  if len(control_files)!=1:errors.append(f'expected one SSE native control file, got {len(control_files)}')
  else:
@@ -93,28 +146,27 @@ def main():
   dd=date.fromisoformat(r['ex_date']);x,y=interval
   if not (START<=dd<=END and x<=dd and (y is None or dd<y)):errors.append(f'official action outside lifecycle {(k,r["ex_date"])}')
  pm=merge_components(primary,errors)
- controls=aggregate_sse_control(control_rows);checked=0;control_missing=[];control_conflicts=[]
+ controls=aggregate_sse_control(control_rows);recon=reconcile_sse_nonrights(pm,controls)
+ # After component-wise reconciliation, no venue-native SSE non-rights event is allowed to remain absent/unresolved.
+ unresolved_missing=[];unresolved_conflicts=[]
  for k,c in sorted(controls.items()):
-  # Rights are already incorporated from SSE native source, so only dividend/bonus rows act as independent controls.
   if not c['nonrights_rows']:continue
   p=pm.get(k)
-  if p is None:control_missing.append((k,'DIVIDEND_OR_BONUS'));continue
-  diffs={
-   'cash':abs(D(p['cash_per_share'])-c['cash']),
-   'bonus':abs(D(p['bonus_per_share'])-c['bonus']),
-   'transfer':abs(D(p['transfer_per_share'])-c['transfer']),
-  }
-  # SSE public tables round displayed ratios; tolerate half of the last displayed 0.001 unit plus a small float margin.
-  if diffs['cash']<=Decimal('0.00051') and diffs['bonus']<=Decimal('0.00051') and diffs['transfer']<=Decimal('0.00051'):checked+=1
-  else:control_conflicts.append({'key':k,'primary':{'cash':p['cash_per_share'],'bonus':p['bonus_per_share'],'transfer':p['transfer_per_share']},'control':{x:str(c[x]) for x in ('cash','bonus','transfer')},'abs_diffs':{x:str(v) for x,v in diffs.items()}})
- if control_missing:errors.append(f'SSE native non-rights controls missing in CNINFO: {control_missing[:20]} count={len(control_missing)}')
- if control_conflicts:errors.append(f'SSE native non-rights parameter conflicts: {control_conflicts[:10]} count={len(control_conflicts)}')
+  if p is None:unresolved_missing.append(k);continue
+  if c['has_dividend_table'] and abs(D(p['cash_per_share'])-c['cash'])>TOL:unresolved_conflicts.append((k,'cash'))
+  if c['has_bonus_table']:
+   if abs(D(p['bonus_per_share'])-c['bonus'])>TOL:unresolved_conflicts.append((k,'bonus'))
+   if abs(D(p['transfer_per_share'])-c['transfer'])>TOL:unresolved_conflicts.append((k,'transfer'))
+ if unresolved_missing:errors.append(f'unresolved SSE native non-rights events: {unresolved_missing[:20]} count={len(unresolved_missing)}')
+ if unresolved_conflicts:errors.append(f'unresolved SSE native component conflicts: {unresolved_conflicts[:20]} count={len(unresolved_conflicts)}')
  rows=list(pm.values());rows.sort(key=lambda r:(r['ex_date'],r['exchange'],r['code']))
+ for r in rows:
+  if not r['action_type']:errors.append(f'zero-economic merged action {(r["exchange"],r["code"],r["ex_date"])}')
  p=out/'g5_official_actions.csv.gz'
  with gzip.open(p,'wt',encoding='utf-8',newline='',compresslevel=9) as f:w=csv.DictWriter(f,fieldnames=OUT_FIELDS);w.writeheader();w.writerows(rows)
  types={}
  for r in rows:types[r['action_type']]=types.get(r['action_type'],0)+1
  digest=hashlib.sha256(p.read_bytes()).hexdigest();finger=hashlib.sha256(('\n'.join(f'{n}:{h}' for n,h in sorted(source_hashes))+'\n'+digest).encode()).hexdigest()
- report={'stage':'G5_OFFICIAL_ACTION_LEDGER','pass':not errors,'coverage_start':START.isoformat(),'coverage_end':END.isoformat(),'lifecycle_security_count':len(universe),'cninfo_component_rows':sum(1 for r in primary if r.get('source_system')=='CNINFO'),'szse_rights_supplement_rows':supp_rows,'sse_native_rights_primary_rows':sum(r['action_component']=='RIGHTS' for r in control_rows),'official_action_dates':len(rows),'action_type_counts':types,'cninfo_source_requests':requests,'sse_native_control_rows':len(control_rows),'sse_native_controls_matched':checked,'sse_native_control_missing':len(control_missing),'sse_native_control_conflicts':len(control_conflicts),'dataset_sha256':digest,'dataset_fingerprint':finger,'errors':errors}
+ report={'stage':'G5_OFFICIAL_ACTION_LEDGER','pass':not errors,'coverage_start':START.isoformat(),'coverage_end':END.isoformat(),'lifecycle_security_count':len(universe),'cninfo_component_rows':sum(1 for r in primary if r.get('source_system')=='CNINFO'),'szse_rights_supplement_rows':supp_rows,'sse_native_rights_primary_rows':sum(r['action_component']=='RIGHTS' for r in control_rows),'official_action_dates':len(rows),'action_type_counts':types,'cninfo_source_requests':requests,'sse_native_control_rows':len(control_rows),'sse_native_controls_checked':recon['checked'],'sse_native_controls_matched':recon['matched'],'sse_native_component_fills':len(recon['fills']),'sse_native_component_overrides':len(recon['overrides']),'sse_native_component_fill_samples':recon['fills'][:100],'sse_native_component_override_samples':recon['overrides'][:100],'sse_native_control_missing':len(unresolved_missing),'sse_native_control_conflicts':len(unresolved_conflicts),'reconciliation_policy':'SSE venue-native component value when that SSE sub-table publishes the component; CNINFO fills components absent from the SSE sub-table; SSE sub-table absence is never interpreted as economic zero','dataset_sha256':digest,'dataset_fingerprint':finger,'errors':errors}
  (out/'g5_official_action_audit.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8');print(json.dumps(report,ensure_ascii=False,indent=2));return 0 if not errors else 2
 if __name__=='__main__':sys.exit(main())
