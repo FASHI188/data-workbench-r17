@@ -1,0 +1,49 @@
+name: Stage3 S3G1B CNINFO Bulk Pagination Probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [stage3-point-in-time-features]
+    paths:
+      - 'scripts/probe_stage3_cninfo_bulk_pagination.py'
+      - '.github/workflows/stage3-s3g1b-bulk-pagination-probe.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/probe_stage3_cninfo_bulk_pagination.py'
+      - '.github/workflows/stage3-s3g1b-bulk-pagination-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  bulk-pagination-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Probe market-wide periodic-report pagination and preserve diagnostics
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_source_probe
+          python scripts/probe_stage3_cninfo_bulk_pagination.py \
+            > data/stage3_source_probe/bulk_stdout.log \
+            2> data/stage3_source_probe/bulk_stderr.log
+          code=$?
+          echo "S3G1B_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_source_probe/cninfo_bulk_pagination_probe.json || true
+          cat data/stage3_source_probe/bulk_stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1b-bulk-pagination-probe
+          path: data/stage3_source_probe
+          retention-days: 90
+      - name: Preserve fail-closed probe status
+        if: env.S3G1B_EXIT != '0'
+        run: exit 1
