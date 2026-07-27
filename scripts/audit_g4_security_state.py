@@ -14,10 +14,20 @@ def expected_lifecycle_codes():
    a=date.fromisoformat(r['listed_from']);b=date.fromisoformat(r['listed_to_exclusive']) if r['listed_to_exclusive'] else None
    if a<=END and (b is None or b>START):out.add((r['exchange'],r['code']))
  return out
+def transitions():
+ p=ROOT/'config/security_code_transitions.json';return json.loads(p.read_text(encoding='utf-8')) if p.exists() else []
+def compact_key(ex,code,day):return ((1 if ex=='SZSE' else 0)<<50)|(int(code)<<20)|date.fromisoformat(day).toordinal()
+def load_g3_keys(root:Path):
+ keys=set();rows=0
+ for p in sorted((root/'sse').glob('*.csv.gz'))+sorted((root/'szse').glob('*.csv.gz')):
+  with gzip.open(p,'rt',encoding='utf-8',newline='') as f:
+   for r in csv.DictReader(f):keys.add(compact_key(r['exchange'],r['code'],r['trade_date']));rows+=1
+ return keys,rows
 
 def main():
- ap=argparse.ArgumentParser();ap.add_argument('--root',required=True);ap.add_argument('--out',required=True);args=ap.parse_args();root=Path(args.root);out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
- ms=sorted(root.glob('g4_manifest_shard*.json'));errors=[];expected=expected_lifecycle_codes()
+ ap=argparse.ArgumentParser();ap.add_argument('--root',required=True);ap.add_argument('--out',required=True);ap.add_argument('--g3-root');args=ap.parse_args();root=Path(args.root);out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
+ ms=sorted(root.glob('g4_manifest_shard*.json'));errors=[];expected=expected_lifecycle_codes();g3_keys=None;g3_rows=0
+ if args.g3_root:g3_keys,g3_rows=load_g3_keys(Path(args.g3_root))
  if len(ms)!=16:errors.append(f'expected 16 shard manifests, got {len(ms)}')
  total={'securities':0,'rows':0,'tradable':0,'suspended':0,'risk_warning':0};zeros=[];manifest_unknown=[];source_codes=set();source_rows=0;source_hash_missing=0;data_hashes=[];delisting_first_days=[];delisting_periods=[];manifest_relisting=[]
  for mp in ms:
@@ -45,7 +55,9 @@ def main():
   else:errors.append(f'unknown delisting regime: {p}')
  expected_relisting={(ex,code,day) for (ex,code),day in RELISTING.items()};actual_manifest_relisting={(r['exchange'],r['code'],r['date']) for r in manifest_relisting}
  if actual_manifest_relisting!=expected_relisting:errors.append(f'relisting override manifest mismatch expected={sorted(expected_relisting)} actual={sorted(actual_manifest_relisting)}')
- seen=set();state_rows=0;r601268=[];bad_limits=[];row_codes=set();special_no_limit=[];row_unknown=[];delist_rule_rows={};relisting_rows={}
+ seen=set();state_rows=0;r601268=[];bad_limits=[];row_codes=set();special_no_limit=[];row_unknown=[];delist_rule_rows={};relisting_rows={};missing_g3=[];missing_g3_count=0;transition_dates={};r600656=None
+ for t in transitions():transition_dates[(t['exchange'],t['old_code'])]=('old',t);transition_dates[(t['exchange'],t['new_code'])]=('new',t)
+ transition_seen={k:[] for k in transition_dates}
  for df in sorted(root.glob('g4_state_shard*.csv.gz')):
   with gzip.open(df,'rt',encoding='utf-8',newline='') as f:
    for r in csv.DictReader(f):
@@ -59,6 +71,12 @@ def main():
     rrday=RELISTING.get((r['exchange'],r['code']))
     if rrday and r['trade_date']==rrday:relisting_rows[(r['exchange'],r['code'])]=r
     if r['exchange']=='SSE' and r['code']=='601268':r601268.append(r)
+    if r['exchange']=='SSE' and r['code']=='600656' and r['trade_date']=='2016-05-12':r600656=r
+    tk=(r['exchange'],r['code'])
+    if tk in transition_seen:transition_seen[tk].append(r['trade_date'])
+    if g3_keys is not None and r['tradable']=='1' and compact_key(r['exchange'],r['code'],r['trade_date']) not in g3_keys:
+     missing_g3_count+=1
+     if len(missing_g3)<100:missing_g3.append(k)
  if state_rows!=total['rows']:errors.append(f'scanned rows {state_rows} != manifest rows {total["rows"]}')
  if row_codes!=(expected-set(tuple(z.split(':')) for z in zeros)):errors.append(f'row-level security set mismatch row_codes={len(row_codes)} expected_nonzero={len(expected)-len(zeros)}')
  if bad_limits:errors.append(f'suspended rows with non-suspended rule: {bad_limits[:20]}')
@@ -80,11 +98,20 @@ def main():
   r=relisting_rows.get(k)
   if not r:errors.append(f'missing relisting first-day state {k} {day}')
   elif r['limit_rule']!='RELISTING_FIRST_DAY_NO_LIMIT' or r['limit_up_rate'] or r['limit_down_rate']:errors.append(f'relisting first day not classified no-limit {k} {r}')
+ for t in transitions():
+  eff=t['effective_date'];ok=(t['exchange'],t['old_code']);nk=(t['exchange'],t['new_code']);od=transition_seen.get(ok,[]);nd=transition_seen.get(nk,[])
+  if not od:errors.append(f'G4 predecessor identity has zero rows: {ok}')
+  elif max(od)>=eff:errors.append(f'G4 predecessor survives code transition: {ok} max={max(od)} effective={eff}')
+  if not nd:errors.append(f'G4 successor identity has zero rows: {nk}')
+  elif min(nd)<eff:errors.append(f'G4 successor predates code transition: {nk} min={min(nd)} effective={eff}')
  if not r601268:errors.append('601268 missing from G4 state')
  elif any(r['tradable']!='0' for r in r601268):errors.append('601268 expected suspended throughout G4-covered 2015 interval')
+ if r600656 is None:errors.append('600656 2016-05-12 official nontrading control row missing')
+ elif r600656['tradable']!='0' or r600656['limit_rule']!='SUSPENDED':errors.append(f'600656 2016-05-12 must be official nontrading override: {r600656}')
+ if g3_keys is not None and missing_g3_count:errors.append(f'G4 tradable states missing official G3 OHLCV: count={missing_g3_count} sample={missing_g3[:20]}')
  canonical='\n'.join(f'{n}:{h}' for n,h in sorted(data_hashes)).encode();fingerprint=hashlib.sha256(canonical).hexdigest()
- report={'gate':'G4','pass':not errors,'coverage_start':'2015-01-01','coverage_end':'2026-07-24','expected_security_count':len(expected),'counts':total,'source_security_count':len(source_codes),'row_security_count':len(row_codes),'state_rows':state_rows,'zero_source_securities':zeros,'manifest_unclassified_special_days':len(manifest_unknown),'unclassified_special_days':row_unknown[:100],'detected_special_no_limit_days':len(special_no_limit),'detected_delisting_periods':len(delisting_periods),'delisting_regime_counts':regime_counts,'relisting_first_day_overrides':len(relisting_rows),'601268_rows':len(r601268),'601268_all_suspended':bool(r601268) and all(r['tradable']=='0' for r in r601268),'dataset_fingerprint':fingerprint,'errors':errors}
+ report={'gate':'G4','pass':not errors,'coverage_start':'2015-01-01','coverage_end':'2026-07-24','expected_security_count':len(expected),'counts':total,'source_security_count':len(source_codes),'row_security_count':len(row_codes),'state_rows':state_rows,'zero_source_securities':zeros,'manifest_unclassified_special_days':len(manifest_unknown),'unclassified_special_days':row_unknown[:100],'detected_special_no_limit_days':len(special_no_limit),'detected_delisting_periods':len(delisting_periods),'delisting_regime_counts':regime_counts,'relisting_first_day_overrides':len(relisting_rows),'code_transitions_checked':len(transitions()),'601268_rows':len(r601268),'601268_all_suspended':bool(r601268) and all(r['tradable']=='0' for r in r601268),'600656_2016_05_12_nontrading':bool(r600656) and r600656['tradable']=='0','g3_crosscheck_enabled':g3_keys is not None,'g3_rows_loaded':g3_rows,'tradable_states_missing_g3':missing_g3_count,'tradable_states_missing_g3_sample':missing_g3,'dataset_fingerprint':fingerprint,'errors':errors}
  (out/'g4_audit.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
- (out/'g4_manifest.json').write_text(json.dumps({'version':'V3.2.21-g4-daily-security-state','status':'PASS' if not errors else 'FAIL','scope':'SSE_MAIN_A + SZSE_MAIN_A','sources':['BaoStock point-in-time tradestatus/isST/preclose/pctChg','SSE/SZSE exchange rules versioned by historical regime','official exchange relisting announcements for 601975/601399/001267'],'rule_breaks':{'delisting_reform_published':'2020-12-31; old-rule transitional issuers identified by 30-day final block','relisting_first_day':'three 2015-present relisting cases use no daily price limit','main_board_registration_first5_no_limit':'2023-04-10','risk_warning_10pct':'2026-07-06'},'audit':report},ensure_ascii=False,indent=2),encoding='utf-8')
+ (out/'g4_manifest.json').write_text(json.dumps({'version':'V3.2.21-g4-daily-security-state-code-time-aware','status':'PASS' if not errors else 'FAIL','scope':'SSE_MAIN_A + SZSE_MAIN_A','sources':['BaoStock point-in-time tradestatus/isST/preclose/pctChg','SSE/SZSE exchange rules versioned by historical regime','official exchange relisting announcements for 601975/601399/001267','CNINFO official code-transition notices','SSE official delisting schedule control for 600656'],'cross_gate_contract':'Every G4 tradable=1 security-day must have an official G3 OHLCV bar; extra G3 bars are not rejected solely because BaoStock tradestatus is not authoritative enough for the inverse implication.','audit':report},ensure_ascii=False,indent=2),encoding='utf-8')
  print(json.dumps(report,ensure_ascii=False,indent=2));return 0 if not errors else 2
 if __name__=='__main__':sys.exit(main())
