@@ -1,17 +1,13 @@
-# stage2 identity-repair workflow v1
+# stage2 identity-repair workflow v2
 name: Stage2 G3 Code Identity Repair
 
+# Expensive year rebuilds run only on an explicit trigger commit or manual dispatch.
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main]
+  push:
+    branches: [agent/stage2-security-identity-final]
     paths:
-      - 'config/security_code_transitions.json'
-      - 'scripts/build_g3_ohlcv.py'
-      - 'scripts/run_g3_rate_limited.py'
-      - 'scripts/audit_g3_ohlcv.py'
-      - 'scripts/audit_g3_code_identity.py'
-      - '.github/workflows/stage2-g3-identity-repair.yml'
+      - 'config/g3_identity_repair_trigger.json'
 
 permissions:
   contents: read
