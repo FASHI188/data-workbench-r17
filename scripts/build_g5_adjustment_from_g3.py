@@ -5,7 +5,8 @@ from decimal import Decimal,InvalidOperation,getcontext
 from pathlib import Path
 getcontext().prec=28
 ROOT=Path(__file__).resolve().parents[1]
-FIELDS=['exchange','code','ex_date','action_type','cash_per_share','bonus_per_share','transfer_per_share','rights_per_share','rights_price','prior_reference_price','ex_reference_price','continuity_ratio','back_adjust_multiplier','cumulative_back_adjust_multiplier','reference_source','source_count','source_evidence']
+MATERIAL_REFERENCE_DELTA=Decimal('0.01')
+FIELDS=['exchange','code','ex_date','action_type','cash_per_share','bonus_per_share','transfer_per_share','rights_per_share','rights_price','prior_reference_price','nominal_formula_ex_reference_price','g4_exdate_preclose','market_reference_relative_delta','ex_reference_price','continuity_ratio','back_adjust_multiplier','cumulative_back_adjust_multiplier','reference_source','source_count','source_evidence']
 def D(v):
  try:return Decimal(str(v or '0'))
  except InvalidOperation:return Decimal('0')
@@ -24,9 +25,23 @@ def calc_event(r,ref,cumulative):
  cash=D(r['cash_per_share']);bonus=D(r['bonus_per_share']);transfer=D(r['transfer_per_share']);rights=D(r['rights_per_share']);rp=D(r['rights_price']);denom=Decimal(1)+bonus+transfer+rights;ex=(ref-cash+rp*rights)/denom
  if ref<=0 or denom<=0 or ex<=0:raise ValueError(f'invalid ex-reference input ref={ref} cash={cash} bonus={bonus} transfer={transfer} rights={rights} price={rp} -> ex={ex}')
  continuity=ex/ref;back=ref/ex;newcum=cumulative*back;return ex,continuity,back,newcum
+def calc_from_market_reference(ref,ex,cumulative):
+ if ref<=0 or ex<=0:raise ValueError(f'invalid market reference ref={ref} ex={ex}')
+ continuity=ex/ref;back=ref/ex;newcum=cumulative*back;return continuity,back,newcum
+def select_price_reference(e,base,cumulative,g4row):
+ nominal_ex,nominal_cont,nominal_back,nominal_newc=calc_event(e,base,cumulative)
+ if not g4row:return nominal_ex,nominal_cont,nominal_back,nominal_newc,nominal_ex,None,None,'OFFICIAL_ACTION_FORMULA',None
+ g4pre=D(g4row.get('preclose'))
+ if g4pre<=0:raise ValueError(f'G4 ex-date preclose is nonpositive: {g4row.get("preclose")}')
+ delta=abs(g4pre-nominal_ex)/max(abs(nominal_ex),Decimal('1e-18'))
+ if delta<=MATERIAL_REFERENCE_DELTA:return nominal_ex,nominal_cont,nominal_back,nominal_newc,nominal_ex,g4pre,delta,'OFFICIAL_ACTION_FORMULA',None
+ if 'CAPITAL_TRANSFER' not in e['action_type'] and 'BONUS_SHARE' not in e['action_type']:
+  raise ValueError(f'material nominal/market reference discrepancy without share-distribution semantics: action={e["action_type"]} nominal={nominal_ex} g4={g4pre} rel={delta}')
+ cont,back,newc=calc_from_market_reference(base,g4pre,cumulative)
+ meta={'exchange':e['exchange'],'code':e['code'],'ex_date':e['ex_date'],'action_type':e['action_type'],'prior_reference_price':str(base),'nominal_ex_reference':str(nominal_ex),'g4_preclose':str(g4pre),'relative_delta':str(delta),'g4_evidence':g4row.get('evidence'),'policy':'MATERIAL_GT_1PCT_SHARE_DISTRIBUTION_REFERENCE_OVERRIDE'}
+ return g4pre,cont,back,newc,nominal_ex,g4pre,delta,'G4_EXDATE_PRECLOSE_MATERIAL_SHARE_DISTRIBUTION_SEMANTIC_OVERRIDE',meta
 def load_bootstrap_whitelist():
- p=ROOT/'config/g5_suspended_reference_bootstrap.json';raw=json.loads(p.read_text(encoding='utf-8')) if p.exists() else []
- out={}
+ p=ROOT/'config/g5_suspended_reference_bootstrap.json';raw=json.loads(p.read_text(encoding='utf-8')) if p.exists() else [];out={}
  for r in raw:
   k=(r['exchange'],r['code'],r['ex_date'])
   if k in out:raise ValueError(f'duplicate G5 bootstrap whitelist key: {k}')
@@ -60,20 +75,28 @@ def main():
  ap=argparse.ArgumentParser();ap.add_argument('--actions',required=True);ap.add_argument('--g3-root',required=True);ap.add_argument('--g4-root');ap.add_argument('--out',required=True);args=ap.parse_args();actions=read_actions(Path(args.actions));g3=Path(args.g3_root);out=Path(args.out);out.mkdir(parents=True,exist_ok=True);whitelist=load_bootstrap_whitelist();g4_controls,g4_rows_scanned=load_g4_action_controls(Path(args.g4_root) if args.g4_root else None,actions)
  by_year={}
  for r in actions:by_year.setdefault(int(r['ex_date'][:4]),[]).append(r)
- ref={};cum={};result=[];errors=[];processed=set();trade_rows=0;bootstraps=[]
- def append_event(e,base,newc,ex,cont,back,source):
-  result.append({'exchange':e['exchange'],'code':e['code'],'ex_date':e['ex_date'],'action_type':e['action_type'],'cash_per_share':e['cash_per_share'],'bonus_per_share':e['bonus_per_share'],'transfer_per_share':e['transfer_per_share'],'rights_per_share':e['rights_per_share'],'rights_price':e['rights_price'],'prior_reference_price':format(base,'f'),'ex_reference_price':format(ex,'f'),'continuity_ratio':format(cont,'f'),'back_adjust_multiplier':format(back,'f'),'cumulative_back_adjust_multiplier':format(newc,'f'),'reference_source':source,'source_count':e['source_count'],'source_evidence':e['source_evidence']})
+ ref={};cum={};result=[];errors=[];processed=set();trade_rows=0;bootstraps=[];semantic_overrides=[];nonshare_material=[]
+ expected_action_keys={(r['exchange'],r['code'],r['ex_date']) for r in actions};missing_g4_controls=sorted(expected_action_keys-set(g4_controls)) if args.g4_root else []
+ if args.g4_root and missing_g4_controls:errors.append(f'official actions missing G4 ex-date state control: {missing_g4_controls[:30]} count={len(missing_g4_controls)}')
+ def append_event(e,base,newc,nominal_ex,g4pre,delta,ex,cont,back,source):
+  result.append({'exchange':e['exchange'],'code':e['code'],'ex_date':e['ex_date'],'action_type':e['action_type'],'cash_per_share':e['cash_per_share'],'bonus_per_share':e['bonus_per_share'],'transfer_per_share':e['transfer_per_share'],'rights_per_share':e['rights_per_share'],'rights_price':e['rights_price'],'prior_reference_price':format(base,'f'),'nominal_formula_ex_reference_price':format(nominal_ex,'f'),'g4_exdate_preclose':format(g4pre,'f') if g4pre is not None else '','market_reference_relative_delta':format(delta,'f') if delta is not None else '','ex_reference_price':format(ex,'f'),'continuity_ratio':format(cont,'f'),'back_adjust_multiplier':format(back,'f'),'cumulative_back_adjust_multiplier':format(newc,'f'),'reference_source':source,'source_count':e['source_count'],'source_evidence':e['source_evidence']})
  def execute(e):
-  idk=(e['exchange'],e['code'],e['ex_date']);k=(e['exchange'],e['code']);base=ref.get(k);source='G3_PRIOR_CLOSE_OR_PRIOR_OFFICIAL_ADJUSTMENT'
+  idk=(e['exchange'],e['code'],e['ex_date']);k=(e['exchange'],e['code']);base=ref.get(k);base_source='G3_PRIOR_CLOSE_OR_PRIOR_ADJUSTMENT'
   if base is None:
    try:base,meta=bootstrap_suspended_reference(e,g4_controls,whitelist)
    except Exception as exc:errors.append(f'{idk}: {exc}');return
    if base is None:errors.append(f'missing prior close/reference for {idk}');return
-   bootstraps.append(meta);source='WHITELISTED_G4_SUSPENDED_EXDATE_PRECLOSE_INVERSION'
-  c=cum.get(k,Decimal(1))
+   bootstraps.append(meta);base_source='WHITELISTED_G4_SUSPENDED_EXDATE_PRECLOSE_INVERSION'
+  c=cum.get(k,Decimal(1));g4row=g4_controls.get(idk)
   try:
-   ex,cont,back,newc=calc_event(e,base,c);ref[k]=ex;cum[k]=newc;processed.add(idk);append_event(e,base,newc,ex,cont,back,source)
-  except Exception as exc:errors.append(f'{idk}: {exc}')
+   ex,cont,back,newc,nominal_ex,g4pre,delta,source,meta=select_price_reference(e,base,c,g4row)
+   if meta:semantic_overrides.append(meta)
+   source=source+'_WITH_'+base_source;ref[k]=ex;cum[k]=newc;processed.add(idk);append_event(e,base,newc,nominal_ex,g4pre,delta,ex,cont,back,source)
+  except Exception as exc:
+   if 'without share-distribution semantics' in str(exc):
+    nominal_ex,_,_,_=calc_event(e,base,c);g4v=D(g4row.get('preclose')) if g4row else Decimal(0);d=abs(g4v-nominal_ex)/max(abs(nominal_ex),Decimal('1e-18')) if g4row else None
+    nonshare_material.append({'exchange':e['exchange'],'code':e['code'],'ex_date':e['ex_date'],'action_type':e['action_type'],'prior_reference_price':str(base),'nominal_ex_reference':str(nominal_ex),'g4_preclose':str(g4v),'relative_delta':str(d)})
+   errors.append(f'{idk}: {exc}')
  for y in range(2015,2027):
   evs=by_year.get(y,[]);ei=0;paths=year_paths(g3,y)
   if not paths:errors.append(f'missing G3 files for {y}');continue
@@ -101,6 +124,6 @@ def main():
  p=out/'g5_adjustment_chain.csv.gz';result.sort(key=lambda r:(r['ex_date'],r['exchange'],r['code']))
  with gzip.open(p,'wt',encoding='utf-8',newline='',compresslevel=9) as f:w=csv.DictWriter(f,fieldnames=FIELDS);w.writeheader();w.writerows(result)
  digest=hashlib.sha256(p.read_bytes()).hexdigest();g3audit=Path(g3/'data/ohlcv/g3_audit.json');g3meta=json.loads(g3audit.read_text(encoding='utf-8')) if g3audit.exists() else {}
- report={'stage':'G5_ADJUSTMENT_CHAIN','pass':not errors,'coverage_start':'2015-01-01','coverage_end':'2026-07-24','official_action_count':len(actions),'adjustment_event_count':len(result),'g3_trade_rows_scanned':trade_rows,'g4_control_rows_scanned':g4_rows_scanned,'suspended_reference_bootstrap_whitelist_count':len(whitelist),'suspended_reference_bootstrap_count':len(bootstraps),'suspended_reference_bootstraps':bootstraps,'g3_dataset_fingerprint':g3meta.get('dataset_fingerprint'),'adjustment_chain_sha256':digest,'errors':errors}
+ report={'stage':'G5_ADJUSTMENT_CHAIN','pass':not errors,'coverage_start':'2015-01-01','coverage_end':'2026-07-24','official_action_count':len(actions),'adjustment_event_count':len(result),'g3_trade_rows_scanned':trade_rows,'g4_control_rows_scanned':g4_rows_scanned,'g4_action_controls_found':len(g4_controls),'g4_action_controls_missing':len(missing_g4_controls),'material_reference_delta_threshold':str(MATERIAL_REFERENCE_DELTA),'material_share_distribution_semantic_override_count':len(semantic_overrides),'material_share_distribution_semantic_overrides':semantic_overrides[:200],'material_nonshare_discrepancy_count':len(nonshare_material),'material_nonshare_discrepancies':nonshare_material[:100],'suspended_reference_bootstrap_whitelist_count':len(whitelist),'suspended_reference_bootstrap_count':len(bootstraps),'suspended_reference_bootstraps':bootstraps,'g3_dataset_fingerprint':g3meta.get('dataset_fingerprint'),'adjustment_chain_sha256':digest,'price_adjustment_policy':'Use exact official-action formula with G3 prior close for ordinary events. If the formula-implied ex-reference differs from the point-in-time G4 ex-date market preclose by more than 1%, only share-distribution events (bonus/capital transfer) may use the G4 market preclose as an explicit material semantic override; cash-only/other material discrepancies fail closed. Every override is logged and must subsequently pass the BaoStock back-factor control.','errors':errors}
  (out/'g5_adjustment_audit.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8');print(json.dumps(report,ensure_ascii=False,indent=2));return 0 if not errors else 2
 if __name__=='__main__':sys.exit(main())
