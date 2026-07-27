@@ -29,7 +29,7 @@ def detect_period(rows,listed_to):
     return {'first_date':later[0],'last_date':later[-1],'trade_dates':set(later),'trade_days':len(later),'regime':regime}
  return None
 def main():
- ap=argparse.ArgumentParser();ap.add_argument('--input',required=True);ap.add_argument('--out',required=True);a=ap.parse_args();src=Path(a.input);out=Path(a.out);out.mkdir(parents=True,exist_ok=True);ends=lifecycle_end();summary={'periods':[],'rewritten_rows':0,'relisting_overrides':[]}
+ ap=argparse.ArgumentParser();ap.add_argument('--input',required=True);ap.add_argument('--out',required=True);a=ap.parse_args();src=Path(a.input);out=Path(a.out);out.mkdir(parents=True,exist_ok=True);ends=lifecycle_end();summary={'periods':[],'rewritten_rows':0,'relisting_overrides':[],'remaining_unclassified':[]}
  for sid in range(16):
   inp=src/f'g4_state_shard{sid:02d}.csv.gz';mp=src/f'g4_manifest_shard{sid:02d}.json'
   if not inp.exists() or not mp.exists():raise FileNotFoundError(f'missing shard {sid}')
@@ -54,10 +54,12 @@ def main():
     r=matches[0];target=('RELISTING_FIRST_DAY_NO_LIMIT','','','EXCHANGE_OFFICIAL_RELISTING_ANNOUNCEMENT+OFFLINE_OVERRIDE')
     if (r['limit_rule'],r['limit_up_rate'],r['limit_down_rate'])!=target[:3]:summary['rewritten_rows']+=1
     r['limit_rule'],r['limit_up_rate'],r['limit_down_rate'],r['evidence']=target;relist.append({'exchange':k[0],'code':k[1],'date':rd})
-  rows.sort(key=lambda r:(r['trade_date'],r['exchange'],r['code']));op=out/inp.name
+  rows.sort(key=lambda r:(r['trade_date'],r['exchange'],r['code']))
+  remaining=[{'exchange':r['exchange'],'code':r['code'],'date':r['trade_date'],'pctChg':r['pct_chg']} for r in rows if r['limit_rule']=='UNCLASSIFIED_SPECIAL_NO_LIMIT']
+  op=out/inp.name
   with gzip.open(op,'wt',encoding='utf-8',newline='',compresslevel=9) as f:w=csv.DictWriter(f,fieldnames=FIELDS);w.writeheader();w.writerows(rows)
-  m=json.loads(mp.read_text(encoding='utf-8'));m['delisting_periods']=periods;m['delisting_first_days']=[{'exchange':p['exchange'],'code':p['code'],'date':p['first_date']} for p in periods];m['relisting_overrides']=relist;m['data_file']=op.name;m['data_sha256']=sha(op);m['offline_delisting_rule_reclassified']=True;m['offline_relisting_rule_reclassified']=True
-  (out/mp.name).write_text(json.dumps(m,ensure_ascii=False,indent=2),encoding='utf-8');summary['periods']+=periods;summary['relisting_overrides']+=relist
+  m=json.loads(mp.read_text(encoding='utf-8'));m['delisting_periods']=periods;m['delisting_first_days']=[{'exchange':p['exchange'],'code':p['code'],'date':p['first_date']} for p in periods];m['relisting_overrides']=relist;m['unclassified_special_days']=remaining;m['data_file']=op.name;m['data_sha256']=sha(op);m['offline_delisting_rule_reclassified']=True;m['offline_relisting_rule_reclassified']=True;m['offline_unclassified_manifest_rebuilt']=True
+  (out/mp.name).write_text(json.dumps(m,ensure_ascii=False,indent=2),encoding='utf-8');summary['periods']+=periods;summary['relisting_overrides']+=relist;summary['remaining_unclassified']+=remaining
  (out/'g4_reclassification.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding='utf-8')
- print(json.dumps({'period_count':len(summary['periods']),'relisting_overrides':len(summary['relisting_overrides']),'rewritten_rows':summary['rewritten_rows'],'regimes':{x:sum(p['regime']==x for p in summary['periods']) for x in sorted({p['regime'] for p in summary['periods']})}},ensure_ascii=False));return 0
+ print(json.dumps({'period_count':len(summary['periods']),'relisting_overrides':len(summary['relisting_overrides']),'rewritten_rows':summary['rewritten_rows'],'remaining_unclassified':len(summary['remaining_unclassified']),'regimes':{x:sum(p['regime']==x for p in summary['periods']) for x in sorted({p['regime'] for p in summary['periods']})}},ensure_ascii=False));return 0
 if __name__=='__main__':sys.exit(main())
