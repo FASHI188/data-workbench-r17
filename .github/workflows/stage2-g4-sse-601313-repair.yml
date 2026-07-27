@@ -1,0 +1,96 @@
+name: Stage2 G4 SSE 601313 Identity Repair
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'config/security_code_transitions.json'
+      - 'scripts/reclassify_g4_delisting_rules.py'
+      - 'scripts/audit_g4_security_state.py'
+      - '.github/workflows/stage2-g4-sse-601313-repair.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  G2_REPAIR_RUN: '30262550161'
+  G3_REPAIR_RUN: '30263014914'
+  G4_FROZEN_RUN: '30233614162'
+
+jobs:
+  remap-and-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore corrected G2 lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf g2
+          gh run download "$G2_REPAIR_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage2-g2-historical-evidence -D g2
+          cp g2/security_intervals.csv data/security_lifecycle/security_intervals.csv
+      - name: Restore repaired G3 official OHLCV
+        run: |
+          rm -rf g3-repair
+          gh run download "$G3_REPAIR_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage2-g3-sse-601313-repaired-ohlcv -D g3-repair
+      - name: Restore frozen G4 source state
+        run: |
+          rm -rf frozen-g4
+          gh run download "$G4_FROZEN_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage2-g4-daily-security-state -D frozen-g4
+      - name: Offline code-time remap and rule reclassification
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=$(dirname "$(find frozen-g4 -name 'g4_state_shard00.csv.gz' -print -quit)")
+          test -n "$src"
+          python scripts/reclassify_g4_delisting_rules.py \
+            --input "$src" --out build/g4-601313-repair
+      - name: Full G4 hard audit against repaired G3
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/security_state
+          g3root=$(dirname "$(find g3-repair -path '*/szse' -type d -print -quit)")
+          test -n "$g3root"
+          python scripts/audit_g4_security_state.py \
+            --root build/g4-601313-repair \
+            --g3-root "$g3root" \
+            --out data/security_state \
+            > data/security_state/audit_stdout.log \
+            2> data/security_state/audit_stderr.log
+          code=$?
+          echo "G4_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/security_state/g4_audit.json || true
+          cat data/security_state/audit_stderr.log || true
+          exit 0
+      - name: Assert affected identity remap occurred
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p='build/g4-601313-repair/g4_reclassification.json'
+          x=json.load(open(p,encoding='utf-8'))
+          ts=x.get('identity_transitions') or []
+          assert any(t.get('exchange')=='SSE' and t.get('old_code')=='601313' and t.get('new_code')=='601360' and t.get('effective_date')=='2018-02-28' for t in ts), ts
+          assert int(x.get('identity_remapped_rows') or 0) > 0, x
+          print(json.dumps({'identity_remapped_rows':x.get('identity_remapped_rows'),'transition_present':True},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage2-g4-sse-601313-repaired-state
+          path: |
+            build/g4-601313-repair
+            data/security_state
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve fail-closed G4 status
+        if: env.G4_EXIT != '0'
+        run: exit 1
