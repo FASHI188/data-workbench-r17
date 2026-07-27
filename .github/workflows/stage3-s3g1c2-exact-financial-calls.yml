@@ -1,0 +1,44 @@
+name: Stage3 S3G1C2 Exact CNINFO Financial Calls
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [stage3-point-in-time-features]
+    paths:
+      - 'scripts/extract_stage3_cninfo_financial_calls.py'
+      - '.github/workflows/stage3-s3g1c2-exact-financial-calls.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Extract exact financial table API calls and preserve diagnostics
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_source_probe
+          python scripts/extract_stage3_cninfo_financial_calls.py \
+            > data/stage3_source_probe/exact_calls_stdout.log \
+            2> data/stage3_source_probe/exact_calls_stderr.log
+          code=$?
+          echo "S3G1C2_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_source_probe/cninfo_financial_table_calls.json || true
+          cat data/stage3_source_probe/exact_calls_stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1c2-exact-financial-calls
+          path: data/stage3_source_probe
+          retention-days: 90
+      - name: Preserve fail-closed extraction status
+        if: env.S3G1C2_EXIT != '0'
+        run: exit 1
