@@ -1,5 +1,6 @@
 name: Stage3 S3G1C2 Exact CNINFO Financial Calls
 
+# Explicit post-creation push trigger for GitHub Actions.
 on:
   workflow_dispatch:
   push:
