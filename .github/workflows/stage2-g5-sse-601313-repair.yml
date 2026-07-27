@@ -138,7 +138,8 @@ jobs:
         run: |
           set +e
           mkdir -p data/g5-adjustment
-          g3root=$(dirname "$(find g3-repair -path '*/build/g3/szse' -type d -print -quit)")
+          szdir=$(find g3-repair -path '*/build/g3/szse' -type d -print -quit)
+          g3root=$(dirname "$(dirname "$(dirname "$szdir")")")
           g4root=$(dirname "$(find g4-repair -name 'g4_state_shard00.csv.gz' -print -quit)")
           test -n "$g3root" && test -n "$g4root"
           python scripts/build_g5_adjustment_from_g3.py \
