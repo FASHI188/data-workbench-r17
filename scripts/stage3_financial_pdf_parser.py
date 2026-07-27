@@ -32,6 +32,8 @@ TIER1_ALIASES = {
         "扣除非经常性损益后归属于母公司股东的净利润",
         "扣除非经常性损益后归属于本行股东的净利润",
         "归属于本行股东的扣除非经常性损益的净利润",
+        "扣除非经常性损益后归属于本公司股东的净利润",
+        "归属于本公司股东的扣除非经常性损益的净利润",
     ],
     "NET_CASH_FLOW_FROM_OPERATING_ACTIVITIES": ["经营活动产生的现金流量净额"],
     "TOTAL_ASSETS": ["总资产", "资产总额", "资产总计"],
@@ -41,6 +43,7 @@ TIER1_ALIASES = {
         "归属于母公司股东权益合计",
         "归属于母公司所有者权益（或股东权益）合计",
         "归属于本行普通股股东的股东权益",
+        "归属于普通股股东的股东权益",
         "归属于本公司股东的权益",
     ],
 }
@@ -57,7 +60,7 @@ TIER2_ALIASES = {
 }
 
 NUMBER_RE = re.compile(r"(?<![\d.])\(?-?\d[\d,]*(?:\.\d+)?\)?")
-UNIT_RE = re.compile(r"(?:货币)?单位\s*[：:]\s*(?:人民币)?\s*(百万元|亿元|万元|千元|元)")
+UNIT_RE = re.compile(r"(?:货币|金额)?单位\s*[：:]?\s*(?:均为)?(?:人民币)?\s*(百万元|亿元|万元|千元|元)")
 
 
 def norm(s: str) -> str:
@@ -76,10 +79,10 @@ def parse_num(token: str) -> Decimal | None:
     return -x if neg else x
 
 
-def detect_unit(text: str) -> tuple[str, Decimal]:
+def detect_unit(text: str) -> tuple[str | None, Decimal | None]:
     m = UNIT_RE.search(text or "")
     if not m:
-        return "元", Decimal("1")
+        return None, None
     unit = m.group(1)
     return unit, UNIT_MULTIPLIERS[unit]
 
@@ -90,8 +93,6 @@ def semantic_row_match(combined: str, alias: str, concept: str) -> bool:
     pos = c.find(a)
     if pos < 0:
         return False
-    # A metric label should begin near the left side of its row.  This rejects
-    # narrative references and most percentage/change columns.
     if pos > 10:
         return False
     if concept == "TOTAL_LIABILITIES" and ("流动负债合计" in c or "非流动负债合计" in c):
@@ -102,7 +103,7 @@ def semantic_row_match(combined: str, alias: str, concept: str) -> bool:
         return False
     if concept == "OPERATING_COST" and any(x in c for x in ("营业成本比", "营业成本率", "营业成本变动")):
         return False
-    if concept == "OPERATING_REVENUE" and any(x in c for x in ("营业收入比", "营业收入增长", "营业收入变动原因")):
+    if concept == "OPERATING_REVENUE" and any(x in c for x in ("营业收入比", "营业收入增长", "营业收入变动原因", "营业收入占比")):
         return False
     return True
 
@@ -119,7 +120,6 @@ def numeric_tokens_after_alias(combined: str, alias: str) -> list[tuple[str, Dec
         val = parse_num(m.group(0))
         if val is not None:
             out.append((m.group(0), val))
-    # Statement rows often have a note index before the two monetary columns.
     if len(out) >= 3:
         raw0, v0 = out[0]
         if "," not in raw0 and "." not in raw0 and not raw0.startswith("(") and Decimal("0") <= v0 <= Decimal("300"):
@@ -146,6 +146,19 @@ def page_lines(page: fitz.Page) -> list[str]:
     return [x.strip() for x in txt.splitlines() if x.strip()]
 
 
+def page_unit_context(doc: fitz.Document, pno: int) -> tuple[str | None, Decimal | None]:
+    # Old filings often state “单位：人民币百万元” on the first page of a
+    # multi-page table and omit it from continuation pages.  Search current page
+    # first, then up to two immediately preceding pages; never infer from a later page.
+    for q in (pno, pno - 1, pno - 2):
+        if q < 0:
+            continue
+        unit, mult = detect_unit(doc[q].get_text("text") or "")
+        if unit is not None:
+            return unit, mult
+    return None, None
+
+
 def find_metric_in_pages(
     doc: fitz.Document,
     page_indexes: Iterable[int],
@@ -162,9 +175,7 @@ def find_metric_in_pages(
         lines = page_lines(page)
         if not lines:
             continue
-        page_text = "\n".join(lines)
-        unit, mult = detect_unit(page_text)
-        # Use up to four adjacent lines to survive wrapped Chinese labels.
+        unit, mult = page_unit_context(doc, pno)
         for i in range(len(lines)):
             for width in (1, 2, 3, 4):
                 if i + width > len(lines):
@@ -177,6 +188,11 @@ def find_metric_in_pages(
                     if not nums:
                         continue
                     raw_token, val = nums[0]
+                    # A monetary observation without an explicit unit context is not
+                    # safe.  This is what previously let “营业收入 ... 572.41” from a
+                    # ratio/narrative page masquerade as 572.41 yuan.
+                    if unit is None or mult is None:
+                        continue
                     value_cny = val * mult
                     return Observation(
                         concept=concept,
@@ -204,19 +220,19 @@ def candidate_statement_pages(doc: fitz.Document) -> list[int]:
         if "财务报告" in t or "财务报表" in t:
             base = max(0, int(pno) - 1)
             pages.extend(range(max(0, base - 3), min(doc.page_count, base + 18)))
-    # Quarterly/interim reports usually place statements near the front.
-    pages.extend(range(0, min(doc.page_count, 28)))
+    pages.extend(range(0, min(doc.page_count, 32)))
     out = []
     seen = set()
     for p in pages:
         if p not in seen:
-            seen.add(p); out.append(p)
+            seen.add(p)
+            out.append(p)
     return out
 
 
 def parse_pdf_bytes(raw: bytes) -> dict:
     doc = fitz.open(stream=raw, filetype="pdf")
-    first_pages = list(range(0, min(doc.page_count, 18)))
+    first_pages = list(range(0, min(doc.page_count, 20)))
     obs: dict[str, Observation] = {}
     for concept, aliases in TIER1_ALIASES.items():
         obs[concept] = find_metric_in_pages(doc, first_pages, aliases, concept, "EARLY_REPORT_SUMMARY")
