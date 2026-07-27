@@ -1,0 +1,30 @@
+name: Stage2 CNINFO Raw Rights Probe
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/probe_cninfo_raw_rights.py'
+      - '.github/workflows/stage2-cninfo-raw-rights-probe.yml'
+      - 'config/cninfo_raw_rights_probe_trigger.json'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests akshare py-mini-racer
+      - run: python scripts/probe_cninfo_raw_rights.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage2-cninfo-raw-rights-probe
+          path: data/cninfo_raw_rights_probe
+          retention-days: 7
