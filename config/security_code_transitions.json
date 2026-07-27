@@ -1,0 +1,24 @@
+[
+  {
+    "exchange": "SZSE",
+    "old_code": "000022",
+    "new_code": "001872",
+    "effective_date": "2018-12-26",
+    "old_name": "深赤湾A",
+    "new_name": "招商港口",
+    "source_url": "https://static.cninfo.com.cn/finalpage/2018-12-21/1205681867.PDF",
+    "source_sha256": "5e8ef15c53baeee695cd2d48caaf73654401c2c6403aad2c9a191aae89624a20",
+    "evidence_class": "POINT_IN_TIME_PRIMARY"
+  },
+  {
+    "exchange": "SZSE",
+    "old_code": "000043",
+    "new_code": "001914",
+    "effective_date": "2019-12-16",
+    "old_name": "中航善达",
+    "new_name": "招商积余",
+    "source_url": "https://static.cninfo.com.cn/finalpage/2019-12-16/1207164397.PDF",
+    "source_sha256": "46160431c51df23c30b3be802eb140492255128fb166d103ed735a62f303ab05",
+    "evidence_class": "POINT_IN_TIME_PRIMARY"
+  }
+]

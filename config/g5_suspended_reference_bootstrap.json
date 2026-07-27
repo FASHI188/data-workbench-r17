@@ -1,0 +1,12 @@
+[
+  {
+    "exchange": "SSE",
+    "code": "600649",
+    "ex_date": "2015-06-19",
+    "expected_prior_reference_price": "7.23",
+    "source_url": "https://static.cninfo.com.cn/finalpage/2015-03-30/1200752861.PDF",
+    "source_sha256": "dc23608145b8bea02e23d2af3ca9a0006403344b73922b069f2dbc3be26a05f3",
+    "evidence_class": "POINT_IN_TIME_FILED_DISCLOSURE_CONTROL",
+    "note": "Filed fund annual report records 600649 suspended since 2014-11-03 for major asset restructuring with period-end valuation/reference price 7.23; used only as an independent control for G4 suspended-date preclose inversion."
+  }
+]

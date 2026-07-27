@@ -1,14 +1,14 @@
 name: Stage2 G4 Full Daily Security State
 
+# Full-market BaoStock rebuilds are an explicit maintenance operation only.
+# Audit/reclassification changes must consume the frozen G4 source artifact instead of
+# spawning another network crawl of the entire universe.
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/build_g4_security_state_single_session.py'
-      - 'scripts/audit_g4_security_state.py'
-      - '.github/workflows/stage2-g4-full.yml'
-      - 'config/g4_full_trigger.json'
+
+concurrency:
+  group: stage2-g4-full-manual
+  cancel-in-progress: true
 
 permissions:
   contents: read

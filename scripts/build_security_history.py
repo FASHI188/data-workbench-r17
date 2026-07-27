@@ -1,14 +1,23 @@
 #!/usr/bin/env python3
-"""Build survivorship-free security life intervals from official lifecycle events."""
+"""Build survivorship-free security life intervals from official lifecycle events.
+
+Security identity is code-time specific. When an exchange changes the A-share code of the
+same listed legal entity, the predecessor code is closed on the official effective date and
+the successor code starts on that date. This prevents historical bars/actions from being
+retroactively relabelled with today's code.
+"""
 from __future__ import annotations
 
 import argparse
 import csv
 import json
 import sys
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, replace
 from datetime import date
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+TRANSITIONS = ROOT / "config/security_code_transitions.json"
 
 
 @dataclass(frozen=True)
@@ -67,6 +76,31 @@ def load_events(path: Path) -> list[Event]:
     return rows
 
 
+def load_transitions(path: Path = TRANSITIONS) -> list[dict[str, str]]:
+    if not path.exists():
+        return []
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, list):
+        raise ValueError("security_code_transitions.json must be a list")
+    out: list[dict[str, str]] = []
+    seen_old: set[tuple[str, str]] = set()
+    seen_new: set[tuple[str, str]] = set()
+    for i, t in enumerate(raw):
+        required = {"exchange","old_code","new_code","effective_date","old_name","new_name","source_url","source_sha256","evidence_class"}
+        if not isinstance(t, dict) or not required <= set(t):
+            raise ValueError(f"bad code transition #{i}: missing fields")
+        ex = str(t["exchange"]); old = str(t["old_code"]); new = str(t["new_code"])
+        if ex not in {"SSE","SZSE"} or not (old.isdigit() and len(old)==6 and new.isdigit() and len(new)==6) or old == new:
+            raise ValueError(f"bad code transition identity #{i}: {t}")
+        date.fromisoformat(str(t["effective_date"]))
+        if len(str(t["source_sha256"])) != 64:
+            raise ValueError(f"bad code transition sha #{i}")
+        if (ex, old) in seen_old or (ex, new) in seen_new:
+            raise ValueError(f"duplicate transition identity #{i}: {t}")
+        seen_old.add((ex, old)); seen_new.add((ex, new)); out.append({k:str(v) for k,v in t.items()})
+    return sorted(out, key=lambda x:(x["exchange"],x["effective_date"],x["old_code"],x["new_code"]))
+
+
 def build_intervals(events: list[Event]) -> list[Interval]:
     grouped: dict[tuple[str, str], list[Event]] = {}
     for e in events:
@@ -114,6 +148,27 @@ def build_intervals(events: list[Event]) -> list[Interval]:
     return sorted(intervals, key=lambda x: (x.exchange, x.code, x.listed_from))
 
 
+def apply_code_transitions(intervals: list[Interval], transitions: list[dict[str,str]]) -> list[Interval]:
+    by_key = {(r.exchange, r.code): r for r in intervals}
+    if len(by_key) != len(intervals):
+        raise ValueError("multiple base lifecycle intervals per security are not supported before code-transition overlay")
+    for t in transitions:
+        ex=t["exchange"]; old=t["old_code"]; new=t["new_code"]; eff=t["effective_date"]; ev=t["evidence_class"]
+        nk=(ex,new); ok=(ex,old); current=by_key.get(nk)
+        if current is None:
+            raise ValueError(f"transition successor absent from base intervals: {nk}")
+        if ok in by_key:
+            raise ValueError(f"transition predecessor already exists in base intervals: {ok}")
+        if current.listed_to_exclusive is not None:
+            raise ValueError(f"transition successor is not current/open: {nk}")
+        if not (date.fromisoformat(current.listed_from) < date.fromisoformat(eff)):
+            raise ValueError(f"transition effective date must be after inherited entity listing date: {t}")
+        inherited_start=current.listed_from; inherited_ev=current.list_evidence_class
+        by_key[ok]=Interval(ex,old,t["old_name"],inherited_start,eff,inherited_ev,ev)
+        by_key[nk]=replace(current,name=t["new_name"],listed_from=eff,list_evidence_class=ev)
+    return sorted(by_key.values(), key=lambda x:(x.exchange,x.code,x.listed_from))
+
+
 def write_csv(path: Path, rows: list[Interval]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fields = list(Interval.__annotations__.keys())
@@ -127,6 +182,7 @@ def write_csv(path: Path, rows: list[Interval]) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--events", default="data/security_lifecycle/events.csv")
+    ap.add_argument("--transitions", default=str(TRANSITIONS.relative_to(ROOT)))
     ap.add_argument("--out", default="data/security_lifecycle/security_intervals.csv")
     args = ap.parse_args()
 
@@ -135,11 +191,11 @@ def main() -> int:
         print(json.dumps({"status": "FAIL", "reason": f"missing {events_path}"}, ensure_ascii=False))
         return 2
     events = load_events(events_path)
-    intervals = build_intervals(events)
+    intervals = apply_code_transitions(build_intervals(events), load_transitions(Path(args.transitions)))
     if not intervals:
         raise RuntimeError("no lifecycle intervals built")
     write_csv(Path(args.out), intervals)
-    print(json.dumps({"status": "BUILT", "events": len(events), "intervals": len(intervals)}, ensure_ascii=False))
+    print(json.dumps({"status":"BUILT","events":len(events),"code_transitions":len(load_transitions(Path(args.transitions))),"intervals":len(intervals)},ensure_ascii=False))
     return 0
 
 
