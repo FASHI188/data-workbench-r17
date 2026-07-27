@@ -6,6 +6,12 @@ on:
     branches: [agent/stage2-security-identity-final]
     paths:
       - 'config/g4_identity_final_trigger.json'
+  pull_request:
+    branches: [main]
+    types: [reopened, synchronize]
+    paths:
+      - 'config/g4_identity_final_trigger.json'
+      - '.github/workflows/stage2-g4-identity-final.yml'
 
 permissions:
   contents: read
