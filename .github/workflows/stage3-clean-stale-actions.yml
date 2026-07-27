@@ -1,5 +1,6 @@
 name: Stage3 Cleanup Stale Actions Queue
 
+# Keep only the current validation-head Actions runs.
 on:
   pull_request:
     branches: [stage3-point-in-time-features]
