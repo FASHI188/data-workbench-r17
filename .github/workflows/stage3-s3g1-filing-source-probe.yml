@@ -17,11 +17,18 @@ on:
 
 permissions:
   contents: read
+  actions: read
+
+env:
+  G2_FROZEN_RUN: '30242396006'
+  G2_INTERVALS_SHA256: '855835d153b52bc20ffde055cab20154534d3e1301815fa24a54d6e0cd2ace6f'
 
 jobs:
   filing-source-probe:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,6 +36,16 @@ jobs:
           python-version: '3.12'
       - name: Install runtime dependency
         run: python -m pip install --disable-pip-version-check requests
+      - name: Restore exact frozen Stage2 G2 lifecycle universe
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/stage2-g2
+          gh run download "$G2_FROZEN_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage2-g2-historical-evidence -D /tmp/stage2-g2
+          test -f /tmp/stage2-g2/security_intervals.csv
+          echo "$G2_INTERVALS_SHA256  /tmp/stage2-g2/security_intervals.csv" | sha256sum -c -
+          cp /tmp/stage2-g2/security_intervals.csv data/security_lifecycle/security_intervals.csv
       - name: Probe CNINFO periodic filing source and preserve diagnostics
         shell: bash
         run: |
