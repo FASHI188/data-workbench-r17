@@ -1,0 +1,7 @@
+{
+  "trigger": "stage2_g4_identity_final",
+  "g2_source_run": 30242396006,
+  "g3_identity_run": 30242395968,
+  "g4_frozen_run": 30233614162,
+  "requested_at": "2026-07-27T07:00:00+08:00"
+}
