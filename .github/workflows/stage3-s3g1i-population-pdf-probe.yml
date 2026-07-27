@@ -1,5 +1,6 @@
 name: Stage3 S3G1I Stratified PDF Population Probe
 
+# Gate full-market PDF extraction with a stratified 2015-2026 population check.
 on:
   workflow_dispatch:
   pull_request:
