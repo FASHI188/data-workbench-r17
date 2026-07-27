@@ -1,0 +1,41 @@
+name: Stage3 Cleanup Stale Actions Queue
+
+on:
+  pull_request:
+    branches: [stage3-point-in-time-features]
+    paths:
+      - '.github/workflows/stage3-clean-stale-actions.yml'
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      KEEP_FROM_RUN_ID: '30275100000'
+    steps:
+      - name: Cancel obsolete queued/in-progress runs created before PR32 validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo="$GITHUB_REPOSITORY"
+          gh api --paginate "repos/$repo/actions/runs?per_page=100&status=queued" \
+            --jq '.workflow_runs[].id' > /tmp/queued.txt || true
+          gh api --paginate "repos/$repo/actions/runs?per_page=100&status=in_progress" \
+            --jq '.workflow_runs[].id' > /tmp/running.txt || true
+          cat /tmp/queued.txt /tmp/running.txt | sort -nu > /tmp/candidates.txt
+          cancelled=0
+          while read -r run; do
+            test -n "$run" || continue
+            if [ "$run" -lt "$KEEP_FROM_RUN_ID" ]; then
+              echo "Cancelling obsolete run $run"
+              gh run cancel "$run" -R "$repo" || true
+              cancelled=$((cancelled+1))
+            fi
+          done < /tmp/candidates.txt
+          echo "Cancelled/attempted obsolete runs: $cancelled"
+          echo "Preserved current validation runs with ID >= $KEEP_FROM_RUN_ID"
