@@ -1,0 +1,140 @@
+name: Stage3 S3G1E Point-In-Time Periodic Filing Ledger
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [stage3-point-in-time-features]
+    paths:
+      - 'scripts/build_stage3_filing_ledger.py'
+      - 'scripts/finalize_stage3_filing_ledger.py'
+      - 'tests/test_stage3_filing_ledger.py'
+      - '.github/workflows/stage3-s3g1e-filing-ledger.yml'
+  pull_request:
+    branches: [main]
+    types: [synchronize, reopened]
+    paths:
+      - 'scripts/build_stage3_filing_ledger.py'
+      - 'scripts/finalize_stage3_filing_ledger.py'
+      - 'tests/test_stage3_filing_ledger.py'
+      - '.github/workflows/stage3-s3g1e-filing-ledger.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  G2_FROZEN_RUN: '30242396006'
+  G2_INTERVALS_SHA256: '855835d153b52bc20ffde055cab20154534d3e1301815fa24a54d6e0cd2ace6f'
+  G3_FROZEN_RUN: '30242395968'
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Filing-ledger regression tests
+        run: python -m unittest tests.test_stage3_filing_ledger -v
+
+  build:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Restore exact frozen Stage2 G2 lifecycle universe
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/stage2-g2
+          gh run download "$G2_FROZEN_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage2-g2-historical-evidence -D /tmp/stage2-g2
+          echo "$G2_INTERVALS_SHA256  /tmp/stage2-g2/security_intervals.csv" | sha256sum -c -
+          cp /tmp/stage2-g2/security_intervals.csv data/security_lifecycle/security_intervals.csv
+      - name: Build immutable CNINFO filing metadata shard
+        shell: bash
+        run: |
+          set +e
+          out="build/stage3-filings/shard${{ matrix.shard }}"
+          mkdir -p "$out"
+          python scripts/build_stage3_filing_ledger.py \
+            --shard ${{ matrix.shard }} --shards 8 --out "$out" \
+            > "$out/stdout.log" 2> "$out/stderr.log"
+          code=$?
+          echo "S3G1E_SHARD_EXIT=$code" >> "$GITHUB_ENV"
+          cat "$out"/filing_ledger_shard*.manifest.json || true
+          cat "$out/stderr.log" || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1e-filing-ledger-${{ matrix.shard }}
+          path: build/stage3-filings/shard${{ matrix.shard }}
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve shard fail-closed status
+        if: env.S3G1E_SHARD_EXIT != '0'
+        run: exit 1
+
+  finalize:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g1e-filing-ledger-*
+          path: build/stage3-filings/all
+          merge-multiple: true
+      - name: Restore frozen G2 and G3 dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/stage2-g2 /tmp/stage2-g3
+          gh run download "$G2_FROZEN_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage2-g2-historical-evidence -D /tmp/stage2-g2
+          echo "$G2_INTERVALS_SHA256  /tmp/stage2-g2/security_intervals.csv" | sha256sum -c -
+          gh run download "$G3_FROZEN_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage2-g3-identity-repaired-ohlcv -D /tmp/stage2-g3
+      - name: Finalize availability, revision chains and code-time identity
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_filings
+          python scripts/finalize_stage3_filing_ledger.py \
+            --root build/stage3-filings/all \
+            --g2-intervals /tmp/stage2-g2/security_intervals.csv \
+            --g3-root /tmp/stage2-g3 \
+            --out data/stage3_filings \
+            > data/stage3_filings/stdout.log \
+            2> data/stage3_filings/stderr.log
+          code=$?
+          echo "S3G1E_FINAL_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_filings/stage3_periodic_filing_ledger_audit.json || true
+          cat data/stage3_filings/stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1e-periodic-filing-ledger-final
+          path: data/stage3_filings
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve final fail-closed status
+        if: env.S3G1E_FINAL_EXIT != '0'
+        run: exit 1
