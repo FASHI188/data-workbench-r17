@@ -2,14 +2,13 @@
 from __future__ import annotations
 
 import extract_stage3_financial_pdf_values_v6 as v9
-from stage3_financial_pdf_parser_v6 import parse_pdf_bytes as v11_parse_pdf_bytes
+from stage3_financial_pdf_parser_v7 import parse_pdf_bytes as v11_parse_pdf_bytes
 
 METHOD = "CNINFO_ORIGINAL_PDF_PYMUPDF_V7_GRAMMAR_ALIAS_REPAIR"
 
 
 def parse_pdf_bytes(raw: bytes) -> dict:
     parsed = dict(v11_parse_pdf_bytes(raw))
-    # Preserve the V9 original-PDF issuer identity witness.
     parsed["declared_a_share_codes"] = v9.declared_a_share_codes(raw)
     return parsed
 
