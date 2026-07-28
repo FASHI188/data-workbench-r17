@@ -1,0 +1,52 @@
+name: Stage3 S3G1J Repair Probe
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [stage3-point-in-time-features]
+    paths:
+      - 'scripts/stage3_financial_pdf_parser_v2.py'
+      - 'scripts/extract_stage3_financial_pdf_values.py'
+      - 'scripts/probe_stage3_financial_pdf_parser_v2.py'
+      - 'tests/test_stage3_financial_tie_resolution.py'
+      - '.github/workflows/stage3-s3g1j-repair-probe.yml'
+
+permissions:
+  contents: read
+
+env:
+  PYTHONPATH: scripts
+
+jobs:
+  repair-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Synthetic issuer, tie-resolution and accounting regressions
+        run: python -m unittest tests.test_stage3_financial_tie_resolution -v
+      - name: Re-run locked official PDF parser samples with V2 parser
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_source_probe_v2
+          python scripts/probe_stage3_financial_pdf_parser_v2.py \
+            > data/stage3_source_probe_v2/stdout.log \
+            2> data/stage3_source_probe_v2/stderr.log
+          code=$?
+          echo "S3G1J_REPAIR_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_source_probe_v2/financial_pdf_parser_v2_probe.json || true
+          cat data/stage3_source_probe_v2/stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-repair-probe
+          path: data/stage3_source_probe_v2
+          retention-days: 90
+      - name: Preserve repair fail-closed status
+        if: env.S3G1J_REPAIR_EXIT != '0'
+        run: exit 1
