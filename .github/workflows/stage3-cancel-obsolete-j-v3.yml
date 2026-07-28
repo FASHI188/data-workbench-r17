@@ -1,0 +1,34 @@
+name: Stage3 Cancel Obsolete S3G1J V3 Run
+
+on:
+  pull_request:
+    branches: [stage3-point-in-time-features]
+    paths:
+      - '.github/workflows/stage3-cancel-obsolete-j-v3.yml'
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Cancel only obsolete full J V3 run
+        shell: bash
+        run: |
+          set -euo pipefail
+          run=30331347830
+          status=$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json status --jq .status || true)
+          case "$status" in
+            queued|in_progress|waiting|requested|pending)
+              echo "Cancelling obsolete S3G1J V3 run $run status=$status"
+              gh run cancel "$run" -R "$GITHUB_REPOSITORY"
+              ;;
+            *)
+              echo "No cancellation needed for $run status=$status"
+              ;;
+          esac
