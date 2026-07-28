@@ -5,6 +5,8 @@ on:
   pull_request:
     branches: [stage3-point-in-time-features]
     paths:
+      - 'scripts/stage3_capco_discovery.py'
+      - 'scripts/build_stage3_capco_industry_ledger_v2.py'
       - '.github/workflows/stage3-s3g3b-industry-ledger.yml'
 
 permissions:
