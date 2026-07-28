@@ -6,8 +6,10 @@ on:
     paths:
       - '.github/workflows/stage3-s3g1j-parser-grammar-v11.yml'
       - 'scripts/stage3_financial_pdf_parser_v6.py'
+      - 'scripts/stage3_financial_pdf_parser_v7.py'
       - 'scripts/extract_stage3_financial_pdf_values_v7.py'
       - 'scripts/probe_stage3_s3g1j_parser_grammar_v11.py'
+      - 'scripts/probe_stage3_s3g1j_parser_grammar_v11_1.py'
       - 'tests/test_stage3_financial_pdf_parser_v11.py'
   workflow_dispatch:
 
@@ -28,8 +30,8 @@ jobs:
       - run: python -m pip install --disable-pip-version-check requests pymupdf
       - name: Run V11 grammar unit regressions
         run: python -m unittest tests.test_stage3_financial_pdf_parser_v11 -v
-      - name: Run exact official-PDF V11 regression
-        run: python scripts/probe_stage3_s3g1j_parser_grammar_v11.py
+      - name: Run exact official-PDF V11.1 regression
+        run: python scripts/probe_stage3_s3g1j_parser_grammar_v11_1.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
