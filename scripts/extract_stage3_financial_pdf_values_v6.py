@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import re
 from pathlib import Path
 
@@ -16,16 +17,36 @@ METHOD = "CNINFO_ORIGINAL_PDF_PYMUPDF_V6_PDF_ISSUER_GATE"
 CODE_LABEL_RE = re.compile(r"(?:证券代码|股票代码|公司代码)\s*[:：]?\s*([0-9]{6})")
 
 
+def _valid_code(value: object) -> str | None:
+    code = str(value or "")
+    return code if len(code) == 6 and code.isdigit() else None
+
+
 def _load_known_a_share_codes() -> set[str]:
-    path = ROOT / "data/security_lifecycle/security_intervals.csv"
+    """Recognize both active lifecycle codes and frozen historical transition endpoints."""
     out: set[str] = set()
-    if not path.exists():
-        return out
-    with path.open(encoding="utf-8", newline="") as f:
-        for r in csv.DictReader(f):
-            code = str(r.get("code") or "")
-            if len(code) == 6 and code.isdigit():
-                out.add(code)
+    path = ROOT / "data/security_lifecycle/security_intervals.csv"
+    if path.exists():
+        with path.open(encoding="utf-8", newline="") as f:
+            for r in csv.DictReader(f):
+                code = _valid_code(r.get("code"))
+                if code:
+                    out.add(code)
+
+    transition_path = ROOT / "config/security_code_transitions.json"
+    if transition_path.exists():
+        try:
+            transitions = json.loads(transition_path.read_text(encoding="utf-8"))
+        except Exception:
+            transitions = []
+        if isinstance(transitions, list):
+            for item in transitions:
+                if not isinstance(item, dict):
+                    continue
+                for key in ("old_code", "new_code"):
+                    code = _valid_code(item.get(key))
+                    if code:
+                        out.add(code)
     return out
 
 
@@ -39,10 +60,11 @@ def declared_a_share_codes(raw: bytes, max_pages: int = 6) -> list[str]:
     """Read explicit stock/company/security codes from the filing itself.
 
     CNINFO metadata can associate a subsidiary filing with a parent's query/orgId.
-    The original PDF is the final identity witness for numeric authority.  Only
+    The original PDF is the final identity witness for numeric authority. Only
     explicit labelled six-digit codes are considered; unlabelled numbers are
-    ignored.  Codes outside the frozen main-A lifecycle are diagnostic only and
-    do not trigger exclusion.
+    ignored. Codes outside the frozen main-A identity set (including registered
+    historical transition endpoints) are diagnostic only and do not trigger
+    exclusion.
     """
     doc = fitz.open(stream=raw, filetype="pdf")
     hits: set[str] = set()
@@ -75,8 +97,8 @@ def resolve_candidates(parsed: list[dict], canonical_id: str):
 
     for candidate in parsed:
         codes = set((candidate.get("parsed") or {}).get("declared_a_share_codes") or [])
-        # No explicit A-share code: preserve legacy fail-closed path; title,
-        # structural and value gates still decide the candidate.
+        # No explicit recognized A-share code: preserve the legacy fail-closed
+        # path; title, structural and value gates still decide the candidate.
         if not codes:
             eligible.append(candidate)
             continue
