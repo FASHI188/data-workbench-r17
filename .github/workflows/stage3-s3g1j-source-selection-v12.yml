@@ -1,0 +1,59 @@
+name: Stage3 S3G1J Source Selection V12
+
+on:
+  pull_request:
+    branches: [stage3-s3g1j-parser-grammar-v11]
+    paths:
+      - '.github/workflows/stage3-s3g1j-source-selection-v12.yml'
+      - 'scripts/select_stage3_financial_report_versions_v3.py'
+      - 'scripts/compare_stage3_financial_report_versions_v3.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  select-and-compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      FILING_LEDGER_RUN: '30265340486'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Restore frozen successful S3G1E filing ledger
+        run: |
+          rm -rf filing-ledger
+          gh run download "$FILING_LEDGER_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1e-periodic-filing-ledger-final -D filing-ledger
+          test -f filing-ledger/stage3_periodic_filing_ledger.csv.gz
+      - name: Rebuild frozen baseline S3G1G selector
+        run: |
+          mkdir -p data/stage3_source_selection_v12/baseline
+          python scripts/select_stage3_financial_report_versions.py \
+            --ledger filing-ledger/stage3_periodic_filing_ledger.csv.gz \
+            --out data/stage3_source_selection_v12/baseline
+      - name: Run V3 full-statement-aware selector
+        run: |
+          mkdir -p data/stage3_source_selection_v12/v3
+          python scripts/select_stage3_financial_report_versions_v3.py \
+            --ledger filing-ledger/stage3_periodic_filing_ledger.csv.gz \
+            --out data/stage3_source_selection_v12/v3
+      - name: Compare V3 with frozen baseline and enforce known corrections
+        run: |
+          python scripts/compare_stage3_financial_report_versions_v3.py \
+            --baseline data/stage3_source_selection_v12/baseline/stage3_financial_report_versions.csv.gz \
+            --v3 data/stage3_source_selection_v12/v3/stage3_financial_report_versions_v3.csv.gz \
+            --v3-audit data/stage3_source_selection_v12/v3/stage3_financial_report_versions_v3_audit.json \
+            --out data/stage3_source_selection_v12/source_selection_diff.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-source-selection-v12
+          path: data/stage3_source_selection_v12/
+          retention-days: 90
+          compression-level: 0
