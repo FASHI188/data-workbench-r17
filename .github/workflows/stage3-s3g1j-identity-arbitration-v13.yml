@@ -11,6 +11,10 @@ on:
       - 'scripts/probe_stage3_s3g1j_v13_selected_sources.py'
       - 'scripts/probe_stage3_s3g1j_v13_recovery_48.py'
       - 'tests/test_stage3_financial_pdf_parser_v13.py'
+      - 'scripts/select_stage3_financial_report_versions_v3.py'
+      - 'scripts/select_stage3_financial_report_versions_v3_1.py'
+      - 'scripts/compare_stage3_financial_report_versions_v3.py'
+      - 'scripts/build_stage3_partial_body_ledger_v12.py'
   workflow_dispatch:
 
 permissions:
