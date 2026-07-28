@@ -10,38 +10,37 @@ import stage3_financial_pdf_parser_v2 as v2
 import stage3_financial_pdf_parser_v3 as v3
 import stage3_financial_pdf_parser_v4 as v4
 
-# Exact statement-title discovery.  V6 only inspected the first 40 extracted
-# lines and only recognized the literal substring “合并资产负债表”.  Real filings
-# place the title later on a page and use variants such as
-# “合并及母公司资产负债表”.  Scan all short-ish lines, but reject narrative/note
-# phrases that merely mention a balance sheet.
-TITLE_REJECT_TOKENS = (
-    "项目分析",
-    "日后事项",
-    "表内敞口",
-    "表外敞口",
-    "平均总资产",
-    "主要项目如下",
-    "附注",
-    "目录",
+# V8 only accepts whole-line statement titles.  Scanning every extracted line is
+# necessary because compact quarterly/half-year reports can place the statement
+# title well after line 40, but matching arbitrary lines that merely *mention*
+# “资产负债表” would recreate the false-start problem in accounting notes.
+#
+# Supported real-world forms include:
+#   1、合并资产负债表
+#   2024年6月30日合并及母公司资产负债表
+#   国海证券股份有限公司合并及母公司资产负债表（未经审计）
+#   资产负债表
+# Parent-only titles are classified but never seed consolidated training truth.
+TITLE_RE = re.compile(
+    r"^(?:[一二三四五六七八九十\d]+[、.．])?"
+    r"(?:[\u4e00-\u9fffA-Za-z0-9*ＳＴST（）()·]+有限公司)?"
+    r"(?:\d{4}年\d{1,2}月\d{1,2}日)?"
+    r"(?P<title>合并及母公司资产负债表|合并资产负债表|母公司资产负债表|公司资产负债表|资产负债表)"
+    r"(?:（未经审计）|\(未经审计\))?$"
 )
 
 
 def _balance_title_kind(line: str) -> str | None:
     c = base.norm(line)
-    if "资产负债表" not in c or "续" in c:
+    if "续" in c:
         return None
-    if any(token in c for token in TITLE_REJECT_TOKENS):
+    m = TITLE_RE.fullmatch(c)
+    if not m:
         return None
-    # Long prose mentioning the statement is not a title.  Genuine titles can
-    # include issuer/date/audit qualifiers, so keep a generous ceiling.
-    if len(c) > 64:
-        return None
-    # Any explicit consolidated wording wins, including “合并及母公司”.
-    if "合并" in c:
+    title = m.group("title")
+    if title in ("合并及母公司资产负债表", "合并资产负债表"):
         return "CONSOLIDATED"
-    # Parent-only statements must never seed the consolidated training block.
-    if "母公司资产负债表" in c or ("公司资产负债表" in c and "合并" not in c):
+    if title in ("母公司资产负债表", "公司资产负债表"):
         return "PARENT_ONLY"
     return "GENERIC"
 
@@ -76,9 +75,9 @@ def _balance_sheet_start_pages(doc: fitz.Document) -> list[tuple[int, int]]:
             if unit and hits >= 2:
                 out.append((pno, 0))
 
-    # Nearby TOC/title/continuation hits may refer to the same statement block.
-    # Keep the earliest page at the highest priority; a five-page block window
-    # is large enough for the validated A/L/E terminal rows used below.
+    # Nearby duplicate title hits belong to one statement block.  Retain the
+    # earliest page at the highest priority; the validated parser still requires
+    # block-local unit plus A/L/E accounting identity before accepting values.
     dedup: list[tuple[int, int]] = []
     for pno, pri in sorted(out, key=lambda x: (x[0], -x[1])):
         if dedup and pno - dedup[-1][0] <= 2:
