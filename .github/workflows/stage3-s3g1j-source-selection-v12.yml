@@ -1,0 +1,91 @@
+name: Stage3 S3G1J Source Selection V12
+
+on:
+  pull_request:
+    branches: [stage3-s3g1j-parser-grammar-v11]
+    paths:
+      - '.github/workflows/stage3-s3g1j-source-selection-v12.yml'
+      - 'scripts/select_stage3_financial_report_versions_v3.py'
+      - 'scripts/select_stage3_financial_report_versions_v3_1.py'
+      - 'scripts/compare_stage3_financial_report_versions_v3.py'
+      - 'scripts/build_stage3_partial_body_ledger_v12.py'
+      - 'scripts/probe_stage3_s3g1j_v12_selected_sources.py'
+      - 'scripts/probe_stage3_s3g1j_v12_recovery_48.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  validate-v11-and-v12:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      GH_TOKEN: ${{ github.token }}
+      FILING_LEDGER_RUN: '30265340486'
+      PYTHONPATH: scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+
+      - name: Re-run V11 grammar unit regressions on V12 head
+        run: python -m unittest tests.test_stage3_financial_pdf_parser_v11 -v
+      - name: Re-run exact five-PDF V11.1 regression on V12 head
+        run: python scripts/probe_stage3_s3g1j_parser_grammar_v11_1.py
+
+      - name: Restore frozen successful S3G1E filing ledger
+        run: |
+          rm -rf filing-ledger
+          gh run download "$FILING_LEDGER_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1e-periodic-filing-ledger-final -D filing-ledger
+          test -f filing-ledger/stage3_periodic_filing_ledger.csv.gz
+      - name: Rebuild frozen baseline S3G1G selector
+        run: |
+          mkdir -p data/stage3_source_selection_v12/baseline
+          python scripts/select_stage3_financial_report_versions.py \
+            --ledger filing-ledger/stage3_periodic_filing_ledger.csv.gz \
+            --out data/stage3_source_selection_v12/baseline
+      - name: Run V3.1 full-statement-aware selector
+        run: |
+          mkdir -p data/stage3_source_selection_v12/v3
+          python scripts/select_stage3_financial_report_versions_v3_1.py \
+            --ledger filing-ledger/stage3_periodic_filing_ledger.csv.gz \
+            --out data/stage3_source_selection_v12/v3
+      - name: Compare V3.1 with frozen baseline and enforce known corrections
+        run: |
+          python scripts/compare_stage3_financial_report_versions_v3.py \
+            --baseline data/stage3_source_selection_v12/baseline/stage3_financial_report_versions.csv.gz \
+            --v3 data/stage3_source_selection_v12/v3/stage3_financial_report_versions_v3.csv.gz \
+            --v3-audit data/stage3_source_selection_v12/v3/stage3_financial_report_versions_v3_audit.json \
+            --out data/stage3_source_selection_v12/source_selection_diff.json
+      - name: Preserve body-only PIT publication moments in a separate ledger
+        run: |
+          python scripts/build_stage3_partial_body_ledger_v12.py \
+            --ledger filing-ledger/stage3_periodic_filing_ledger.csv.gz \
+            --full-versions data/stage3_source_selection_v12/v3/stage3_financial_report_versions_v3.csv.gz \
+            --out-dir data/stage3_source_selection_v12/partial_body
+      - name: Probe five corrected canonical PDFs through V11.1 hard gates
+        run: |
+          python scripts/probe_stage3_s3g1j_v12_selected_sources.py \
+            --versions data/stage3_source_selection_v12/v3/stage3_financial_report_versions_v3.csv.gz \
+            --out data/stage3_source_selection_v12/selected_source_pdf_probe.json
+      - name: Measure combined V12.1 source plus V11.1 parser recovery on same 48 failures
+        run: |
+          python scripts/probe_stage3_s3g1j_v12_recovery_48.py \
+            --ledger filing-ledger/stage3_periodic_filing_ledger.csv.gz \
+            --versions data/stage3_source_selection_v12/v3/stage3_financial_report_versions_v3.csv.gz \
+            --samples config/stage3_s3g1j_v10_diagnostic_samples.json \
+            --out data/stage3_source_selection_v12/combined_recovery_48.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-source-selection-v12
+          path: |
+            data/stage3_source_selection_v12/
+            data/stage3_source_probe_v11/
+          retention-days: 90
+          compression-level: 0
