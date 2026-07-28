@@ -31,6 +31,19 @@ class BalanceTitleV8Tests(unittest.TestCase):
     def test_post_balance_sheet_note_is_rejected(self):
         self.assertIsNone(_balance_title_kind("资产负债表日后事项"))
 
+    def test_accounting_policy_sentence_is_rejected(self):
+        self.assertIsNone(
+            _balance_title_kind("资产负债表日，外币货币性项目采用资产负债表日即期汇率折算")
+        )
+
+    def test_narrative_consolidated_mention_is_rejected(self):
+        self.assertIsNone(
+            _balance_title_kind("中期财务报表，包括2024年6月30日的合并及母公司资产负债表，截至2024")
+        )
+
+    def test_toc_dotted_title_is_rejected(self):
+        self.assertIsNone(_balance_title_kind("合并及母公司资产负债表…………………………"))
+
 
 if __name__ == "__main__":
     unittest.main()
