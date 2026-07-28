@@ -2,6 +2,7 @@ import copy
 import unittest
 
 import scripts.extract_stage3_financial_pdf_values as ext
+import scripts.extract_stage3_financial_pdf_values_v2 as extv2
 from scripts.stage3_financial_pdf_parser import Observation
 from scripts.stage3_financial_pdf_parser_v2 import _balance_sheet_identity_error
 
@@ -19,10 +20,7 @@ def candidate(aid, title, pages, t1, t2, values):
             "tier2_found": t2,
             "validation_errors": [],
             "observations": {
-                k: {
-                    "status": "FOUND",
-                    "normalized_cny_value": str(v),
-                }
+                k: {"status": "FOUND", "normalized_cny_value": str(v)}
                 for k, v in values.items()
             },
         },
@@ -96,6 +94,36 @@ class TieResolutionTests(unittest.TestCase):
         chosen, resolution, _ = ext.resolve_candidates([full, short_canonical], "2")
         self.assertIsNone(chosen)
         self.assertEqual(resolution, "TIE_VALUE_CONFLICT")
+
+    def test_older_same_title_noncanonical_404_can_yield_to_valid_canonical(self):
+        title = "上海康德莱企业发展集团股份有限公司2024年半年度报告"
+        ghost = {
+            "id": "1221022903",
+            "title": title,
+            "url": "https://example.invalid/1221022903.pdf",
+            "error": "RuntimeError(\"HTTPError('404 Client Error: Not Found')\")",
+        }
+        canonical = candidate("1221358739", title, 205, 6, 3, {"OPERATING_REVENUE": 1122956330.44})
+        chosen, resolution, error = extv2.resolve_candidates([ghost, canonical], "1221358739")
+        self.assertEqual(chosen["id"], "1221358739")
+        self.assertIn("AFTER_STALE_NONCANONICAL_404", resolution)
+        self.assertIsNone(error)
+
+    def test_transient_failure_never_uses_stale_source_exception(self):
+        title = "某公司2024年半年度报告"
+        bad = {"id": "100", "title": title, "url": "u", "error": "TimeoutError('timed out')"}
+        canonical = candidate("101", title, 200, 6, 3, {"OPERATING_REVENUE": 1})
+        chosen, resolution, _ = extv2.resolve_candidates([bad, canonical], "101")
+        self.assertIsNone(chosen)
+        self.assertEqual(resolution, "TIE_SOURCE_INCOMPLETE")
+
+    def test_newer_missing_candidate_never_yields_to_older_canonical(self):
+        title = "某公司2024年半年度报告"
+        canonical = candidate("100", title, 200, 6, 3, {"OPERATING_REVENUE": 1})
+        bad = {"id": "101", "title": title, "url": "u", "error": "HTTPError('404 Client Error: Not Found')"}
+        chosen, resolution, _ = extv2.resolve_candidates([canonical, bad], "100")
+        self.assertIsNone(chosen)
+        self.assertEqual(resolution, "TIE_SOURCE_INCOMPLETE")
 
 
 class AccountingIdentityTests(unittest.TestCase):
