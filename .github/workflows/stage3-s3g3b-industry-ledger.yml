@@ -2,6 +2,10 @@ name: Stage3 S3G3B Point-In-Time Industry Classification Ledger
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [stage3-point-in-time-features]
+    paths:
+      - '.github/workflows/stage3-s3g3b-industry-ledger.yml'
 
 permissions:
   contents: read
@@ -11,7 +15,7 @@ env:
   G2_RUN: '30262550161'
   G2_SHA: '2edf62f2d773b198ba1f02e996a741736e1b91830261723faeaa370a4f020ea7'
   G3_RUN: '30263014914'
-  SOURCE_PROBE_RUN: 'TO_BE_LOCKED_AFTER_S3G3A_PASS'
+  SOURCE_PROBE_RUN: '30326328969'
 
 jobs:
   build:
@@ -27,7 +31,6 @@ jobs:
       - run: python -m pip install --disable-pip-version-check requests beautifulsoup4 pymupdf
       - name: Require official source probe PASS
         run: |
-          test "$SOURCE_PROBE_RUN" != TO_BE_LOCKED_AFTER_S3G3A_PASS
           test "$(gh run view "$SOURCE_PROBE_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
       - name: Restore Stage2 V3.2.25 G2/G3
         run: |
