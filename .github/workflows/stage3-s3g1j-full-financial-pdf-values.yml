@@ -1,7 +1,11 @@
-name: Stage3 S3G1J Full Original-PDF Financial Values
+name: Stage3 S3G1J Full Original-PDF Financial Values V2
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [stage3-point-in-time-features]
+    paths:
+      - '.github/workflows/stage3-s3g1j-full-financial-pdf-values.yml'
 
 permissions:
   contents: read
@@ -10,6 +14,7 @@ permissions:
 env:
   REPORT_VERSIONS_RUN: '30270405448'
   POPULATION_PROBE_RUN: '30326328965'
+  REPAIR_PROBE_RUN: '30330827275'
 
 jobs:
   lock-inputs:
@@ -18,7 +23,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
-      - name: Require Stage2 V3.2.25 and S3G1G/S3G1I success
+      - name: Require Stage2 V3.2.25, S3G1G, S3G1I and repair probe success
         shell: bash
         run: |
           set -euo pipefail
@@ -29,8 +34,9 @@ jobs:
           assert m['stage2_dataset_fingerprint']=='f17f7ab63f4532dda635eb7366e7df7bf5497a5ce814410105312bccb53125bb'
           assert m['all_hard_gates_pass'] is True
           PY
-          test "$(gh run view "$REPORT_VERSIONS_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
-          test "$(gh run view "$POPULATION_PROBE_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+          for run in "$REPORT_VERSIONS_RUN" "$POPULATION_PROBE_RUN" "$REPAIR_PROBE_RUN"; do
+            test "$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+          done
 
   extract:
     needs: lock-inputs
@@ -55,7 +61,7 @@ jobs:
           rm -rf versions
           gh run download "$REPORT_VERSIONS_RUN" -R "$GITHUB_REPOSITORY" -n stage3-s3g1g-financial-report-versions -D versions
           test -f versions/stage3_financial_report_versions.csv.gz
-      - name: Extract original filing PDF values
+      - name: Extract original filing PDF values with V2 hard gates
         shell: bash
         run: |
           set +e
