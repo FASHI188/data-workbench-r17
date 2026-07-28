@@ -8,12 +8,14 @@ import fitz
 
 import stage3_financial_pdf_parser as base
 
-# Concepts that have authoritative primary-statement rows.  For these fields the
-# consolidated financial statements outrank the early-report summary table,
-# because summary tables may use a different unit on the same page as per-share
-# metrics.  Non-recurring profit remains summary-only.
+# Concepts whose primary-statement rows are robustly distinguishable from
+# summary/narrative rows across the locked sample set.  OPERATING_REVENUE is
+# intentionally NOT forced through this path: older bank filings can expose
+# other rows containing “营业收入” in the statement-search window while the
+# early key-financial-data table contains the correct consolidated top line.
+# The original guarded summary parser already resolves the bank/non-bank locked
+# samples correctly.  Non-recurring profit likewise remains summary-only.
 STATEMENT_PRIORITY = (
-    "OPERATING_REVENUE",
     "NET_PROFIT_ATTRIBUTABLE_TO_PARENT",
     "NET_CASH_FLOW_FROM_OPERATING_ACTIVITIES",
     "TOTAL_ASSETS",
@@ -49,7 +51,9 @@ def parse_pdf_bytes(raw: bytes) -> dict:
     first_pages = list(range(0, min(doc.page_count, 20)))
     obs: dict[str, base.Observation] = {}
 
-    # First collect early-summary observations, including non-recurring profit.
+    # First collect early-summary observations.  This remains authoritative for
+    # OPERATING_REVENUE and non-recurring profit unless a future separately
+    # validated top-line statement detector is introduced.
     for concept, aliases in base.TIER1_ALIASES.items():
         obs[concept] = base.find_metric_in_pages(
             doc, first_pages, aliases, concept, "EARLY_REPORT_SUMMARY"
@@ -57,10 +61,8 @@ def parse_pdf_bytes(raw: bytes) -> dict:
 
     statement_pages = base.candidate_statement_pages(doc)
 
-    # Re-read primary-statement concepts from the financial-statement section.
-    # candidate_statement_pages places TOC-derived financial-report pages before
-    # the generic first-32-page fallback, so an actual statement row wins when
-    # the filing provides one.
+    # Re-read only the concepts whose statement-level semantics are locked by
+    # the official sample set and accounting controls.
     for concept in STATEMENT_PRIORITY:
         stmt = base.find_metric_in_pages(
             doc,
