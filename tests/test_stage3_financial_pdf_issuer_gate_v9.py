@@ -21,6 +21,10 @@ class PdfIssuerGateV9Tests(unittest.TestCase):
             },
         }
 
+    def test_registered_transition_endpoints_are_recognized_identity_codes(self):
+        for code in ("000022", "001872", "000043", "001914", "601313", "601360"):
+            self.assertIn(code, v9.KNOWN_A_SHARE_CODES)
+
     def test_noncanonical_other_issuer_is_excluded_before_value_compare(self):
         v9.EXPECTED_BY_CANONICAL_ID["1221576101"] = {"601992"}
         wrong = self.candidate("1221576098", "000401", sha="jidong")
