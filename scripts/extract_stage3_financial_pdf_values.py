@@ -6,16 +6,18 @@ import csv
 import gzip
 import hashlib
 import json
+import re
 import time
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import requests
 
-from stage3_financial_pdf_parser import parse_pdf_bytes
+from stage3_financial_pdf_parser_v2 import parse_pdf_bytes
 
+ROOT = Path(__file__).resolve().parents[1]
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142 Safari/537.36"
-METHOD = "CNINFO_ORIGINAL_PDF_PYMUPDF_V1"
+METHOD = "CNINFO_ORIGINAL_PDF_PYMUPDF_V2"
 NUMERIC_FIELDS = [
     "exchange","source_code","effective_code","issuer_org_id","report_family","economic_date",
     "announcement_id","revision_sequence","source_published_at","effective_session","available_at",
@@ -69,6 +71,80 @@ def same_value(a: Decimal, b: Decimal) -> bool:
     return abs(a-b)/max(abs(a),abs(b),Decimal("1")) <= Decimal("0.000000001")
 
 
+def _norm_title(v: str) -> str:
+    return re.sub(r"\s+", "", re.sub(r"<[^>]+>", "", v or ""))
+
+
+def _issuer_token(name: str) -> str:
+    t=_norm_title(name)
+    t=re.sub(r"^(?:\*?ST|S\*ST|N|C)","",t,flags=re.I)
+    t=re.sub(r"(?:A|B)$","",t,flags=re.I)
+    return t
+
+
+def _load_issuer_tokens() -> tuple[dict[str,set[str]], dict[str,set[str]]]:
+    token_codes: dict[str,set[str]]={}
+    related: dict[str,set[str]]={}
+    p=ROOT/"data/security_lifecycle/security_intervals.csv"
+    if p.exists():
+        with p.open(encoding="utf-8",newline="") as f:
+            for r in csv.DictReader(f):
+                code=str(r.get("code") or "")
+                tok=_issuer_token(str(r.get("name") or ""))
+                if code:
+                    related.setdefault(code,set()).add(code)
+                # Two-character names are too collision-prone for an exclusion gate.
+                if code and len(tok)>=3:
+                    token_codes.setdefault(tok,set()).add(code)
+    tp=ROOT/"config/security_code_transitions.json"
+    if tp.exists():
+        try:
+            transitions=json.loads(tp.read_text(encoding="utf-8"))
+        except Exception:
+            transitions=[]
+        changed=True
+        for t in transitions:
+            a=str(t.get("old_code") or "");b=str(t.get("new_code") or "")
+            if not a or not b:continue
+            related.setdefault(a,set()).update({a,b});related.setdefault(b,set()).update({a,b})
+        while changed:
+            changed=False
+            for code,codes in list(related.items()):
+                expanded=set(codes)
+                for x in list(codes):expanded.update(related.get(x,{x}))
+                if expanded!=codes:
+                    related[code]=expanded;changed=True
+    return token_codes,related
+
+
+ISSUER_TOKEN_CODES, RELATED_CODES = _load_issuer_tokens()
+
+
+def _title_code_hits(title: str) -> set[str]:
+    t=_norm_title(title)
+    hits:set[str]=set()
+    for token,codes in ISSUER_TOKEN_CODES.items():
+        if token in t:
+            hits.update(codes)
+    return hits
+
+
+def filter_candidates_by_issuer(candidates: list[dict], source_code: str, canonical_id: str) -> tuple[list[dict],list[dict]]:
+    allowed=RELATED_CODES.get(source_code,{source_code})|{source_code}
+    keep=[];excluded=[]
+    for c in candidates:
+        # The canonical candidate is never silently removed.  If it is bad, the
+        # downstream structural/value gates must fail closed instead.
+        if str(c.get("id"))==str(canonical_id):
+            keep.append(c);continue
+        hits=_title_code_hits(str(c.get("title") or ""))
+        if hits and hits.isdisjoint(allowed):
+            excluded.append({**c,"excluded_reason":f"TITLE_MATCHES_OTHER_A_SHARE_ISSUER:{sorted(hits)}"})
+        else:
+            keep.append(c)
+    return keep,excluded
+
+
 def candidate_list(r: dict) -> list[dict]:
     try:
         ids=json.loads(r.get("same_day_tied_top_ids") or "[]")
@@ -81,26 +157,53 @@ def candidate_list(r: dict) -> list[dict]:
     return [{"id":r["canonical_announcement_id"],"title":r["canonical_title"],"url":r["canonical_source_url"]}]
 
 
+def _same_title_structural_full_report(parsed: list[dict], canonical_id: str) -> dict | None:
+    if len(parsed)<2:return None
+    titles={_norm_title(str(x.get("title") or "")) for x in parsed}
+    if len(titles)!=1:return None
+    ranked=sorted(
+        parsed,
+        key=lambda x:(
+            int((x.get("parsed") or {}).get("page_count") or 0),
+            int((x.get("parsed") or {}).get("tier1_found") or 0),
+            int((x.get("parsed") or {}).get("tier2_found") or 0),
+            str(x.get("id") or ""),
+        ),
+    )
+    winner=ranked[-1]
+    runner=ranked[-2]
+    wp=int(winner["parsed"].get("page_count") or 0);rp=int(runner["parsed"].get("page_count") or 0)
+    if str(winner.get("id"))!=str(canonical_id):return None
+    if wp<20 or wp<max(3*max(rp,1),rp+20):return None
+    if int(winner["parsed"].get("tier1_found") or 0)<max(int(x["parsed"].get("tier1_found") or 0) for x in parsed):return None
+    if int(winner["parsed"].get("tier2_found") or 0)<max(int(x["parsed"].get("tier2_found") or 0) for x in parsed):return None
+    return winner
+
+
 def resolve_candidates(parsed: list[dict], canonical_id: str) -> tuple[dict | None,str,str | None]:
     if not parsed:return None,"NO_CANDIDATE","no parsed candidate"
-    if len(parsed)==1:return parsed[0],"SINGLE_CANONICAL",None
+    if len(parsed)==1:
+        if parsed[0].get("error"):return None,"SOURCE_ERROR",str(parsed[0].get("error"))
+        return parsed[0],"SINGLE_CANONICAL",None
     if any(x.get("error") for x in parsed):
-        return None,"TIE_SOURCE_INCOMPLETE","one or more tied candidate PDFs failed"
+        return None,"TIE_SOURCE_INCOMPLETE","one or more tied candidate PDFs failed validation/download"
     shas={x["sha256"] for x in parsed}
     if len(shas)==1:
         chosen=next((x for x in parsed if x["id"]==canonical_id),parsed[-1])
         return chosen,"TIE_IDENTICAL_PDF_SHA",None
+    structural=_same_title_structural_full_report(parsed,canonical_id)
+    if structural is not None:
+        return structural,"TIE_SAME_TITLE_STRUCTURAL_FULL_REPORT",None
     # Different bytes are acceptable only when every overlapping extracted concept agrees.
-    conflicts=[]
-    concepts=set()
-    for x in parsed: concepts.update(x["parsed"]["observations"].keys())
+    conflicts=[];concepts=set()
+    for x in parsed:concepts.update(x["parsed"]["observations"].keys())
     for c in concepts:
         vals=[]
         for x in parsed:
             o=x["parsed"]["observations"].get(c) or {}
             if o.get("status")=="FOUND":
                 v=dec(o.get("normalized_cny_value"))
-                if v is not None: vals.append((x["id"],v))
+                if v is not None:vals.append((x["id"],v))
         if len(vals)>1:
             base=vals[0][1]
             if any(not same_value(base,v) for _,v in vals[1:]):
@@ -117,40 +220,46 @@ def main() -> int:
     rows=[r for r in read_versions(Path(a.versions)) if stable_shard(r["canonical_announcement_id"],a.shards)==a.shard]
     s=requests.Session();numeric=[];docs=[];errors=[];download_bytes=0;tie_counts={}
     for idx,r in enumerate(rows,1):
-        candidates=candidate_list(r);parsed_candidates=[]
+        all_candidates=candidate_list(r)
+        candidates,excluded=filter_candidates_by_issuer(all_candidates,r["source_code"],r["canonical_announcement_id"])
+        parsed_candidates=[]
         for c in candidates:
             ev={"id":c["id"],"title":c["title"],"url":c["url"]}
             try:
                 raw=get_pdf(s,c["url"]);download_bytes+=len(raw);p=parse_pdf_bytes(raw)
                 ev.update({"sha256":sha(raw),"bytes":len(raw),"parsed":p})
+                if p.get("validation_errors"):
+                    ev["error"]="; ".join(map(str,p["validation_errors"]))
             except Exception as exc:
                 ev["error"]=repr(exc)
             parsed_candidates.append(ev)
         chosen,resolution,resolution_error=resolve_candidates(parsed_candidates,r["canonical_announcement_id"])
+        if excluded:
+            resolution += "_AFTER_ISSUER_FILTER"
         tie_counts[resolution]=tie_counts.get(resolution,0)+1
         base={
             "exchange":r["exchange"],"source_code":r["source_code"],"effective_code":r["effective_code"],"issuer_org_id":r["org_id"],
             "report_family":r["report_family"],"economic_date":r["economic_date"],"announcement_id":r["canonical_announcement_id"],
             "revision_sequence":r["revision_sequence"],"source_published_at":r["source_published_at"],"effective_session":r["effective_session"],"available_at":r["available_at"]
         }
+        evidence=parsed_candidates+excluded
         if chosen is None:
             err=resolution_error or resolution
             errors.append(f"{r['canonical_announcement_id']} {resolution}: {err}")
-            docs.append({**base,"canonical_title":r["canonical_title"],"canonical_source_url":r["canonical_source_url"],"selected_source_url":"","selected_source_sha256":"","selected_source_bytes":"","tie_candidate_count":str(len(candidates)),"tie_resolution":resolution,"candidate_evidence_json":json.dumps(parsed_candidates,ensure_ascii=False,default=str),"tier1_found":"0","tier2_found":"0","numeric_observations":"0","document_status":"ERROR","document_error":err})
+            docs.append({**base,"canonical_title":r["canonical_title"],"canonical_source_url":r["canonical_source_url"],"selected_source_url":"","selected_source_sha256":"","selected_source_bytes":"","tie_candidate_count":str(len(all_candidates)),"tie_resolution":resolution,"candidate_evidence_json":json.dumps(evidence,ensure_ascii=False,default=str),"tier1_found":"0","tier2_found":"0","numeric_observations":"0","document_status":"ERROR","document_error":err})
             continue
-        p=chosen["parsed"]
-        found=0
+        p=chosen["parsed"];found=0
         for concept,o in p["observations"].items():
             if o.get("status")!="FOUND":continue
             found+=1
-            numeric.append({**base,"concept":concept,"raw_value":o.get("raw_value") or "","normalized_cny_value":o.get("normalized_cny_value") or "","unit":o.get("unit") or "","unit_multiplier":o.get("unit_multiplier") or "","source_url":chosen["url"],"source_sha256":chosen["sha256"],"source_format":"PDF","extraction_method":METHOD,"methodology_version":"V3.3.1","page":o.get("page") or "","matched_alias":o.get("matched_alias") or "","confidence":o.get("confidence") or ""})
+            numeric.append({**base,"concept":concept,"raw_value":o.get("raw_value") or "","normalized_cny_value":o.get("normalized_cny_value") or "","unit":o.get("unit") or "","unit_multiplier":o.get("unit_multiplier") or "","source_url":chosen["url"],"source_sha256":chosen["sha256"],"source_format":"PDF","extraction_method":METHOD,"methodology_version":"V3.3.2","page":o.get("page") or "","matched_alias":o.get("matched_alias") or "","confidence":o.get("confidence") or ""})
         slim=[]
-        for x in parsed_candidates:
-            y={k:x.get(k) for k in ("id","title","url","sha256","bytes","error") if x.get(k) not in (None,"")}
+        for x in evidence:
+            y={k:x.get(k) for k in ("id","title","url","sha256","bytes","error","excluded_reason") if x.get(k) not in (None,"")}
             if x.get("parsed"):
-                y.update({"tier1_found":x["parsed"]["tier1_found"],"tier2_found":x["parsed"]["tier2_found"]})
+                y.update({"tier1_found":x["parsed"]["tier1_found"],"tier2_found":x["parsed"]["tier2_found"],"page_count":x["parsed"].get("page_count")})
             slim.append(y)
-        docs.append({**base,"canonical_title":r["canonical_title"],"canonical_source_url":r["canonical_source_url"],"selected_source_url":chosen["url"],"selected_source_sha256":chosen["sha256"],"selected_source_bytes":str(chosen["bytes"]),"tie_candidate_count":str(len(candidates)),"tie_resolution":resolution,"candidate_evidence_json":json.dumps(slim,ensure_ascii=False),"tier1_found":str(p["tier1_found"]),"tier2_found":str(p["tier2_found"]),"numeric_observations":str(found),"document_status":"PASS","document_error":""})
+        docs.append({**base,"canonical_title":r["canonical_title"],"canonical_source_url":r["canonical_source_url"],"selected_source_url":chosen["url"],"selected_source_sha256":chosen["sha256"],"selected_source_bytes":str(chosen["bytes"]),"tie_candidate_count":str(len(all_candidates)),"tie_resolution":resolution,"candidate_evidence_json":json.dumps(slim,ensure_ascii=False),"tier1_found":str(p["tier1_found"]),"tier2_found":str(p["tier2_found"]),"numeric_observations":str(found),"document_status":"PASS","document_error":""})
         if idx%50==0:print(f"shard {a.shard}/{a.shards} {idx}/{len(rows)} docs bytes={download_bytes}",flush=True)
         time.sleep(0.03)
     np=out/f"financial_values_shard{a.shard:02d}.csv.gz";dp=out/f"financial_documents_shard{a.shard:02d}.csv.gz"
@@ -160,5 +269,6 @@ def main() -> int:
     (out/f"financial_extract_shard{a.shard:02d}.manifest.json").write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding="utf-8")
     print(json.dumps({k:manifest[k] for k in ("shard","selected_versions","numeric_rows","download_bytes","tie_resolution_counts","error_count")},ensure_ascii=False))
     return 0 if not errors else 2
+
 
 if __name__=="__main__":raise SystemExit(main())
