@@ -1,0 +1,104 @@
+name: Stage3 S3G2 Final Mixed Announcement Assembly
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  ORIGINAL_RUN: '30326328987'
+  TRANSITION_REPAIR_RUN: '30329823020'
+  INSTRUMENT_REPAIR_RUN: '30339295071'
+  G2_RUN: '30262550161'
+  G2_SHA: '2edf62f2d773b198ba1f02e996a741736e1b91830261723faeaa370a4f020ea7'
+  G3_RUN: '30263014914'
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONPATH: scripts
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require all repair runs successful
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh run view "$TRANSITION_REPAIR_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+          test "$(gh run view "$INSTRUMENT_REPAIR_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+      - name: Restore original unaffected shards
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf original transition instrument assembled g2 g3 data/stage3_announcements
+          mkdir -p original transition instrument assembled
+          for i in 2 3 4 5 6 7 8 9 10 12 13 14; do
+            gh run download "$ORIGINAL_RUN" -R "$GITHUB_REPOSITORY" -n "stage3-s3g2-announcement-$i" -D "original/$i"
+          done
+      - name: Restore transition and same-issuer instrument repairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in 0 1 15; do
+            gh run download "$TRANSITION_REPAIR_RUN" -R "$GITHUB_REPOSITORY" -n "stage3-s3g2-transition-repair-$i" -D "transition/$i"
+          done
+          gh run download "$INSTRUMENT_REPAIR_RUN" -R "$GITHUB_REPOSITORY" -n stage3-s3g2-announcement-instrument-repair-11 -D instrument/11
+      - name: Assemble exactly 16 immutable shard inputs
+        shell: bash
+        run: |
+          set +e
+          python scripts/assemble_stage3_announcement_repair.py \
+            --original-root original \
+            --transition-repair-root transition \
+            --instrument-repair-root instrument \
+            --out assembled \
+            > assembled/assembly_stdout.log 2> assembled/assembly_stderr.log
+          code=$?
+          echo "ASSEMBLY_EXIT=$code" >> "$GITHUB_ENV"
+          cat assembled/stage3_announcement_repair_assembly_audit.json || true
+          cat assembled/assembly_stderr.log || true
+          exit 0
+      - name: Restore exact Stage2 G2/G3 dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download "$G2_RUN" -R "$GITHUB_REPOSITORY" -n stage2-g2-historical-evidence -D g2
+          echo "$G2_SHA  g2/security_intervals.csv" | sha256sum -c -
+          gh run download "$G3_RUN" -R "$GITHUB_REPOSITORY" -n stage2-g3-sse-601313-repaired-ohlcv -D g3
+      - name: Finalize announcement PIT ledger
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_announcements
+          if [ "${ASSEMBLY_EXIT:-1}" != "0" ]; then
+            echo "assembly failed" > data/stage3_announcements/stderr.log
+            code=2
+          else
+            python scripts/finalize_stage3_announcement_ledger.py \
+              --root assembled \
+              --g2-intervals g2/security_intervals.csv \
+              --g3-root g3 \
+              --out data/stage3_announcements \
+              > data/stage3_announcements/stdout.log \
+              2> data/stage3_announcements/stderr.log
+            code=$?
+          fi
+          echo "S3G2_FINAL_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_announcements/stage3_announcement_ledger_audit.json || true
+          cat data/stage3_announcements/stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g2-announcement-ledger-final
+          path: |
+            assembled/stage3_announcement_repair_assembly_audit.json
+            data/stage3_announcements
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve final fail-closed status
+        if: env.S3G2_FINAL_EXIT != '0'
+        run: exit 1
