@@ -14,7 +14,7 @@ from stage3_financial_pdf_parser_v5 import parse_pdf_bytes as v8_parse_pdf_bytes
 
 ROOT = Path(__file__).resolve().parents[1]
 METHOD = "CNINFO_ORIGINAL_PDF_PYMUPDF_V6_PDF_ISSUER_GATE"
-CODE_LABEL_RE = re.compile(r"(?:证券代码|股票代码|公司代码)\s*[:：]?\s*([0-9]{6})")
+CODE_LABEL_RE = re.compile(r"(?:证券代码|股票代码|公司代码)\s*[:：]?\s*([0-9]{6})(?![0-9])")
 
 
 def _valid_code(value: object) -> str | None:
