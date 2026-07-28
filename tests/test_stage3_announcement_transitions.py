@@ -1,6 +1,9 @@
 import unittest
 
-from scripts.build_stage3_announcement_ledger_v2 import registered_transition_alias
+from scripts.build_stage3_announcement_ledger_v2 import (
+    registered_transition_alias,
+    same_issuer_non_equity_instrument,
+)
 
 
 TRANSITIONS = [
@@ -45,6 +48,46 @@ class AnnouncementTransitionTests(unittest.TestCase):
         for args in cases:
             with self.subTest(args=args):
                 self.assertIsNotNone(registered_transition_alias(*args,TRANSITIONS))
+
+
+class NonEquityInstrumentTests(unittest.TestCase):
+    def setUp(self):
+        self.equity_codes={"600325","601360","001872","001914","000022","000043","601313"}
+
+    def test_same_org_bond_code_is_allowed_as_issuer_evidence(self):
+        self.assertTrue(
+            same_issuer_non_equity_instrument(
+                "600325","122028","gssh0600325","gssh0600325",self.equity_codes
+            )
+        )
+
+    def test_other_a_share_code_is_never_treated_as_instrument(self):
+        self.assertFalse(
+            same_issuer_non_equity_instrument(
+                "600325","601360","gssh0600325","gssh0600325",self.equity_codes
+            )
+        )
+
+    def test_org_mismatch_is_rejected(self):
+        self.assertFalse(
+            same_issuer_non_equity_instrument(
+                "600325","122028","gssh0600325","gssh0000001",self.equity_codes
+            )
+        )
+
+    def test_missing_returned_org_is_rejected(self):
+        self.assertFalse(
+            same_issuer_non_equity_instrument(
+                "600325","122028","gssh0600325","",self.equity_codes
+            )
+        )
+
+    def test_non_six_digit_instrument_code_is_rejected(self):
+        self.assertFalse(
+            same_issuer_non_equity_instrument(
+                "600325","HFZQ","gssh0600325","gssh0600325",self.equity_codes
+            )
+        )
 
 
 if __name__=="__main__":
