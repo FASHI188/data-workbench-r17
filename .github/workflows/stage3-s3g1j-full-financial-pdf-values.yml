@@ -2,6 +2,10 @@ name: Stage3 S3G1J Full Original-PDF Financial Values
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [stage3-point-in-time-features]
+    paths:
+      - '.github/workflows/stage3-s3g1j-full-financial-pdf-values.yml'
 
 permissions:
   contents: read
@@ -9,7 +13,7 @@ permissions:
 
 env:
   REPORT_VERSIONS_RUN: '30270405448'
-  POPULATION_PROBE_RUN: 'TO_BE_LOCKED_AFTER_S3G1I_PASS'
+  POPULATION_PROBE_RUN: '30271554184'
 
 jobs:
   lock-inputs:
@@ -18,7 +22,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
-      - name: Require Stage2 V3.2.25 and S3G1G version-selection success
+      - name: Require Stage2 V3.2.25 and S3G1G/S3G1I success
         shell: bash
         run: |
           set -euo pipefail
@@ -30,7 +34,6 @@ jobs:
           assert m['all_hard_gates_pass'] is True
           PY
           test "$(gh run view "$REPORT_VERSIONS_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
-          test "$POPULATION_PROBE_RUN" != TO_BE_LOCKED_AFTER_S3G1I_PASS
           test "$(gh run view "$POPULATION_PROBE_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
 
   extract:
