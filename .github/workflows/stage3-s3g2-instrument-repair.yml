@@ -1,0 +1,74 @@
+name: Stage3 S3G2 Same-Issuer Instrument Repair
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [stage3-s3g2-transition-repair]
+    paths:
+      - 'scripts/build_stage3_announcement_ledger_v2.py'
+      - 'tests/test_stage3_announcement_transitions.py'
+      - '.github/workflows/stage3-s3g2-instrument-repair.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  G2_RUN: '30262550161'
+  G2_SHA: '2edf62f2d773b198ba1f02e996a741736e1b91830261723faeaa370a4f020ea7'
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests
+      - run: python -m unittest tests.test_stage3_announcement_transitions -v
+
+  repair-shard11:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONPATH: scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Restore Stage2 V3.2.25 lifecycle
+        run: |
+          rm -rf g2
+          gh run download "$G2_RUN" -R "$GITHUB_REPOSITORY" -n stage2-g2-historical-evidence -D g2
+          echo "$G2_SHA  g2/security_intervals.csv" | sha256sum -c -
+          cp g2/security_intervals.csv data/security_lifecycle/security_intervals.csv
+      - name: Rebuild shard 11 with strict same-issuer non-equity instrument rule
+        shell: bash
+        run: |
+          set +e
+          out="build/stage3-announcements/shard11"
+          mkdir -p "$out"
+          python scripts/build_stage3_announcement_ledger_v2.py \
+            --shard 11 --shards 16 --out "$out" \
+            > "$out/stdout.log" 2> "$out/stderr.log"
+          code=$?
+          echo "S3G2_INSTRUMENT_EXIT=$code" >> "$GITHUB_ENV"
+          cat "$out/announcement_ledger_shard11.manifest.json" || true
+          tail -100 "$out/stderr.log" || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g2-announcement-instrument-repair-11
+          path: build/stage3-announcements/shard11
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve fail-closed repair status
+        if: env.S3G2_INSTRUMENT_EXIT != '0'
+        run: exit 1
