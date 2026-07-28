@@ -26,32 +26,42 @@ EN_UNIT_RE = re.compile(
     r"\b(?:unit|currency)\s*[:：]?\s*(RMB\s*million|RMB\s*thousand|thousand\s*RMB|million\s*RMB|RMB|CNY|yuan)\b",
     re.I,
 )
-EN_BALANCE_TITLE_RE = re.compile(
-    r"\b(?:consolidated\s+balance\s+sheet|consolidated\s+statement\s+of\s+financial\s+position|balance\s+sheet)\b",
-    re.I,
+CN_UNSUPPORTED_TITLE_RE = re.compile(
+    r"^(?:[一二三四五六七八九十\d]+[、.．])?"
+    r"(?:\d{4}年\d{1,2}月\d{1,2}日)?"
+    r"(?:合并及公司资产负债表|合并公司资产负债表|合并资产负债表及公司资产负债表|"
+    r"合并及银行资产负债表|合并银行资产负债表|未经审计合并资产负债表|未经审计资产负债表)"
+    r"(?:（续）|\(续\)|-续)?$"
 )
-CN_EXTRA_TITLE_VARIANTS = (
-    "合并及公司资产负债表",
-    "合并公司资产负债表",
-    "合并资产负债表及公司资产负债表",
-    "合并及银行资产负债表",
-    "合并银行资产负债表",
-    "未经审计合并资产负债表",
-    "未经审计资产负债表",
+EN_BALANCE_TITLE_RE = re.compile(
+    r"^(?:unaudited\s+)?(?:consolidated\s+balance\s+sheet|consolidated\s+statement\s+of\s+financial\s+position|balance\s+sheet)$",
+    re.I,
 )
 CN_ASSET_TERMINALS = ("资产总计", "资产合计")
 CN_LIABILITY_TERMINALS = ("负债合计",)
 CN_EQUITY_TERMINALS = ("所有者权益合计", "股东权益合计", "权益合计")
-EN_ASSET_RE = re.compile(r"\btotal\s+assets\b", re.I)
-EN_LIABILITY_RE = re.compile(r"\btotal\s+liabilit(?:y|ies)\b", re.I)
+EN_ASSET_RE = re.compile(r"\btotal\s+(?:of\s+)?assets\b", re.I)
+EN_LIABILITY_RE = re.compile(r"\btotal\s+(?:of\s+)?liabilit(?:y|ies)\b", re.I)
 EN_EQUITY_RE = re.compile(
-    r"\b(?:total\s+(?:owners'?|shareholders'?|stockholders'?)\s+equity|total\s+equity)\b",
+    r"\b(?:total\s+(?:of\s+)?(?:owner'?s|owners'|shareholders'?|stockholders'?)\s+equity|total\s+equity)\b",
     re.I,
 )
 
 
 def _compact(text: str) -> str:
     return re.sub(r"\s+", "", text or "")
+
+
+def _unsupported_cn_title_line(line: str) -> bool:
+    compact = _compact(line)
+    if len(compact) > 64:
+        return False
+    return CN_UNSUPPORTED_TITLE_RE.fullmatch(compact) is not None
+
+
+def _english_title_line(line: str) -> bool:
+    raw = re.sub(r"\s+", " ", (line or "").strip())
+    return EN_BALANCE_TITLE_RE.fullmatch(raw) is not None
 
 
 def _page_signal(doc: fitz.Document, pno: int) -> dict:
@@ -62,8 +72,8 @@ def _page_signal(doc: fitz.Document, pno: int) -> dict:
     relaxed_unit = CN_RELAXED_UNIT_RE.search(text)
     english_unit = EN_UNIT_RE.search(text)
     current_title_lines = [line for line in lines if v8._balance_title_kind(line)]
-    extra_cn_titles = [line for line in lines if any(x in _compact(line) for x in CN_EXTRA_TITLE_VARIANTS)]
-    english_titles = [line for line in lines if EN_BALANCE_TITLE_RE.search(line)]
+    extra_cn_titles = [line for line in lines if _unsupported_cn_title_line(line)]
+    english_titles = [line for line in lines if _english_title_line(line)]
     cn_asset = any(x in compact for x in CN_ASSET_TERMINALS)
     cn_liability = any(x in compact for x in CN_LIABILITY_TERMINALS)
     cn_equity = any(x in compact for x in CN_EQUITY_TERMINALS)
@@ -252,6 +262,7 @@ def main() -> int:
             "do_not_backfill_current_f10": True,
             "do_not_weaken_tie_or_provenance_gates": True,
             "sha256_required": True,
+            "title_classification_requires_whole_line_statement_title": True,
         },
         "root_cause_counts": dict(sorted(cause_counts.items())),
         "family_root_cause_counts": {
