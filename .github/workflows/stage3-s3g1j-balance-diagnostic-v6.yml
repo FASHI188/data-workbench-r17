@@ -1,0 +1,92 @@
+name: Stage3 S3G1J Balance Diagnostic V6
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [stage3-s3g1j-balance-block-repair-v5]
+    paths:
+      - 'scripts/stage3_financial_pdf_parser_v4.py'
+      - 'scripts/extract_stage3_financial_pdf_values_v4.py'
+      - 'scripts/probe_stage3_financial_pdf_parser_v4.py'
+      - 'scripts/probe_stage3_balance_block_regression_v6.py'
+      - 'scripts/probe_stage3_balance_block_diagnostics_v6.py'
+      - 'tests/test_stage3_financial_balance_block_v6.py'
+      - '.github/workflows/stage3-s3g1j-balance-diagnostic-v6.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      PYTHONPATH: scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+
+      - name: V4 V5 V6 synthetic regressions
+        run: |
+          python -m unittest \
+            tests.test_stage3_financial_balance_block_v4 \
+            tests.test_stage3_financial_balance_block_v5 \
+            tests.test_stage3_financial_balance_block_v6 -v
+
+      - name: Locked official PDF exact-value regression under V6
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_source_probe_v2
+          python scripts/probe_stage3_financial_pdf_parser_v4.py \
+            > data/stage3_source_probe_v2/v6_locked_stdout.log \
+            2> data/stage3_source_probe_v2/v6_locked_stderr.log
+          code=$?
+          echo "LOCKED_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_source_probe_v2/financial_pdf_parser_v2_probe.json || true
+          cat data/stage3_source_probe_v2/v6_locked_stderr.log || true
+          exit 0
+
+      - name: Twelve old-format regressions under V6
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_source_probe_v4
+          python scripts/probe_stage3_balance_block_regression_v6.py \
+            > data/stage3_source_probe_v4/v6_balance_stdout.log \
+            2> data/stage3_source_probe_v4/v6_balance_stderr.log
+          code=$?
+          echo "OLD12_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_source_probe_v4/balance_block_regression_v4.json || true
+          cat data/stage3_source_probe_v4/v6_balance_stderr.log || true
+          exit 0
+
+      - name: Re-diagnose ten real V4 smoke failures under V6
+        shell: bash
+        run: |
+          set +e
+          mkdir -p data/stage3_source_probe_v5
+          python scripts/probe_stage3_balance_block_diagnostics_v6.py \
+            > data/stage3_source_probe_v5/v6_stdout.log \
+            2> data/stage3_source_probe_v5/v6_stderr.log
+          code=$?
+          echo "DIAG_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_source_probe_v5/balance_block_diagnostics_v5.json || true
+          cat data/stage3_source_probe_v5/v6_stderr.log || true
+          exit 0
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-balance-diagnostic-v6
+          path: |
+            data/stage3_source_probe_v2
+            data/stage3_source_probe_v4
+            data/stage3_source_probe_v5
+          retention-days: 90
+
+      - name: Preserve fail-closed V6 status
+        if: env.LOCKED_EXIT != '0' || env.OLD12_EXIT != '0' || env.DIAG_EXIT != '0'
+        run: exit 1
