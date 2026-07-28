@@ -28,6 +28,22 @@ def title_kind(title: str) -> str:
     return "PLAIN_REPORT"
 
 
+def _forbidden_full_authority_title(title: str) -> bool:
+    """A title containing 全文 remains full authority even if it also says 正文.
+
+    The frozen ledger includes forms such as `第一季度报告全文与正文`. V12.1
+    correctly classifies those as explicit fulltext. The diff gate must use the
+    same semantics instead of rejecting every title containing the substring 正文.
+    """
+    if "摘要" in title:
+        return True
+    if ("已取消" in title or "取消" in title):
+        return True
+    if "正文" in title and "全文" not in title:
+        return True
+    return False
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--baseline", required=True)
@@ -66,11 +82,7 @@ def main() -> int:
     added = [new[k] for k in sorted(set(new) - set(old))]
     removed = [old[k] for k in sorted(set(old) - set(new))]
 
-    forbidden = [
-        r for r in v3
-        if "摘要" in r["canonical_title"] or "正文" in r["canonical_title"]
-        or "已取消" in r["canonical_title"] or "取消" in r["canonical_title"]
-    ]
+    forbidden = [r for r in v3 if _forbidden_full_authority_title(r["canonical_title"])]
     if forbidden:
         errors.append(f"V3 selected forbidden partial/summary/cancelled authorities: {len(forbidden)}")
 
