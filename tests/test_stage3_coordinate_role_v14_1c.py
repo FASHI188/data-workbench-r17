@@ -19,23 +19,15 @@ class CoordinateRoleV141cTests(unittest.TestCase):
         )
 
     def test_nearest_title_wins_over_earlier_consolidated_title(self):
+        # Use ASCII text for the synthetic PDF round-trip. Default PyMuPDF test
+        # fonts do not guarantee CJK round-trip, while Chinese title semantics are
+        # already covered directly by test_title_role_classification above.
         doc = fitz.open()
         p1 = doc.new_page()
         p1.insert_text((72, 72), "Consolidated Balance Sheet")
         p2 = doc.new_page()
         p2.insert_text((72, 72), "Balance Sheet of Parent Company")
         doc.new_page().insert_text((72, 72), "Total assets 100")
-        role, evidence = v14c._nearest_statement_role(doc, 3)
-        self.assertEqual(role, "PARENT")
-        self.assertEqual(evidence["chosen"]["page"], 2)
-
-    def test_nearest_chinese_parent_title_wins(self):
-        doc = fitz.open()
-        p1 = doc.new_page()
-        p1.insert_text((72, 72), "合并资产负债表")
-        p2 = doc.new_page()
-        p2.insert_text((72, 72), "母公司资产负债表")
-        doc.new_page().insert_text((72, 72), "资产总计 100")
         role, evidence = v14c._nearest_statement_role(doc, 3)
         self.assertEqual(role, "PARENT")
         self.assertEqual(evidence["chosen"]["page"], 2)
