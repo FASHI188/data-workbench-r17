@@ -54,8 +54,6 @@ def detect_unit(text: str) -> tuple[str | None, Decimal | None]:
     return m.group(1), mult
 
 
-# Add only aliases observed in official filings or conventional statement
-# translations.  Do not remove or weaken any existing Chinese aliases.
 def _append_alias(concept: str, alias: str, tier: dict[str, list[str]]) -> None:
     values = tier.setdefault(concept, [])
     if alias not in values:
@@ -94,11 +92,12 @@ for _alias in (
     _append_alias("TOTAL_EQUITY", _alias, base.TIER2_ALIASES)
 
 
-# The V2 row parser is intentionally whitespace-tolerant.  Make only English
-# aliases case-insensitive; Chinese behavior is unchanged.
 def _alias_regex(alias: str) -> re.Pattern[str]:
     flags = re.I if re.search(r"[A-Za-z]", alias) else 0
     return re.compile(r"\s*".join(re.escape(ch) for ch in alias), flags)
+
+
+_ORIGINAL_SEMANTIC_ROW_MATCH = base.semantic_row_match
 
 
 def semantic_row_match(combined: str, alias: str, concept: str) -> bool:
@@ -113,17 +112,18 @@ def semantic_row_match(combined: str, alias: str, concept: str) -> bool:
         return False
     if concept == "TOTAL_ASSETS" and any(x in c for x in ("returnontotalassets", "averagetotalassets")):
         return False
+    if concept == "OPERATING_REVENUE" and c.startswith("grossoperatingincome"):
+        return False
+    if concept == "OPERATING_COST" and c.startswith("grossoperatingcost"):
+        return False
     return True
 
 
-_ORIGINAL_SEMANTIC_ROW_MATCH = base.semantic_row_match
 base.detect_unit = detect_unit
 base.semantic_row_match = semantic_row_match
 v2._alias_regex = _alias_regex
 
 
-# V11 title grammar: retain whole-line matching and add only statement forms
-# observed in official PDFs.  Narrative mentions still fail fullmatch.
 CN_TITLE_RE = re.compile(
     r"^(?:[一二三四五六七八九十\d]+[、.．])?"
     r"(?:未经审计)?"
@@ -189,8 +189,6 @@ def _balance_sheet_start_pages(doc: fitz.Document) -> list[tuple[int, int]]:
         if "GENERIC" in kinds:
             out.append((pno, 1))
 
-    # Keep the V8 fallback, but use the repaired unit grammar and include the
-    # official '资产合计' terminal label.  Parent-only pages never seed this path.
     if not out:
         for pno in base.candidate_statement_pages(doc):
             text = doc[pno].get_text("text") or ""
@@ -279,8 +277,6 @@ def _find_metric_in_block(
     )
 
 
-# English annual reports can place the statements well after page 32.  Extend
-# statement-page discovery only around exact whole-line English statement titles.
 _ORIGINAL_CANDIDATE_STATEMENT_PAGES = base.candidate_statement_pages
 EN_STATEMENT_TITLE_RE = re.compile(
     r"^(?:unaudited\s+)?(?:consolidated\s+)?(?:balance\s+sheet|income\s+statement|cash\s+flow\s+statement|statement\s+of\s+financial\s+position)$",
@@ -309,12 +305,7 @@ v2._find_metric_in_block = _find_metric_in_block
 
 
 def parse_pdf_bytes(raw: bytes) -> dict:
-    # Run the inherited joint-balance parser after the grammar patches.
     out = v3._enforce_validated_balance_block(v2.parse_pdf_bytes(raw))
-
-    # V2 intentionally keeps operating revenue on the early-summary path.  For
-    # English full annual reports, recover it from the exact statement pages when
-    # absent; do not overwrite any already-found observation.
     observations = dict(out.get("observations") or {})
     current = observations.get("OPERATING_REVENUE") or {}
     if current.get("status") != "FOUND":
