@@ -7,6 +7,7 @@ on:
       - '.github/workflows/stage3-s3g1j-coordinate-table-v14.yml'
       - 'scripts/probe_stage3_s3g1j_coordinate_rows_v14.py'
       - 'scripts/probe_stage3_s3g1j_coordinate_role_v14_1.py'
+      - 'scripts/probe_stage3_s3g1j_coordinate_role_v14_1b.py'
   workflow_dispatch:
 
 permissions:
@@ -27,7 +28,7 @@ jobs:
       - name: Run coordinate-row identity diagnostic on exact 20 V13 residuals
         run: python scripts/probe_stage3_s3g1j_coordinate_rows_v14.py
       - name: Require consolidated role and group-current numeric column
-        run: python scripts/probe_stage3_s3g1j_coordinate_role_v14_1.py
+        run: python scripts/probe_stage3_s3g1j_coordinate_role_v14_1b.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
