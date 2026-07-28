@@ -40,6 +40,37 @@ def decode_html(raw: bytes) -> tuple[str,str]:
     return cand[0][2],cand[0][1]
 
 
+def _is_direct_pdf(p: dict) -> bool:
+    return ".pdf" in str(p.get("url") or "").lower()
+
+
+def _preferred_pdf(pdfs: list[dict]) -> dict | None:
+    # Legacy detail pages often include a navigation link whose label is merely
+    # “行业分类结果 >”.  It is HTML, not evidence.  Prefer an actual .pdf URL before
+    # considering label-only fallbacks.
+    direct=[p for p in pdfs if _is_direct_pdf(p)]
+    preferred=[p for p in direct if "按股票代码" in p["title"]]
+    if not preferred:
+        preferred=[p for p in direct if "行业分类结果" in p["title"] and "按行业" not in p["title"]]
+    if not preferred:
+        preferred=direct
+    if not preferred:
+        preferred=[p for p in pdfs if "按股票代码" in p["title"]]
+    if not preferred:
+        preferred=[p for p in pdfs if "行业分类结果" in p["title"] and "按行业" not in p["title"]]
+    if not preferred:
+        preferred=pdfs
+    return preferred[0] if preferred else None
+
+
+def _detail_preference(rec: dict) -> tuple[int,int,str]:
+    # Prefer the current canonical route over the legacy /pub/ alias when both
+    # expose the same title/date/PDF.  Direct-PDF evidence is the stronger key.
+    direct=int(bool(rec.get("preferred_pdf") and _is_direct_pdf(rec["preferred_pdf"])))
+    canonical=int("/pub/zgssgsxh/" not in str(rec.get("detail_url") or ""))
+    return (direct,canonical,str(rec.get("detail_url") or ""))
+
+
 def discover_publications(session: requests.Session) -> list[dict]:
     found:dict[str,dict]={}
     index_evidence=[]
@@ -55,7 +86,8 @@ def discover_publications(session: requests.Session) -> list[dict]:
                 index_evidence.append({"requested_url":u,"final_url":r.url,"sha256":sha(r.content),"bytes":len(r.content),"decoded_as":enc,"classification_links_found":hits})
             except Exception:
                 continue
-    out=[]
+
+    raw_out=[]
     for detail,x in sorted(found.items()):
         r=get(session,detail);text,enc=decode_html(r.content);soup=BeautifulSoup(text,"html.parser");plain=" ".join(soup.stripped_strings)
         dm=re.search(r"发布时间[：:]?\s*(20\d{2})[-年](\d{1,2})[-月](\d{1,2})",plain) or re.search(r"(20\d{2})[-年](\d{1,2})[-月](\d{1,2})",plain)
@@ -65,8 +97,23 @@ def discover_publications(session: requests.Session) -> list[dict]:
             href=urljoin(r.url,a["href"]);label=" ".join(a.stripped_strings).strip()
             if ".pdf" in href.lower() or "行业分类结果" in label or "按股票代码" in label:
                 if href not in seen:seen.add(href);pdfs.append({"title":label,"url":href})
-        preferred=[p for p in pdfs if "按股票代码" in p["title"]]
-        if not preferred:preferred=[p for p in pdfs if "行业分类结果" in p["title"] and "按行业" not in p["title"]]
-        if not preferred:preferred=pdfs
-        out.append({**x,"publication_date":pub,"detail_final_url":r.url,"detail_sha256":sha(r.content),"detail_decoded_as":enc,"pdf_candidates":pdfs,"preferred_pdf":preferred[0] if preferred else None,"index_evidence":index_evidence})
-    return out
+        raw_out.append({
+            **x,
+            "publication_date":pub,
+            "detail_final_url":r.url,
+            "detail_sha256":sha(r.content),
+            "detail_decoded_as":enc,
+            "pdf_candidates":pdfs,
+            "preferred_pdf":_preferred_pdf(pdfs),
+            "index_evidence":index_evidence,
+        })
+
+    # The old /pub/ route and current route can expose the same historical item.
+    # One publication snapshot must enter the PIT ledger exactly once.
+    dedup:dict[tuple[str,str],dict]={}
+    for rec in raw_out:
+        key=(str(rec.get("title") or ""),str(rec.get("publication_date") or ""))
+        prev=dedup.get(key)
+        if prev is None or _detail_preference(rec)>_detail_preference(prev):
+            dedup[key]=rec
+    return sorted(dedup.values(),key=lambda x:(x.get("publication_date") or "",x.get("title") or "",x.get("detail_url") or ""))
