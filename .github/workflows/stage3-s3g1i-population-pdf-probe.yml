@@ -2,7 +2,7 @@ name: Stage3 S3G1I Stratified PDF Population Probe
 
 on:
   workflow_dispatch:
-  push:
+  pull_request:
     branches: [stage3-point-in-time-features]
     paths:
       - 'scripts/probe_stage3_financial_pdf_population.py'

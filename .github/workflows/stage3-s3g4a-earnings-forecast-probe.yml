@@ -2,7 +2,7 @@ name: Stage3 S3G4A Earnings Forecast Parser Probe
 
 on:
   workflow_dispatch:
-  push:
+  pull_request:
     branches: [stage3-point-in-time-features]
     paths:
       - 'scripts/stage3_earnings_forecast_parser.py'
@@ -27,8 +27,14 @@ jobs:
         run: |
           set +e
           mkdir -p data/stage3_source_probe
-          python scripts/probe_stage3_earnings_forecast_parser.py > data/stage3_source_probe/forecast_stdout.log 2> data/stage3_source_probe/forecast_stderr.log
-          code=$?;echo "S3G4A_EXIT=$code" >> "$GITHUB_ENV";cat data/stage3_source_probe/earnings_forecast_parser_probe.json || true;cat data/stage3_source_probe/forecast_stderr.log || true;exit 0
+          python scripts/probe_stage3_earnings_forecast_parser.py \
+            > data/stage3_source_probe/forecast_stdout.log \
+            2> data/stage3_source_probe/forecast_stderr.log
+          code=$?
+          echo "S3G4A_EXIT=$code" >> "$GITHUB_ENV"
+          cat data/stage3_source_probe/earnings_forecast_parser_probe.json || true
+          cat data/stage3_source_probe/forecast_stderr.log || true
+          exit 0
       - uses: actions/upload-artifact@v4
         with:
           name: stage3-s3g4a-earnings-forecast-parser-probe
