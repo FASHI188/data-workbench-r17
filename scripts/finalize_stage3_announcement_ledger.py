@@ -6,9 +6,9 @@ from datetime import date,datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 TZ=ZoneInfo('Asia/Shanghai');EXPECTED=3402
-FIELDS=['exchange','source_code','effective_code','org_id','announcement_id','announcement_title','event_categories','source_published_at','publication_precision','effective_session','available_at','usable_in_stage2','availability_reason','source_url','query_response_sha256']
+FIELDS=['exchange','source_code','effective_code','source_instrument_codes','org_id','announcement_id','announcement_title','event_categories','source_published_at','publication_precision','effective_session','available_at','usable_in_stage2','availability_reason','source_url','query_response_sha256']
 def sha(p:Path)->str:
- h=hashlib.sha256();
+ h=hashlib.sha256()
  with p.open('rb') as f:
   for b in iter(lambda:f.read(1024*1024),b''):h.update(b)
  return h.hexdigest()
@@ -42,9 +42,9 @@ def main():
  mps=sorted(root.rglob('announcement_ledger_shard*.manifest.json'));dps=sorted(root.rglob('announcement_ledger_shard*.csv.gz'))
  if len(mps)!=16:errors.append(f'expected 16 manifests got {len(mps)}')
  if len(dps)!=16:errors.append(f'expected 16 data files got {len(dps)}')
- selected=0;stockshas=set();mm={};cat=Counter();srcrows=0
+ selected=0;stockshas=set();mm={};cat=Counter();srcrows=0;instrument_rows=0
  for p in mps:
-  m=json.loads(p.read_text(encoding='utf-8'));selected+=int(m.get('security_identities',0));srcrows+=int(m.get('rows',0));stockshas.add(m.get('stock_map_sha256'));mm[int(m['shard'])]=m;cat.update({k:int(v) for k,v in (m.get('category_totals') or {}).items()})
+  m=json.loads(p.read_text(encoding='utf-8'));selected+=int(m.get('security_identities',0));srcrows+=int(m.get('rows',0));stockshas.add(m.get('stock_map_sha256'));mm[int(m['shard'])]=m;cat.update({k:int(v) for k,v in (m.get('category_totals') or {}).items()});instrument_rows+=int(m.get('same_issuer_non_equity_instrument_rows') or 0)
   if m.get('errors'):errors.append(f"shard {m['shard']} errors {m['errors'][:10]}")
  if selected!=EXPECTED:errors.append(f'security identities {selected} != {EXPECTED}')
  if len(stockshas)!=1:errors.append(f'stock map changed {stockshas}')
@@ -54,12 +54,14 @@ def main():
   if m and sha(p)!=m.get('data_sha256'):errors.append(f'data hash mismatch shard {sh}')
   raw.extend(readgz(p))
  if len(raw)!=srcrows:errors.append(f'raw rows {len(raw)} != manifests {srcrows}')
- # collapse category-overlap of the same official announcement, preserving all category labels
+ # Collapse category-overlap of the same official announcement. The A-share
+ # identity remains r['code']; non-equity source instruments are retained only
+ # as provenance and never become tradeable equity identities.
  groups=defaultdict(list)
  for r in raw:groups[(r['exchange'],r['code'],r['announcement_id'])].append(r)
  ivs=load_intervals(a.g2_intervals);ts=json.loads((Path(__file__).resolve().parents[1]/'config/security_code_transitions.json').read_text(encoding='utf-8'));days=trading_days(a.g3_root)
  if len(days)!=2808:errors.append(f'G3 trading days {len(days)} != 2808')
- output=[];missing_pub=[];missing_url=[];remaps=[];unusable=[];cat_final=Counter()
+ output=[];missing_pub=[];missing_url=[];remaps=[];unusable=[];cat_final=Counter();instrument_announcements=[]
  for key,rs in groups.items():
   r=rs[0];cats=sorted({x['event_category'] for x in rs});cat_final.update(cats);pub=r.get('source_published_date') or ''
   if not pub:missing_pub.append(key);eff=None
@@ -69,13 +71,15 @@ def main():
   if not usable:unusable.append([r['exchange'],r['code'],r['announcement_id'],pub,eff.isoformat() if eff else None])
   if not r.get('source_url'):missing_url.append(key)
   shas=sorted({x['query_response_sha256'] for x in rs});urls=sorted({x['source_url'] for x in rs if x['source_url']});titles=sorted({x['announcement_title'] for x in rs})
+  instruments=sorted({x.get('source_instrument_code') for x in rs if x.get('source_instrument_code') and x.get('source_instrument_code')!=x.get('code')})
+  if instruments:instrument_announcements.append([r['exchange'],r['code'],r['announcement_id'],instruments])
   if len(urls)>1:errors.append(f'multiple source URLs for announcement {key}: {urls}')
-  output.append({'exchange':r['exchange'],'source_code':r['code'],'effective_code':code2 or '','org_id':r['org_id'],'announcement_id':r['announcement_id'],'announcement_title':titles[-1] if titles else '','event_categories':json.dumps(cats,ensure_ascii=False),'source_published_at':pub,'publication_precision':'DATE_ONLY','effective_session':eff.isoformat() if eff else '','available_at':datetime.combine(eff,datetime.min.time(),tzinfo=TZ).isoformat() if usable else '','usable_in_stage2':'1' if usable else '0','availability_reason':reason,'source_url':urls[0] if urls else '','query_response_sha256':json.dumps(shas,ensure_ascii=False)})
+  output.append({'exchange':r['exchange'],'source_code':r['code'],'effective_code':code2 or '','source_instrument_codes':json.dumps(instruments,ensure_ascii=False),'org_id':r['org_id'],'announcement_id':r['announcement_id'],'announcement_title':titles[-1] if titles else '','event_categories':json.dumps(cats,ensure_ascii=False),'source_published_at':pub,'publication_precision':'DATE_ONLY','effective_session':eff.isoformat() if eff else '','available_at':datetime.combine(eff,datetime.min.time(),tzinfo=TZ).isoformat() if usable else '','usable_in_stage2':'1' if usable else '0','availability_reason':reason,'source_url':urls[0] if urls else '','query_response_sha256':json.dumps(shas,ensure_ascii=False)})
  if missing_pub:errors.append(f'missing publication date {missing_pub[:20]} count={len(missing_pub)}')
  if missing_url:errors.append(f'missing source URL {missing_url[:20]} count={len(missing_url)}')
  output.sort(key=lambda r:(r['source_published_at'],r['exchange'],r['source_code'],r['announcement_id']))
  p=out/'stage3_announcement_ledger.csv.gz'
  with gzip.open(p,'wt',encoding='utf-8',newline='',compresslevel=9) as f:w=csv.DictWriter(f,fieldnames=FIELDS);w.writeheader();w.writerows(output)
- report={'gate':'S3G2_POINT_IN_TIME_ANNOUNCEMENT_LEDGER','pass':not errors,'security_identity_count':selected,'g3_trading_days':len(days),'raw_category_rows':len(raw),'unique_announcements':len(output),'source_category_totals':dict(cat),'final_category_memberships':dict(cat_final),'code_time_remaps':len(remaps),'code_time_remap_samples':remaps[:100],'unusable_count':len(unusable),'unusable_samples':unusable[:100],'ledger_sha256':sha(p),'date_only_policy':'first strictly later G3 trading session','scalar_magnitude_from_title_allowed':False,'errors':errors}
+ report={'gate':'S3G2_POINT_IN_TIME_ANNOUNCEMENT_LEDGER','pass':not errors,'security_identity_count':selected,'g3_trading_days':len(days),'raw_category_rows':len(raw),'unique_announcements':len(output),'source_category_totals':dict(cat),'final_category_memberships':dict(cat_final),'code_time_remaps':len(remaps),'code_time_remap_samples':remaps[:100],'same_issuer_non_equity_instrument_rows':instrument_rows,'same_issuer_non_equity_instrument_announcements':len(instrument_announcements),'same_issuer_non_equity_instrument_samples':instrument_announcements[:100],'unusable_count':len(unusable),'unusable_samples':unusable[:100],'ledger_sha256':sha(p),'date_only_policy':'first strictly later G3 trading session','scalar_magnitude_from_title_allowed':False,'errors':errors}
  (out/'stage3_announcement_ledger_audit.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8');print(json.dumps(report,ensure_ascii=False,indent=2));return 0 if not errors else 2
 if __name__=='__main__':raise SystemExit(main())
