@@ -2,10 +2,6 @@ name: Stage3 S3G1J Full Original-PDF Financial Values
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [stage3-point-in-time-features]
-    paths:
-      - '.github/workflows/stage3-s3g1j-full-financial-pdf-values.yml'
 
 permissions:
   contents: read
@@ -13,7 +9,7 @@ permissions:
 
 env:
   REPORT_VERSIONS_RUN: '30270405448'
-  POPULATION_PROBE_RUN: '30271554184'
+  POPULATION_PROBE_RUN: '30326328965'
 
 jobs:
   lock-inputs:
@@ -47,6 +43,7 @@ jobs:
         shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63]
     env:
       GH_TOKEN: ${{ github.token }}
+      PYTHONPATH: scripts
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -64,7 +61,7 @@ jobs:
           set +e
           out="build/stage3-financial-values/shard${{ matrix.shard }}"
           mkdir -p "$out"
-          python scripts/extract_stage3_financial_pdf_values.py \
+          python scripts/extract_stage3_financial_pdf_values_v2.py \
             --versions versions/stage3_financial_report_versions.csv.gz \
             --shard ${{ matrix.shard }} --shards 64 --out "$out" \
             > "$out/stdout.log" 2> "$out/stderr.log"
