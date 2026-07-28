@@ -20,10 +20,10 @@ OUT_DIR = ROOT / "data/stage3_source_probe_v10"
 OUT_PATH = OUT_DIR / "s3g1j_failure_root_cause_v10.json"
 
 CN_RELAXED_UNIT_RE = re.compile(
-    r"(?:货币|金额)?单位\s*(?:[：:]|为|均为)?\s*(?:人民币)?\s*(百万元|亿元|万元|千元|元)"
+    r"(?:货币|金额)?单位\s*(?:[：:]|为|均为|均以)?\s*(?:人民币)?\s*(百万元|亿元|万元|千元|元)"
 )
 EN_UNIT_RE = re.compile(
-    r"\b(?:unit|currency)\s*[:：]?\s*(RMB|CNY|yuan|RMB\s*million|RMB\s*thousand|thousand\s*RMB|million\s*RMB)\b",
+    r"\b(?:unit|currency)\s*[:：]?\s*(RMB\s*million|RMB\s*thousand|thousand\s*RMB|million\s*RMB|RMB|CNY|yuan)\b",
     re.I,
 )
 EN_BALANCE_TITLE_RE = re.compile(
@@ -34,6 +34,10 @@ CN_EXTRA_TITLE_VARIANTS = (
     "合并及公司资产负债表",
     "合并公司资产负债表",
     "合并资产负债表及公司资产负债表",
+    "合并及银行资产负债表",
+    "合并银行资产负债表",
+    "未经审计合并资产负债表",
+    "未经审计资产负债表",
 )
 CN_ASSET_TERMINALS = ("资产总计", "资产合计")
 CN_LIABILITY_TERMINALS = ("负债合计",)
@@ -85,12 +89,13 @@ def _page_signal(doc: fitz.Document, pno: int) -> dict:
     }
 
 
-def _nearest_terminal_pages(signals: list[dict], start_page: int) -> dict[str, int | None]:
+def _nearest_terminal_pages(signals: list[dict], start_page: int, max_span: int = 13) -> dict[str, int | None]:
     out: dict[str, int | None] = {"assets": None, "liabilities": None, "equity": None}
+    last_page = start_page + max_span - 1
     for sig in signals:
         if sig["page"] < start_page:
             continue
-        if sig["page"] > start_page + 12:
+        if sig["page"] > last_page:
             break
         if out["assets"] is None and (sig["cn_asset_terminal"] or sig["en_asset_terminal"]):
             out["assets"] = sig["page"]
@@ -101,6 +106,24 @@ def _nearest_terminal_pages(signals: list[dict], start_page: int) -> dict[str, i
     return out
 
 
+def _structural_windows(signals: list[dict], span: int = 5) -> list[dict]:
+    windows: list[dict] = []
+    for sig in signals:
+        if not (sig["current_unit"] or sig["relaxed_cn_unit"] or sig["english_unit"]):
+            continue
+        start = int(sig["page"])
+        terminals = _nearest_terminal_pages(signals, start, max_span=span)
+        if all(terminals.values()):
+            windows.append(
+                {
+                    "start_page": start,
+                    "unit": sig["current_unit"] or sig["relaxed_cn_unit"] or sig["english_unit"],
+                    "terminal_pages": terminals,
+                }
+            )
+    return windows
+
+
 def _classify(signals: list[dict], starts: list[tuple[int, int]], parsed: dict) -> tuple[str, dict]:
     english_pages = [s["page"] for s in signals if s["english_title_lines"]]
     extra_cn_pages = [s["page"] for s in signals if s["extra_cn_title_lines"]]
@@ -108,11 +131,8 @@ def _classify(signals: list[dict], starts: list[tuple[int, int]], parsed: dict) 
     relaxed_only_unit_pages = [
         s["page"] for s in signals if s["relaxed_cn_unit"] and not s["current_unit"]
     ]
-    structural_pages = [
-        s["page"]
-        for s in signals
-        if s["triad_hits"] >= 2 and (s["current_unit"] or s["relaxed_cn_unit"] or s["english_unit"])
-    ]
+    english_unit_pages = [s["page"] for s in signals if s["english_unit"]]
+    structural_windows = _structural_windows(signals, span=5)
 
     details = {
         "current_start_pages": [{"page": p + 1, "priority": pri} for p, pri in starts],
@@ -120,7 +140,8 @@ def _classify(signals: list[dict], starts: list[tuple[int, int]], parsed: dict) 
         "extra_cn_title_pages": extra_cn_pages,
         "english_title_pages": english_pages,
         "relaxed_only_unit_pages": relaxed_only_unit_pages,
-        "structural_pages": structural_pages,
+        "english_unit_pages": english_unit_pages,
+        "structural_windows_5_pages": structural_windows,
         "validation_errors": parsed.get("validation_errors") or [],
     }
 
@@ -139,7 +160,7 @@ def _classify(signals: list[dict], starts: list[tuple[int, int]], parsed: dict) 
                 details["unit_pattern_start_page"] = start
                 return "CN_UNIT_PATTERN_UNSUPPORTED", details
         for start in starts_1b:
-            terminals = _nearest_terminal_pages(signals, start)
+            terminals = _nearest_terminal_pages(signals, start, max_span=13)
             if all(terminals.values()):
                 details["terminal_pages"] = terminals
                 max_page = max(int(x) for x in terminals.values() if x is not None)
@@ -148,8 +169,12 @@ def _classify(signals: list[dict], starts: list[tuple[int, int]], parsed: dict) 
                     return "BALANCE_BLOCK_SPAN_GT5", details
         return "ALIAS_OR_ROW_LAYOUT_WITH_START", details
 
-    if structural_pages:
+    if structural_windows:
         return "STRUCTURAL_CANDIDATE_OUTSIDE_CURRENT_DISCOVERY", details
+    if relaxed_only_unit_pages:
+        return "CN_UNIT_PATTERN_WITHOUT_CURRENT_START", details
+    if english_unit_pages:
+        return "ENGLISH_UNIT_WITHOUT_TITLE_SIGNAL", details
     return "NO_RELIABLE_STATEMENT_SIGNAL_OR_SCANNED_LAYOUT", details
 
 
@@ -193,6 +218,7 @@ def main() -> int:
                 or s["english_title_lines"]
                 or s["triad_hits"] >= 2
                 or (s["relaxed_cn_unit"] and not s["current_unit"])
+                or s["english_unit"]
             ]
             row.update(
                 {
