@@ -1,0 +1,35 @@
+name: Stage3 S3G1J Failure Diagnostic V10
+
+on:
+  pull_request:
+    branches: [stage3-s3g1j-pdf-issuer-gate-v9]
+    paths:
+      - '.github/workflows/stage3-s3g1j-failure-diagnostic-v10.yml'
+      - 'scripts/probe_stage3_s3g1j_failure_root_causes_v10.py'
+      - 'config/stage3_s3g1j_v10_diagnostic_samples.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      PYTHONPATH: scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Run stratified V8 failure root-cause diagnostic
+        run: python scripts/probe_stage3_s3g1j_failure_root_causes_v10.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-failure-diagnostic-v10
+          path: data/stage3_source_probe_v10/s3g1j_failure_root_cause_v10.json
+          retention-days: 90
+          compression-level: 0
