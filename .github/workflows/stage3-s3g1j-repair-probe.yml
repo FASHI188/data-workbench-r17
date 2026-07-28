@@ -7,6 +7,7 @@ on:
     paths:
       - 'scripts/stage3_financial_pdf_parser_v2.py'
       - 'scripts/extract_stage3_financial_pdf_values.py'
+      - 'scripts/extract_stage3_financial_pdf_values_v2.py'
       - 'scripts/probe_stage3_financial_pdf_parser_v2.py'
       - 'tests/test_stage3_financial_tie_resolution.py'
       - '.github/workflows/stage3-s3g1j-repair-probe.yml'
@@ -27,7 +28,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install --disable-pip-version-check requests pymupdf
-      - name: Synthetic issuer, tie-resolution and accounting regressions
+      - name: Synthetic issuer, tie-resolution, stale-source and accounting regressions
         run: python -m unittest tests.test_stage3_financial_tie_resolution -v
       - name: Re-run locked official PDF parser samples with V2 parser
         shell: bash
