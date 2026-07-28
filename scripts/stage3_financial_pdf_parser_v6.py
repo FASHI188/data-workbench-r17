@@ -13,13 +13,9 @@ import stage3_financial_pdf_parser_v3 as v3
 import stage3_financial_pdf_parser_v4 as v4
 import stage3_financial_pdf_parser_v5 as v5  # noqa: F401 - retain all V8 hardening
 
-# V11 is a grammar/alias coverage repair only.  It does not change the
+# V11 is a grammar/alias coverage repair only. It does not change the
 # A=L+E tolerance, provenance, tie policy, or fail-closed requirement.
 
-# Real official filings use all of these explicit unit phrasings:
-#   金额单位为人民币元
-#   单位：人民币千元
-#   货币单位均以人民币百万元列示
 CN_UNIT_RE = re.compile(
     r"(?:货币|金额)?单位\s*(?:[：:]|为|均为|均以)?\s*(?:人民币)?\s*(百万元|亿元|万元|千元|元)"
 )
@@ -112,10 +108,14 @@ def semantic_row_match(combined: str, alias: str, concept: str) -> bool:
         return False
     if concept == "TOTAL_ASSETS" and any(x in c for x in ("returnontotalassets", "averagetotalassets")):
         return False
-    if concept == "OPERATING_REVENUE" and c.startswith("grossoperatingincome"):
-        return False
-    if concept == "OPERATING_COST" and c.startswith("grossoperatingcost"):
-        return False
+    if concept == "OPERATING_REVENUE":
+        gross_pos = c.find("grossoperatingincome")
+        if 0 <= gross_pos <= pos:
+            return False
+    if concept == "OPERATING_COST":
+        gross_pos = c.find("grossoperatingcost")
+        if 0 <= gross_pos <= pos:
+            return False
     return True
 
 
