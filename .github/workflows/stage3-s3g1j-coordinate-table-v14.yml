@@ -9,6 +9,7 @@ on:
       - 'scripts/probe_stage3_s3g1j_coordinate_role_v14_1.py'
       - 'scripts/probe_stage3_s3g1j_coordinate_role_v14_1b.py'
       - 'scripts/probe_stage3_s3g1j_coordinate_role_v14_1c.py'
+      - 'tests/test_stage3_coordinate_role_v14_1c.py'
   workflow_dispatch:
 
 permissions:
@@ -26,6 +27,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Run V14.1c role-gate unit regressions
+        run: python -m unittest tests.test_stage3_coordinate_role_v14_1c -v
       - name: Run coordinate-row identity diagnostic on exact 20 V13 residuals
         run: python scripts/probe_stage3_s3g1j_coordinate_rows_v14.py
       - name: Require nearest consolidated role and group-current numeric column
