@@ -10,6 +10,7 @@ on:
       - 'scripts/extract_stage3_financial_pdf_values_v7.py'
       - 'scripts/probe_stage3_s3g1j_parser_grammar_v11.py'
       - 'scripts/probe_stage3_s3g1j_parser_grammar_v11_1.py'
+      - 'scripts/probe_stage3_s3g1j_v11_recovery.py'
       - 'tests/test_stage3_financial_pdf_parser_v11.py'
   workflow_dispatch:
 
@@ -19,7 +20,7 @@ permissions:
 jobs:
   regress:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 150
     env:
       PYTHONPATH: scripts
     steps:
@@ -32,10 +33,12 @@ jobs:
         run: python -m unittest tests.test_stage3_financial_pdf_parser_v11 -v
       - name: Run exact official-PDF V11.1 regression
         run: python scripts/probe_stage3_s3g1j_parser_grammar_v11_1.py
+      - name: Measure recovery on the same 48 V10.1 failures
+        run: python scripts/probe_stage3_s3g1j_v11_recovery.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: stage3-s3g1j-parser-grammar-v11
-          path: data/stage3_source_probe_v11/s3g1j_parser_grammar_v11.json
+          path: data/stage3_source_probe_v11/
           retention-days: 90
           compression-level: 0
