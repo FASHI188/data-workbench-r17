@@ -12,7 +12,7 @@ import fitz
 import requests
 
 from stage3_financial_pdf_parser_v9 import parse_pdf_bytes as v14_parse
-from stage3_financial_spatial_alias_v16_3 import diagnose_spatial_balance_sheet_v16_3
+from stage3_financial_spatial_alias_v16_3 import diagnose_spatial_balance_sheet_v16_6
 
 REPRESENTATIVE_IDS = {
     "1200948256",  # 600500 annual 2014
@@ -26,7 +26,7 @@ REPRESENTATIVE_IDS = {
     "1219442543",  # 601688 annual 2023
     "1221090309",  # 601390 semi 2024
     "1222949445",  # 601688 annual 2024
-    "1223096939",  # 000736 annual 2024
+    "1223096939",  # 000736 annual 2024; V16.5 false positive on prior/restated period
 }
 
 
@@ -39,7 +39,7 @@ def download(session: requests.Session, url: str) -> tuple[bytes, str]:
     response = session.get(
         url,
         headers={
-            "User-Agent": "Mozilla/5.0 S3G1J-V16.3-statement-block-diagnostic",
+            "User-Agent": "Mozilla/5.0 S3G1J-V16.6-statement-period-diagnostic",
             "Referer": "https://www.cninfo.com.cn/",
         },
         timeout=120,
@@ -77,7 +77,7 @@ def main() -> int:
             raw, digest = download(session, version["canonical_source_url"])
             current = v14_parse(raw)
             doc = fitz.open(stream=raw, filetype="pdf")
-            spatial = diagnose_spatial_balance_sheet_v16_3(doc)
+            spatial = diagnose_spatial_balance_sheet_v16_6(doc, version["economic_date"])
             row.update({
                 "download_sha256": digest,
                 "page_count": doc.page_count,
@@ -92,12 +92,21 @@ def main() -> int:
         rows.append(row)
 
     recovered = [row for row in rows if (row.get("v16_spatial") or {}).get("recovered")]
+    false_positive_guard = next(row for row in rows if row["announcement_id"] == "1223096939")
+    guard_rejected = not bool((false_positive_guard.get("v16_spatial") or {}).get("recovered"))
     report = {
-        "gate": "S3G1J_V16_3_STATEMENT_BLOCK_SPATIAL_DIAGNOSTIC",
-        "diagnostic_pass": not errors,
+        "gate": "S3G1J_V16_6_STATEMENT_PERIOD_SPATIAL_DIAGNOSTIC",
+        "diagnostic_pass": not errors and guard_rejected,
         "sample_count": len(rows),
         "v16_recovered_count": len(recovered),
         "v16_recovered_ids": [row["announcement_id"] for row in recovered],
+        "period_false_positive_guard": {
+            "announcement_id": "1223096939",
+            "source_code": "000736",
+            "must_remain_rejected": True,
+            "rejected": guard_rejected,
+            "reason": "V16.5 selected a 2023-12-31 pre-restatement balance block inside the 2024 annual report",
+        },
         "policy": {
             "diagnostic_only": True,
             "accepted_v14_parser_remains_unchanged": True,
@@ -105,9 +114,11 @@ def main() -> int:
             "no_ocr": True,
             "formal_statement_titles_are_x_y_bound": True,
             "statement_local_standalone_units_only": True,
+            "text_line_standalone_units_allowed_only_inside_locked_statement_segment": True,
+            "candidate_statement_segment_must_contain_frozen_economic_date": True,
+            "accounting_identity_is_not_sufficient_without_period_match": True,
             "extraction_typo_normalization": "合幵->合并 inside formal-title parser only",
             "alias_position_is_spatial_not_string_prefix": True,
-            "first_valid_amount_to_alias_right_is_current_column_candidate": True,
             "accounting_identity_tolerance": "0.005",
         },
         "rows": rows,
@@ -117,7 +128,7 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    return 0 if not errors else 2
+    return 0 if report["diagnostic_pass"] else 2
 
 
 if __name__ == "__main__":
