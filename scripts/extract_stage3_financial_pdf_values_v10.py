@@ -31,8 +31,57 @@ def _dec(value: object) -> Decimal | None:
         return None
 
 
-def _same_value(a: Decimal, b: Decimal) -> bool:
-    return abs(a - b) / max(abs(a), abs(b), Decimal("1")) <= Decimal("0.000000001")
+def _half_display_step_cny(observation: dict) -> Decimal | None:
+    """Infer half one displayed monetary unit from raw precision + unit scale.
+
+    Example: 663800.32 万元 is displayed to 0.01 万元, so its ordinary
+    rounding interval is +/- 50 yuan. This is not a percentage tolerance and
+    cannot justify material differences between two filings.
+    """
+    raw = str(observation.get("raw_value") or "").strip().replace(",", "")
+    if not raw:
+        return None
+    if raw.startswith("(") and raw.endswith(")"):
+        raw = raw[1:-1]
+    raw = raw.lstrip("+-")
+    if not re.fullmatch(r"\d+(?:\.\d+)?", raw):
+        return None
+    decimals = len(raw.partition(".")[2]) if "." in raw else 0
+    multiplier = _dec(observation.get("unit_multiplier"))
+    if multiplier is None or multiplier <= 0:
+        return None
+    display_step = multiplier * (Decimal("10") ** Decimal(-decimals))
+    return display_step / Decimal("2")
+
+
+def _observations_compatible(a_obs: dict, b_obs: dict) -> tuple[bool, dict]:
+    a = _dec(a_obs.get("normalized_cny_value"))
+    b = _dec(b_obs.get("normalized_cny_value"))
+    if a is None or b is None:
+        return True, {"mode": "NON_NUMERIC_SKIP"}
+    diff = abs(a - b)
+    rel = diff / max(abs(a), abs(b), Decimal("1"))
+    if rel <= Decimal("0.000000001"):
+        return True, {"mode": "EXACT_RELATIVE", "relative_difference": str(rel)}
+
+    a_half = _half_display_step_cny(a_obs)
+    b_half = _half_display_step_cny(b_obs)
+    available = [x for x in (a_half, b_half) if x is not None]
+    if available:
+        allowed = max(available)
+        if diff <= allowed:
+            return True, {
+                "mode": "DECLARED_UNIT_DISPLAY_ROUNDING",
+                "absolute_difference_cny": str(diff),
+                "allowed_half_display_step_cny": str(allowed),
+                "relative_difference": str(rel),
+            }
+    return False, {
+        "mode": "MATERIAL_CONFLICT",
+        "absolute_difference_cny": str(diff),
+        "allowed_half_display_step_cny": str(max(available)) if available else None,
+        "relative_difference": str(rel),
+    }
 
 
 def _is_independently_usable(candidate: dict) -> bool:
@@ -73,12 +122,20 @@ def _overlapping_found_values_compatible(good: dict, bad: dict) -> tuple[bool, l
         bo = bad_obs.get(concept) or {}
         if go.get("status") != "FOUND" or bo.get("status") != "FOUND":
             continue
-        gv = _dec(go.get("normalized_cny_value"))
-        bv = _dec(bo.get("normalized_cny_value"))
-        if gv is None or bv is None:
-            continue
-        if not _same_value(gv, bv):
-            conflicts.append({"concept": concept, "good": str(gv), "bad": str(bv)})
+        compatible, evidence = _observations_compatible(go, bo)
+        if not compatible:
+            conflicts.append({
+                "concept": concept,
+                "good": str(go.get("normalized_cny_value")),
+                "bad": str(bo.get("normalized_cny_value")),
+                "good_raw": go.get("raw_value"),
+                "bad_raw": bo.get("raw_value"),
+                "good_unit": go.get("unit"),
+                "bad_unit": bo.get("unit"),
+                "good_unit_multiplier": go.get("unit_multiplier"),
+                "bad_unit_multiplier": bo.get("unit_multiplier"),
+                **evidence,
+            })
     return not conflicts, conflicts
 
 
