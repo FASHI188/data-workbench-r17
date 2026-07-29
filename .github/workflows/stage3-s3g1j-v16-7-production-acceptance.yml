@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/stage3-s3g1j-v16-7-production-acceptance.yml'
       - 'scripts/stage3_financial_pdf_parser_v10.py'
+      - 'scripts/extract_stage3_financial_pdf_values_v10.py'
       - 'scripts/extract_stage3_financial_pdf_values_v11.py'
       - 'scripts/probe_stage3_s3g1j_v16_7_production_regression.py'
       - 'tests/test_stage3_v16_contextual_parser.py'
