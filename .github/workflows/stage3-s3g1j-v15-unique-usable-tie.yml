@@ -1,0 +1,76 @@
+name: Stage3 S3G1J V15 Unique Usable Tie Acceptance
+
+on:
+  pull_request:
+    branches: [stage3-s3g1j-coordinate-table-v14]
+    paths:
+      - '.github/workflows/stage3-s3g1j-v15-unique-usable-tie.yml'
+      - 'scripts/extract_stage3_financial_pdf_values_v10.py'
+      - 'scripts/probe_stage3_s3g1j_v15_unique_usable_ties.py'
+      - 'tests/test_stage3_unique_usable_tie_v15.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  V13_SMOKE_RUN: '30382695045'
+  V14_ACCEPTANCE_RUN: '30423298099'
+  PYTHONPATH: scripts
+
+jobs:
+  validate-v15-ties:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Require accepted V14.1 parser base
+        run: test "$(gh run view "$V14_ACCEPTANCE_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+      - name: Run V15 fail-closed resolver unit regressions
+        run: python -m unittest tests.test_stage3_unique_usable_tie_v15 -v
+      - name: Restore exact V12.1 version ledger used by representative smoke
+        run: |
+          rm -rf versions data/stage3_source_probe_v15_unique
+          gh run download "$V13_SMOKE_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v13-smoke-versions -D versions
+          test -f versions/stage3_financial_report_versions_v3.csv.gz
+      - name: Replay exact 41 true same-moment ties with V15
+        run: |
+          python scripts/probe_stage3_s3g1j_v15_unique_usable_ties.py \
+            --versions versions/stage3_financial_report_versions_v3.csv.gz \
+            --out data/stage3_source_probe_v15_unique/true_ties_v15_0179.json \
+            --shards 0,1,7,9
+      - name: Enforce exact V15 tie acceptance shape
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/stage3_source_probe_v15_unique/true_ties_v15_0179.json')
+          d=json.loads(p.read_text(encoding='utf-8'))
+          assert d['diagnostic_pass'] is True, d.get('diagnostic_errors')
+          assert d['true_tied_moments'] == 41, d['true_tied_moments']
+          assert d['true_tied_candidates'] == 82, d['true_tied_candidates']
+          assert d['current_resolved_moments'] == 40, d['current_resolved_moments']
+          assert d['current_failed_moments'] == 1, d['current_failed_moments']
+          rc=d['resolution_counts']
+          assert rc.get('TIE_UNIQUE_INDEPENDENTLY_USABLE_CANONICAL',0) == 20, rc
+          assert rc.get('TIE_UNIQUE_INDEPENDENTLY_USABLE_NONCANONICAL',0) == 5, rc
+          assert rc.get('TIE_VALUE_CONFLICT',0) == 1, rc
+          failed=[r for r in d['rows'] if r.get('current_chosen_id') is None]
+          assert len(failed)==1, failed
+          assert failed[0]['canonical_announcement_id']=='1216700376', failed
+          print('V15_TRUE_TIE_GATE_PASS', rc)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v15-unique-usable-ties
+          path: data/stage3_source_probe_v15_unique/true_ties_v15_0179.json
+          retention-days: 90
+          compression-level: 0
