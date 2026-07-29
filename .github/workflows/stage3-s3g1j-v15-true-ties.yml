@@ -1,0 +1,48 @@
+name: Stage3 S3G1J V15 True Tie Diagnostic
+
+on:
+  pull_request:
+    branches: [stage3-s3g1j-identity-arbitration-v13]
+    paths:
+      - '.github/workflows/stage3-s3g1j-v15-true-ties.yml'
+      - 'scripts/probe_stage3_s3g1j_v15_true_ties.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  V13_SMOKE_RUN: '30382695045'
+  PYTHONPATH: scripts
+
+jobs:
+  diagnose-true-ties:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Restore exact V12.1 version ledger used by representative V13 smoke
+        run: |
+          rm -rf versions data/stage3_source_probe_v15
+          gh run download "$V13_SMOKE_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v13-smoke-versions -D versions
+          test -f versions/stage3_financial_report_versions_v3.csv.gz
+      - name: Re-run only true same-moment tied-top rows in shards 0/1/7/9
+        run: |
+          python scripts/probe_stage3_s3g1j_v15_true_ties.py \
+            --versions versions/stage3_financial_report_versions_v3.csv.gz \
+            --shards 0,1,7,9 \
+            --out data/stage3_source_probe_v15/true_ties_0179.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v15-true-ties
+          path: data/stage3_source_probe_v15/true_ties_0179.json
+          retention-days: 90
+          compression-level: 0
