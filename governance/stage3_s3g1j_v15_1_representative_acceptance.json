@@ -1,0 +1,18 @@
+{
+  "gate": "S3G1J_V15_1_REPRESENTATIVE_INTEGRATION",
+  "status": "PASS",
+  "accepted_true_tie_run": 30425765965,
+  "accepted_representative_shard_run": 30426853027,
+  "shards": [0, 1, 7, 9],
+  "v14_error_counts": {"0": 46, "1": 34, "7": 35, "9": 27, "total": 142},
+  "v15_1_error_counts": {"0": 40, "1": 30, "7": 29, "9": 23, "total": 122},
+  "reduction": {"0": 6, "1": 4, "7": 6, "9": 4, "total": 20},
+  "all_shards_non_regressing": true,
+  "all_shards_match_frozen_residual_accounting": true,
+  "remaining_hard_errors": 122,
+  "stage4_alpha_locked": true,
+  "notes": [
+    "Matrix shard jobs intentionally remain fail-closed while hard errors remain.",
+    "This PASS accepts only the V15.1 tied-candidate resolver integration; it does not accept S3G1J as a whole."
+  ]
+}
