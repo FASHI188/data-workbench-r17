@@ -12,7 +12,7 @@ class _Rect:
 
 
 class _FakePage:
-    def get_text(self, mode: str = "text"):
+    def get_text(self, mode: str = "text", **kwargs):
         if mode == "words":
             return []
         return "人民币元\n本期以人民币元列示\n"
