@@ -12,13 +12,20 @@ from pathlib import Path
 import requests
 
 import extract_stage3_financial_pdf_values as base
-from stage3_financial_pdf_parser_v9 import parse_pdf_bytes as v14_parse
+import stage3_financial_pdf_parser_v10 as v16_runtime
+from stage3_financial_pdf_parser_v9 import parse_pdf_bytes as _v14_parse
 from stage3_financial_pdf_parser_v10 import parse_pdf_bytes as v16_parse
 
 EXPECTED_INPUT = {0: 41, 1: 31, 7: 32, 9: 23}
 EXPECTED_V14_REMAINING = {0: 36, 1: 28, 7: 27, 9: 22}
 V16_ARBITRATION = "V16_7_GROUP_PERIOD_FROZEN_DATE_COLUMN_A_EQUALS_L_PLUS_E"
 BALANCE_CONCEPTS = ("TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY")
+
+
+def v14_parse(raw: bytes) -> dict:
+    """Run the frozen V14 parser with diagnostics bounded, never semantics changed."""
+    with v16_runtime._mupdf_diagnostic_guard():
+        return _v14_parse(raw)
 
 
 def read_rows(path: Path) -> list[dict]:
