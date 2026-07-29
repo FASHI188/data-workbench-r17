@@ -5,7 +5,7 @@ import fitz
 
 import stage3_financial_pdf_parser_v2 as v2
 import stage3_financial_pdf_parser_v8 as v13
-from stage3_financial_coordinate_fallback_v14 import validated_coordinate_balance_sheet
+from stage3_financial_coordinate_fallback_v14_1 import validated_coordinate_balance_sheet
 
 METHOD = "V14_COORDINATE_ROLE_GATED_FALLBACK"
 
