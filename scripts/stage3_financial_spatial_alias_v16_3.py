@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import re
 from collections import Counter, defaultdict
 from decimal import Decimal
 
@@ -12,8 +13,55 @@ import stage3_financial_coordinate_fallback_v14 as v14
 import stage3_financial_spatial_alias_v16 as spatial
 import stage3_financial_statement_blocks_v16_5 as blocks
 
+_CN_DATE_RE = re.compile(r"(20\d{2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日")
 
-def _collect_candidates_v16_3(doc: fitz.Document) -> tuple[dict[str, list[dict]], dict]:
+
+def _canonical_economic_date(value: str) -> str:
+    parts = str(value or "").strip().split("-")
+    if len(parts) != 3:
+        return str(value or "").strip()
+    try:
+        year, month, day = (int(x) for x in parts)
+    except ValueError:
+        return str(value or "").strip()
+    return f"{year:04d}-{month:02d}-{day:02d}"
+
+
+def _cn_dates_in_text(text: str) -> list[str]:
+    out = []
+    for match in _CN_DATE_RE.finditer(text or ""):
+        out.append(f"{int(match.group(1)):04d}-{int(match.group(2)):02d}-{int(match.group(3)):02d}")
+    return out
+
+
+def _statement_period_evidence(
+    doc: fitz.Document,
+    role_event: dict,
+    unit_evidence: dict | None,
+    candidate_page_1b: int,
+    expected_economic_date: str,
+) -> dict:
+    expected = _canonical_economic_date(expected_economic_date)
+    root_page = int((unit_evidence or {}).get("root_page") or role_event["page"])
+    start_page = min(root_page, int(role_event["page"]))
+    end_page = max(int(candidate_page_1b), int(role_event["page"]))
+    observed: list[str] = []
+    for page_1b in range(max(1, start_page), min(doc.page_count, end_page) + 1):
+        observed.extend(_cn_dates_in_text(doc[page_1b - 1].get_text("text") or ""))
+    unique = sorted(set(observed))
+    return {
+        "expected_economic_date": expected,
+        "matched": bool(expected) and expected in unique,
+        "observed_statement_dates": unique,
+        "scan_start_page": start_page,
+        "scan_end_page": end_page,
+    }
+
+
+def _collect_candidates_v16_6(
+    doc: fitz.Document,
+    expected_economic_date: str,
+) -> tuple[dict[str, list[dict]], dict]:
     concepts = {
         "TOTAL_ASSETS": parser_base.TIER1_ALIASES.get("TOTAL_ASSETS") or [],
         "TOTAL_LIABILITIES": parser_base.TIER2_ALIASES.get("TOTAL_LIABILITIES") or [],
@@ -70,6 +118,18 @@ def _collect_candidates_v16_3(doc: fitz.Document) -> tuple[dict[str, list[dict]]
                         continue
                     funnel[f"{concept}_group_alias_with_unit"] += 1
 
+                    period_evidence = _statement_period_evidence(
+                        doc,
+                        role_event,
+                        unit_evidence,
+                        pno + 1,
+                        expected_economic_date,
+                    )
+                    if not period_evidence["matched"]:
+                        funnel[f"{concept}_group_alias_wrong_or_missing_period"] += 1
+                        continue
+                    funnel[f"{concept}_group_alias_period_matched"] += 1
+
                     amount = spatial._first_amount_after_alias(row, geom)
                     if amount is None:
                         funnel[f"{concept}_group_alias_without_right_amount"] += 1
@@ -87,6 +147,7 @@ def _collect_candidates_v16_3(doc: fitz.Document) -> tuple[dict[str, list[dict]]
                         "unit": unit,
                         "unit_multiplier": mult,
                         "unit_evidence": unit_evidence,
+                        "period_evidence": period_evidence,
                         "page": pno + 1,
                         "alias": alias,
                         "alias_strength": v13._alias_strength(concept, alias),
@@ -135,10 +196,14 @@ def _collect_candidates_v16_3(doc: fitz.Document) -> tuple[dict[str, list[dict]]
     return out, dict(sorted(funnel.items()))
 
 
-def diagnose_spatial_balance_sheet_v16_3(doc: fitz.Document) -> dict:
-    candidates, funnel = _collect_candidates_v16_3(doc)
+def diagnose_spatial_balance_sheet_v16_6(
+    doc: fitz.Document,
+    expected_economic_date: str,
+) -> dict:
+    candidates, funnel = _collect_candidates_v16_6(doc, expected_economic_date)
     chosen, identity = spatial._choose_spatial_identity(candidates)
     return {
+        "expected_economic_date": _canonical_economic_date(expected_economic_date),
         "funnel": funnel,
         "candidate_counts": {
             concept: len(candidates.get(concept, []))
@@ -152,6 +217,7 @@ def diagnose_spatial_balance_sheet_v16_3(doc: fitz.Document) -> dict:
                 "raw_value": candidate["raw_value"],
                 "unit": candidate["unit"],
                 "unit_evidence": candidate["unit_evidence"],
+                "period_evidence": candidate["period_evidence"],
                 "page": candidate["page"],
                 "alias": candidate["alias"],
                 "alias_x0": str(candidate["alias_x0"]),
@@ -167,4 +233,16 @@ def diagnose_spatial_balance_sheet_v16_3(doc: fitz.Document) -> dict:
             }
             for concept, candidate in (chosen or {}).items()
         },
+    }
+
+
+# Historical diagnostic entrypoint retained only for local compatibility. New
+# acceptance/probe code must pass the frozen expected economic date to V16.6.
+def diagnose_spatial_balance_sheet_v16_3(doc: fitz.Document) -> dict:
+    return {
+        "recovered": False,
+        "candidate_counts": {"TOTAL_ASSETS": 0, "TOTAL_LIABILITIES": 0, "TOTAL_EQUITY": 0},
+        "funnel": {"deprecated_without_expected_economic_date": 1},
+        "identity": None,
+        "selected": {},
     }
