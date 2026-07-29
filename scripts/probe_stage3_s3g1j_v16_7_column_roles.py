@@ -77,13 +77,6 @@ def _date_geometries(row: dict) -> list[dict]:
 def _find_alias_row(doc: fitz.Document, selected: dict) -> dict | None:
     pno = int(selected["page"]) - 1
     alias = str(selected["alias"])
-    concept = None
-    for candidate_concept in ("TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY"):
-        if selected.get("concept") == candidate_concept:
-            concept = candidate_concept
-            break
-    # selected dictionaries emitted by the public diagnostic omit concept; infer
-    # from alias using spatial matching across all three semantic families.
     for row in v14._rows_from_words(doc[pno]):
         for candidate_concept in ("TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY"):
             geoms = spatial._alias_geometries(row, alias, candidate_concept)
@@ -92,7 +85,7 @@ def _find_alias_row(doc: fitz.Document, selected: dict) -> dict | None:
             target_x = float(selected["alias_x0"])
             geom = min(geoms, key=lambda g: abs(float(g["x0"]) - target_x))
             if abs(float(geom["x0"]) - target_x) <= 3.0:
-                nums = spatial._numeric_word_candidates(row)
+                nums = v14._numeric_word_candidates(row)
                 return {
                     "page": pno + 1,
                     "row_y": float(row["y"]),
