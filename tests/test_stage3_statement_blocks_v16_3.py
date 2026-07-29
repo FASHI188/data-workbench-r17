@@ -3,6 +3,24 @@ from __future__ import annotations
 import unittest
 
 import stage3_financial_statement_blocks_v16_3 as blocks
+import stage3_financial_statement_blocks_v16_5 as blocks_v165
+
+
+class _Rect:
+    def __init__(self, y0: float):
+        self.y0 = y0
+
+
+class _FakePage:
+    def get_text(self, mode: str = "text"):
+        if mode == "words":
+            return []
+        return "人民币元\n本期以人民币元列示\n"
+
+    def search_for(self, text: str):
+        if text == "人民币元":
+            return [_Rect(42.0)]
+        return []
 
 
 class StatementBlocksV163Tests(unittest.TestCase):
@@ -61,6 +79,15 @@ class StatementBlocksV163Tests(unittest.TestCase):
         ]
         event = blocks.bind_alias_to_preceding_statement_event(events, 77, 300.0, 180.0)
         self.assertEqual(event["role"], "UNKNOWN_STATEMENT")
+
+    def test_v165_text_line_unit_extension_is_non_recursive_and_exact_only(self):
+        units = blocks_v165._page_units_with_y_v16_5(_FakePage())
+        text_units = [u for u in units if u.get("source") == "TEXT_LINE_STANDALONE_STATEMENT_UNIT"]
+        self.assertEqual(len(text_units), 1)
+        self.assertEqual(text_units[0]["unit"], "元")
+        self.assertEqual(str(text_units[0]["multiplier"]), "1")
+        self.assertEqual(text_units[0]["line"], "人民币元")
+        self.assertEqual(text_units[0]["y"], 42.0)
 
 
 if __name__ == "__main__":
