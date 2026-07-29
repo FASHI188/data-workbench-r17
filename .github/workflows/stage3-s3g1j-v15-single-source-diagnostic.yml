@@ -1,0 +1,154 @@
+name: Stage3 S3G1J V15 Single Source Residual Diagnostic
+
+on:
+  pull_request:
+    branches: [stage3-s3g1j-coordinate-table-v14]
+    paths:
+      - '.github/workflows/stage3-s3g1j-v15-single-source-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  V13_SMOKE_RUN: '30382695045'
+  V14_ACCEPTANCE_RUN: '30423298099'
+  PYTHONPATH: scripts
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require V14 acceptance PASS
+        run: test "$(gh run view "$V14_ACCEPTANCE_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+      - name: Restore exact V12.1 versions and completed V13 smoke log
+        run: |
+          rm -rf versions prepared
+          mkdir -p prepared
+          gh run download "$V13_SMOKE_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v13-smoke-versions -D versions
+          gh run view "$V13_SMOKE_RUN" -R "$GITHUB_REPOSITORY" --log > prepared/v13-smoke.log
+          test -f versions/stage3_financial_report_versions_v3.csv.gz
+      - name: Freeze exactly the 127 single-canonical parser failures
+        run: |
+          python scripts/probe_stage3_s3g1j_v15_residual_shape.py \
+            --versions versions/stage3_financial_report_versions_v3.csv.gz \
+            --run-log prepared/v13-smoke.log \
+            --out prepared/residual_shape_0179.json
+          python - <<'PY'
+          import csv, gzip, json
+          from pathlib import Path
+          shape=json.loads(Path('prepared/residual_shape_0179.json').read_text(encoding='utf-8'))
+          ids={r['announcement_id'] for r in shape['rows']
+               if r['resolution']=='TIE_SOURCE_INCOMPLETE'
+               and r['source_shape']=='SINGLE_CANONICAL_SOURCE'}
+          assert len(ids)==127, len(ids)
+          src='versions/stage3_financial_report_versions_v3.csv.gz'
+          dst='prepared/single_source_residual_versions.csv.gz'
+          with gzip.open(src,'rt',encoding='utf-8',newline='') as f:
+              reader=csv.DictReader(f)
+              fields=reader.fieldnames
+              rows=[r for r in reader if r['canonical_announcement_id'] in ids]
+          assert len(rows)==127, len(rows)
+          with gzip.open(dst,'wt',encoding='utf-8',newline='') as f:
+              writer=csv.DictWriter(f,fieldnames=fields)
+              writer.writeheader(); writer.writerows(rows)
+          print('FROZEN_SINGLE_SOURCE_RESIDUALS',len(rows))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v15-single-source-input
+          path: prepared/
+          retention-days: 90
+          compression-level: 0
+
+  replay:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,7,9]
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v15-single-source-input
+          path: prepared
+      - name: Replay exact V13 single-canonical residuals with V14.1
+        shell: bash
+        run: |
+          set +e
+          out="build/v15-single-source/shard${{ matrix.shard }}"
+          mkdir -p "$out"
+          python scripts/extract_stage3_financial_pdf_values_v9.py \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --shard ${{ matrix.shard }} --shards 64 --out "$out" \
+            > "$out/stdout.log" 2> "$out/stderr.log"
+          echo "REPLAY_EXIT=$?" >> "$GITHUB_ENV"
+          cat "$out"/financial_extract_shard*.manifest.json || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v15-single-source-${{ matrix.shard }}
+          path: build/v15-single-source/shard${{ matrix.shard }}
+          retention-days: 90
+          compression-level: 0
+
+  summarize:
+    needs: replay
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g1j-v15-single-source-*
+          path: residual-artifacts
+          merge-multiple: false
+      - name: Quantify V14.1 recovery of the exact 127 single-source failures
+        run: |
+          python - <<'PY'
+          import glob,json,os
+          baseline={0:41,1:31,7:32,9:23}
+          rows=[]
+          for p in glob.glob('residual-artifacts/**/financial_extract_shard*.manifest.json',recursive=True):
+              d=json.load(open(p,encoding='utf-8'))
+              s=int(d['shard']); e=int(d['error_count'])
+              rows.append({'shard':s,'v13_single_source_errors':baseline[s],
+                           'v14_remaining_errors':e,'v14_recovered':baseline[s]-e,
+                           'remaining_error_examples':(d.get('errors') or [])[:50]})
+          rows.sort(key=lambda x:x['shard'])
+          assert [r['shard'] for r in rows]==[0,1,7,9], rows
+          report={
+              'gate':'S3G1J_V15_EXACT_127_SINGLE_SOURCE_REPLAY',
+              'baseline_single_source_errors':127,
+              'v14_remaining_errors':sum(r['v14_remaining_errors'] for r in rows),
+              'v14_recovered':sum(r['v14_recovered'] for r in rows),
+              'recovery_rate':sum(r['v14_recovered'] for r in rows)/127,
+              'all_shards_non_regressing':all(r['v14_remaining_errors']<=r['v13_single_source_errors'] for r in rows),
+              'rows':rows,
+          }
+          os.makedirs('summary',exist_ok=True)
+          json.dump(report,open('summary/v15_single_source_replay.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          assert report['all_shards_non_regressing'], report
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v15-single-source-summary
+          path: summary/v15_single_source_replay.json
+          retention-days: 90
+          compression-level: 0

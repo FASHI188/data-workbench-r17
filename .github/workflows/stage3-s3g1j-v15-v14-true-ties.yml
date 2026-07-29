@@ -1,0 +1,51 @@
+name: Stage3 S3G1J V15 True Ties with V14.1 Parser
+
+on:
+  pull_request:
+    branches: [stage3-s3g1j-coordinate-table-v14]
+    paths:
+      - '.github/workflows/stage3-s3g1j-v15-v14-true-ties.yml'
+      - 'scripts/probe_stage3_s3g1j_v15_true_ties_v14.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  V13_SMOKE_RUN: '30382695045'
+  V14_ACCEPTANCE_RUN: '30423298099'
+  PYTHONPATH: scripts
+
+jobs:
+  replay-true-ties-v14:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Require V14 production acceptance PASS
+        run: test "$(gh run view "$V14_ACCEPTANCE_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+      - name: Restore exact V12.1 version ledger used by representative smoke
+        run: |
+          rm -rf versions data/stage3_source_probe_v15_v14
+          gh run download "$V13_SMOKE_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v13-smoke-versions -D versions
+          test -f versions/stage3_financial_report_versions_v3.csv.gz
+      - name: Replay exact 41 true tied moments with V14.1 parser and unchanged resolver
+        run: |
+          python scripts/probe_stage3_s3g1j_v15_true_ties_v14.py \
+            --versions versions/stage3_financial_report_versions_v3.csv.gz \
+            --out data/stage3_source_probe_v15_v14/true_ties_v14_0179.json \
+            --shards 0,1,7,9
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v15-v14-true-ties
+          path: data/stage3_source_probe_v15_v14/true_ties_v14_0179.json
+          retention-days: 90
+          compression-level: 0
