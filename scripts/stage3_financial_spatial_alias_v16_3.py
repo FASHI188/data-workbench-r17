@@ -10,7 +10,7 @@ import stage3_financial_pdf_parser as parser_base
 import stage3_financial_pdf_parser_v8 as v13
 import stage3_financial_coordinate_fallback_v14 as v14
 import stage3_financial_spatial_alias_v16 as spatial
-import stage3_financial_statement_blocks_v16_3 as blocks
+import stage3_financial_statement_blocks_v16_5 as blocks
 
 
 def _collect_candidates_v16_3(doc: fitz.Document) -> tuple[dict[str, list[dict]], dict]:
