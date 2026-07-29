@@ -6,7 +6,10 @@ on:
     paths:
       - '.github/workflows/stage3-s3g1j-v16-spatial-alias.yml'
       - 'scripts/stage3_financial_spatial_alias_v16.py'
+      - 'scripts/stage3_financial_spatial_alias_v16_3.py'
+      - 'scripts/stage3_financial_statement_blocks_v16_3.py'
       - 'scripts/probe_stage3_s3g1j_v16_spatial_alias.py'
+      - 'tests/test_stage3_statement_blocks_v16_3.py'
   workflow_dispatch:
 
 permissions:
@@ -31,13 +34,15 @@ jobs:
       - run: python -m pip install --disable-pip-version-check requests pymupdf
       - name: Require accepted V14.1 base
         run: test "$(gh run view "$V14_ACCEPTANCE_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+      - name: Run V16.3 statement-block unit regressions
+        run: python -m unittest tests.test_stage3_statement_blocks_v16_3 -v
       - name: Restore exact frozen V12.1 version ledger
         run: |
           rm -rf versions data/stage3_source_probe_v16
           gh run download "$V13_SMOKE_RUN" -R "$GITHUB_REPOSITORY" \
             -n stage3-s3g1j-v13-smoke-versions -D versions
           test -f versions/stage3_financial_report_versions_v3.csv.gz
-      - name: Probe spatial alias columns on 12 representative V14 residuals
+      - name: Probe x+y statement-block spatial parsing on 12 representative V14 residuals
         run: |
           python scripts/probe_stage3_s3g1j_v16_spatial_alias.py \
             --versions versions/stage3_financial_report_versions_v3.csv.gz \
