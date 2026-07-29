@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from contextlib import contextmanager
+
 import fitz
 
 import stage3_financial_pdf_parser as base
@@ -10,6 +12,54 @@ import stage3_financial_pdf_parser_v9 as v14
 from stage3_financial_spatial_alias_v16_7 import diagnose_spatial_balance_sheet_v16_7
 
 METHOD = "V16_7_CONTEXTUAL_PERIOD_COLUMN_FALLBACK"
+
+
+@contextmanager
+def _mupdf_diagnostic_guard():
+    """Bound MuPDF diagnostic growth without changing extraction semantics.
+
+    Some official PDFs contain recoverable broken xref references. MuPDF can still
+    extract their text, but every access may append megabytes of repeated errors to
+    its process-global diagnostics store. V14/V16 intentionally revisit pages from
+    several independent evidence paths, so an unbounded store can turn a valid
+    fail-closed parse into a multi-minute resource failure.
+
+    The guard changes diagnostics only: text/search calls are identical, and the
+    prior PyMuPDF display settings and Page methods are restored even on exception.
+    The parser already installs a process-global V2 hook for the duration of one
+    parse, so this remains within the same single-parse critical section.
+    """
+    tools = fitz.TOOLS
+    prior_errors = tools.mupdf_display_errors()
+    prior_warnings = tools.mupdf_display_warnings()
+    original_get_text = fitz.Page.get_text
+    original_search_for = fitz.Page.search_for
+
+    def guarded_get_text(page, *args, **kwargs):
+        try:
+            return original_get_text(page, *args, **kwargs)
+        finally:
+            tools.reset_mupdf_warnings()
+
+    def guarded_search_for(page, *args, **kwargs):
+        try:
+            return original_search_for(page, *args, **kwargs)
+        finally:
+            tools.reset_mupdf_warnings()
+
+    tools.mupdf_display_errors(False)
+    tools.mupdf_display_warnings(False)
+    tools.reset_mupdf_warnings()
+    fitz.Page.get_text = guarded_get_text
+    fitz.Page.search_for = guarded_search_for
+    try:
+        yield
+    finally:
+        fitz.Page.get_text = original_get_text
+        fitz.Page.search_for = original_search_for
+        tools.reset_mupdf_warnings()
+        tools.mupdf_display_errors(prior_errors)
+        tools.mupdf_display_warnings(prior_warnings)
 
 
 def _v16_7_balance_block(doc: fitz.Document, economic_date: str):
@@ -91,7 +141,8 @@ def parse_pdf_bytes(raw: bytes, economic_date: str) -> dict:
 
     v2._validated_balance_sheet = contextual
     try:
-        parsed = dict(v13.parse_pdf_bytes(raw))
+        with _mupdf_diagnostic_guard():
+            parsed = dict(v13.parse_pdf_bytes(raw))
     finally:
         v2._validated_balance_sheet = original
     return parsed
