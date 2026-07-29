@@ -119,7 +119,12 @@ def resolve_candidates(parsed: list[dict], canonical_id: str):
 
     candidate, gate_error = _unique_usable_tie_candidate(parsed)
     if candidate is None:
-        return None, resolution, err or gate_error
+        # Preserve the original failure while exposing which V15 safety gate
+        # refused the exception. This changes diagnostics only, not authority.
+        detail = str(err or resolution)
+        if gate_error:
+            detail += f" | V15_GATE: {gate_error}"
+        return None, resolution, detail
 
     suffix = "CANONICAL" if str(candidate.get("id")) == str(canonical_id) else "NONCANONICAL"
     return candidate, f"TIE_UNIQUE_INDEPENDENTLY_USABLE_{suffix}", None
