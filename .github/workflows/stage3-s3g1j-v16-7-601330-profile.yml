@@ -1,0 +1,156 @@
+name: Stage3 S3G1J V16.7 601330 Performance Profile
+
+on:
+  pull_request:
+    branches: [stage3-s3g1j-coordinate-table-v14]
+    paths:
+      - '.github/workflows/stage3-s3g1j-v16-7-601330-profile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FROZEN_127_RUN: '30424465440'
+  PYTHONPATH: scripts
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Restore frozen input and exact 601330 2021 annual PDF
+        run: |
+          rm -rf prepared profile
+          mkdir -p profile
+          gh run download "$FROZEN_127_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v15-single-source-input -D prepared
+          python - <<'PY'
+          import csv,gzip,json,time
+          from pathlib import Path
+          import fitz,requests
+          import probe_stage3_s3g1j_v16_7_exact_113_replay as exact
+          with gzip.open('prepared/single_source_residual_versions.csv.gz','rt',encoding='utf-8',newline='') as f:
+              rows=list(csv.DictReader(f))
+          row=next(r for r in rows if r['canonical_announcement_id']=='1212731093')
+          t=time.monotonic(); raw=exact.download(requests.Session(),row['canonical_source_url']); dl=time.monotonic()-t
+          Path('profile/1212731093.pdf').write_bytes(raw)
+          doc=fitz.open(stream=raw,filetype='pdf')
+          meta={
+            'announcement_id':row['canonical_announcement_id'],
+            'source_code':row['source_code'],
+            'economic_date':row['economic_date'],
+            'bytes':len(raw),'page_count':doc.page_count,
+            'download_seconds':dl,'url':row['canonical_source_url'],
+          }
+          Path('profile/meta.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(meta,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v16-601330-profile-input
+          path: profile/
+          retention-days: 7
+          compression-level: 0
+
+  v14-only:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check pymupdf
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v16-601330-profile-input
+          path: profile
+      - name: Time V14.1 only
+        shell: bash
+        run: |
+          set +e
+          timeout 600s python - <<'PY'
+          import json,time
+          from pathlib import Path
+          import stage3_financial_pdf_parser_v9 as v14
+          raw=Path('profile/1212731093.pdf').read_bytes()
+          t=time.monotonic(); out=v14.parse_pdf_bytes(raw); elapsed=time.monotonic()-t
+          result={'stage':'V14_ONLY','elapsed_seconds':elapsed,'validation_errors':out.get('validation_errors') or [],'balance_sheet_block':out.get('balance_sheet_block')}
+          Path('profile/v14.json').write_text(json.dumps(result,ensure_ascii=False,indent=2,default=str),encoding='utf-8')
+          print(json.dumps({'stage':'V14_ONLY','elapsed_seconds':elapsed,'errors':result['validation_errors']},ensure_ascii=False))
+          PY
+          code=$?
+          echo "V14_EXIT=$code"
+          if [ "$code" -eq 124 ]; then echo '{"stage":"V14_ONLY","timeout":true,"timeout_seconds":600}' > profile/v14.json; fi
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v16-601330-v14-profile
+          path: profile/v14.json
+          retention-days: 90
+          compression-level: 0
+
+  v16-diagnostic-only:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check pymupdf
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v16-601330-profile-input
+          path: profile
+      - name: Time V16.7 diagnostic only
+        shell: bash
+        run: |
+          set +e
+          timeout 600s python - <<'PY'
+          import json,time,fitz
+          from pathlib import Path
+          from stage3_financial_spatial_alias_v16_7 import diagnose_spatial_balance_sheet_v16_7
+          raw=Path('profile/1212731093.pdf').read_bytes(); doc=fitz.open(stream=raw,filetype='pdf')
+          t=time.monotonic(); out=diagnose_spatial_balance_sheet_v16_7(doc,'2021-12-31'); elapsed=time.monotonic()-t
+          result={'stage':'V16_DIAGNOSTIC_ONLY','elapsed_seconds':elapsed,'recovered':out.get('recovered'),'candidate_counts':out.get('candidate_counts'),'funnel':out.get('funnel'),'identity':out.get('identity')}
+          Path('profile/v16.json').write_text(json.dumps(result,ensure_ascii=False,indent=2,default=str),encoding='utf-8')
+          print(json.dumps({'stage':'V16_DIAGNOSTIC_ONLY','elapsed_seconds':elapsed,'recovered':out.get('recovered'),'candidate_counts':out.get('candidate_counts')},ensure_ascii=False))
+          PY
+          code=$?
+          echo "V16_EXIT=$code"
+          if [ "$code" -eq 124 ]; then echo '{"stage":"V16_DIAGNOSTIC_ONLY","timeout":true,"timeout_seconds":600}' > profile/v16.json; fi
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v16-601330-v16-profile
+          path: profile/v16.json
+          retention-days: 90
+          compression-level: 0
+
+  summarize:
+    needs: [v14-only,v16-diagnostic-only]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g1j-v16-601330-*-profile
+          path: out
+          merge-multiple: true
+      - run: |
+          python - <<'PY'
+          import json
+          for p in ('out/v14.json','out/v16.json'):
+              d=json.load(open(p,encoding='utf-8')); print(json.dumps(d,ensure_ascii=False,indent=2))
+          PY
