@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from decimal import Decimal
 
 import fitz
@@ -103,25 +103,54 @@ def _first_amount_after_alias(row: dict, geometry: dict) -> dict | None:
     return nums[0] if nums else None
 
 
+def _role_unit_context(
+    doc: fitz.Document,
+    role_event: dict,
+    pno: int,
+) -> tuple[str | None, Decimal | None, int | None]:
+    """Resolve unit only inside the current statement-role block.
+
+    Unlike the legacy page_unit_context (current page + two predecessors), this
+    can carry a unit from the consolidated statement header across continuation
+    pages. It never reaches before the nearest GROUP/DUAL statement anchor and
+    never infers a unit from a later page.
+    """
+    anchor = int(role_event["page"]) - 1
+    if anchor < 0 or pno < anchor or pno - anchor > MAX_ANCHOR_SPAN:
+        return None, None, None
+    for q in range(pno, anchor - 1, -1):
+        unit, mult = parser_base.detect_unit(doc[q].get_text("text") or "")
+        if unit is not None and mult is not None:
+            return unit, mult, q + 1
+    return None, None, None
+
+
 def _collect_spatial_candidates(
     doc: fitz.Document,
     pages: list[int],
     events: list[dict],
-) -> dict[str, list[dict]]:
+) -> tuple[dict[str, list[dict]], dict]:
     concepts = {
         "TOTAL_ASSETS": parser_base.TIER1_ALIASES.get("TOTAL_ASSETS") or [],
         "TOTAL_LIABILITIES": parser_base.TIER2_ALIASES.get("TOTAL_LIABILITIES") or [],
         "TOTAL_EQUITY": parser_base.TIER2_ALIASES.get("TOTAL_EQUITY") or [],
     }
     out: dict[str, list[dict]] = defaultdict(list)
+    funnel = Counter()
 
     for pno in pages:
-        unit, mult = parser_base.page_unit_context(doc, pno)
-        if unit is None or mult is None:
-            continue
+        funnel["candidate_pages"] += 1
         role_event = v14._nearest_statement_event(events, pno + 1)
         if role_event is None or role_event["role"] not in ("GROUP", "DUAL_GROUP_PARENT"):
+            funnel["pages_without_group_role"] += 1
             continue
+        funnel["pages_with_group_role"] += 1
+
+        unit, mult, unit_page = _role_unit_context(doc, role_event, pno)
+        if unit is None or mult is None:
+            funnel["group_pages_without_role_local_unit"] += 1
+            continue
+        funnel["group_pages_with_role_local_unit"] += 1
 
         for row in v14._rows_from_words(doc[pno]):
             for concept, aliases in concepts.items():
@@ -131,6 +160,7 @@ def _collect_spatial_candidates(
                         geometries.append((alias, geom))
                 if not geometries:
                     continue
+                funnel[f"{concept}_alias_rows"] += 1
 
                 # Stronger/longer aliases win when multiple aliases cover the same
                 # visual row. Each alias independently chooses the first monetary
@@ -146,9 +176,12 @@ def _collect_spatial_candidates(
                 for alias, geom in geometries:
                     amount = _first_amount_after_alias(row, geom)
                     if amount is None:
+                        funnel[f"{concept}_alias_without_right_amount"] += 1
                         continue
+                    funnel[f"{concept}_alias_with_right_amount"] += 1
                     value_cny = amount["value"] * mult
                     if abs(value_cny) < Decimal("10000"):
+                        funnel[f"{concept}_economically_tiny_amount"] += 1
                         continue
                     out[concept].append({
                         "concept": concept,
@@ -156,6 +189,7 @@ def _collect_spatial_candidates(
                         "raw_value": str(amount["value"]),
                         "unit": unit,
                         "unit_multiplier": mult,
+                        "unit_source_page": unit_page,
                         "page": pno + 1,
                         "alias": alias,
                         "alias_strength": v13._alias_strength(concept, alias),
@@ -186,7 +220,7 @@ def _collect_spatial_candidates(
             if rank > current_rank:
                 best[key] = c
         out[concept] = list(best.values())
-    return out
+    return out, dict(sorted(funnel.items()))
 
 
 def _choose_spatial_identity(candidates: dict[str, list[dict]]) -> tuple[dict | None, dict | None]:
@@ -235,11 +269,12 @@ def _choose_spatial_identity(candidates: dict[str, list[dict]]) -> tuple[dict | 
 def diagnose_spatial_balance_sheet(doc: fitz.Document) -> dict:
     events = v14._statement_events(doc)
     pages = v14._candidate_pages(doc)
-    candidates = _collect_spatial_candidates(doc, pages, events)
+    candidates, funnel = _collect_spatial_candidates(doc, pages, events)
     chosen, identity = _choose_spatial_identity(candidates)
     return {
         "statement_event_count": len(events),
         "candidate_page_count": len(pages),
+        "funnel": funnel,
         "candidate_counts": {
             concept: len(candidates.get(concept, []))
             for concept in ("TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY")
@@ -251,6 +286,7 @@ def diagnose_spatial_balance_sheet(doc: fitz.Document) -> dict:
                 "value": str(candidate["value"]),
                 "raw_value": candidate["raw_value"],
                 "unit": candidate["unit"],
+                "unit_source_page": candidate["unit_source_page"],
                 "page": candidate["page"],
                 "alias": candidate["alias"],
                 "alias_x0": str(candidate["alias_x0"]),
