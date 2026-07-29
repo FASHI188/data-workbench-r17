@@ -1,0 +1,38 @@
+{
+  "gate": "S3G1J_V16_7_PRODUCTION_FALLBACK_ACCEPTANCE",
+  "status": "PASS",
+  "accepted_run": 30432739832,
+  "artifact_digest": "sha256:2e5bf7cee420c0f5d0b12c2920ee1832cc8ad28878520b08db576cbbeed26bea",
+  "v14_differential_regressions": {
+    "sample_count": 5,
+    "all_pass": true,
+    "same_balance_observations": true,
+    "same_balance_sheet_block": true,
+    "arbitration_remains_v14": true,
+    "announcement_ids": ["1202260810","1206660047","1206728992","1216700376","1217635500"]
+  },
+  "residual_acceptance": {
+    "sample_count": 12,
+    "pass_count": 10,
+    "error_count": 2,
+    "pass_ids": [
+      "1200948256","1203240204","1204557640","1207547788","1209728461",
+      "1212671853","1219442543","1221090309","1222949445","1223096939"
+    ],
+    "error_ids": ["1202637566","1205969212"],
+    "v16_arbitration_ok": true
+  },
+  "guard_000736": {
+    "economic_date": "2024-12-31",
+    "TOTAL_ASSETS": "107697681763.55",
+    "TOTAL_LIABILITIES": "96659072585.14",
+    "TOTAL_EQUITY": "11038609178.41",
+    "exact": true
+  },
+  "parser_method": "CNINFO_ORIGINAL_PDF_PYMUPDF_V11_V16_7_CONTEXTUAL_PERIOD_COLUMN_FALLBACK",
+  "v14_primary_path_unchanged": true,
+  "v16_strict_fallback_only": true,
+  "stage3_s3g1j_overall_pass": false,
+  "stage4_alpha_locked": true,
+  "next_required_gate": "Exact frozen single-canonical pool replay: reconstruct 113 V14 residuals then quantify V16.7 incremental recovery"
+}
