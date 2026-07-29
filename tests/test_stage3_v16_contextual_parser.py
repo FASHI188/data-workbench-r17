@@ -26,6 +26,39 @@ class V16ContextualParserTests(unittest.TestCase):
         self.assertIsNot(seen["hook_during_parse"], original_hook)
         self.assertIs(parser.v2._validated_balance_sheet, original_hook)
 
+    def test_mupdf_diagnostic_guard_restores_global_state_after_exception(self):
+        original_get_text = parser.fitz.Page.get_text
+        original_search_for = parser.fitz.Page.search_for
+        prior_errors = parser.fitz.TOOLS.mupdf_display_errors()
+        prior_warnings = parser.fitz.TOOLS.mupdf_display_warnings()
+
+        with self.assertRaisesRegex(RuntimeError, "guard failure"):
+            with parser._mupdf_diagnostic_guard():
+                self.assertIsNot(parser.fitz.Page.get_text, original_get_text)
+                self.assertIsNot(parser.fitz.Page.search_for, original_search_for)
+                self.assertFalse(parser.fitz.TOOLS.mupdf_display_errors())
+                self.assertFalse(parser.fitz.TOOLS.mupdf_display_warnings())
+                raise RuntimeError("guard failure")
+
+        self.assertIs(parser.fitz.Page.get_text, original_get_text)
+        self.assertIs(parser.fitz.Page.search_for, original_search_for)
+        self.assertEqual(parser.fitz.TOOLS.mupdf_display_errors(), prior_errors)
+        self.assertEqual(parser.fitz.TOOLS.mupdf_display_warnings(), prior_warnings)
+
+    def test_guarded_get_text_preserves_text_and_search_results(self):
+        doc = parser.fitz.open()
+        page = doc.new_page()
+        page.insert_text((72, 72), "人民币元")
+        baseline_text = page.get_text("text")
+        baseline_rects = page.search_for("人民币元")
+
+        with parser._mupdf_diagnostic_guard():
+            guarded_text = page.get_text("text")
+            guarded_rects = page.search_for("人民币元")
+
+        self.assertEqual(guarded_text, baseline_text)
+        self.assertEqual(guarded_rects, baseline_rects)
+
     def test_v14_success_short_circuits_v16(self):
         sentinel_block = {"TOTAL_ASSETS": object()}
         sentinel_meta = {"arbitration": "V14_SENTINEL"}
