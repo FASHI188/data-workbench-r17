@@ -4,8 +4,14 @@ from __future__ import annotations
 import stage3_financial_statement_blocks_v16_3 as base
 
 
+# Freeze the accepted V16.4 page-unit reader before installing the narrow
+# V16.5 extension. Calling base._page_units_with_y after monkeypatching it would
+# recurse into this function.
+_ORIGINAL_PAGE_UNITS_WITH_Y = base._page_units_with_y
+
+
 def _page_units_with_y_v16_5(page):
-    out = list(base._page_units_with_y(page))
+    out = list(_ORIGINAL_PAGE_UNITS_WITH_Y(page))
     seen = {
         (round(float(item["y"]), 2), item["unit"], str(item["multiplier"]), item["source"])
         for item in out
