@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/stage3-s3g1j-coordinate-fallback-v14-acceptance.yml'
       - 'scripts/stage3_financial_coordinate_fallback_v14.py'
+      - 'scripts/stage3_financial_coordinate_fallback_v14_1.py'
       - 'scripts/stage3_financial_pdf_parser_v9.py'
       - 'scripts/extract_stage3_financial_pdf_values_v9.py'
       - 'scripts/probe_stage3_s3g1j_v14_recovery_48.py'
@@ -39,7 +40,7 @@ jobs:
         run: python -m unittest tests.test_stage3_financial_pdf_parser_v13 -v
       - name: Preserve exact five-PDF V13 regression
         run: python scripts/probe_stage3_s3g1j_parser_identity_v13.py
-      - name: Run V14 official-PDF 4-positive 4-negative gate
+      - name: Run V14 official-PDF 5-positive 3-negative gate
         run: python -m unittest tests.test_stage3_financial_coordinate_fallback_v14_integration -v
 
       - name: Restore frozen successful S3G1E filing ledger
@@ -72,7 +73,7 @@ jobs:
           d=json.loads(p.read_text(encoding='utf-8'))
           assert d['diagnostic_pass'] is True, d.get('diagnostic_errors')
           assert d['sample_count'] == 48, d['sample_count']
-          assert d['recovered_count'] >= 27, d['recovered_count']
+          assert d['recovered_count'] >= 28, d['recovered_count']
           assert d['outcome_counts'].get('NO_FULL_AUTHORITY_SAME_MOMENT', 0) == 5, d['outcome_counts']
           assert not d.get('diagnostic_errors'), d.get('diagnostic_errors')
           print('V14_48_GATE_PASS', d['recovered_count'], d['outcome_counts'])
