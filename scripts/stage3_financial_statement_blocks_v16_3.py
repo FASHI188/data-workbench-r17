@@ -22,6 +22,7 @@ STANDALONE_UNITS = {
     "亿元": ("亿元", Decimal("100000000")),
     "人民币亿元": ("亿元", Decimal("100000000")),
 }
+_UNIT_TOKEN_RE = re.compile(r"(?:人民币)?(?:百万元|千元|万元|亿元|元)")
 
 TITLE_PHRASES = (
     ("合并资产负债表和母公司资产负债表", "DUAL_GROUP_PARENT"),
@@ -37,9 +38,13 @@ TITLE_PHRASES = (
     ("合并资产负债表", "GROUP"),
     ("银行资产负债表", "PARENT"),
     ("公司资产负债表", "PARENT"),
+    # An otherwise unqualified balance-sheet title is not assumed to be group.
+    # It is a hard block boundary so a prior GROUP role cannot leak into it.
+    ("资产负债表", "UNKNOWN_STATEMENT"),
 )
 NARRATIVE_TITLE_BLOCKERS = (
     "编制", "调整", "影响", "按照", "依据", "首次执行", "期初", "上述",
+    "变动", "原因", "列示如下",
     "对合并资产负债表", "在合并资产负债表", "合并资产负债表中",
 )
 
@@ -71,7 +76,7 @@ def _title_occurrences(row: dict) -> list[dict]:
     occupied: list[tuple[int, int]] = []
     out = []
     # Longest phrases come first, preventing a dual title from being split into
-    # overlapping GROUP/PARENT substring events.
+    # overlapping GROUP/PARENT/UNKNOWN substring events.
     for phrase, role in TITLE_PHRASES:
         needle = _norm_title(phrase)
         start = 0
@@ -165,7 +170,24 @@ def bind_alias_to_preceding_statement_event(
 
 def detect_standalone_statement_unit(text: str) -> tuple[str | None, Decimal | None]:
     compact = re.sub(r"\s+", "", text or "").strip("：:、，,。.;；")
-    return STANDALONE_UNITS.get(compact, (None, None))
+    direct = STANDALONE_UNITS.get(compact)
+    if direct is not None:
+        return direct
+
+    # Dual group/parent tables often print the same unit once per numeric column
+    # on one visual row: e.g. `人民币元 人民币元 人民币元 人民币元`.
+    tokens = _UNIT_TOKEN_RE.findall(compact)
+    if not tokens:
+        return None, None
+    remainder = _UNIT_TOKEN_RE.sub("", compact).strip("：:、，,。.;；")
+    if remainder:
+        return None, None
+    mapped = [STANDALONE_UNITS.get(token) for token in tokens]
+    if any(item is None for item in mapped):
+        return None, None
+    if len({item[1] for item in mapped if item is not None}) != 1:
+        return None, None
+    return mapped[0]
 
 
 def _page_units_with_y(page: fitz.Page) -> list[dict]:
@@ -230,6 +252,8 @@ def role_local_unit_context(
         if event["role"] == role_event["role"] and not event.get("continuation"):
             root = event
             break
+        # PARENT or UNKNOWN_STATEMENT starts another statement and is a hard
+        # boundary; a prior group unit must never cross it.
         if not event.get("continuation"):
             break
 
