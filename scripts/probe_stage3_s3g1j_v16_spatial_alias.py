@@ -12,7 +12,7 @@ import fitz
 import requests
 
 from stage3_financial_pdf_parser_v9 import parse_pdf_bytes as v14_parse
-from stage3_financial_spatial_alias_v16 import diagnose_spatial_balance_sheet
+from stage3_financial_spatial_alias_v16_3 import diagnose_spatial_balance_sheet_v16_3
 
 REPRESENTATIVE_IDS = {
     "1200948256",  # 600500 annual 2014
@@ -39,7 +39,7 @@ def download(session: requests.Session, url: str) -> tuple[bytes, str]:
     response = session.get(
         url,
         headers={
-            "User-Agent": "Mozilla/5.0 S3G1J-V16-spatial-alias-diagnostic",
+            "User-Agent": "Mozilla/5.0 S3G1J-V16.3-statement-block-diagnostic",
             "Referer": "https://www.cninfo.com.cn/",
         },
         timeout=120,
@@ -77,7 +77,7 @@ def main() -> int:
             raw, digest = download(session, version["canonical_source_url"])
             current = v14_parse(raw)
             doc = fitz.open(stream=raw, filetype="pdf")
-            spatial = diagnose_spatial_balance_sheet(doc)
+            spatial = diagnose_spatial_balance_sheet_v16_3(doc)
             row.update({
                 "download_sha256": digest,
                 "page_count": doc.page_count,
@@ -93,7 +93,7 @@ def main() -> int:
 
     recovered = [row for row in rows if (row.get("v16_spatial") or {}).get("recovered")]
     report = {
-        "gate": "S3G1J_V16_SPATIAL_ALIAS_REPRESENTATIVE_DIAGNOSTIC",
+        "gate": "S3G1J_V16_3_STATEMENT_BLOCK_SPATIAL_DIAGNOSTIC",
         "diagnostic_pass": not errors,
         "sample_count": len(rows),
         "v16_recovered_count": len(recovered),
@@ -103,6 +103,9 @@ def main() -> int:
             "accepted_v14_parser_remains_unchanged": True,
             "native_pdf_words_only": True,
             "no_ocr": True,
+            "formal_statement_titles_are_x_y_bound": True,
+            "statement_local_standalone_units_only": True,
+            "extraction_typo_normalization": "合幵->合并 inside formal-title parser only",
             "alias_position_is_spatial_not_string_prefix": True,
             "first_valid_amount_to_alias_right_is_current_column_candidate": True,
             "accounting_identity_tolerance": "0.005",
