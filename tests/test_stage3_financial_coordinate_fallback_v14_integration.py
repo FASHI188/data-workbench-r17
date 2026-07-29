@@ -12,16 +12,20 @@ from stage3_financial_pdf_parser_v9 import parse_pdf_bytes
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLES = ROOT / "config/stage3_s3g1j_v10_diagnostic_samples.json"
 
+# Ground truth is frozen from first-party report evidence, not from the earlier
+# coordinate diagnostic. 601166 and 600177 are intentionally included here
+# because deeper role/period verification corrected the diagnostic's provisional
+# classification/value for those two cases.
 EXPECTED_TRUE = {
+    "1202260810": {"TOTAL_ASSETS": "5470783000000", "TOTAL_LIABILITIES": "5137144000000", "TOTAL_EQUITY": "333639000000"},
     "1206660047": {"TOTAL_ASSETS": "4647020000000", "TOTAL_LIABILITIES": "4312935000000", "TOTAL_EQUITY": "334085000000"},
     "1206728992": {"TOTAL_ASSETS": "493013036920.42", "TOTAL_LIABILITIES": "374810235262.95", "TOTAL_EQUITY": "118202801657.47"},
-    "1216700376": {"TOTAL_ASSETS": "55583389860.43", "TOTAL_LIABILITIES": "21627644896.73", "TOTAL_EQUITY": "33955744963.70"},
+    "1216700376": {"TOTAL_ASSETS": "77777073651.36", "TOTAL_LIABILITIES": "39666572894.69", "TOTAL_EQUITY": "38110500756.67"},
     "1217635500": {"TOTAL_ASSETS": "8833297000000", "TOTAL_LIABILITIES": "8122284000000", "TOTAL_EQUITY": "711013000000"},
 }
 
 EXPECTED_FALSE = {
     "1201392942",  # 000023: mother-company statement, not consolidated
-    "1202260810",  # 601166: raw coordinate identity chose prior/wrong role column
     "1203373899",  # 000046: trust-business table
     "1209868800",  # 000046: trust-business table
 }
@@ -55,7 +59,7 @@ class CoordinateFallbackV14IntegrationTests(unittest.TestCase):
         cls.samples = _sample_map()
         cls.session = requests.Session()
 
-    def test_exact_four_role_qualified_recoveries(self):
+    def test_exact_five_verified_recoveries(self):
         for announcement_id, expected in EXPECTED_TRUE.items():
             with self.subTest(announcement_id=announcement_id):
                 raw = _download(self.session, self.samples[announcement_id])
@@ -70,7 +74,7 @@ class CoordinateFallbackV14IntegrationTests(unittest.TestCase):
                     self.assertEqual(obs.get("normalized_cny_value"), value)
                     self.assertEqual(obs.get("extraction_scope"), "VALIDATED_BALANCE_SHEET_BLOCK_V14_COORDINATE_ROLE_GATE")
 
-    def test_exact_four_raw_false_positives_remain_fail_closed(self):
+    def test_exact_three_invalid_scope_or_role_cases_remain_fail_closed(self):
         for announcement_id in EXPECTED_FALSE:
             with self.subTest(announcement_id=announcement_id):
                 raw = _download(self.session, self.samples[announcement_id])
