@@ -26,7 +26,21 @@ REPRESENTATIVE_IDS = {
     "1219442543",  # 601688 annual 2023
     "1221090309",  # 601390 semi 2024
     "1222949445",  # 601688 annual 2024
-    "1223096939",  # 000736 annual 2024; V16.5 false positive on prior/restated period
+    "1223096939",  # 000736 annual 2024; V16.5 initially selected prior/restated period
+}
+EXPECTED_RECOVERED_IDS = {
+    "1200948256", "1203240204", "1204557640", "1207547788", "1209728461",
+    "1212671853", "1219442543", "1221090309", "1222949445", "1223096939",
+}
+EXPECTED_000736_CURRENT = {
+    "TOTAL_ASSETS": "107697681763.55",
+    "TOTAL_LIABILITIES": "96659072585.14",
+    "TOTAL_EQUITY": "11038609178.41",
+}
+FORBIDDEN_000736_PRIOR = {
+    "TOTAL_ASSETS": "122643867000.04",
+    "TOTAL_LIABILITIES": "104968810113.49",
+    "TOTAL_EQUITY": "17675056886.55",
 }
 
 
@@ -92,20 +106,54 @@ def main() -> int:
         rows.append(row)
 
     recovered = [row for row in rows if (row.get("v16_spatial") or {}).get("recovered")]
-    false_positive_guard = next(row for row in rows if row["announcement_id"] == "1223096939")
-    guard_rejected = not bool((false_positive_guard.get("v16_spatial") or {}).get("recovered"))
+    recovered_ids = {row["announcement_id"] for row in recovered}
+
+    guard_row = next(row for row in rows if row["announcement_id"] == "1223096939")
+    guard_spatial = guard_row.get("v16_spatial") or {}
+    guard_selected = guard_spatial.get("selected") or {}
+    guard_current_values = {
+        concept: str((guard_selected.get(concept) or {}).get("value") or "")
+        for concept in EXPECTED_000736_CURRENT
+    }
+    guard_periods_ok = all(
+        ((guard_selected.get(concept) or {}).get("period_evidence") or {}).get("matched") is True
+        and ((guard_selected.get(concept) or {}).get("period_evidence") or {}).get("expected_economic_date") == "2024-12-31"
+        for concept in EXPECTED_000736_CURRENT
+    )
+    guard_exact_current = guard_spatial.get("recovered") is True and guard_current_values == EXPECTED_000736_CURRENT
+    guard_prior_not_selected = all(
+        guard_current_values.get(concept) != forbidden
+        for concept, forbidden in FORBIDDEN_000736_PRIOR.items()
+    )
+    recovered_shape_ok = recovered_ids == EXPECTED_RECOVERED_IDS
+    diagnostic_pass = (
+        not errors
+        and recovered_shape_ok
+        and guard_exact_current
+        and guard_periods_ok
+        and guard_prior_not_selected
+    )
+
     report = {
         "gate": "S3G1J_V16_6_STATEMENT_PERIOD_SPATIAL_DIAGNOSTIC",
-        "diagnostic_pass": not errors and guard_rejected,
+        "diagnostic_pass": diagnostic_pass,
         "sample_count": len(rows),
         "v16_recovered_count": len(recovered),
-        "v16_recovered_ids": [row["announcement_id"] for row in recovered],
+        "v16_recovered_ids": sorted(recovered_ids),
+        "expected_recovered_ids": sorted(EXPECTED_RECOVERED_IDS),
+        "recovered_shape_ok": recovered_shape_ok,
         "period_false_positive_guard": {
             "announcement_id": "1223096939",
             "source_code": "000736",
-            "must_remain_rejected": True,
-            "rejected": guard_rejected,
-            "reason": "V16.5 selected a 2023-12-31 pre-restatement balance block inside the 2024 annual report",
+            "expected_economic_date": "2024-12-31",
+            "must_recover_current_period": True,
+            "expected_current_values": EXPECTED_000736_CURRENT,
+            "actual_current_values": guard_current_values,
+            "exact_current_values": guard_exact_current,
+            "period_evidence_ok": guard_periods_ok,
+            "forbidden_prior_values": FORBIDDEN_000736_PRIOR,
+            "prior_values_not_selected": guard_prior_not_selected,
+            "reason": "V16.5 initially selected a 2023-12-31 pre-restatement block; V16.6 must select only the 2024-12-31 current block",
         },
         "policy": {
             "diagnostic_only": True,
@@ -128,7 +176,7 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    return 0 if report["diagnostic_pass"] else 2
+    return 0 if diagnostic_pass else 2
 
 
 if __name__ == "__main__":
