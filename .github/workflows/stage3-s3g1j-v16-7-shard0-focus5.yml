@@ -1,0 +1,97 @@
+name: Stage3 S3G1J V16.7 Shard0 Focus5 Replay
+
+on:
+  pull_request:
+    branches: [stage3-s3g1j-coordinate-table-v14]
+    paths:
+      - '.github/workflows/stage3-s3g1j-v16-7-shard0-focus5.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FROZEN_127_RUN: '30424465440'
+  V16_PRODUCTION_RUN: '30432739832'
+  PYTHONPATH: scripts
+
+jobs:
+  one-document:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        # Original shard0 row positions corresponding to chunk5 under the 8-way split.
+        part: [5,13,21,29,37]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Require accepted production fallback and restore frozen 127 input
+        run: |
+          test "$(gh run view "$V16_PRODUCTION_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+          rm -rf prepared build/v16-shard0-focus5
+          gh run download "$FROZEN_127_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v15-single-source-input -D prepared
+          test -f prepared/single_source_residual_versions.csv.gz
+      - name: Replay exactly one frozen shard0 document
+        run: |
+          mkdir -p build/v16-shard0-focus5
+          python scripts/probe_stage3_s3g1j_v16_7_shard0_chunk.py \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --part ${{ matrix.part }} --parts 41 \
+            --out build/v16-shard0-focus5/doc-${{ matrix.part }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v16-shard0-focus5-${{ matrix.part }}
+          path: build/v16-shard0-focus5/doc-${{ matrix.part }}.json
+          retention-days: 90
+          compression-level: 0
+
+  summarize:
+    needs: one-document
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g1j-v16-shard0-focus5-*
+          path: docs
+          merge-multiple: true
+      - name: Report exact five-document completion state
+        run: |
+          python - <<'PY'
+          import glob,json,os
+          paths=sorted(glob.glob('docs/doc-*.json'))
+          rows=[json.load(open(p,encoding='utf-8')) for p in paths]
+          expected={5,13,21,29,37}
+          got={r['part'] for r in rows}
+          report={
+            'gate':'S3G1J_V16_7_SHARD0_FOCUS5',
+            'expected_parts':sorted(expected),
+            'completed_parts':sorted(got),
+            'missing_parts':sorted(expected-got),
+            'all_completed':got==expected,
+            'all_pass':got==expected and all(r['pass'] for r in rows),
+            'rows':rows,
+            'stage4_alpha_locked':True,
+          }
+          os.makedirs('summary',exist_ok=True)
+          json.dump(report,open('summary/focus5.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+          print(json.dumps({k:report[k] for k in ('completed_parts','missing_parts','all_completed','all_pass')},ensure_ascii=False,indent=2))
+          assert report['all_completed'] and report['all_pass'], report
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v16-shard0-focus5-summary
+          path: summary/focus5.json
+          retention-days: 90
+          compression-level: 0
