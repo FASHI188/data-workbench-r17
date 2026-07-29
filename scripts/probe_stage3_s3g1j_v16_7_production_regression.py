@@ -10,7 +10,8 @@ from pathlib import Path
 
 import requests
 
-from stage3_financial_pdf_parser_v9 import parse_pdf_bytes as v14_parse
+import stage3_financial_pdf_parser_v10 as v16_runtime
+from stage3_financial_pdf_parser_v9 import parse_pdf_bytes as _v14_parse
 from stage3_financial_pdf_parser_v10 import parse_pdf_bytes as v16_parse
 
 V14_REGRESSION_IDS = {
@@ -30,6 +31,12 @@ EXPECTED_000736 = {
     "TOTAL_LIABILITIES": "96659072585.14",
     "TOTAL_EQUITY": "11038609178.41",
 }
+
+
+def v14_parse(raw: bytes) -> dict:
+    """Run the frozen V14 parser with only MuPDF diagnostics bounded."""
+    with v16_runtime._mupdf_diagnostic_guard():
+        return _v14_parse(raw)
 
 
 def read_versions(path: Path) -> list[dict]:
