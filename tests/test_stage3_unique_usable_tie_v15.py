@@ -5,8 +5,14 @@ import unittest
 import extract_stage3_financial_pdf_values_v10 as v15
 
 
-def obs(value: str):
-    return {"status": "FOUND", "normalized_cny_value": value}
+def obs(value: str, *, raw: str | None = None, unit: str = "元", multiplier: str = "1"):
+    return {
+        "status": "FOUND",
+        "raw_value": raw if raw is not None else value,
+        "normalized_cny_value": value,
+        "unit": unit,
+        "unit_multiplier": multiplier,
+    }
 
 
 def valid_candidate(cid: str = "2", title: str = "2024年年度报告") -> dict:
@@ -20,10 +26,10 @@ def valid_candidate(cid: str = "2", title: str = "2024年年度报告") -> dict:
             "tier1_found": 6,
             "tier2_found": 3,
             "observations": {
-                "TOTAL_ASSETS": obs("100"),
-                "TOTAL_LIABILITIES": obs("60"),
-                "TOTAL_EQUITY": obs("40"),
-                "REVENUE": obs("20"),
+                "TOTAL_ASSETS": obs("100.00"),
+                "TOTAL_LIABILITIES": obs("60.00"),
+                "TOTAL_EQUITY": obs("40.00"),
+                "REVENUE": obs("20.00"),
             },
         },
     }
@@ -41,8 +47,8 @@ def invalid_balance_candidate(cid: str = "1", title: str = "2024年年度报告"
             "tier1_found": 6,
             "tier2_found": 0,
             "observations": {
-                "TOTAL_ASSETS": obs("100"),
-                "REVENUE": obs("20"),
+                "TOTAL_ASSETS": obs("100.00"),
+                "REVENUE": obs("20.00"),
             },
         },
     }
@@ -66,9 +72,43 @@ class UniqueUsableTieV15Tests(unittest.TestCase):
         self.assertIsNone(err)
         self.assertEqual(chosen["id"], "2")
 
+    def test_declared_unit_rounding_is_accepted(self):
+        # Exact shape verified for 603100 2021 annual: summary reports 万元 with
+        # two decimals while the full report provides yuan-level exact values.
+        good = valid_candidate("2", "川仪股份2021年年度报告")
+        bad = invalid_balance_candidate("1", "川仪股份2021年年度报告")
+        good["parsed"]["observations"]["TOTAL_ASSETS"] = obs(
+            "6638003235.79", raw="6638003235.79", unit="元", multiplier="1"
+        )
+        bad["parsed"]["observations"]["TOTAL_ASSETS"] = obs(
+            "6638003200.00", raw="663800.32", unit="万元", multiplier="10000"
+        )
+        good["parsed"]["observations"]["EQUITY_ATTRIBUTABLE_TO_PARENT"] = obs(
+            "3174299758.06", raw="3174299758.06", unit="元", multiplier="1"
+        )
+        bad["parsed"]["observations"]["EQUITY_ATTRIBUTABLE_TO_PARENT"] = obs(
+            "3174299800.00", raw="317429.98", unit="万元", multiplier="10000"
+        )
+        chosen, err = v15._unique_usable_tie_candidate([bad, good])
+        self.assertIsNone(err)
+        self.assertEqual(chosen["id"], "2")
+
+    def test_difference_beyond_display_rounding_is_rejected(self):
+        bad = invalid_balance_candidate("1")
+        bad["parsed"]["observations"]["REVENUE"] = obs(
+            "200000100.00", raw="20000.01", unit="万元", multiplier="10000"
+        )
+        good = valid_candidate("2")
+        good["parsed"]["observations"]["REVENUE"] = obs(
+            "200000000.00", raw="200000000.00", unit="元", multiplier="1"
+        )
+        chosen, err = v15._unique_usable_tie_candidate([bad, good])
+        self.assertIsNone(chosen)
+        self.assertIn("conflict", err)
+
     def test_conflicting_overlap_is_rejected(self):
         bad = invalid_balance_candidate("1")
-        bad["parsed"]["observations"]["REVENUE"] = obs("21")
+        bad["parsed"]["observations"]["REVENUE"] = obs("21.00")
         good = valid_candidate("2")
         chosen, err = v15._unique_usable_tie_candidate([bad, good])
         self.assertIsNone(chosen)
