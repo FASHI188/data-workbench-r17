@@ -46,7 +46,7 @@ jobs:
             --versions versions/stage3_financial_report_versions_v3.csv.gz \
             --out data/stage3_source_probe_v15_unique/true_ties_v15_0179.json \
             --shards 0,1,7,9
-      - name: Enforce exact V15 tie acceptance shape
+      - name: Enforce evidence-backed V15 tie acceptance shape
         run: |
           python - <<'PY'
           import json
@@ -56,16 +56,28 @@ jobs:
           assert d['diagnostic_pass'] is True, d.get('diagnostic_errors')
           assert d['true_tied_moments'] == 41, d['true_tied_moments']
           assert d['true_tied_candidates'] == 82, d['true_tied_candidates']
-          assert d['current_resolved_moments'] == 40, d['current_resolved_moments']
-          assert d['current_failed_moments'] == 1, d['current_failed_moments']
+          # Unit-aware evidence permits only 603100 in addition to the original
+          # 34 resolved moments. The other five overlap conflicts and 600177's
+          # two-valid value conflict must remain fail-closed.
+          assert d['current_resolved_moments'] == 35, d['current_resolved_moments']
+          assert d['current_failed_moments'] == 6, d['current_failed_moments']
           rc=d['resolution_counts']
-          assert rc.get('TIE_UNIQUE_INDEPENDENTLY_USABLE_CANONICAL',0) == 20, rc
+          assert rc.get('TIE_UNIQUE_INDEPENDENTLY_USABLE_CANONICAL',0) == 15, rc
           assert rc.get('TIE_UNIQUE_INDEPENDENTLY_USABLE_NONCANONICAL',0) == 5, rc
+          assert rc.get('TIE_SOURCE_INCOMPLETE',0) == 5, rc
           assert rc.get('TIE_VALUE_CONFLICT',0) == 1, rc
-          failed=[r for r in d['rows'] if r.get('current_chosen_id') is None]
-          assert len(failed)==1, failed
-          assert failed[0]['canonical_announcement_id']=='1216700376', failed
-          print('V15_TRUE_TIE_GATE_PASS', rc)
+          failed={r['canonical_announcement_id']:r['current_resolution']
+                  for r in d['rows'] if r.get('current_chosen_id') is None}
+          expected={
+              '1208613323':'TIE_SOURCE_INCOMPLETE',
+              '1208613147':'TIE_SOURCE_INCOMPLETE',
+              '1209859456':'TIE_SOURCE_INCOMPLETE',
+              '1210913320':'TIE_SOURCE_INCOMPLETE',
+              '1216700376':'TIE_VALUE_CONFLICT',
+              '1225269023':'TIE_SOURCE_INCOMPLETE',
+          }
+          assert failed == expected, failed
+          print('V15_TRUE_TIE_GATE_PASS', rc, failed)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
