@@ -4,6 +4,7 @@ import unittest
 
 import stage3_financial_statement_blocks_v16_3 as blocks
 import stage3_financial_statement_blocks_v16_5 as blocks_v165
+import stage3_financial_spatial_alias_v16_3 as spatial_v166
 
 
 class _Rect:
@@ -88,6 +89,11 @@ class StatementBlocksV163Tests(unittest.TestCase):
         self.assertEqual(str(text_units[0]["multiplier"]), "1")
         self.assertEqual(text_units[0]["line"], "人民币元")
         self.assertEqual(text_units[0]["y"], 42.0)
+
+    def test_v166_economic_date_normalization_and_cn_date_parse(self):
+        self.assertEqual(spatial_v166._canonical_economic_date("2024-6-30"), "2024-06-30")
+        dates = spatial_v166._cn_dates_in_text("本集团 2024 年 12 月 31 日；比较期 2023年12月31日")
+        self.assertEqual(dates, ["2024-12-31", "2023-12-31"])
 
 
 if __name__ == "__main__":
