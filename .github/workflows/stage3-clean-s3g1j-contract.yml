@@ -6,6 +6,7 @@ on:
   pull_request:
     paths:
       - 'governance/stage3_s3g1j_runtime_manifest.json'
+      - 'config/stage3_s3g1j_v10_diagnostic_samples.json'
       - 'scripts/extract_stage3_financial_pdf_values*.py'
       - 'scripts/stage3_financial_pdf_parser*.py'
       - 'scripts/stage3_financial_coordinate_fallback*.py'
@@ -16,7 +17,6 @@ on:
       - 'scripts/build_stage3_partial_body_ledger_v12.py'
       - 'scripts/finalize_stage3_financial_pdf_values.py'
       - 'tests/test_stage3_financial_*.py'
-      - 'tests/test_stage3_coordinate_role_v14_1c.py'
       - 'tests/test_stage3_unique_usable_tie_v15.py'
       - 'tests/test_stage3_statement_blocks_v16_3.py'
       - 'tests/test_stage3_v16_contextual_parser.py'
@@ -32,7 +32,7 @@ env:
 jobs:
   contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -69,7 +69,7 @@ jobs:
           assert callable(column.diagnose_spatial_balance_sheet_v16_7)
           print('S3G1J_RUNTIME_IMPORT_PASS')
           PY
-      - name: Run inherited fail-closed regression contracts
+      - name: Run inherited pure fail-closed regression contracts
         run: |
           python -m unittest \
             tests.test_stage3_financial_balance_block_v4 \
@@ -80,10 +80,11 @@ jobs:
             tests.test_stage3_financial_pdf_parser_v11 \
             tests.test_stage3_financial_pdf_parser_v13 \
             tests.test_stage3_financial_tie_resolution \
-            tests.test_stage3_coordinate_role_v14_1c \
             tests.test_stage3_unique_usable_tie_v15 \
             tests.test_stage3_statement_blocks_v16_3 \
             tests.test_stage3_v16_contextual_parser \
             tests.test_stage3_v17_explicit_dual_evidence \
             tests.test_stage3_v17_column_evidence \
             -v
+      - name: Run official-PDF coordinate fallback regression
+        run: python -m unittest tests.test_stage3_financial_coordinate_fallback_v14_integration -v
