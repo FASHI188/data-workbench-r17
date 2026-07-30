@@ -55,11 +55,7 @@ def row_header_diagnostic(row: dict, expected: str, alias_x1: float) -> dict:
     expected_cn = canonical_expected_cn(expected)
     blockers = [token for token in v167.HEADER_BLOCKERS if token in compact]
     structural_tokens = [token for token in v167.HEADER_TOKENS if token in compact]
-    structural = bool(
-        len(dates_right) >= 2
-        or compact == expected_cn
-        or structural_tokens
-    )
+    structural = bool(len(dates_right) >= 2 or compact == expected_cn or structural_tokens)
     expected_all = [d for d in dates_all if d["date"] == expected_canonical]
     expected_right = [d for d in dates_right if d["date"] == expected_canonical]
     qualified = v167._qualified_header_row(row, expected_canonical, alias_x1)
@@ -98,8 +94,8 @@ def candidate_trace(
     unit_evidence = candidate.get("unit_evidence") or {}
     root_page = int(unit_evidence.get("root_page") or anchor_page)
     alias_x1 = float(candidate["alias_x1"])
-    current_scan_start = max(1, root_page)
-    current_scan_end = current_page
+    scan_start = max(1, root_page)
+    scan_end = current_page
 
     found = v167._find_candidate_row(doc, candidate)
     candidate_row = None
@@ -107,30 +103,22 @@ def candidate_trace(
         candidate_row = {
             "row_y": float(found["row"]["y"]),
             "row_text": found["row"]["text"][:1600],
-            "alias_geometry": {
-                "x0": float(found["geom"]["x0"]),
-                "x1": float(found["geom"]["x1"]),
-            },
+            "alias_geometry": {"x0": float(found["geom"]["x0"]), "x1": float(found["geom"]["x1"])},
             "amounts_after_alias": [
-                {
-                    "raw": str(a["raw"]),
-                    "value": str(a["value"]),
-                    "x0": float(a["x0"]),
-                }
+                {"raw": str(a["raw"]), "value": str(a["value"]), "x0": float(a["x0"])}
                 for a in (found.get("amounts") or [])
             ],
         }
 
     current_column_evidence = v167.column_role_evidence(doc, candidate, expected)
     current_header = v167._find_header_column_evidence(doc, candidate, expected)
-
     inspection_pages = set(expected_pages)
     start = max(1, min(root_page, anchor_page) - 3)
     end = min(doc.page_count, current_page + 2)
     inspection_pages.update(range(start, end + 1))
 
     page_rows = []
-    expected_rows_outside_current_range = []
+    outside = []
     for page_1b in sorted(inspection_pages):
         diagnostics = []
         for row in rows_by_page.get(page_1b, []):
@@ -138,12 +126,12 @@ def candidate_trace(
             if not d["dates_all"]:
                 continue
             diagnostics.append(d)
-            if d["expected_date_anywhere"] and not (current_scan_start <= page_1b <= current_scan_end):
-                expected_rows_outside_current_range.append({"page": page_1b, **d})
+            if d["expected_date_anywhere"] and not (scan_start <= page_1b <= scan_end):
+                outside.append({"page": page_1b, **d})
         if diagnostics:
             page_rows.append({
                 "page": page_1b,
-                "inside_current_header_scan_range": current_scan_start <= page_1b <= current_scan_end,
+                "inside_current_header_scan_range": scan_start <= page_1b <= scan_end,
                 "rows_with_dates": diagnostics,
             })
 
@@ -168,16 +156,13 @@ def candidate_trace(
             "period_evidence": candidate.get("period_evidence"),
             "row_text": candidate.get("row_text"),
         },
-        "current_header_scan_range": {
-            "start_page": current_scan_start,
-            "end_page": current_scan_end,
-        },
+        "current_header_scan_range": {"start_page": scan_start, "end_page": scan_end},
         "candidate_row_reconstruction": candidate_row,
         "current_header_evidence": current_header,
         "current_column_role_evidence": current_column_evidence,
         "expected_date_pages_in_document": expected_pages,
         "page_date_diagnostics": page_rows,
-        "expected_date_rows_outside_current_scan_range": expected_rows_outside_current_range[:100],
+        "expected_date_rows_outside_current_scan_range": outside[:100],
     }
 
 
@@ -229,6 +214,7 @@ def main() -> int:
             record["sha256"] = hashlib.sha256(raw).hexdigest()
             with fitz.open(stream=raw, filetype="pdf") as doc:
                 with _mupdf_diagnostic_guard():
+                    page_count = doc.page_count
                     parsed_v166 = v166.diagnose_spatial_balance_sheet_v16_6(doc, version["economic_date"])
                     if not parsed_v166.get("recovered"):
                         raise AssertionError("COLUMN_ROLE_GATE target no longer reaches V16.6 recovery")
@@ -237,8 +223,7 @@ def main() -> int:
                         raise AssertionError(f"selected concepts mismatch: {sorted(selected)}")
 
                     expected_pages = [
-                        page_1b
-                        for page_1b in range(1, doc.page_count + 1)
+                        page_1b for page_1b in range(1, page_count + 1)
                         if page_contains_expected(doc[page_1b - 1], version["economic_date"])
                     ]
                     inspection_pages = set(expected_pages)
@@ -246,34 +231,30 @@ def main() -> int:
                         current = int(candidate["page"])
                         anchor = int(candidate["statement_anchor_page"])
                         root = int((candidate.get("unit_evidence") or {}).get("root_page") or anchor)
-                        for page_1b in range(max(1, min(root, anchor) - 3), min(doc.page_count, current + 2) + 1):
-                            inspection_pages.add(page_1b)
+                        inspection_pages.update(
+                            range(max(1, min(root, anchor) - 3), min(page_count, current + 2) + 1)
+                        )
                     rows_by_page = {
                         page_1b: v14._rows_from_words(doc[page_1b - 1])
                         for page_1b in sorted(inspection_pages)
                     }
                     concept_traces = {
                         concept: candidate_trace(
-                            doc,
-                            rows_by_page,
-                            expected_pages,
-                            concept,
-                            selected[concept],
-                            version["economic_date"],
+                            doc, rows_by_page, expected_pages, concept, selected[concept], version["economic_date"]
                         )
                         for concept in CONCEPTS
                     }
                     current_v167 = v167.diagnose_spatial_balance_sheet_v16_7(doc, version["economic_date"])
                     if current_v167.get("recovered"):
                         raise AssertionError("accepted V17.8 COLUMN_ROLE_GATE residual unexpectedly recovered")
-            record.update({
-                "page_count": doc.page_count,
-                "v16_6_identity": parsed_v166.get("identity"),
-                "v16_6_funnel": parsed_v166.get("funnel") or {},
-                "expected_date_pages_in_document": expected_pages,
-                "concept_traces": concept_traces,
-                "current_v16_7_column_role_gate": current_v167.get("column_role_gate"),
-            })
+                    record.update({
+                        "page_count": page_count,
+                        "v16_6_identity": parsed_v166.get("identity"),
+                        "v16_6_funnel": parsed_v166.get("funnel") or {},
+                        "expected_date_pages_in_document": expected_pages,
+                        "concept_traces": concept_traces,
+                        "current_v16_7_column_role_gate": current_v167.get("column_role_gate"),
+                    })
         except Exception as exc:
             record["diagnostic_error"] = f"{type(exc).__name__}: {exc}"
             errors.append(f"{aid}: {type(exc).__name__}: {exc}")
