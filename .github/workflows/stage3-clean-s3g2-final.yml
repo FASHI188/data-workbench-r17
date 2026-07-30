@@ -1,13 +1,10 @@
 name: Stage3 Clean S3G2 Final Announcement Ledger
 
+# Full-data final replay is an explicit maintenance gate. Lightweight Stage3 core
+# contracts run on every relevant PR change; this workflow is re-run manually only
+# when S3G2 production logic or its frozen upstream evidence is intentionally changed.
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'scripts/assemble_stage3_announcement_repair.py'
-      - 'scripts/finalize_stage3_announcement_ledger.py'
-      - 'config/security_code_transitions.json'
-      - '.github/workflows/stage3-clean-s3g2-final.yml'
 
 permissions:
   contents: read
