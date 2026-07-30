@@ -1,35 +1,43 @@
 {
-  "stage": "2B",
-  "all_hard_gates_pass": false,
-  "alpha_training_allowed": false,
-  "results": {
-    "G1": {
-      "pass": true,
-      "errors": []
-    },
-    "G2": {
-      "pass": false,
-      "errors": [
-        "G2 evidence chain not implemented yet"
-      ]
-    },
-    "G3": {
-      "pass": false,
-      "errors": [
-        "G3 evidence chain not implemented yet"
-      ]
-    },
-    "G4": {
-      "pass": false,
-      "errors": [
-        "G4 evidence chain not implemented yet"
-      ]
-    },
-    "G5": {
-      "pass": false,
-      "errors": [
-        "G5 evidence chain not implemented yet"
-      ]
+  "schema_version": 1,
+  "status": "SUPERSEDED",
+  "authoritative": false,
+  "superseded_by": "data/stage2_final/manifest.json",
+  "superseded_version": "V3.2.25-stage2-final-freeze",
+  "reason": "Legacy Stage2B placeholder predating the completed G2-G5 evidence chain. This file is retained only for historical compatibility and must not be used for project-readiness, training, or live-signal decisions.",
+  "legacy_snapshot": {
+    "stage": "2B",
+    "all_hard_gates_pass": false,
+    "alpha_training_allowed": false,
+    "results": {
+      "G1": {
+        "pass": true,
+        "errors": []
+      },
+      "G2": {
+        "pass": false,
+        "errors": [
+          "G2 evidence chain not implemented yet"
+        ]
+      },
+      "G3": {
+        "pass": false,
+        "errors": [
+          "G3 evidence chain not implemented yet"
+        ]
+      },
+      "G4": {
+        "pass": false,
+        "errors": [
+          "G4 evidence chain not implemented yet"
+        ]
+      },
+      "G5": {
+        "pass": false,
+        "errors": [
+          "G5 evidence chain not implemented yet"
+        ]
+      }
     }
   }
 }
