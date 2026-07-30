@@ -22,6 +22,7 @@ def main() -> int:
             errors.append(message)
 
     expected_fp = "f17f7ab63f4532dda635eb7366e7df7bf5497a5ce814410105312bccb53125bb"
+    expected_s3g2_sha = "0eb139572865628283f86c981990e59e076d5ef2a978a5967aace90d553e30dd"
     req(authority.get("status") == "INTEGRATION_IN_PROGRESS", "authority map must remain INTEGRATION_IN_PROGRESS")
     req((authority.get("stage2_dependency") or {}).get("fingerprint") == expected_fp, "authority Stage2 fingerprint drift")
     req(lock.get("status") == "NOT_READY", "Stage3 final lock must remain NOT_READY during clean integration")
@@ -49,14 +50,19 @@ def main() -> int:
 
     s3g2 = components.get("S3G2_ANNOUNCEMENT_LEDGER") or {}
     req(s3g2.get("repair_source_pr") == 40, "S3G2 repair provenance does not point to PR #40")
-    req(s3g2.get("status") == "FINAL_GATE_PASS" and s3g2.get("final_gate") is True, "S3G2 is not locked as final PASS")
-    req(s3g2.get("final_run_id") == 30521522476, "S3G2 final run drift")
-    req(s3g2.get("final_artifact_digest") == "sha256:b123e6386a42f3dc69054ca9f8e93e916728273db2702a9702184a40f7a9d498", "S3G2 final artifact digest drift")
-    req(s3g2.get("ledger_sha256") == "9c80bc1f86234696ad12031cfea972ac0bcea4528518a9d8c6e30af6d8ac9690", "S3G2 ledger SHA drift")
+    req(s3g2.get("status") == "FINAL_GATE_PASS_DETERMINISTIC" and s3g2.get("final_gate") is True, "S3G2 is not locked as deterministic final PASS")
+    req(s3g2.get("deterministic_final_run_id") == 30522392946, "S3G2 deterministic final run drift")
+    req(s3g2.get("ledger_sha256") == expected_s3g2_sha, "S3G2 deterministic ledger SHA drift")
+    req(s3g2.get("deterministic_replay_count") == 2 and s3g2.get("deterministic_replay_same_sha") is True, "S3G2 two-run reproducibility evidence missing")
+    req(s3g2.get("artifact_digest_is_transport_only") is True, "S3G2 artifact digest incorrectly treated as dataset identity")
+    transport = s3g2.get("transport_artifact_digests_observed") or []
+    req(len(transport) == 2 and len(set(transport)) == 2, "S3G2 transport-digest evidence must record the two distinct archive instances")
     req(s3g2.get("security_identity_count") == 3402 and s3g2.get("g3_trading_days") == 2808, "S3G2 universe/calendar accounting drift")
     lock_g2 = (lock.get("required_gates") or {}).get("S3G2_ANNOUNCEMENT_LEDGER") or {}
-    req(lock_g2.get("run_id") == 30521522476, "Stage3 final lock does not contain S3G2 final run")
-    req(lock_g2.get("artifact_digest") == s3g2.get("final_artifact_digest"), "Stage3 lock/authority S3G2 digest mismatch")
+    req(lock_g2.get("run_id") == 30522392946, "Stage3 final lock does not contain deterministic S3G2 run")
+    req(lock_g2.get("ledger_sha256") == expected_s3g2_sha, "Stage3 lock/authority S3G2 semantic SHA mismatch")
+    req(lock_g2.get("deterministic_replay_count") == 2, "Stage3 lock does not record two deterministic S3G2 replays")
+    req(lock_g2.get("artifact_digest_is_transport_only") is True, "Stage3 lock still treats S3G2 archive digest as semantic identity")
 
     s3g3b = components.get("S3G3B_INDUSTRY_LEDGER") or {}
     req(s3g3b.get("source_pr") == 35 and s3g3b.get("final_gate") is True, "S3G3B authority mismatch")
@@ -70,6 +76,7 @@ def main() -> int:
     for key in (
         "diagnostic_prs_are_evidence_not_merge_units",
         "accepted_candidate_does_not_equal_final_pass",
+        "artifact_archive_digest_is_transport_not_dataset_identity",
         "no_accounting_tolerance_relaxation",
         "no_pit_relaxation",
         "no_security_identity_relaxation",
@@ -82,8 +89,9 @@ def main() -> int:
         "pass": not errors,
         "stage3_status": lock.get("status"),
         "pending_final_gates": sorted(expected_pending),
-        "s3g2_final_run": s3g2.get("final_run_id"),
+        "s3g2_final_run": s3g2.get("deterministic_final_run_id"),
         "s3g2_ledger_sha256": s3g2.get("ledger_sha256"),
+        "s3g2_deterministic_replay_count": s3g2.get("deterministic_replay_count"),
         "current_s3g1j_pr": authority.get("current_s3g1j_production_pr"),
         "s3g1j_candidate_recovered": accounting.get("v17_11_recovered"),
         "s3g1j_candidate_remaining_fail_closed": accounting.get("v17_11_remaining_fail_closed"),
