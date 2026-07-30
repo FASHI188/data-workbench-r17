@@ -62,8 +62,11 @@ jobs:
           assert m['hard_invariants']['stage3_status']=='NOT_READY'
           assert lock['status']=='NOT_READY'
           assert set(lock['remaining_unlocked_gates'])=={
-              'S3G1J_FINANCIAL_RAW_VALUES','S3G2_ANNOUNCEMENT_LEDGER','S3G4_EARNINGS_SURPRISE'
+              'S3G1J_FINANCIAL_RAW_VALUES','S3G4_EARNINGS_SURPRISE'
           }
+          g2=lock['required_gates']['S3G2_ANNOUNCEMENT_LEDGER']
+          assert g2['run_id']==30521522476
+          assert g2['artifact_digest']=='sha256:b123e6386a42f3dc69054ca9f8e93e916728273db2702a9702184a40f7a9d498'
           assert project['stage4_unlocked'] is False
           assert project['alpha_training_allowed'] is False
           assert project['live_signal_allowed'] is False
