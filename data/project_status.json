@@ -13,7 +13,16 @@
     "status": "NOT_READY",
     "authoritative_final_manifest": "data/stage3_final/manifest.json",
     "final_manifest_present_on_main": false,
-    "reason": "Stage3 does not yet have a final all-gates PASS manifest on main. Partial or accepted-candidate PR evidence cannot unlock Stage4 or Alpha training."
+    "completed_final_gates_on_clean_integration": [
+      "S3G2_ANNOUNCEMENT_LEDGER"
+    ],
+    "pending_final_gates": [
+      "S3G1J_FINANCIAL_RAW_VALUES",
+      "S3G4_EARNINGS_SURPRISE"
+    ],
+    "s3g2_semantic_ledger_sha256": "0eb139572865628283f86c981990e59e076d5ef2a978a5967aace90d553e30dd",
+    "s3g2_deterministic_replay_count": 2,
+    "reason": "Stage3 does not yet have a final all-gates PASS manifest on main. S3G2 has a deterministic clean-integration final PASS, but S3G1J and S3G4 remain final-gate blockers."
   },
   "stage4_unlocked": false,
   "alpha_training_allowed": false,
@@ -24,7 +33,16 @@
     "stage2_coverage_end": "2026-07-24",
     "current_master_as_of": "2026-07-24",
     "assessed_as_of": "2026-07-30",
-    "reason": "The frozen market/lifecycle/corporate-action base is older than the hard calendar-day stale threshold and Stage3 announcement/financial coverage is not finalized on main."
+    "reason": "The frozen market/lifecycle/corporate-action base is older than the hard calendar-day stale threshold and Stage3 financial coverage is not finalized on main."
+  },
+  "reproducibility": {
+    "status": "PARTIAL_PASS_PROJECT_STILL_LOCKED",
+    "s3g2_same_input_same_semantic_sha": true,
+    "s3g2_replays": 2,
+    "artifact_archive_digest_is_transport_only": true,
+    "stage3_final_fingerprint_uses_semantic_gate_evidence": true,
+    "overall_pass": false,
+    "reason": "Full project reproducibility cannot pass until S3G1J and S3G4 final datasets exist and the complete Stage3 freeze is rebuilt deterministically."
   },
   "unlock_requirements": {
     "stage2_final_pass": true,
