@@ -69,6 +69,7 @@ jobs:
             gh run download "$HISTORICAL_RUN" -R "$GITHUB_REPOSITORY" -n "stage3-s3g1e-filing-ledger-$i" -D "combined/$i"
           done
           gh run download "$HISTORICAL_RUN" -R "$GITHUB_REPOSITORY" -n stage3-s3g1e-periodic-filing-ledger-final -D old-final
+          test -f old-final/stage3_periodic_filing_ledger.csv.gz
       - name: Restore exact Stage2 G2/G3 dependencies
         shell: bash
         run: |
@@ -91,11 +92,11 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import gzip,glob,hashlib,json
+          import gzip,hashlib,json
           from pathlib import Path
           a=Path('out-a/periodic_filing_ledger.csv.gz')
           b=Path('out-b/periodic_filing_ledger.csv.gz')
-          old=Path(glob.glob('old-final/**/periodic_filing_ledger.csv.gz',recursive=True)[0])
+          old=Path('old-final/stage3_periodic_filing_ledger.csv.gz')
           assert a.read_bytes()==b.read_bytes(), 'deterministic gzip bytes differ'
           new_sha=hashlib.sha256(a.read_bytes()).hexdigest()
           with gzip.open(a,'rb') as f:new_plain=f.read()
@@ -119,8 +120,11 @@ jobs:
           print(json.dumps(report,indent=2))
           PY
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: stage3-s3g1e-deterministic-refreeze
-          path: out-a
+          path: |
+            out-a
+            out-b
           retention-days: 90
           compression-level: 0
