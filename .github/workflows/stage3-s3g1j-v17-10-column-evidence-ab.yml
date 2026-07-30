@@ -1,0 +1,65 @@
+name: Stage3 S3G1J V17.10 Column Evidence AB
+
+on:
+  pull_request:
+    branches: [stage3-s3g1j-v17-explicit-dual-evidence]
+    paths:
+      - '.github/workflows/stage3-s3g1j-v17-10-column-evidence-ab.yml'
+      - 'scripts/probe_stage3_s3g1j_v17_10_column_evidence_ab.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FROZEN_127_RUN: '30424465440'
+  V17_8_RUN: '30509386975'
+  V17_9_RUN: '30509784496'
+  PYTHONPATH: scripts
+
+jobs:
+  ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Require accepted V17.8 and successful V17.9 evidence trace
+        run: |
+          test "$(gh run view "$V17_8_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+          test "$(gh run view "$V17_9_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+          rm -rf prepared v17_8 build/v17-10-column-ab
+          gh run download "$FROZEN_127_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v15-single-source-input -D prepared
+          gh run download "$V17_8_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v17-8-residual-funnel-summary -D v17_8
+          test -f prepared/single_source_residual_versions.csv.gz
+          test -f v17_8/v17_8_residual_funnel.json
+          python - <<'PY'
+          import json
+          s=json.load(open('v17_8/v17_8_residual_funnel.json',encoding='utf-8'))
+          assert s['pass'] and s['accepted_v17_7_recovery_count']==25
+          assert s['input_residual_count']==88
+          assert s['category_counts']['COLUMN_ROLE_GATE']==6
+          assert s['stage4_alpha_locked'] is True
+          print('V17_10_LOCK_PASS',6)
+          PY
+      - name: Run diagnostic-only strict-header plus same-page-sibling A/B
+        run: |
+          mkdir -p build/v17-10-column-ab
+          python scripts/probe_stage3_s3g1j_v17_10_column_evidence_ab.py \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --v17-8-summary v17_8/v17_8_residual_funnel.json \
+            --out build/v17-10-column-ab/column_evidence_ab.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-10-column-evidence-ab
+          path: build/v17-10-column-ab/column_evidence_ab.json
+          retention-days: 90
+          compression-level: 0
