@@ -56,7 +56,11 @@ class V17ColumnEvidenceTests(unittest.TestCase):
             "TOTAL_LIABILITIES": {"pass": False},
             "TOTAL_EQUITY": {"pass": False},
         }
-        with patch.object(v167, "_column_role_evidence_with_header", return_value={"pass": True}) as mapped:
+        mapped_result = {
+            "pass": True,
+            "evidence_source": "SAME_PAGE_SAME_ANCHOR_DIRECT_SIBLING_HEADER",
+        }
+        with patch.object(v167, "_column_role_evidence_with_header", return_value=mapped_result) as mapped:
             out = v167._same_page_trusted_sibling_column_evidence(
                 object(), "TOTAL_LIABILITIES", target, selected, direct
             )
@@ -73,7 +77,7 @@ class V17ColumnEvidenceTests(unittest.TestCase):
         ):
             broken = {k: dict(v) for k, v in selected.items()}
             broken["TOTAL_ASSETS"][field] = bad
-            with patch.object(v167, "_column_role_evidence_with_header", return_value={"pass": True}):
+            with patch.object(v167, "_column_role_evidence_with_header", return_value=mapped_result):
                 out = v167._same_page_trusted_sibling_column_evidence(
                     object(), "TOTAL_LIABILITIES", target, broken, direct
                 )
@@ -97,7 +101,11 @@ class V17ColumnEvidenceTests(unittest.TestCase):
                 "header": {"page": 10, "expected_column_index": 0},
             },
         }
-        with patch.object(v167, "_column_role_evidence_with_header", return_value={"pass": True}):
+        with patch.object(
+            v167,
+            "_column_role_evidence_with_header",
+            return_value={"pass": True, "evidence_source": "SAME_PAGE_SAME_ANCHOR_DIRECT_SIBLING_HEADER"},
+        ):
             out = v167._same_page_trusted_sibling_column_evidence(
                 object(), "TOTAL_LIABILITIES", target, selected, direct
             )
