@@ -1,5 +1,5 @@
 name: Stage3 Authority Map Audit
-# Clean-integration authority spine; evidence verification only, never a Stage3 PASS claim.
+# Semantic data identity is verified separately from workflow/artifact transport provenance.
 
 on:
   workflow_dispatch:
