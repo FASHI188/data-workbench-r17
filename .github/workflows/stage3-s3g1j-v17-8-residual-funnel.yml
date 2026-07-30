@@ -1,0 +1,161 @@
+name: Stage3 S3G1J V17.8 Residual Funnel Diagnostic
+
+on:
+  pull_request:
+    branches: [stage3-s3g1j-v17-explicit-dual-evidence]
+    paths:
+      - '.github/workflows/stage3-s3g1j-v17-8-residual-funnel.yml'
+      - 'scripts/probe_stage3_s3g1j_v17_8_residual_funnel.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FROZEN_127_RUN: '30424465440'
+  V17_7_ACCEPTANCE_RUN: '30508803235'
+  PYTHONPATH: scripts
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require accepted V17.7 exact-113 gate
+        run: test "$(gh run view "$V17_7_ACCEPTANCE_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+      - name: Restore frozen input and accepted V17.7 summary
+        run: |
+          rm -rf prepared accepted
+          gh run download "$FROZEN_127_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v15-single-source-input -D prepared
+          gh run download "$V17_7_ACCEPTANCE_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v17-7-explicit-dual-acceptance -D accepted
+          test -f prepared/single_source_residual_versions.csv.gz
+          test -f accepted/v17_7_explicit_dual_acceptance.json
+          python - <<'PY'
+          import csv,gzip,json
+          with gzip.open('prepared/single_source_residual_versions.csv.gz','rt',encoding='utf-8',newline='') as f:
+              rows=list(csv.DictReader(f))
+          a=json.load(open('accepted/v17_7_explicit_dual_acceptance.json',encoding='utf-8'))
+          assert len(rows)==127, len(rows)
+          assert a['pass']
+          assert a['v14_remaining_count']==113
+          assert a['v17_7_recovery_count']==25
+          assert a['v17_7_remaining_count']==88
+          assert len(a['remaining'])==88
+          assert a['all_v14_success_paths_unchanged']
+          assert a['all_prior_v16_recoveries_preserved']
+          assert a['all_recoveries_have_period_column_identity_evidence']
+          assert a['stage4_alpha_locked'] is True
+          print('V17_8_RESIDUAL_LOCK_PASS',len(rows),a['v17_7_recovery_count'],a['v17_7_remaining_count'])
+          PY
+
+  diagnose:
+    needs: lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,7,9]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Restore frozen input and V17.7 accepted remaining set
+        run: |
+          rm -rf prepared accepted build/v17-8-residual-funnel
+          gh run download "$FROZEN_127_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v15-single-source-input -D prepared
+          gh run download "$V17_7_ACCEPTANCE_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v17-7-explicit-dual-acceptance -D accepted
+      - name: Diagnose exact V17.7 remaining PDFs without changing parser policy
+        run: |
+          mkdir -p build/v17-8-residual-funnel
+          python scripts/probe_stage3_s3g1j_v17_8_residual_funnel.py \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --v17-7-acceptance accepted/v17_7_explicit_dual_acceptance.json \
+            --shard ${{ matrix.shard }} --shards 64 \
+            --out build/v17-8-residual-funnel/shard${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-8-residual-funnel-${{ matrix.shard }}
+          path: build/v17-8-residual-funnel/shard${{ matrix.shard }}.json
+          retention-days: 90
+          compression-level: 0
+
+  summarize:
+    needs: diagnose
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g1j-v17-8-residual-funnel-*
+          path: residuals
+          merge-multiple: true
+      - name: Summarize exact 88 post-V17.7 residuals
+        run: |
+          python - <<'PY'
+          import glob,json,os
+          from collections import Counter,defaultdict
+          paths=sorted(glob.glob('residuals/shard*.json'))
+          rows=[json.load(open(p,encoding='utf-8')) for p in paths]
+          rows.sort(key=lambda x:x['shard'])
+          assert [r['shard'] for r in rows]==[0,1,7,9], rows
+          assert all(r['pass'] for r in rows), [r.get('diagnostic_failures') for r in rows]
+          diagnostics=[x for r in rows for x in r['diagnostics']]
+          assert len(diagnostics)==88, len(diagnostics)
+          assert not any(x['category']=='UNEXPECTED_RECOVERY' for x in diagnostics)
+          categories=Counter(x['category'] for x in diagnostics)
+          concept_stages={c:Counter() for c in ('TOTAL_ASSETS','TOTAL_LIABILITIES','TOTAL_EQUITY')}
+          family_category=defaultdict(Counter)
+          era_category=defaultdict(Counter)
+          for x in diagnostics:
+              for c,s in x['concept_stage'].items(): concept_stages[c][s]+=1
+              family_category[x['report_family']][x['category']]+=1
+              y=int(x['economic_date'][:4])
+              era='2014-2017' if y<=2017 else ('2018-2021' if y<=2021 else '2022-2026')
+              era_category[era][x['category']]+=1
+          examples={}
+          for category in sorted(categories):
+              examples[category]=[
+                  {k:x[k] for k in ('announcement_id','source_code','report_family','economic_date','canonical_title','page_count','candidate_counts','concept_stage')}
+                  for x in diagnostics if x['category']==category
+              ][:8]
+          report={
+              'gate':'S3G1J_V17_8_POST_V17_7_RESIDUAL_FUNNEL',
+              'pass':True,
+              'accepted_v17_7_recovery_count':25,
+              'input_residual_count':88,
+              'category_counts':dict(categories),
+              'concept_stage_counts':{k:dict(v) for k,v in concept_stages.items()},
+              'family_category':{k:dict(v) for k,v in family_category.items()},
+              'era_category':{k:dict(v) for k,v in era_category.items()},
+              'category_examples':examples,
+              'diagnostics':diagnostics,
+              'parser_policy_changed':False,
+              'stage4_alpha_locked':True,
+          }
+          os.makedirs('summary',exist_ok=True)
+          json.dump(report,open('summary/v17_8_residual_funnel.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+          print(json.dumps({
+              'accepted_v17_7_recovery_count':25,
+              'input_residual_count':88,
+              'category_counts':dict(categories),
+              'parser_policy_changed':False,
+              'stage4_alpha_locked':True,
+          },ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-8-residual-funnel-summary
+          path: summary/v17_8_residual_funnel.json
+          retention-days: 90
+          compression-level: 0
