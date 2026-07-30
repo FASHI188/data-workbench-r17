@@ -1,13 +1,35 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "integration_branch": "agent/stage3-clean-integration",
+  "scope": "S3G1J production runtime closure and formal regression tests only; historical probes and diagnostic workflows are excluded from production authority",
   "source_candidate": {
     "pr": 63,
     "head_sha": "e98d26b962a58cecc5c6416214e3c798c5e8a49e",
-    "accepted_run": 30510347556
+    "acceptance_run": 30510347556,
+    "acceptance_artifact": "stage3-s3g1j-v17-11-column-evidence-acceptance",
+    "acceptance_artifact_digest": "sha256:b1143faaf2c1a91fd64e21ef35c05e787200d957f888613fa2f2a2fc23c43ad9",
+    "status": "ACCEPTED_CANDIDATE_NOT_FINAL"
+  },
+  "v17_15_promotion": {
+    "candidate_experiment_run": 30534273504,
+    "candidate_experiment_artifact": "stage3-s3g1j-v17-15-exact-four-experiment",
+    "candidate_experiment_artifact_digest": "sha256:f7f6a01368ae5ffca115d756c80240d43b1f44072f2208f74925c1add2b7fa17",
+    "exact_82_safety_run": 30534822941,
+    "exact_82_safety_head_sha": "85f59e96d5e80ae00b657562c39a01e0bb4ed275",
+    "exact_82_safety_artifact": "stage3-s3g1j-v17-15-exact-82-safety-replay",
+    "exact_82_safety_artifact_digest": "sha256:67641d6bd9623af196b1bc608f0b63469fc001ef5cecb43624e34d640aa527ff",
+    "source_sha_match_count": 82,
+    "baseline_recovered_count": 0,
+    "promoted_recovery_count": 1,
+    "promoted_recovery_announcement_ids": [
+      "1225153907"
+    ],
+    "remaining_fail_closed_count": 81,
+    "production_wiring_status": "PROMOTED_PENDING_PRODUCTION_EXACT_82_ACCEPTANCE"
   },
   "integration_commit": "0a7a8f1e20a2b2e643e4afc468cfd7657ce62621",
-  "file_count": 48,
-  "scope": "PRODUCTION_RUNTIME_AND_FAIL_CLOSED_REGRESSION_TESTS_ONLY",
+  "file_count": 51,
+  "scope_class": "PRODUCTION_RUNTIME_AND_FAIL_CLOSED_REGRESSION_TESTS_ONLY",
   "excluded_classes": [
     "probe_scripts",
     "diagnostic_workflows",
@@ -26,7 +48,8 @@
     "V15.1 evidence-compatible tie resolver",
     "V16.7 contextual period/column fallback",
     "V17.7 explicit role/unit evidence",
-    "V17.11 trusted frozen-date column evidence"
+    "V17.11 trusted frozen-date column evidence",
+    "V17.15 exact-terminal adjacent-row final fallback"
   ],
   "hard_invariants": {
     "accounting_identity_tolerance": "0.005",
@@ -36,6 +59,16 @@
     "declared_issuer_gate_preserved": true,
     "unreliable_parse_fail_closed": true,
     "current_f10_historical_backfill_forbidden": true,
+    "global_row_tolerance_changed": false,
+    "adjacent_row_bridge_y_window": "2.8 < delta <= 3.25",
     "stage4_alpha_locked": true
-  }
+  },
+  "tests": {
+    "pure_fail_closed_contracts": 88,
+    "official_pdf_positive_samples": 5,
+    "official_pdf_negative_samples": 3,
+    "v17_15_exact_82_source_sha_replay": 82
+  },
+  "production_final_status": "NOT_FINAL",
+  "remaining_final_requirement": "Full 64-shard S3G1J final build and finalizer; current promoted runtime still leaves 81 accepted residual documents fail closed."
 }
