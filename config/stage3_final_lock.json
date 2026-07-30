@@ -1,0 +1,71 @@
+{
+  "version": "V3.3.6-stage3-final-lock",
+  "status": "NOT_READY",
+  "stage2": {
+    "version": "V3.2.25-stage2-final-freeze",
+    "fingerprint": "f17f7ab63f4532dda635eb7366e7df7bf5497a5ce814410105312bccb53125bb"
+  },
+  "trading_universe_policy": "config/trading_universe_policy.json",
+  "required_gates": {
+    "S3G0_POINT_IN_TIME_FEATURE_CONTRACT": {
+      "run_id": 30265340598,
+      "artifact": "stage3-s3g0-contract-evidence"
+    },
+    "S3G1E_PERIODIC_FILING_LEDGER": {
+      "run_id": 30265340486,
+      "artifact": "stage3-s3g1e-periodic-filing-ledger-final"
+    },
+    "S3G1G_REPORT_VERSION_SELECTION": {
+      "run_id": 30270405448,
+      "artifact": "stage3-s3g1g-financial-report-versions"
+    },
+    "S3G1H_PDF_PARSER_PROBE": {
+      "run_id": 30269769293,
+      "artifact": "stage3-s3g1h-financial-pdf-parser-probe"
+    },
+    "S3G1I_POPULATION_PDF_PROBE": {
+      "run_id": 30326328965,
+      "artifact": "stage3-s3g1i-financial-pdf-population-probe",
+      "artifact_digest": "sha256:3883eb629aaa0325cd1db6d3a1eefc96929c9673711bb3c004217ac6254324b9"
+    },
+    "S3G1J_FINANCIAL_RAW_VALUES": {
+      "run_id": null,
+      "artifact": "stage3-s3g1j-financial-raw-final"
+    },
+    "S3G2_ANNOUNCEMENT_LEDGER": {
+      "run_id": null,
+      "artifact": "stage3-s3g2-announcement-ledger-final"
+    },
+    "S3G3A_INDUSTRY_SOURCE_PROBE": {
+      "run_id": 30326328969,
+      "artifact": "stage3-s3g3a-capco-industry-history-probe",
+      "artifact_digest": "sha256:a635409dbab2fdc61852432acfcb294f97b4468831f23a9fa01320abf39ba9af"
+    },
+    "S3G3B_INDUSTRY_LEDGER": {
+      "run_id": 30331243641,
+      "artifact": "stage3-s3g3b-industry-classification-ledger",
+      "artifact_digest": "sha256:f1da814c71fa698f3f10ce5dc7019bb86770f9d4e15ed7d7823a93a085adc872",
+      "ledger_sha256": "3d91678a111e12d4ba5262d2af4e0c2a643de13ac03076fb4e61e14db9ee9ece"
+    },
+    "S3G4A_FORECAST_PARSER_PROBE": {
+      "run_id": 30326328970,
+      "artifact": "stage3-s3g4a-earnings-forecast-parser-probe",
+      "artifact_digest": "sha256:5384aed1c81782571486d32053b343218bb06a0aa45f1540faa4e619dd7d9ad4"
+    },
+    "S3G4_EARNINGS_SURPRISE": {
+      "run_id": null,
+      "artifact": "stage3-s3g4-earnings-surprise-final"
+    },
+    "S3GU_TRADING_UNIVERSE_POLICY": {
+      "run_id": 30326328975,
+      "artifact": "stage3-s3gu-trading-universe-policy",
+      "artifact_digest": "sha256:1942c9e7baa0823772201cc1f6652e660d8b4b60dd8b0559d94dcefe7da4c9fa"
+    }
+  },
+  "remaining_unlocked_gates": [
+    "S3G1J_FINANCIAL_RAW_VALUES",
+    "S3G2_ANNOUNCEMENT_LEDGER",
+    "S3G4_EARNINGS_SURPRISE"
+  ],
+  "merge_allowed_only_when_all_run_ids_locked_and_all_gates_pass": true
+}
