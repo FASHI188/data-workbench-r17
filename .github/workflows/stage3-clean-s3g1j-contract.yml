@@ -1,0 +1,71 @@
+name: Stage3 Clean S3G1J Runtime Contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/extract_stage3_financial_pdf_values*.py'
+      - 'scripts/stage3_financial_pdf_parser*.py'
+      - 'scripts/stage3_financial_coordinate_fallback*.py'
+      - 'scripts/stage3_financial_spatial_alias*.py'
+      - 'scripts/stage3_financial_statement_blocks*.py'
+      - 'scripts/select_stage3_financial_report_versions*.py'
+      - 'scripts/compare_stage3_financial_report_versions_v3.py'
+      - 'scripts/build_stage3_partial_body_ledger_v12.py'
+      - 'scripts/finalize_stage3_financial_pdf_values.py'
+      - 'tests/test_stage3_financial_*.py'
+      - 'tests/test_stage3_coordinate_role_v14_1c.py'
+      - 'tests/test_stage3_unique_usable_tie_v15.py'
+      - 'tests/test_stage3_statement_blocks_v16_3.py'
+      - 'tests/test_stage3_v16_contextual_parser.py'
+      - 'tests/test_stage3_v17_*.py'
+      - '.github/workflows/stage3-clean-s3g1j-contract.yml'
+
+permissions:
+  contents: read
+
+env:
+  PYTHONPATH: scripts
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified Stage3 runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf pytest
+      - name: Import final runtime closure
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0,'scripts')
+          import extract_stage3_financial_pdf_values_v11 as extractor
+          import stage3_financial_pdf_parser_v10 as parser
+          import stage3_financial_spatial_alias_v16_7 as column
+          assert callable(extractor.parse_pdf_bytes)
+          assert callable(parser.parse_pdf_bytes)
+          assert callable(column.diagnose_spatial_balance_sheet_v16_7)
+          print('S3G1J_RUNTIME_IMPORT_PASS')
+          PY
+      - name: Run inherited fail-closed regression contracts
+        run: |
+          python -m unittest \
+            tests.test_stage3_financial_balance_block_v4 \
+            tests.test_stage3_financial_balance_block_v5 \
+            tests.test_stage3_financial_balance_block_v6 \
+            tests.test_stage3_financial_balance_title_v8 \
+            tests.test_stage3_financial_pdf_issuer_gate_v9 \
+            tests.test_stage3_financial_pdf_parser_v11 \
+            tests.test_stage3_financial_pdf_parser_v13 \
+            tests.test_stage3_financial_tie_resolution \
+            tests.test_stage3_coordinate_role_v14_1c \
+            tests.test_stage3_unique_usable_tie_v15 \
+            tests.test_stage3_statement_blocks_v16_3 \
+            tests.test_stage3_v16_contextual_parser \
+            tests.test_stage3_v17_explicit_dual_evidence \
+            tests.test_stage3_v17_column_evidence \
+            -v
