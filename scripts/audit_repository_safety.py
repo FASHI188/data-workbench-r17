@@ -32,6 +32,56 @@ def line_numbers(text: str, pattern: re.Pattern[str]) -> list[int]:
     return [i for i, line in enumerate(text.splitlines(), 1) if pattern.search(line)]
 
 
+def sensitive_path(path: str) -> bool:
+    p = Path(path)
+    return p.name in SENSITIVE_NAMES or p.suffix.lower() in SENSITIVE_SUFFIXES
+
+
+def scan_history_added_lines() -> list[dict]:
+    """Scan added text in reachable Git history without ever returning matched values."""
+    cmd = [
+        "git", "log", "--all", "--format=@@COMMIT@@%H", "--unified=0",
+        "--no-ext-diff", "--no-color", "-p",
+    ]
+    proc = subprocess.Popen(
+        cmd,
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    assert proc.stdout is not None
+    commit = ""
+    path = ""
+    found: dict[tuple[str, str, str], dict] = {}
+    for line in proc.stdout:
+        line = line.rstrip("\n")
+        if line.startswith("@@COMMIT@@"):
+            commit = line[len("@@COMMIT@@"):].strip()
+            path = ""
+            continue
+        if line.startswith("+++ b/"):
+            path = line[6:].strip()
+            if commit and path and sensitive_path(path):
+                key = (commit, path, "SENSITIVE_FILENAME")
+                found[key] = {"commit": commit[:12], "path": path, "type": "SENSITIVE_FILENAME"}
+            continue
+        if not commit or not path or not line.startswith("+") or line.startswith("+++"):
+            continue
+        added = line[1:]
+        for label, pattern in SECRET_PATTERNS.items():
+            if pattern.search(added):
+                key = (commit, path, label)
+                found[key] = {"commit": commit[:12], "path": path, "type": label}
+    stderr = proc.stderr.read() if proc.stderr is not None else ""
+    rc = proc.wait()
+    if rc != 0:
+        raise RuntimeError(f"git history scan failed rc={rc}: {stderr[-500:]}")
+    return sorted(found.values(), key=lambda x: (x["path"], x["commit"], x["type"]))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="build/repository-safety/repository_safety_audit.json")
@@ -81,7 +131,7 @@ def main() -> int:
 
     for path in tracked_files():
         rel = str(path.relative_to(ROOT))
-        if path.name in SENSITIVE_NAMES or path.suffix.lower() in SENSITIVE_SUFFIXES:
+        if sensitive_path(rel):
             secret_findings.append({"path": rel, "line": None, "type": "SENSITIVE_FILENAME"})
             continue
         try:
@@ -97,8 +147,14 @@ def main() -> int:
             for line_no in line_numbers(text, pattern):
                 secret_findings.append({"path": rel, "line": line_no, "type": label})
 
+    history_secret_findings = scan_history_added_lines()
     if secret_findings:
-        errors.extend(f"possible secret exposure: {x['path']}:{x['line']} [{x['type']}]" for x in secret_findings)
+        errors.extend(f"possible current secret exposure: {x['path']}:{x['line']} [{x['type']}]" for x in secret_findings)
+    if history_secret_findings:
+        errors.extend(
+            f"possible historical secret exposure: {x['commit']}:{x['path']} [{x['type']}]"
+            for x in history_secret_findings
+        )
 
     out = ROOT / args.out
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -109,6 +165,7 @@ def main() -> int:
         "write_capable_workflow_count": sum(1 for x in workflow_findings if any((x['contents_write_lines'],x['git_push_lines'],x['git_commit_lines'],x['write_api_lines'],x['pr_merge_lines']))),
         "workflow_findings": workflow_findings,
         "secret_findings": secret_findings,
+        "history_secret_findings": history_secret_findings,
         "warnings": warnings,
         "errors": errors,
         "secret_values_redacted": True,
@@ -120,6 +177,7 @@ def main() -> int:
         "workflow_count": report["workflow_count"],
         "write_capable_workflow_count": report["write_capable_workflow_count"],
         "secret_finding_count": len(secret_findings),
+        "history_secret_finding_count": len(history_secret_findings),
         "warning_count": len(warnings),
         "errors": errors,
     }, ensure_ascii=False, indent=2))
