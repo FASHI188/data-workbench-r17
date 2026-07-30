@@ -1,4 +1,5 @@
 name: Stage3 Clean Core Runtime Contract
+# Includes deterministic output and semantic final-fingerprint regression coverage.
 
 on:
   workflow_dispatch:
