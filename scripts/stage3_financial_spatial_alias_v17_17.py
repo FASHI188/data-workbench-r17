@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import re
 from collections import Counter, defaultdict
 from decimal import Decimal
 
@@ -16,6 +17,9 @@ import stage3_financial_statement_blocks_v16_5 as blocks
 
 CONCEPTS = ("TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY")
 STRICT_EQUITY_LABEL = "股东权益总计"
+YEAR_TOKEN_RE = re.compile(r"20\d{2}")
+MONTH_DAY_TOKEN_RE = re.compile(r"(\d{1,2})月(\d{1,2})日")
+MAX_SPLIT_HEADER_X_DELTA = 35.0
 
 
 def _norm(value: str) -> str:
@@ -30,6 +34,131 @@ def _is_exact_strict_equity_row(row_text: str) -> bool:
     if any(token in normalized for token in (_norm("归属于"), _norm("少数股东"), _norm("负债和"), _norm("负债及"))):
         return False
     return True
+
+
+def _token_geometries(row: dict, pattern: re.Pattern[str]) -> list[dict]:
+    compact, char_map = v167._compact_word_map(row)
+    out: list[dict] = []
+    for match in pattern.finditer(compact):
+        first_word = char_map[match.start()]
+        last_word = char_map[match.end() - 1]
+        words = row["words"]
+        x0 = float(words[first_word]["x0"])
+        x1 = float(words[last_word]["x1"])
+        out.append({
+            "text": match.group(0),
+            "groups": list(match.groups()),
+            "x0": x0,
+            "x1": x1,
+            "x_center": (x0 + x1) / 2,
+        })
+    return out
+
+
+def _strict_two_row_header_on_page(
+    page: fitz.Page,
+    expected_economic_date: str,
+    alias_x1: float,
+) -> dict | None:
+    expected = v166._canonical_economic_date(expected_economic_date)
+    rows = sorted(v14._rows_from_words(page), key=lambda row: float(row["y"]))
+    for index in range(len(rows) - 1):
+        year_row = rows[index]
+        md_row = rows[index + 1]
+        year_compact = re.sub(r"\s+", "", str(year_row.get("text") or ""))
+        md_compact = re.sub(r"\s+", "", str(md_row.get("text") or ""))
+        if re.fullmatch(r"(?:20\d{2}年){3}", year_compact) is None:
+            continue
+        cleaned_md = (
+            md_compact.replace("附注", "")
+            .replace("(已重述)", "")
+            .replace("（已重述）", "")
+        )
+        if re.fullmatch(r"(?:\d{1,2}月\d{1,2}日){3}", cleaned_md) is None:
+            continue
+        years = _token_geometries(year_row, YEAR_TOKEN_RE)
+        month_days = _token_geometries(md_row, MONTH_DAY_TOKEN_RE)
+        years = [row for row in years if row["x_center"] >= alias_x1 - 5.0]
+        month_days = [row for row in month_days if row["x_center"] >= alias_x1 - 5.0]
+        years.sort(key=lambda row: row["x_center"])
+        month_days.sort(key=lambda row: row["x_center"])
+        if len(years) != 3 or len(month_days) != 3:
+            continue
+        if any(
+            abs(year["x_center"] - md["x_center"]) > MAX_SPLIT_HEADER_X_DELTA
+            for year, md in zip(years, month_days)
+        ):
+            continue
+        dates = []
+        for year, md in zip(years, month_days):
+            month, day = md["groups"]
+            dates.append({
+                "date": f"{int(year['text']):04d}-{int(month):02d}-{int(day):02d}",
+                "x0": min(year["x0"], md["x0"]),
+                "x1": max(year["x1"], md["x1"]),
+                "x_center": (year["x_center"] + md["x_center"]) / 2,
+                "year_row_y": float(year_row["y"]),
+                "month_day_row_y": float(md_row["y"]),
+            })
+        expected_indexes = [idx for idx, row in enumerate(dates) if row["date"] == expected]
+        if len(expected_indexes) != 1:
+            continue
+        return {
+            "page": page.number + 1,
+            "row_y": float(year_row["y"]),
+            "row_text": f"{year_row['text']} || {md_row['text']}",
+            "dates": dates,
+            "expected_date": expected,
+            "expected_column_index": expected_indexes[0],
+            "structural_source": "V17_17_STRICT_THREE_COLUMN_TWO_ROW_YEAR_MONTH_DAY_HEADER",
+            "year_row_text": str(year_row["text"])[:500],
+            "month_day_row_text": str(md_row["text"])[:500],
+            "x_alignment_tolerance": MAX_SPLIT_HEADER_X_DELTA,
+        }
+    return None
+
+
+def _strict_two_row_column_evidence(
+    doc: fitz.Document,
+    candidate: dict,
+    expected_economic_date: str,
+) -> dict:
+    current_page = int(candidate["page"])
+    root_page = int((candidate.get("unit_evidence") or {}).get("root_page") or candidate["statement_anchor_page"])
+    alias_x1 = float(candidate["alias_x1"])
+    for page_1b in range(current_page, max(1, root_page) - 1, -1):
+        header = _strict_two_row_header_on_page(
+            doc[page_1b - 1], expected_economic_date, alias_x1
+        )
+        if header is None:
+            continue
+        return v167._column_role_evidence_with_header(
+            doc,
+            candidate,
+            header,
+            "V17_17_STRICT_THREE_COLUMN_TWO_ROW_YEAR_MONTH_DAY_HEADER",
+        )
+    return {"pass": False, "reason": "no strict paired year/month-day header row"}
+
+
+def _direct_column_evidence(
+    doc: fitz.Document,
+    candidate: dict,
+    expected_economic_date: str,
+) -> dict:
+    direct = v1715._direct_column_evidence(doc, candidate, expected_economic_date)
+    if direct.get("pass"):
+        return direct
+    split = _strict_two_row_column_evidence(doc, candidate, expected_economic_date)
+    if split.get("pass"):
+        split["prior_direct_failure"] = direct
+        return split
+    return {
+        "pass": False,
+        "reason": "direct and strict two-row header evidence both failed",
+        "direct_failure": direct,
+        "two_row_failure": split,
+    }
 
 
 def _collect_strict_same_row_equity_candidates(
@@ -161,7 +290,7 @@ def diagnose_spatial_balance_sheet_v17_17(
         }
 
     direct = {
-        concept: v1715._direct_column_evidence(doc, candidate, expected_economic_date)
+        concept: _direct_column_evidence(doc, candidate, expected_economic_date)
         for concept, candidate in chosen.items()
     }
     evidence = dict(direct)
@@ -186,8 +315,9 @@ def diagnose_spatial_balance_sheet_v17_17(
             "pass": all_pass,
             "concepts": evidence,
             "policy": (
-                "V17.15 preserved; exact GROUP row label 股东权益总计 only; "
-                "same-row amount; frozen economic-date column; A=L+E tolerance 0.005"
+                "V17.15 preserved; exact GROUP row label 股东权益总计 only; same-row amount; "
+                "direct or strict three-column paired year/month-day frozen-date header; "
+                "A=L+E tolerance 0.005"
             ),
         },
         "selected": {
