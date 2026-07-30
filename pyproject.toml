@@ -5,6 +5,7 @@ description = "Point-in-time A-share data validation and research workspace"
 requires-python = "==3.12.13"
 dependencies = [
   "requests==2.34.2",
+  "beautifulsoup4==4.15.0",
   "openpyxl==3.1.5",
   "PyMuPDF==1.28.0",
   "baostock==0.9.3",
