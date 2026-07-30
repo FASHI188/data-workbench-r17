@@ -1,0 +1,80 @@
+name: Stage3 Clean S3G1J V17.17 Exact-One Header Geometry
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/diagnose_stage3_s3g1j_v17_17_header_geometry.py'
+      - '.github/workflows/stage3-clean-s3g1j-v17-17-header-geometry.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FROZEN_RUN: '30424465440'
+  FROZEN_HEAD: 'be42608b75f77af13c36620da7e7fa03c563afde'
+  FROZEN_ARTIFACT: 'stage3-s3g1j-v15-single-source-input'
+  FROZEN_DIGEST: 'sha256:272f52239adc2fc5d4343ec091495dffcd39324b425784cdf5a7491f63a2e6fd'
+  ACCEPTED_RUN: '30510347556'
+  ACCEPTED_HEAD: 'e98d26b962a58cecc5c6416214e3c798c5e8a49e'
+  ACCEPTED_ARTIFACT: 'stage3-s3g1j-v17-11-column-evidence-acceptance'
+  ACCEPTED_DIGEST: 'sha256:b1143faaf2c1a91fd64e21ef35c05e787200d957f888613fa2f2a2fc23c43ad9'
+  PYTHONPATH: scripts
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact verified diagnostic dependencies
+        run: python -m pip install --disable-pip-version-check --constraint requirements/constraints-verified.txt requests PyMuPDF
+      - name: Lock and restore exact inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          lock_run_artifact() {
+            run="$1"; expected_head="$2"; artifact="$3"; expected_digest="$4"
+            test "$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')" = success
+            test "$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json headSha --jq '.headSha')" = "$expected_head"
+            actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq ".artifacts[] | select(.name==\"$artifact\") | .digest")
+            test "$actual" = "$expected_digest"
+          }
+          lock_run_artifact "$FROZEN_RUN" "$FROZEN_HEAD" "$FROZEN_ARTIFACT" "$FROZEN_DIGEST"
+          lock_run_artifact "$ACCEPTED_RUN" "$ACCEPTED_HEAD" "$ACCEPTED_ARTIFACT" "$ACCEPTED_DIGEST"
+          rm -rf prepared accepted build/s3g1j-v17-17-header
+          gh run download "$FROZEN_RUN" -R "$GITHUB_REPOSITORY" -n "$FROZEN_ARTIFACT" -D prepared
+          gh run download "$ACCEPTED_RUN" -R "$GITHUB_REPOSITORY" -n "$ACCEPTED_ARTIFACT" -D accepted
+          test -f prepared/single_source_residual_versions.csv.gz
+          test -f accepted/v17_11_column_evidence_acceptance.json
+      - name: Diagnose frozen-date header geometry without bypassing the gate
+        shell: bash
+        run: |
+          set +e
+          mkdir -p build/s3g1j-v17-17-header
+          python scripts/diagnose_stage3_s3g1j_v17_17_header_geometry.py \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --acceptance accepted/v17_11_column_evidence_acceptance.json \
+            --out build/s3g1j-v17-17-header/header_geometry.json \
+            > build/s3g1j-v17-17-header/stdout.log \
+            2> build/s3g1j-v17-17-header/stderr.log
+          code=$?
+          echo "DIAGNOSTIC_EXIT=$code" >> "$GITHUB_ENV"
+          cat build/s3g1j-v17-17-header/stdout.log || true
+          tail -100 build/s3g1j-v17-17-header/stderr.log || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-17-exact-one-header-geometry
+          path: build/s3g1j-v17-17-header
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve diagnostic failure
+        if: env.DIAGNOSTIC_EXIT != '0'
+        run: exit 1
