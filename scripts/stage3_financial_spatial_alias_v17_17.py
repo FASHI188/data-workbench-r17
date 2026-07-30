@@ -132,7 +132,7 @@ def _strict_two_row_column_evidence(
         )
         if header is None:
             continue
-        return v167._column_role_evidence_with_header(
+        return v1715._column_evidence_with_header(
             doc,
             candidate,
             header,
