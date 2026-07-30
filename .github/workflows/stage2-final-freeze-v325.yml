@@ -9,6 +9,9 @@ on:
       - 'data/stage2_final/manifest.json'
       - 'data/stage2_final/SHA256SUMS.txt'
       - 'scripts/audit_stage2_final_freeze_v325.py'
+      - 'requirements/constraints-verified.txt'
+      - '.python-version'
+      - 'pyproject.toml'
       - '.github/workflows/stage2-final-freeze-v325.yml'
 
 permissions:
@@ -30,6 +33,9 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
       - name: Verify fixed run conclusions, head commits and artifact digests
         shell: bash
         run: |
@@ -76,6 +82,7 @@ jobs:
           cat data/stage2_final_audit/stderr.log || true
           exit 0
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: stage2-v3.2.25-final-freeze-audit
           path: data/stage2_final_audit

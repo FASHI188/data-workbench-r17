@@ -1,0 +1,36 @@
+# Versions observed in successful/accepted repository workflow environments on 2026-07-30.
+# This file is a pip constraints file: workflows install only the packages they need
+# while constraining direct and transitive dependencies to the verified versions below.
+
+# HTTP stack
+requests==2.34.2
+certifi==2026.7.22
+charset-normalizer==3.4.9
+idna==3.18
+urllib3==2.7.0
+
+# HTML parsing / Stage3 industry ledger
+beautifulsoup4==4.15.0
+soupsieve==2.9.1
+typing-extensions==4.16.0
+
+# Spreadsheet / Stage2 lifecycle
+openpyxl==3.1.5
+et-xmlfile==2.0.0
+
+# Test stack
+pytest==9.1.1
+iniconfig==2.3.0
+packaging==26.2
+pluggy==1.6.0
+Pygments==2.20.0
+
+# Native PDF / Stage3 financial and industry parsers
+PyMuPDF==1.28.0
+
+# BaoStock / tabular Stage2 security-state builds
+baostock==0.9.3
+pandas==3.0.5
+numpy==2.5.1
+python-dateutil==2.9.0.post0
+six==1.17.0

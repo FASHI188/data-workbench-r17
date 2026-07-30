@@ -1,0 +1,61 @@
+name: Runtime Reproducibility Contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.python-version'
+      - 'pyproject.toml'
+      - 'requirements/constraints-verified.txt'
+      - '.github/workflows/**'
+      - 'tests/test_security_code_transitions.py'
+      - 'tests/test_g5_semantics.py'
+
+permissions:
+  contents: read
+
+jobs:
+  verified-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Assert exact interpreter
+        run: |
+          python - <<'PY'
+          import sys
+          assert sys.version_info[:3] == (3, 12, 13), sys.version
+          print(sys.version)
+          PY
+      - name: Install complete verified direct dependency set
+        run: |
+          python -m pip install --disable-pip-version-check \
+            -c requirements/constraints-verified.txt \
+            requests beautifulsoup4 openpyxl pytest pymupdf baostock pandas
+          python -m pip check
+      - name: Assert exact installed versions
+        run: |
+          python - <<'PY'
+          from importlib.metadata import version
+          expected = {
+              'requests': '2.34.2',
+              'beautifulsoup4': '4.15.0',
+              'soupsieve': '2.9.1',
+              'typing-extensions': '4.16.0',
+              'openpyxl': '3.1.5',
+              'pytest': '9.1.1',
+              'PyMuPDF': '1.28.0',
+              'baostock': '0.9.3',
+              'pandas': '3.0.5',
+              'numpy': '2.5.1',
+          }
+          actual = {name: version(name) for name in expected}
+          assert actual == expected, {'expected': expected, 'actual': actual}
+          print(actual)
+          PY
+      - name: Run identity and corporate-action semantic regressions
+        run: |
+          pytest -q tests/test_security_code_transitions.py tests/test_g5_semantics.py
