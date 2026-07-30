@@ -1,0 +1,124 @@
+name: Stage3 Clean S3G1G V12.1 Deterministic Refreeze
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/stage3_deterministic_gzip.py'
+      - 'scripts/select_stage3_financial_report_versions_v3.py'
+      - 'scripts/select_stage3_financial_report_versions_v3_1.py'
+      - 'scripts/select_stage3_financial_report_versions_v3_1_deterministic.py'
+      - '.github/workflows/stage3-clean-s3g1g-deterministic-refreeze.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  REFERENCE_RUN: '30382694721'
+  REFERENCE_HEAD: 'aa70f769d937978718f47be747ad763fe09f2818'
+  REFERENCE_ARTIFACT: 'stage3-s3g1j-v13-production-acceptance'
+  REFERENCE_ARTIFACT_DIGEST: 'sha256:9755581103927bda1b11bce5fa06f8ef5695a5b0ae522e017eb4798505254a6c'
+  REFERENCE_PLAIN_SHA: '3330d20b5568f101ce417fce33689f6c09e2c61267f15dd0a0617d3557367571'
+  PYTHONPATH: scripts
+
+jobs:
+  refreeze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Lock accepted V12.1 full-selection reference artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          conclusion=$(gh run view "$REFERENCE_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')
+          head=$(gh run view "$REFERENCE_RUN" -R "$GITHUB_REPOSITORY" --json headSha --jq '.headSha')
+          test "$conclusion" = success
+          test "$head" = "$REFERENCE_HEAD"
+          actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$REFERENCE_RUN/artifacts" --jq ".artifacts[] | select(.name==\"$REFERENCE_ARTIFACT\") | .digest")
+          test "$actual" = "$REFERENCE_ARTIFACT_DIGEST"
+      - name: Restore exact accepted input and V12.1 output
+        run: |
+          rm -rf reference out-a out-b
+          gh run download "$REFERENCE_RUN" -R "$GITHUB_REPOSITORY" -n "$REFERENCE_ARTIFACT" -D reference
+      - name: Locate and validate accepted full-selection basis
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY' > /tmp/s3g1g.env
+          import gzip,glob,hashlib,json,os
+          ledgers=glob.glob('reference/**/s3g1e/**/periodic_filing_ledger.csv.gz',recursive=True)
+          refs=glob.glob('reference/**/v3/stage3_financial_report_versions_v3.csv.gz',recursive=True)
+          audits=glob.glob('reference/**/v3/stage3_financial_report_versions_v3_audit.json',recursive=True)
+          assert len(ledgers)==1, ledgers
+          assert len(refs)==1, refs
+          assert len(audits)==1, audits
+          with gzip.open(refs[0],'rb') as f: plain=f.read()
+          plain_sha=hashlib.sha256(plain).hexdigest()
+          assert plain_sha==os.environ['REFERENCE_PLAIN_SHA'], plain_sha
+          a=json.load(open(audits[0],encoding='utf-8'))
+          assert a.get('errors')==[], a
+          assert a.get('versions')==13077, a
+          assert a.get('source_switch_count')==5, a
+          assert a.get('no_full_authority_count')==0, a
+          print('INPUT='+ledgers[0])
+          print('REFERENCE='+refs[0])
+          PY
+          cat /tmp/s3g1g.env
+      - name: Deterministically select V12.1 versions twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          source /tmp/s3g1g.env
+          python scripts/select_stage3_financial_report_versions_v3_1_deterministic.py --ledger "$INPUT" --out out-a
+          python scripts/select_stage3_financial_report_versions_v3_1_deterministic.py --ledger "$INPUT" --out out-b
+      - name: Require byte identity and unchanged V12.1 semantic output
+        shell: bash
+        run: |
+          set -euo pipefail
+          source /tmp/s3g1g.env
+          python - <<'PY'
+          import gzip,hashlib,json,os
+          from pathlib import Path
+          a=Path('out-a/stage3_financial_report_versions_v3.csv.gz')
+          b=Path('out-b/stage3_financial_report_versions_v3.csv.gz')
+          ref=Path(os.environ['REFERENCE'])
+          assert a.read_bytes()==b.read_bytes(), 'deterministic V12.1 gzip bytes differ'
+          new_sha=hashlib.sha256(a.read_bytes()).hexdigest()
+          with gzip.open(a,'rb') as f:new_plain=f.read()
+          with gzip.open(ref,'rb') as f:ref_plain=f.read()
+          assert new_plain==ref_plain, 'V12.1 selected-version content changed'
+          assert hashlib.sha256(new_plain).hexdigest()==os.environ['REFERENCE_PLAIN_SHA']
+          for p in ('out-a/stage3_financial_report_versions_v3_audit.json','out-b/stage3_financial_report_versions_v3_audit.json'):
+              x=json.load(open(p,encoding='utf-8'))
+              assert x.get('errors')==[], x
+              assert x.get('versions')==13077, x
+              assert x.get('source_switch_count')==5, x
+              assert x.get('no_full_authority_count')==0, x
+          report={
+            'gate':'S3G1G_V12_1_DETERMINISTIC_REFREEZE',
+            'pass':True,
+            'reference_run':30382694721,
+            'versions':13077,
+            'source_switch_count':5,
+            'no_full_authority_count':0,
+            'decompressed_content_identical_to_accepted_v12_1':True,
+            'plain_ledger_sha256':os.environ['REFERENCE_PLAIN_SHA'],
+            'deterministic_gzip_sha256':new_sha,
+            'deterministic_replay_count':2,
+            'errors':[],
+          }
+          Path('out-a/s3g1g_v12_1_deterministic_refreeze.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
+          print(json.dumps(report,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1g-v12-1-deterministic-refreeze
+          path: out-a
+          retention-days: 90
+          compression-level: 0
