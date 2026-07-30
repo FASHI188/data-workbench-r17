@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "source_candidate": {
+    "pr": 63,
+    "head_sha": "e98d26b962a58cecc5c6416214e3c798c5e8a49e",
+    "accepted_run": 30510347556
+  },
+  "integration_commit": "0a7a8f1e20a2b2e643e4afc468cfd7657ce62621",
+  "file_count": 48,
+  "scope": "PRODUCTION_RUNTIME_AND_FAIL_CLOSED_REGRESSION_TESTS_ONLY",
+  "excluded_classes": [
+    "probe_scripts",
+    "diagnostic_workflows",
+    "historical_smoke_workflows",
+    "failed_experiments",
+    "diagnostic_governance_outputs"
+  ],
+  "runtime_layers": [
+    "base original-PDF extractor and parser",
+    "V5/V6 balance-block fail-closed hardening",
+    "V8 statement-title discovery",
+    "V9 declared A-share issuer witness",
+    "V11/V13 grammar and A=L+E arbitration",
+    "V12.1 full-statement source selection",
+    "V14.1 coordinate role-gated fallback",
+    "V15.1 evidence-compatible tie resolver",
+    "V16.7 contextual period/column fallback",
+    "V17.7 explicit role/unit evidence",
+    "V17.11 trusted frozen-date column evidence"
+  ],
+  "hard_invariants": {
+    "accounting_identity_tolerance": "0.005",
+    "original_pdf_authority": true,
+    "source_sha_required": true,
+    "point_in_time_policy_preserved": true,
+    "declared_issuer_gate_preserved": true,
+    "unreliable_parse_fail_closed": true,
+    "current_f10_historical_backfill_forbidden": true,
+    "stage4_alpha_locked": true
+  }
+}
