@@ -11,6 +11,9 @@ on:
       - 'data/current_master/manifest.json'
       - 'config/data_freshness_policy.json'
       - 'scripts/audit_project_readiness.py'
+      - 'requirements/constraints-verified.txt'
+      - '.python-version'
+      - 'pyproject.toml'
       - '.github/workflows/project-readiness-audit.yml'
   push:
     branches: [main]
@@ -21,6 +24,9 @@ on:
       - 'data/current_master/manifest.json'
       - 'config/data_freshness_policy.json'
       - 'scripts/audit_project_readiness.py'
+      - 'requirements/constraints-verified.txt'
+      - '.python-version'
+      - 'pyproject.toml'
       - '.github/workflows/project-readiness-audit.yml'
 
 permissions:
@@ -37,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.12.13'
       - name: Run project-readiness audit and preserve diagnostics
         id: readiness
         shell: bash
