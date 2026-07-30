@@ -42,9 +42,17 @@ def download(session: requests.Session, url: str) -> bytes:
     return raw
 
 
-def balance_found(parsed: dict) -> bool:
+def raw_balance_fields_found(parsed: dict) -> bool:
     observations = parsed.get("observations") or {}
     return all((observations.get(concept) or {}).get("status") == "FOUND" for concept in BALANCE_CONCEPTS)
+
+
+def validated_balance_recovered(parsed: dict) -> bool:
+    return (
+        raw_balance_fields_found(parsed)
+        and isinstance(parsed.get("balance_sheet_block"), dict)
+        and not list(parsed.get("validation_errors") or [])
+    )
 
 
 def main() -> int:
@@ -92,16 +100,18 @@ def main() -> int:
                     f"source SHA changed expected={source_rows[aid]['sha256']} actual={digest}"
                 )
             parsed = production.parse_pdf_bytes(raw, row["economic_date"])
-            found = balance_found(parsed)
+            raw_found = raw_balance_fields_found(parsed)
+            validated = validated_balance_recovered(parsed)
             block = parsed.get("balance_sheet_block")
             errors = list(parsed.get("validation_errors") or [])
             expected_found = aid in EXPECTED_RECOVERY
 
             if expected_found:
-                if not found:
-                    raise ValueError(f"intended production recovery did not produce A/L/E: {errors}")
-                if not isinstance(block, dict):
-                    raise ValueError("intended production recovery missing balance_sheet_block metadata")
+                if not validated:
+                    raise ValueError(
+                        f"intended production recovery is not a validated A/L/E block "
+                        f"raw_found={raw_found} block={block} errors={errors}"
+                    )
                 if block.get("arbitration") != EXPECTED_ARBITRATION:
                     raise ValueError(f"unexpected arbitration {block.get('arbitration')}")
                 if block.get("identity_tolerance") != "0.005":
@@ -140,11 +150,9 @@ def main() -> int:
                 }
                 if actual_values != expected_values:
                     raise ValueError(f"unexpected recovered values {actual_values}")
-                if errors:
-                    raise ValueError(f"intended production recovery still has validation errors: {errors}")
             else:
-                if found or block is not None:
-                    raise ValueError("unexpected production recovery outside accepted exact-one set")
+                if validated or block is not None:
+                    raise ValueError("unexpected validated production recovery outside accepted exact-one set")
                 if not errors:
                     raise ValueError("non-recovered residual lost fail-closed validation errors")
 
@@ -156,7 +164,8 @@ def main() -> int:
                 "canonical_title": row["canonical_title"],
                 "canonical_source_url": row["canonical_source_url"],
                 "source_sha256": digest,
-                "production_balance_sheet_recovered": found,
+                "raw_balance_fields_found": raw_found,
+                "production_balance_sheet_recovered": validated,
                 "balance_sheet_block": block,
                 "validation_errors": errors,
                 "parser_version": parsed.get("parser_version"),
@@ -176,10 +185,14 @@ def main() -> int:
     recovered_ids = sorted(
         row["announcement_id"] for row in results if row["production_balance_sheet_recovered"]
     )
+    raw_found_ids = sorted(
+        row["announcement_id"] for row in results if row["raw_balance_fields_found"]
+    )
     report = {
         "gate": "S3G1J_V17_17_PRODUCTION_EXACT_81_ACCEPTANCE_SHARD",
         "production_parser_changed": True,
         "production_method": production.METHOD,
+        "recovery_definition": "A_L_E_FOUND_AND_VALIDATED_BALANCE_SHEET_BLOCK_AND_NO_VALIDATION_ERRORS",
         "accounting_tolerance": "0.005",
         "global_row_tolerance_changed": False,
         "strict_equity_label": "股东权益总计",
@@ -191,6 +204,8 @@ def main() -> int:
         "input_count": len(rows),
         "processed_count": len(results),
         "source_sha_match_count": len(results),
+        "raw_balance_fields_found_count": len(raw_found_ids),
+        "raw_balance_fields_found_announcement_ids": raw_found_ids,
         "recovered_count": len(recovered_ids),
         "recovered_announcement_ids": recovered_ids,
         "results": results,
@@ -206,6 +221,7 @@ def main() -> int:
         "shard": args.shard,
         "input_count": len(rows),
         "processed_count": len(results),
+        "raw_balance_fields_found_announcement_ids": raw_found_ids,
         "recovered_announcement_ids": recovered_ids,
         "failures": failures,
         "pass": report["pass"],
