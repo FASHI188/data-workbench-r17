@@ -1,0 +1,20 @@
+[project]
+name = "data-workbench-r17"
+version = "0.0.0"
+description = "Point-in-time A-share data validation and research workspace"
+requires-python = "==3.12.13"
+dependencies = [
+  "requests==2.34.2",
+  "openpyxl==3.1.5",
+  "PyMuPDF==1.28.0",
+  "baostock==0.9.3",
+  "pandas==3.0.5",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest==9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
