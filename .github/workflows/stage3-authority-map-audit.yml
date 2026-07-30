@@ -25,6 +25,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Record integration tree identity
+        run: echo "INTEGRATION_TREE_SHA=$(git rev-parse HEAD^{tree})"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12.13'
