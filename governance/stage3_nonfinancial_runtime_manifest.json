@@ -21,9 +21,15 @@
     "trading_universe_main_board_only": true,
     "price_rule": "point_in_time_unadjusted_price < 70 CNY"
   },
+  "final_gates_passed_on_clean_integration": {
+    "S3G2_ANNOUNCEMENT_LEDGER": {
+      "run_id": 30521522476,
+      "artifact_digest": "sha256:b123e6386a42f3dc69054ca9f8e93e916728273db2702a9702184a40f7a9d498",
+      "ledger_sha256": "9c80bc1f86234696ad12031cfea972ac0bcea4528518a9d8c6e30af6d8ac9690"
+    }
+  },
   "pending_final_gates": [
     "S3G1J_FINANCIAL_RAW_VALUES",
-    "S3G2_ANNOUNCEMENT_LEDGER",
     "S3G4_EARNINGS_SURPRISE"
   ]
 }
