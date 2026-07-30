@@ -1,5 +1,5 @@
 name: Stage3 Clean S3G1J Runtime Contract
-# Contract for the whitelisted production runtime closure only.
+# Contract for the whitelisted production runtime closure and isolated candidate fallbacks.
 
 on:
   workflow_dispatch:
@@ -56,7 +56,7 @@ jobs:
           assert h['current_f10_historical_backfill_forbidden'] is True
           assert h['stage4_alpha_locked'] is True
           PY
-      - name: Import final runtime closure
+      - name: Import final runtime closure and isolated candidate module
         run: |
           python - <<'PY'
           import sys
@@ -64,9 +64,11 @@ jobs:
           import extract_stage3_financial_pdf_values_v11 as extractor
           import stage3_financial_pdf_parser_v10 as parser
           import stage3_financial_spatial_alias_v16_7 as column
+          import stage3_financial_spatial_alias_v17_15 as adjacent_candidate
           assert callable(extractor.parse_pdf_bytes)
           assert callable(parser.parse_pdf_bytes)
           assert callable(column.diagnose_spatial_balance_sheet_v16_7)
+          assert callable(adjacent_candidate.diagnose_spatial_balance_sheet_v17_15)
           print('S3G1J_RUNTIME_IMPORT_PASS')
           PY
       - name: Run inherited pure fail-closed regression contracts
@@ -85,6 +87,7 @@ jobs:
             tests.test_stage3_v16_contextual_parser \
             tests.test_stage3_v17_explicit_dual_evidence \
             tests.test_stage3_v17_column_evidence \
+            tests.test_stage3_v17_15_adjacent_bridge \
             -v
       - name: Run official-PDF coordinate fallback regression
         run: python -m unittest tests.test_stage3_financial_coordinate_fallback_v14_integration -v
