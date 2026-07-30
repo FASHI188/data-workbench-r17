@@ -12,6 +12,7 @@ on:
       - '**/*.pfx'
       - '**/*.key'
       - 'README.md'
+      - 'DATA_DISTRIBUTION_POLICY.md'
 
 permissions:
   contents: read
@@ -19,16 +20,16 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12.13'
-      - name: Scan workflows and public repository exposure
+      - name: Scan workflows, current tree, and reachable Git history
         id: safety
         shell: bash
         run: |
