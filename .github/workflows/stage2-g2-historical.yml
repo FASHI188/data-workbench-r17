@@ -24,7 +24,7 @@ on:
       - '.github/workflows/stage2-g2-historical.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-and-audit:
@@ -44,16 +44,18 @@ jobs:
       - name: Build survivorship-free code-time lifecycle intervals
         run: python scripts/build_security_history.py
       - name: Audit G2 with preserved diagnostics
+        id: g2-audit
         shell: bash
         run: |
           set +e
           python scripts/audit_security_history.py > data/security_lifecycle/g2_audit.json 2> data/security_lifecycle/g2_audit_stderr.log
           code=$?
-          echo "G2_AUDIT_EXIT=$code" >> "$GITHUB_ENV"
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           cat data/security_lifecycle/g2_audit.json || true
           cat data/security_lifecycle/g2_audit_stderr.log || true
           exit 0
       - name: Upload G2 evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: stage2-g2-historical-evidence
@@ -61,18 +63,5 @@ jobs:
           retention-days: 90
           compression-level: 0
       - name: Preserve G2 fail-closed status
-        if: env.G2_AUDIT_EXIT != '0'
+        if: steps.g2-audit.outputs.exit_code != '0'
         run: exit 1
-      - name: Commit frozen G2 evidence
-        if: github.event_name == 'push' && env.G2_AUDIT_EXIT == '0'
-        shell: bash
-        run: |
-          git config user.name "stage2-bot"
-          git config user.email "stage2-bot@users.noreply.github.com"
-          git add data/security_lifecycle
-          if git diff --cached --quiet; then
-            echo "No G2 evidence change"
-            exit 0
-          fi
-          git commit -m "stage2: freeze G2 code-time lifecycle evidence [skip ci]"
-          git push

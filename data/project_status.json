@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "authoritative": true,
+  "project_phase": "RESEARCH_ONLY",
+  "stage2": {
+    "status": "PASS",
+    "authoritative_manifest": "data/stage2_final/manifest.json",
+    "version": "V3.2.25-stage2-final-freeze",
+    "dataset_fingerprint": "f17f7ab63f4532dda635eb7366e7df7bf5497a5ce814410105312bccb53125bb",
+    "downstream_prerequisite_satisfied": true
+  },
+  "stage3": {
+    "status": "NOT_READY",
+    "authoritative_final_manifest": "data/stage3_final/manifest.json",
+    "final_manifest_present_on_main": false,
+    "reason": "Stage3 does not yet have a final all-gates PASS manifest on main. Partial or accepted-candidate PR evidence cannot unlock Stage4 or Alpha training."
+  },
+  "stage4_unlocked": false,
+  "alpha_training_allowed": false,
+  "live_signal_allowed": false,
+  "freshness": {
+    "status": "STALE",
+    "policy": "config/data_freshness_policy.json",
+    "stage2_coverage_end": "2026-07-24",
+    "current_master_as_of": "2026-07-24",
+    "assessed_as_of": "2026-07-30",
+    "reason": "The frozen market/lifecycle/corporate-action base is older than the hard calendar-day stale threshold and Stage3 announcement/financial coverage is not finalized on main."
+  },
+  "unlock_requirements": {
+    "stage2_final_pass": true,
+    "stage3_final_pass": false,
+    "freshness_pass": false,
+    "reproducibility_pass": false,
+    "required_for_stage4": [
+      "stage2_final_pass",
+      "stage3_final_pass",
+      "freshness_pass",
+      "reproducibility_pass"
+    ]
+  },
+  "notes": [
+    "Stage-local fields such as data/stage2_final/manifest.json:alpha_training_allowed mean only that Stage2 no longer blocks downstream work; they are not project-level authorization.",
+    "Any missing, stale, contradictory, or unverifiable readiness evidence is fail-closed."
+  ]
+}

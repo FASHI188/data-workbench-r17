@@ -1,0 +1,65 @@
+name: Project Readiness Governance Audit
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'data/project_status.json'
+      - 'data/stage2_audit.json'
+      - 'data/stage2_final/manifest.json'
+      - 'data/current_master/manifest.json'
+      - 'config/data_freshness_policy.json'
+      - 'scripts/audit_project_readiness.py'
+      - '.github/workflows/project-readiness-audit.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'data/project_status.json'
+      - 'data/stage2_audit.json'
+      - 'data/stage2_final/manifest.json'
+      - 'data/current_master/manifest.json'
+      - 'config/data_freshness_policy.json'
+      - 'scripts/audit_project_readiness.py'
+      - '.github/workflows/project-readiness-audit.yml'
+
+permissions:
+  contents: read
+
+env:
+  PYTHONPATH: scripts
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run project-readiness audit and preserve diagnostics
+        id: readiness
+        shell: bash
+        run: |
+          set +e
+          mkdir -p build/project-readiness
+          python scripts/audit_project_readiness.py \
+            --as-of "$(date -u +%F)" \
+            > build/project-readiness/project_readiness_audit.json \
+            2> build/project-readiness/stderr.log
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          cat build/project-readiness/project_readiness_audit.json || true
+          cat build/project-readiness/stderr.log || true
+          exit 0
+      - name: Upload project-readiness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-readiness-governance-audit
+          path: build/project-readiness
+          retention-days: 90
+      - name: Preserve fail-closed project-readiness status
+        if: steps.readiness.outputs.exit_code != '0'
+        run: exit 1

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "timezone": "Asia/Shanghai",
+  "policy": {
+    "ohlcv": {
+      "training_max_completed_trading_session_lag": 1,
+      "live_signal_max_completed_trading_session_lag": 0,
+      "calendar_day_hard_stale_threshold": 3
+    },
+    "security_lifecycle": {
+      "max_calendar_lag_days": 1,
+      "unprocessed_official_identity_event_blocks_training_and_live": true
+    },
+    "corporate_actions": {
+      "must_cover_latest_completed_trading_session": true,
+      "must_include_known_next_session_ex_date_events": true,
+      "stale_blocks_training_and_live": true
+    },
+    "financial_and_announcement_features": {
+      "must_cover_signal_cutoff": true,
+      "unknown_publication_time_uses_next_session": true,
+      "stale_blocks_training_and_live": true
+    }
+  },
+  "fail_closed": true,
+  "notes": [
+    "The calendar-day threshold is a conservative coarse fail detector only; a positive readiness decision still requires trading-session-aware freshness checks.",
+    "No dataset may be declared training-ready or live-signal-ready merely because a historical stage freeze passed."
+  ]
+}
