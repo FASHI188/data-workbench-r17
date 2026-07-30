@@ -37,15 +37,21 @@
       "repair_source_pr": 40,
       "repair_source_ref": "stage3-s3g2-instrument-repair-v2",
       "repair_head_sha": "1ac525aa0b56cd39b233e5c2da9e44d3707c55cb",
-      "final_run_id": 30521522476,
-      "final_run_head_sha": "cdcbf11966e3b2ecedf99d308464017ff27f1d77",
+      "deterministic_final_run_id": 30522392946,
+      "deterministic_final_head_sha": "a71334cfb1221fd22329211b1272cab51128c4af",
       "final_artifact": "stage3-s3g2-announcement-ledger-final",
-      "final_artifact_digest": "sha256:b123e6386a42f3dc69054ca9f8e93e916728273db2702a9702184a40f7a9d498",
-      "ledger_sha256": "9c80bc1f86234696ad12031cfea972ac0bcea4528518a9d8c6e30af6d8ac9690",
+      "ledger_sha256": "0eb139572865628283f86c981990e59e076d5ef2a978a5967aace90d553e30dd",
+      "deterministic_replay_count": 2,
+      "deterministic_replay_same_sha": true,
+      "artifact_digest_is_transport_only": true,
+      "transport_artifact_digests_observed": [
+        "sha256:3d3037f1d41c1d99038f99b1be90e5158f2f31a89a5da84a110af535267aa6c1",
+        "sha256:f4cfe5679d5b0c94255b1afdf5c0aeb37ffc6d9d631284718713800895533f83"
+      ],
       "security_identity_count": 3402,
       "g3_trading_days": 2808,
       "unique_announcements": 2138516,
-      "status": "FINAL_GATE_PASS",
+      "status": "FINAL_GATE_PASS_DETERMINISTIC",
       "final_gate": true
     },
     "S3G3A_INDUSTRY_SOURCE_PROBE": {
@@ -88,6 +94,7 @@
   "policy": {
     "diagnostic_prs_are_evidence_not_merge_units": true,
     "accepted_candidate_does_not_equal_final_pass": true,
+    "artifact_archive_digest_is_transport_not_dataset_identity": true,
     "no_accounting_tolerance_relaxation": true,
     "no_pit_relaxation": true,
     "no_security_identity_relaxation": true,
