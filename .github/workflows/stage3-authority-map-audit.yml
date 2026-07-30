@@ -1,0 +1,72 @@
+name: Stage3 Authority Map Audit
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'governance/stage3_authority_map.json'
+      - 'config/stage3_final_lock.json'
+      - 'data/project_status.json'
+      - 'scripts/audit_stage3_authority_map.py'
+      - '.github/workflows/stage3-authority-map-audit.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Validate static authority state
+        run: python scripts/audit_stage3_authority_map.py
+      - name: Verify authoritative PR heads
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_pr() {
+            pr="$1"; expected="$2"
+            actual=$(gh pr view "$pr" -R "$GITHUB_REPOSITORY" --json headRefOid --jq '.headRefOid')
+            test "$actual" = "$expected"
+          }
+          verify_pr 63 e98d26b962a58cecc5c6416214e3c798c5e8a49e
+          verify_pr 40 1ac525aa0b56cd39b233e5c2da9e44d3707c55cb
+          verify_pr 35 40dcab6df468bbf2d47dd48ac77ea150190c279b
+      - name: Verify accepted candidate and final-evidence runs
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_run() {
+            run="$1"; artifact="$2"; digest="$3"
+            conclusion=$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')
+            test "$conclusion" = success
+            actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq ".artifacts[] | select(.name==\"$artifact\") | .digest")
+            test "$actual" = "$digest"
+          }
+          verify_run 30510347556 stage3-s3g1j-v17-11-column-evidence-acceptance sha256:b1143faaf2c1a91fd64e21ef35c05e787200d957f888613fa2f2a2fc23c43ad9
+          verify_run 30340337606 stage3-s3g2-announcement-instrument-repair-11 sha256:1022d91d8abd62b259be74f602f0ea783fc9eedb54ce2dad6f68a86b57c8ee5f
+          verify_run 30331243641 stage3-s3g3b-industry-classification-ledger sha256:f1da814c71fa698f3f10ce5dc7019bb86770f9d4e15ed7d7823a93a085adc872
+          verify_run 30326328965 stage3-s3g1i-financial-pdf-population-probe sha256:3883eb629aaa0325cd1db6d3a1eefc96929c9673711bb3c004217ac6254324b9
+          verify_run 30326328969 stage3-s3g3a-capco-industry-history-probe sha256:a635409dbab2fdc61852432acfcb294f97b4468831f23a9fa01320abf39ba9af
+          verify_run 30326328970 stage3-s3g4a-earnings-forecast-parser-probe sha256:5384aed1c81782571486d32053b343218bb06a0aa45f1540faa4e619dd7d9ad4
+          verify_run 30326328975 stage3-s3gu-trading-universe-policy sha256:1942c9e7baa0823772201cc1f6652e660d8b4b60dd8b0559d94dcefe7da4c9fa
+      - name: Assert incomplete gates remain locked
+        run: |
+          python - <<'PY'
+          import json
+          lock=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
+          required=lock['required_gates']
+          for gate in ('S3G1J_FINANCIAL_RAW_VALUES','S3G2_ANNOUNCEMENT_LEDGER','S3G4_EARNINGS_SURPRISE'):
+              assert required[gate]['run_id'] is None, (gate, required[gate])
+          assert lock['status']=='NOT_READY'
+          print('STAGE3_LOCKED_AS_EXPECTED')
+          PY
