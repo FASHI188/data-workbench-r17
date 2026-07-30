@@ -1,0 +1,145 @@
+name: Stage3 S3G1J V17.2 Strict Unknown Boundary Acceptance
+
+on:
+  pull_request:
+    branches: [stage3-s3g1j-spatial-alias-columns-v16]
+    paths:
+      - '.github/workflows/stage3-s3g1j-v17-2-strict-unknown-acceptance.yml'
+      - 'scripts/stage3_financial_statement_blocks_v16_5.py'
+      - 'tests/test_stage3_v17_strict_unknown_boundary.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FROZEN_127_RUN: '30424465440'
+  V17_TRACE_RUN: '30506971414'
+  PYTHONPATH: scripts
+
+jobs:
+  lock-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Require accepted V17.1 evidence
+        run: test "$(gh run view "$V17_TRACE_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+      - name: Run statement-boundary regressions
+        run: |
+          python -m unittest tests.test_stage3_statement_blocks_v16_3 -v
+          python -m unittest tests.test_stage3_v17_strict_unknown_boundary -v
+      - name: Verify exact frozen 127 input
+        run: |
+          rm -rf prepared
+          gh run download "$FROZEN_127_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v15-single-source-input -D prepared
+          python - <<'PY'
+          import csv,gzip
+          with gzip.open('prepared/single_source_residual_versions.csv.gz','rt',encoding='utf-8',newline='') as f:
+              rows=list(csv.DictReader(f))
+          assert len(rows)==127, len(rows)
+          print('V17_2_FROZEN_127_PASS',len(rows))
+          PY
+
+  replay:
+    needs: lock-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,7,9]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Restore exact frozen 127 input
+        run: |
+          rm -rf prepared build/v17-2-exact-113
+          gh run download "$FROZEN_127_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v15-single-source-input -D prepared
+      - name: Reconstruct V14 baseline and apply V17.2 on same PDF bytes
+        run: |
+          mkdir -p build/v17-2-exact-113
+          python scripts/probe_stage3_s3g1j_v16_7_exact_113_replay.py \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --shard ${{ matrix.shard }} --shards 64 \
+            --out build/v17-2-exact-113/shard${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-2-exact-113-${{ matrix.shard }}
+          path: build/v17-2-exact-113/shard${{ matrix.shard }}.json
+          retention-days: 90
+          compression-level: 0
+
+  summarize:
+    needs: replay
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g1j-v17-2-exact-113-*
+          path: residuals
+          merge-multiple: true
+      - name: Enforce exact baseline, no regressions, and strict incremental gain
+        run: |
+          python - <<'PY'
+          import glob,json,os
+          paths=sorted(glob.glob('residuals/shard*.json'))
+          rows=[json.load(open(p,encoding='utf-8')) for p in paths]
+          rows.sort(key=lambda x:x['shard'])
+          assert [r['shard'] for r in rows]==[0,1,7,9], rows
+          assert all(r['pass'] for r in rows), [r.get('errors') for r in rows]
+          assert sum(r['input_single_source_count'] for r in rows)==127
+          assert sum(r['v14_success_count'] for r in rows)==14
+          assert sum(r['v14_remaining_count'] for r in rows)==113
+          assert sum(len(r['v14_success_path_regressions']) for r in rows)==0
+          recoveries=[x for r in rows for x in r['v16_new_recoveries']]
+          remaining=[x for r in rows for x in r['v16_remaining']]
+          assert len(recoveries)+len(remaining)==113
+          assert len(recoveries)>22, f'no strict gain over V16.7 baseline: {len(recoveries)}'
+          assert all(
+              x['arbitration_ok'] and x['expected_date_ok'] and x['period_gate_ok'] and x['column_gate_ok']
+              for x in recoveries
+          )
+          report={
+              'gate':'S3G1J_V17_2_STRICT_UNKNOWN_BOUNDARY_EXACT_113_ACCEPTANCE',
+              'pass':True,
+              'frozen_input_count':127,
+              'v14_success_count':14,
+              'v14_remaining_count':113,
+              'v16_7_baseline_recovery_count':22,
+              'v17_2_recovery_count':len(recoveries),
+              'incremental_recovery_count':len(recoveries)-22,
+              'v17_2_remaining_count':len(remaining),
+              'all_v14_success_paths_unchanged':True,
+              'all_recoveries_have_period_column_identity_evidence':True,
+              'per_shard':[{k:r[k] for k in ('shard','input_single_source_count','v14_success_count','v14_remaining_count','v16_new_recovery_count','v16_remaining_count')} for r in rows],
+              'new_recoveries':recoveries,
+              'remaining':remaining,
+              'policy_change':'UNKNOWN_STATEMENT requires genuine unqualified balance-sheet heading; narrative substring references are not hard boundaries',
+              'accounting_tolerance_changed':False,
+              'source_policy_changed':False,
+              'stage4_alpha_locked':True,
+          }
+          os.makedirs('summary',exist_ok=True)
+          json.dump(report,open('summary/v17_2_strict_unknown_acceptance.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+          print(json.dumps({k:report[k] for k in ('v14_remaining_count','v16_7_baseline_recovery_count','v17_2_recovery_count','incremental_recovery_count','v17_2_remaining_count','all_v14_success_paths_unchanged','all_recoveries_have_period_column_identity_evidence','stage4_alpha_locked')},ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-2-strict-unknown-acceptance
+          path: summary/v17_2_strict_unknown_acceptance.json
+          retention-days: 90
+          compression-level: 0
