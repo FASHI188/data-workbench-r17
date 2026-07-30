@@ -106,8 +106,8 @@ jobs:
           assert d.get('added_full_authority_moments')==103,d
           assert d.get('removed_partial_only_moments')==240,d
           assert d.get('forbidden_selected_count')==0,d
-          print('INPUT='+ledger)
-          print('REFERENCE='+refs[0])
+          print('export INPUT='+ledger)
+          print('export REFERENCE='+refs[0])
           PY
           cat /tmp/s3g1g.env
       - name: Deterministically select V12.1 versions twice
