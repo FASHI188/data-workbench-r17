@@ -1,4 +1,5 @@
 name: Stage3 Authority Map Audit
+# Clean-integration authority spine; evidence verification only, never a Stage3 PASS claim.
 
 on:
   workflow_dispatch:
