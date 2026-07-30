@@ -21,8 +21,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-      - run: python -m pip install --disable-pip-version-check baostock pandas
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt baostock pandas
       - name: Build all G4 state in one BaoStock session
         shell: bash
         run: |
@@ -46,6 +46,7 @@ jobs:
           cat data/security_state/audit_stderr.log || true
           exit 0
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: stage2-g4-daily-security-state
           path: |
