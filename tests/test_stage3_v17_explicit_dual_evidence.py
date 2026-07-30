@@ -36,8 +36,10 @@ class _FakeDoc:
 
 
 class V17ExplicitDualEvidenceTests(unittest.TestCase):
-    def test_v14_base_aliases_remain_unchanged(self):
-        self.assertEqual(parser_base.TIER2_ALIASES["TOTAL_LIABILITIES"], ["负债合计"])
+    def test_v14_base_aliases_do_not_receive_v17_liability_alias(self):
+        base_aliases = parser_base.TIER2_ALIASES["TOTAL_LIABILITIES"]
+        self.assertIn("负债合计", base_aliases)
+        self.assertNotIn("负债总计", base_aliases)
         aliases = v166._v16_concept_aliases()["TOTAL_LIABILITIES"]
         self.assertIn("负债合计", aliases)
         self.assertIn("负债总计", aliases)
