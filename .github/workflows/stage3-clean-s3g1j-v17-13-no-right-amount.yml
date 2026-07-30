@@ -1,0 +1,146 @@
+name: Stage3 Clean S3G1J V17.13 Exact-Four Amount Geometry
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/diagnose_stage3_s3g1j_v17_13_no_right_amount.py'
+      - '.github/workflows/stage3-clean-s3g1j-v17-13-no-right-amount.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FROZEN_RUN: '30424465440'
+  FROZEN_HEAD: 'be42608b75f77af13c36620da7e7fa03c563afde'
+  FROZEN_ARTIFACT: 'stage3-s3g1j-v15-single-source-input'
+  FROZEN_DIGEST: 'sha256:272f52239adc2fc5d4343ec091495dffcd39324b425784cdf5a7491f63a2e6fd'
+  FUNNEL_RUN: '30510970624'
+  FUNNEL_HEAD: '9cb89a57e0e31a6e64957b7aa2cb1eb167120d59'
+  FUNNEL_ARTIFACT: 'stage3-s3g1j-v17-12-residual-funnel-summary'
+  FUNNEL_DIGEST: 'sha256:e4b7e81ade313c9629bdb40d750506142f6fff64e50d416ddae2fbae401018a8'
+  PYTHONPATH: scripts
+
+jobs:
+  lock-inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lock exact frozen versions and accepted V17.12 funnel
+        shell: bash
+        run: |
+          set -euo pipefail
+          lock_run_artifact() {
+            run="$1"; expected_head="$2"; artifact="$3"; expected_digest="$4"
+            test "$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')" = success
+            test "$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json headSha --jq '.headSha')" = "$expected_head"
+            actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq ".artifacts[] | select(.name==\"$artifact\") | .digest")
+            test "$actual" = "$expected_digest"
+          }
+          lock_run_artifact "$FROZEN_RUN" "$FROZEN_HEAD" "$FROZEN_ARTIFACT" "$FROZEN_DIGEST"
+          lock_run_artifact "$FUNNEL_RUN" "$FUNNEL_HEAD" "$FUNNEL_ARTIFACT" "$FUNNEL_DIGEST"
+
+  diagnose:
+    needs: lock-inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        announcement_id: ['1212731093', '1217717273', '1225153907', '1219411922']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact verified diagnostic dependencies
+        run: python -m pip install --disable-pip-version-check --constraint requirements/constraints-verified.txt requests PyMuPDF
+      - name: Restore exact frozen versions and accepted funnel
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf prepared accepted build/s3g1j-v17-13
+          gh run download "$FROZEN_RUN" -R "$GITHUB_REPOSITORY" -n "$FROZEN_ARTIFACT" -D prepared
+          gh run download "$FUNNEL_RUN" -R "$GITHUB_REPOSITORY" -n "$FUNNEL_ARTIFACT" -D accepted
+          test -f prepared/single_source_residual_versions.csv.gz
+          test -f accepted/v17_12_residual_funnel.json
+      - name: Trace alias-row amount geometry without accepting values
+        shell: bash
+        run: |
+          set +e
+          out="build/s3g1j-v17-13/${{ matrix.announcement_id }}.json"
+          mkdir -p "$(dirname "$out")"
+          python scripts/diagnose_stage3_s3g1j_v17_13_no_right_amount.py \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --summary accepted/v17_12_residual_funnel.json \
+            --announcement-id '${{ matrix.announcement_id }}' --out "$out" \
+            > "${out%.json}.stdout.log" 2> "${out%.json}.stderr.log"
+          code=$?
+          echo "DIAGNOSTIC_EXIT=$code" >> "$GITHUB_ENV"
+          cat "${out%.json}.stdout.log" || true
+          tail -100 "${out%.json}.stderr.log" || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-13-geometry-${{ matrix.announcement_id }}
+          path: build/s3g1j-v17-13
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve diagnostic execution failure
+        if: env.DIAGNOSTIC_EXIT != '0'
+        run: exit 1
+
+  summarize:
+    needs: diagnose
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g1j-v17-13-geometry-*
+          path: candidate
+          merge-multiple: true
+      - name: Aggregate exact-four geometry evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import glob,json,os
+          expected={'1212731093','1217717273','1225153907','1219411922'}
+          paths=sorted(glob.glob('candidate/*.json'))
+          rows=[json.load(open(p,encoding='utf-8')) for p in paths]
+          actual={str(x['announcement_id']) for x in rows}
+          assert actual==expected,(actual,expected)
+          assert all(x.get('pass') is True for x in rows),[(x.get('announcement_id'),x.get('errors')) for x in rows]
+          assert all(x.get('diagnostic_only') is True and x.get('no_value_acceptance') is True for x in rows)
+          report={
+            'gate':'S3G1J_V17_13_EXACT_FOUR_NO_RIGHT_AMOUNT_GEOMETRY',
+            'pass':True,
+            'diagnostic_only':True,
+            'no_parser_change':True,
+            'no_value_acceptance':True,
+            'input_count':4,
+            'announcement_ids':sorted(expected),
+            'documents':[{k:x[k] for k in ('announcement_id','source_code','report_family','economic_date','source_sha256','missing_concepts','evidence_row_count','per_concept_evidence_row_count')} for x in rows],
+            'accounting_tolerance_changed':False,
+            'source_policy_changed':False,
+            'stage4_alpha_locked':True,
+            'errors':[],
+          }
+          os.makedirs('summary',exist_ok=True)
+          json.dump(report,open('summary/s3g1j_v17_13_exact_four_geometry.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-13-exact-four-geometry
+          path: |
+            summary
+            candidate
+          retention-days: 90
+          compression-level: 0
