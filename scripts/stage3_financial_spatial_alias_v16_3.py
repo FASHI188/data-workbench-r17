@@ -14,6 +14,11 @@ import stage3_financial_spatial_alias_v16 as spatial
 import stage3_financial_statement_blocks_v16_5 as blocks
 
 _CN_DATE_RE = re.compile(r"(20\d{2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日")
+V16_EXTRA_ALIASES = {
+    # Evidence: 601818 2015Q3 official balance sheet uses the terminal row
+    # `负债总计`. Keep this V16-only so the frozen V14 baseline is untouched.
+    "TOTAL_LIABILITIES": ("负债总计",),
+}
 
 
 def _canonical_economic_date(value: str) -> str:
@@ -32,6 +37,19 @@ def _cn_dates_in_text(text: str) -> list[str]:
     for match in _CN_DATE_RE.finditer(text or ""):
         out.append(f"{int(match.group(1)):04d}-{int(match.group(2)):02d}-{int(match.group(3)):02d}")
     return out
+
+
+def _v16_concept_aliases() -> dict[str, list[str]]:
+    concepts = {
+        "TOTAL_ASSETS": list(parser_base.TIER1_ALIASES.get("TOTAL_ASSETS") or []),
+        "TOTAL_LIABILITIES": list(parser_base.TIER2_ALIASES.get("TOTAL_LIABILITIES") or []),
+        "TOTAL_EQUITY": list(parser_base.TIER2_ALIASES.get("TOTAL_EQUITY") or []),
+    }
+    for concept, extras in V16_EXTRA_ALIASES.items():
+        for alias in extras:
+            if alias not in concepts[concept]:
+                concepts[concept].append(alias)
+    return concepts
 
 
 def _statement_period_evidence(
@@ -62,11 +80,7 @@ def _collect_candidates_v16_6(
     doc: fitz.Document,
     expected_economic_date: str,
 ) -> tuple[dict[str, list[dict]], dict]:
-    concepts = {
-        "TOTAL_ASSETS": parser_base.TIER1_ALIASES.get("TOTAL_ASSETS") or [],
-        "TOTAL_LIABILITIES": parser_base.TIER2_ALIASES.get("TOTAL_LIABILITIES") or [],
-        "TOTAL_EQUITY": parser_base.TIER2_ALIASES.get("TOTAL_EQUITY") or [],
-    }
+    concepts = _v16_concept_aliases()
     events = blocks.formal_statement_events(doc)
     pages = v14._candidate_pages(doc)
     out: dict[str, list[dict]] = defaultdict(list)

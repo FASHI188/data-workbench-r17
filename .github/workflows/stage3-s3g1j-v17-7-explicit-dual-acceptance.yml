@@ -1,0 +1,177 @@
+name: Stage3 S3G1J V17.7 Explicit Dual Evidence Acceptance
+
+on:
+  pull_request:
+    branches: [stage3-s3g1j-spatial-alias-columns-v16]
+    paths:
+      - '.github/workflows/stage3-s3g1j-v17-7-explicit-dual-acceptance.yml'
+      - 'scripts/stage3_financial_statement_blocks_v16_5.py'
+      - 'scripts/stage3_financial_spatial_alias_v16_3.py'
+      - 'tests/test_stage3_v17_explicit_dual_evidence.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FROZEN_127_RUN: '30424465440'
+  V16_EXACT_113_RUN: '30451100300'
+  V17_6_DIAGNOSTIC_RUN: '30508433069'
+  PYTHONPATH: scripts
+
+jobs:
+  lock-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Require accepted upstream evidence
+        run: |
+          test "$(gh run view "$V16_EXACT_113_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+          test "$(gh run view "$V17_6_DIAGNOSTIC_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+      - name: Run V16 contract and V17.7 isolation tests
+        run: |
+          python -m unittest tests.test_stage3_statement_blocks_v16_3 -v
+          python -m unittest tests.test_stage3_v16_contextual_parser -v
+          python -m unittest tests.test_stage3_v17_explicit_dual_evidence -v
+      - name: Restore exact frozen 127 input and accepted V16 baseline
+        run: |
+          rm -rf prepared baseline
+          gh run download "$FROZEN_127_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v15-single-source-input -D prepared
+          gh run download "$V16_EXACT_113_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v16-exact-113-summary -D baseline
+          test -f prepared/single_source_residual_versions.csv.gz
+          test -f baseline/v16_exact_113_replay.json
+          python - <<'PY'
+          import csv,gzip,json
+          with gzip.open('prepared/single_source_residual_versions.csv.gz','rt',encoding='utf-8',newline='') as f:
+              rows=list(csv.DictReader(f))
+          b=json.load(open('baseline/v16_exact_113_replay.json',encoding='utf-8'))
+          assert len(rows)==127, len(rows)
+          assert b['pass'] and b['v14_remaining_count']==113
+          assert b['v16_new_recovery_count']==22 and b['v16_remaining_count']==91
+          assert b['stage4_alpha_locked'] is True
+          print('V17_7_LOCK_PASS',len(rows),b['v16_new_recovery_count'],b['v16_remaining_count'])
+          PY
+
+  replay:
+    needs: lock-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,7,9]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Restore exact frozen 127 input
+        run: |
+          rm -rf prepared build/v17-7-exact-113
+          gh run download "$FROZEN_127_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v15-single-source-input -D prepared
+      - name: Reconstruct frozen V14 baseline and apply V17.7 on identical PDF bytes
+        run: |
+          mkdir -p build/v17-7-exact-113
+          python scripts/probe_stage3_s3g1j_v16_7_exact_113_replay.py \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --shard ${{ matrix.shard }} --shards 64 \
+            --out build/v17-7-exact-113/shard${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-7-exact-113-${{ matrix.shard }}
+          path: build/v17-7-exact-113/shard${{ matrix.shard }}.json
+          retention-days: 90
+          compression-level: 0
+
+  summarize:
+    needs: replay
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g1j-v17-7-exact-113-*
+          path: candidate
+          merge-multiple: true
+      - name: Restore accepted V16.7 exact-113 baseline
+        run: |
+          rm -rf baseline
+          gh run download "$V16_EXACT_113_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v16-exact-113-summary -D baseline
+      - name: Enforce exact V14 baseline, no lost recoveries, and hard-evidence gain
+        run: |
+          python - <<'PY'
+          import glob,json,os
+          paths=sorted(glob.glob('candidate/shard*.json'))
+          rows=[json.load(open(p,encoding='utf-8')) for p in paths]
+          rows.sort(key=lambda x:x['shard'])
+          assert [r['shard'] for r in rows]==[0,1,7,9], rows
+          assert all(r['pass'] for r in rows), [r.get('errors') for r in rows]
+          assert sum(r['input_single_source_count'] for r in rows)==127
+          assert sum(r['v14_success_count'] for r in rows)==14
+          assert sum(r['v14_remaining_count'] for r in rows)==113
+          assert sum(len(r['v14_success_path_regressions']) for r in rows)==0
+
+          recovered=[x for r in rows for x in r['v16_new_recoveries']]
+          remaining=[x for r in rows for x in r['v16_remaining']]
+          recovered_ids={x['announcement_id'] for x in recovered}
+          assert len(recovered)+len(remaining)==113
+          assert all(
+              x['arbitration_ok'] and x['expected_date_ok'] and x['period_gate_ok'] and x['column_gate_ok']
+              for x in recovered
+          )
+
+          baseline=json.load(open('baseline/v16_exact_113_replay.json',encoding='utf-8'))
+          baseline_ids={x['announcement_id'] for x in baseline['v16_new_recoveries']}
+          assert len(baseline_ids)==22
+          assert baseline_ids <= recovered_ids, sorted(baseline_ids-recovered_ids)
+          expected_new={'1201745924','1205526156'}
+          assert expected_new <= recovered_ids, sorted(expected_new-recovered_ids)
+          assert len(recovered_ids) >= 24, len(recovered_ids)
+
+          new_ids=sorted(recovered_ids-baseline_ids)
+          report={
+              'gate':'S3G1J_V17_7_EXPLICIT_DUAL_EVIDENCE_EXACT_113_ACCEPTANCE',
+              'pass':True,
+              'frozen_input_count':127,
+              'v14_success_count':14,
+              'v14_remaining_count':113,
+              'v16_7_baseline_recovery_count':22,
+              'v17_7_recovery_count':len(recovered_ids),
+              'incremental_recovery_count':len(recovered_ids)-22,
+              'new_recovery_ids':new_ids,
+              'expected_new_ids_present':sorted(expected_new),
+              'v17_7_remaining_count':len(remaining),
+              'all_v14_success_paths_unchanged':True,
+              'all_prior_v16_recoveries_preserved':True,
+              'all_recoveries_have_period_column_identity_evidence':True,
+              'per_shard':[{k:r[k] for k in ('shard','input_single_source_count','v14_success_count','v14_remaining_count','v16_new_recovery_count','v16_remaining_count')} for r in rows],
+              'recoveries':recovered,
+              'remaining':remaining,
+              'v14_parser_changed':False,
+              'accounting_tolerance_changed':False,
+              'source_policy_changed':False,
+              'stage4_alpha_locked':True,
+          }
+          os.makedirs('summary',exist_ok=True)
+          json.dump(report,open('summary/v17_7_explicit_dual_acceptance.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+          print(json.dumps({k:report[k] for k in ('v14_remaining_count','v16_7_baseline_recovery_count','v17_7_recovery_count','incremental_recovery_count','new_recovery_ids','v17_7_remaining_count','all_v14_success_paths_unchanged','all_prior_v16_recoveries_preserved','all_recoveries_have_period_column_identity_evidence','stage4_alpha_locked')},ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-7-explicit-dual-acceptance
+          path: summary/v17_7_explicit_dual_acceptance.json
+          retention-days: 90
+          compression-level: 0
