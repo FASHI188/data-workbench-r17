@@ -23,10 +23,18 @@ EXPECTED_PREFIX = {
     "S3G4_EARNINGS_SURPRISE": "S3G4",
     "S3GU_TRADING_UNIVERSE_POLICY": "S3GU",
 }
+VOLATILE_AUDIT_KEYS = {
+    "run_id", "workflow_run_id", "artifact", "artifact_digest", "head_sha",
+    "generated_at", "created_at", "updated_at", "completed_at", "frozen_at_utc",
+}
 
 
 def sha_bytes(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
+
+
+def canonical_bytes(obj: Any) -> bytes:
+    return json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
 def load(path: Path) -> Any:
@@ -67,6 +75,27 @@ def find_clean_gate(candidates: list[dict], prefix: str) -> list[dict]:
     return matches
 
 
+def semantic_audit_record(record: dict) -> dict:
+    """Drop transport/execution metadata while preserving gate semantics and data hashes."""
+    return {k: v for k, v in record.items() if k not in VOLATILE_AUDIT_KEYS}
+
+
+def semantic_gate_digest(clean: list[dict]) -> str:
+    records = [semantic_audit_record(x["record"]) for x in clean]
+    records.sort(key=lambda x: canonical_bytes(x))
+    return sha_bytes(canonical_bytes(records))
+
+
+def stage3_fingerprint_basis(policy_sha: str, audit_basis: dict) -> dict:
+    """Dataset identity intentionally excludes workflow run IDs and artifact ZIP digests."""
+    return {
+        "stage2_version": EXPECTED_STAGE2_VERSION,
+        "stage2_fingerprint": EXPECTED_STAGE2_FP,
+        "trading_universe_policy_sha256": policy_sha,
+        "gate_semantic_audits": audit_basis,
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--lock", required=True)
@@ -102,7 +131,7 @@ def main() -> int:
     policy_sha = sha_bytes(Path(a.policy).read_bytes())
 
     if set(resolved) != set(gates): errors.append(f"resolved gate set mismatch missing={sorted(set(gates)-set(resolved))} extra={sorted(set(resolved)-set(gates))}")
-    artifact_basis = {}
+    transport_provenance = {}
     audit_basis = {}
     for key, spec in gates.items():
         live = resolved.get(key) or {}
@@ -119,25 +148,26 @@ def main() -> int:
         clean = find_clean_gate(candidates, EXPECTED_PREFIX[key])
         if not clean:
             errors.append(f"no clean pass audit JSON for {key}; candidates={[x['record'].get('gate') for x in candidates][:20]}")
-        artifact_basis[key] = {"run_id": spec.get("run_id"), "artifact": spec.get("artifact"), "digest": digest}
-        # Freeze compact, deterministic semantic checks from clean gate audits.
-        audit_basis[key] = sorted({str(x["record"].get("gate")) for x in clean})
+            continue
+        transport_provenance[key] = {
+            "run_id": spec.get("run_id"),
+            "artifact": spec.get("artifact"),
+            "digest": digest,
+        }
+        audit_basis[key] = {
+            "audit_gates": sorted({str(x["record"].get("gate")) for x in clean}),
+            "semantic_sha256": semantic_gate_digest(clean),
+        }
 
-    basis = {
-        "stage2_version": EXPECTED_STAGE2_VERSION,
-        "stage2_fingerprint": EXPECTED_STAGE2_FP,
-        "trading_universe_policy_sha256": policy_sha,
-        "artifacts": artifact_basis,
-        "clean_gate_audits": audit_basis,
-    }
-    canonical = json.dumps(basis, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    fp = sha_bytes(canonical)
+    basis = stage3_fingerprint_basis(policy_sha, audit_basis)
+    fp = sha_bytes(canonical_bytes(basis))
     report = {
         "gate": "STAGE3_FINAL_FREEZE_CANONICAL_AUDIT",
         "pass": not errors,
         "stage3_dataset_fingerprint": fp,
-        "fingerprint_algorithm": "SHA-256 over canonical JSON of fingerprint_basis (UTF-8, sort_keys=true, separators=(,,:))",
+        "fingerprint_algorithm": "SHA-256 over canonical semantic gate evidence; workflow run IDs and artifact archive digests are transport provenance only",
         "fingerprint_basis": basis,
+        "transport_provenance": transport_provenance,
         "errors": errors,
     }
     (outdir / "stage3_final_freeze_audit.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
