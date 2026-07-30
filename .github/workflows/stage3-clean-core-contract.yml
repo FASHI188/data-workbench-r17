@@ -1,0 +1,106 @@
+name: Stage3 Clean Core Runtime Contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'governance/stage3_nonfinancial_runtime_manifest.json'
+      - 'config/stage3_*.json'
+      - 'config/trading_universe_policy.json'
+      - 'scripts/audit_stage3_feature_contract.py'
+      - 'scripts/build_stage3_filing_ledger.py'
+      - 'scripts/finalize_stage3_filing_ledger*.py'
+      - 'scripts/stage3_time_policy.py'
+      - 'scripts/build_stage3_announcement_ledger*.py'
+      - 'scripts/assemble_stage3_announcement_repair.py'
+      - 'scripts/finalize_stage3_announcement_ledger.py'
+      - 'scripts/build_stage3_*industry*.py'
+      - 'scripts/stage3_*industry*_discovery.py'
+      - 'scripts/probe_stage3_capco_industry_history.py'
+      - 'scripts/stage3_earnings_forecast_parser.py'
+      - 'scripts/probe_stage3_earnings_forecast_parser.py'
+      - 'scripts/build_stage3_earnings_surprise.py'
+      - 'scripts/stage3_trading_universe.py'
+      - 'scripts/audit_stage3_trading_universe.py'
+      - 'scripts/audit_stage3_final_lock.py'
+      - 'scripts/finalize_stage3_freeze.py'
+      - 'tests/test_stage3_filing_ledger.py'
+      - 'tests/test_stage3_time_policy.py'
+      - 'tests/test_stage3_trading_universe.py'
+      - 'tests/test_stage3_announcement_transitions.py'
+      - '.github/workflows/stage3-clean-core-contract.yml'
+
+permissions:
+  contents: read
+
+env:
+  PYTHONPATH: scripts
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified Stage3 core runtime
+        run: |
+          python -m pip install --disable-pip-version-check \
+            -c requirements/constraints-verified.txt \
+            requests beautifulsoup4 pymupdf pytest
+          python -m pip check
+      - name: Verify nonfinancial runtime provenance and lock state
+        run: |
+          python - <<'PY'
+          import json
+          m=json.load(open('governance/stage3_nonfinancial_runtime_manifest.json',encoding='utf-8'))
+          lock=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
+          project=json.load(open('data/project_status.json',encoding='utf-8'))
+          assert m['file_count']==31, m
+          assert m['hard_invariants']['stage3_status']=='NOT_READY'
+          assert lock['status']=='NOT_READY'
+          assert set(lock['remaining_unlocked_gates'])=={
+              'S3G1J_FINANCIAL_RAW_VALUES','S3G2_ANNOUNCEMENT_LEDGER','S3G4_EARNINGS_SURPRISE'
+          }
+          assert project['stage4_unlocked'] is False
+          assert project['alpha_training_allowed'] is False
+          assert project['live_signal_allowed'] is False
+          print('STAGE3_CORE_LOCK_PASS')
+          PY
+      - name: Import clean Stage3 component closure
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0,'scripts')
+          modules = [
+              'audit_stage3_feature_contract',
+              'build_stage3_filing_ledger',
+              'finalize_stage3_filing_ledger_v325',
+              'stage3_time_policy',
+              'build_stage3_announcement_ledger_v2',
+              'assemble_stage3_announcement_repair',
+              'finalize_stage3_announcement_ledger',
+              'build_stage3_capco_industry_ledger',
+              'stage3_capco_discovery',
+              'stage3_csrc_industry_discovery',
+              'build_stage3_industry_ledger_v3',
+              'stage3_earnings_forecast_parser',
+              'build_stage3_earnings_surprise',
+              'stage3_trading_universe',
+              'audit_stage3_trading_universe',
+              'audit_stage3_final_lock',
+              'finalize_stage3_freeze',
+          ]
+          for name in modules:
+              __import__(name)
+          print('STAGE3_CORE_IMPORT_PASS', len(modules))
+          PY
+      - name: Run PIT, filing, announcement identity and universe regressions
+        run: |
+          pytest -q \
+            tests/test_stage3_filing_ledger.py \
+            tests/test_stage3_time_policy.py \
+            tests/test_stage3_announcement_transitions.py \
+            tests/test_stage3_trading_universe.py
