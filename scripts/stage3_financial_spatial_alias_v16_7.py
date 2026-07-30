@@ -11,6 +11,7 @@ import stage3_financial_spatial_alias_v16 as spatial
 import stage3_financial_spatial_alias_v16_3 as v166
 
 DATE_RE = re.compile(r"(20\d{2})年(\d{1,2})月(\d{1,2})日")
+UNIT_SUFFIX_RE = re.compile(r"(?:人民币)?(?:百万元|亿元|万元|千元|元)$")
 HEADER_BLOCKERS = (
     "董事会", "批准", "审计", "财务报表已", "止年度财务报表",
     "第三层次", "变动金额", "主要原因",
@@ -20,6 +21,7 @@ HEADER_TOKENS = (
     "本集团", "本公司", "本行",
 )
 X_TOLERANCE = 3.0
+CONCEPTS = ("TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY")
 
 
 def _compact_word_map(row: dict) -> tuple[str, list[int]]:
@@ -53,6 +55,33 @@ def _date_geometries(row: dict) -> list[dict]:
     return out
 
 
+def _strict_single_date_header_form(compact: str, expected_cn: str) -> str | None:
+    """Accept only two evidence-backed full-row statement-header forms.
+
+    V17.9 found official balance-sheet pages where the current structural rule
+    rejected `于<date>` and `<date><explicit currency unit>`. These are accepted
+    only when the *entire compact row* matches one of those forms. Narrative
+    prefixes/suffixes therefore remain rejected by this extension.
+    """
+    if compact == f"于{expected_cn}":
+        return "V17_11_STRICT_LEADING_YU_DATE"
+    if compact.startswith(expected_cn):
+        suffix = compact[len(expected_cn):]
+        if suffix and UNIT_SUFFIX_RE.fullmatch(suffix):
+            return "V17_11_STRICT_DATE_WITH_EXPLICIT_UNIT"
+    return None
+
+
+def _header_structural_source(compact: str, expected_cn: str, dates: list[dict]) -> str | None:
+    if len(dates) >= 2:
+        return "V16_7_MULTI_DATE_HEADER"
+    if compact == expected_cn:
+        return "V16_7_EXACT_DATE_HEADER"
+    if any(token in compact for token in HEADER_TOKENS):
+        return "V16_7_STRUCTURAL_TOKEN_HEADER"
+    return _strict_single_date_header_form(compact, expected_cn)
+
+
 def _qualified_header_row(row: dict, expected: str, alias_x1: float) -> tuple[list[dict], int] | None:
     dates = [d for d in _date_geometries(row) if d["x_center"] >= alias_x1 - 5.0]
     if not dates or not any(d["date"] == expected for d in dates):
@@ -62,8 +91,7 @@ def _qualified_header_row(row: dict, expected: str, alias_x1: float) -> tuple[li
         return None
     y, m, d = expected.split("-")
     expected_cn = f"{int(y)}年{int(m)}月{int(d)}日"
-    structural = len(dates) >= 2 or compact == expected_cn or any(token in compact for token in HEADER_TOKENS)
-    if not structural:
+    if _header_structural_source(compact, expected_cn, dates) is None:
         return None
     dates.sort(key=lambda item: item["x_center"])
     expected_indexes = [idx for idx, item in enumerate(dates) if item["date"] == expected]
@@ -81,6 +109,8 @@ def _find_header_column_evidence(
     current_page = int(candidate["page"])
     root_page = int((candidate.get("unit_evidence") or {}).get("root_page") or candidate["statement_anchor_page"])
     alias_x1 = float(candidate["alias_x1"])
+    y, m, d = expected.split("-")
+    expected_cn = f"{int(y)}年{int(m)}月{int(d)}日"
 
     for page_1b in range(current_page, max(1, root_page) - 1, -1):
         qualified = []
@@ -89,13 +119,15 @@ def _find_header_column_evidence(
             if result is None:
                 continue
             dates, expected_index = result
-            qualified.append((len(dates), -float(row["y"]), row, dates, expected_index))
+            compact = re.sub(r"\s+", "", row["text"] or "")
+            source = _header_structural_source(compact, expected_cn, dates)
+            qualified.append((len(dates), -float(row["y"]), row, dates, expected_index, source))
         if not qualified:
             continue
         # Prefer the richest date-column row on the nearest page. When tied,
         # prefer the higher header row.
         qualified.sort(key=lambda item: (item[0], item[1]), reverse=True)
-        _, _, row, dates, expected_index = qualified[0]
+        _, _, row, dates, expected_index, source = qualified[0]
         return {
             "page": page_1b,
             "row_y": float(row["y"]),
@@ -103,6 +135,7 @@ def _find_header_column_evidence(
             "dates": dates,
             "expected_date": expected,
             "expected_column_index": expected_index,
+            "structural_source": source,
         }
     return None
 
@@ -139,7 +172,7 @@ def _find_candidate_row(doc: fitz.Document, candidate: dict) -> dict | None:
     selected_raw = _selected_raw_decimal(candidate)
     fallback = None
     for row in v14._rows_from_words(doc[pno]):
-        for concept in ("TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY"):
+        for concept in CONCEPTS:
             geoms = spatial._alias_geometries(row, alias, concept)
             for geom in geoms:
                 if abs(float(geom["x0"]) - target_x) > X_TOLERANCE:
@@ -153,19 +186,17 @@ def _find_candidate_row(doc: fitz.Document, candidate: dict) -> dict | None:
     return fallback
 
 
-def column_role_evidence(
+def _column_role_evidence_with_header(
     doc: fitz.Document,
     candidate: dict,
-    expected_economic_date: str,
+    header: dict,
+    evidence_source: str,
 ) -> dict:
     found = _find_candidate_row(doc, candidate)
     if found is None:
-        return {"pass": False, "reason": "candidate alias row not reconstructed"}
+        return {"pass": False, "reason": "candidate alias row not reconstructed", "evidence_source": evidence_source}
     row = found["row"]
     geom = found["geom"]
-    header = _find_header_column_evidence(doc, candidate, expected_economic_date)
-    if header is None:
-        return {"pass": False, "reason": "no qualified expected-date header row"}
     amounts = found.get("amounts") or _amounts_after_alias(row, float(geom["x1"]))
     idx = int(header["expected_column_index"])
     if idx >= len(amounts):
@@ -173,6 +204,7 @@ def column_role_evidence(
             "pass": False,
             "reason": "expected date column index exceeds amount columns",
             "header": header,
+            "evidence_source": evidence_source,
             "amounts": [{"raw": str(a["raw"]), "value": str(a["value"]), "x0": float(a["x0"])} for a in amounts],
         }
     expected_amount = amounts[idx]
@@ -183,6 +215,7 @@ def column_role_evidence(
         "pass": value_match,
         "reason": None if value_match else "selected value is not the frozen-date ordinal amount",
         "header": header,
+        "evidence_source": evidence_source,
         "reconstructed_row": row["text"][:800],
         "amounts": [{"raw": str(a["raw"]), "value": str(a["value"]), "x0": float(a["x0"])} for a in amounts],
         "expected_amount": {
@@ -196,6 +229,68 @@ def column_role_evidence(
     }
 
 
+def column_role_evidence(
+    doc: fitz.Document,
+    candidate: dict,
+    expected_economic_date: str,
+) -> dict:
+    header = _find_header_column_evidence(doc, candidate, expected_economic_date)
+    if header is None:
+        return {"pass": False, "reason": "no qualified expected-date header row"}
+    return _column_role_evidence_with_header(doc, candidate, header, "DIRECT_EXPECTED_DATE_HEADER")
+
+
+def _same_page_trusted_sibling_column_evidence(
+    doc: fitz.Document,
+    concept: str,
+    candidate: dict,
+    selected: dict[str, dict],
+    direct_evidence: dict[str, dict],
+) -> dict | None:
+    """Reuse only an independently direct-passing header from the same statement page.
+
+    This is deliberately non-transitive: only `direct_evidence` may seed reuse, so
+    a sibling-derived concept can never propagate evidence to another concept.
+    The candidate must share page, formal statement anchor, statement role and
+    unit with the trusted sibling. The frozen-date ordinal is then re-applied to
+    the candidate's own amount list and must equal its selected raw value.
+    """
+    page = int(candidate["page"])
+    anchor = int(candidate["statement_anchor_page"])
+    role = candidate.get("statement_role")
+    unit = candidate.get("unit")
+    for sibling in CONCEPTS:
+        if sibling == concept:
+            continue
+        sibling_evidence = direct_evidence.get(sibling) or {}
+        if not sibling_evidence.get("pass"):
+            continue
+        sibling_candidate = selected.get(sibling) or {}
+        header = sibling_evidence.get("header") or {}
+        if int(header.get("page") or -1) != page:
+            continue
+        if int(sibling_candidate.get("page") or -1) != page:
+            continue
+        if int(sibling_candidate.get("statement_anchor_page") or -1) != anchor:
+            continue
+        if sibling_candidate.get("statement_role") != role:
+            continue
+        if sibling_candidate.get("unit") != unit:
+            continue
+        evidence = _column_role_evidence_with_header(
+            doc,
+            candidate,
+            header,
+            "SAME_PAGE_SAME_ANCHOR_DIRECT_SIBLING_HEADER",
+        )
+        if not evidence.get("pass"):
+            continue
+        evidence["trusted_sibling_concept"] = sibling
+        evidence["trusted_sibling_evidence_source"] = sibling_evidence.get("evidence_source")
+        return evidence
+    return None
+
+
 def diagnose_spatial_balance_sheet_v16_7(
     doc: fitz.Document,
     expected_economic_date: str,
@@ -207,19 +302,35 @@ def diagnose_spatial_balance_sheet_v16_7(
         parsed["recovered"] = False
         return parsed
 
-    evidence = {}
-    all_pass = True
-    for concept, candidate in (parsed.get("selected") or {}).items():
-        ev = column_role_evidence(doc, candidate, expected_economic_date)
-        evidence[concept] = ev
-        all_pass = all_pass and bool(ev.get("pass"))
+    selected = parsed.get("selected") or {}
+    direct_evidence = {
+        concept: column_role_evidence(doc, candidate, expected_economic_date)
+        for concept, candidate in selected.items()
+    }
+    evidence = dict(direct_evidence)
+    for concept, candidate in selected.items():
+        if direct_evidence[concept].get("pass"):
+            continue
+        sibling = _same_page_trusted_sibling_column_evidence(
+            doc,
+            concept,
+            candidate,
+            selected,
+            direct_evidence,
+        )
+        if sibling is not None:
+            evidence[concept] = sibling
 
+    all_pass = all(bool((evidence.get(concept) or {}).get("pass")) for concept in CONCEPTS)
     out = dict(parsed)
     out["v16_6_recovered"] = True
     out["column_role_gate"] = {
         "pass": all_pass,
         "concepts": evidence,
-        "policy": "frozen economic-date ordinal must map to the exact selected raw amount",
+        "policy": (
+            "frozen economic-date ordinal must map to the exact selected raw amount; "
+            "strict statement-date forms and same-page/same-anchor direct sibling headers are allowed"
+        ),
     }
     out["recovered"] = bool(all_pass)
     if not all_pass:
