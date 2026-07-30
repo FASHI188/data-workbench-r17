@@ -16,5 +16,9 @@ test = [
   "pytest==9.1.1",
 ]
 
+[tool.data_workbench.reproducibility]
+python_version = "3.12.13"
+constraints_file = "requirements/constraints-verified.txt"
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
