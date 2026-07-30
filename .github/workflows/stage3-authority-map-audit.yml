@@ -74,12 +74,14 @@ jobs:
           test "$headsha" = "$expected_head"
           count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq '[.artifacts[] | select(.name=="stage3-s3g2-announcement-ledger-final")] | length')
           test "$count" -ge 2
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq '.artifacts[] | select(.name=="stage3-s3g2-announcement-ledger-final") | .digest' | while read -r digest; do
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq '.artifacts[] | select(.name=="stage3-s3g2-announcement-ledger-final") | .digest' > /tmp/s3g2-artifact-digests.txt
+          while read -r digest; do
             case "$digest" in sha256:*) ;; *) exit 1 ;; esac
-          done
-          gh run view "$run" -R "$GITHUB_REPOSITORY" --log | grep -Fq "\"ledger_sha256\": \"$expected_ledger\""
-          gh run view "$run" -R "$GITHUB_REPOSITORY" --log | grep -Fq '"gzip_header_mtime": 0'
-          gh run view "$run" -R "$GITHUB_REPOSITORY" --log | grep -Fq '"errors": []'
+          done < /tmp/s3g2-artifact-digests.txt
+          gh run view "$run" -R "$GITHUB_REPOSITORY" --log > /tmp/s3g2-run.log
+          grep -Fq "\"ledger_sha256\": \"$expected_ledger\"" /tmp/s3g2-run.log
+          grep -Fq '"gzip_header_mtime": 0' /tmp/s3g2-run.log
+          grep -Fq '"errors": []' /tmp/s3g2-run.log
       - name: Assert incomplete gates remain locked
         run: |
           python - <<'PY'
