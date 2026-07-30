@@ -23,9 +23,11 @@
   },
   "final_gates_passed_on_clean_integration": {
     "S3G2_ANNOUNCEMENT_LEDGER": {
-      "run_id": 30521522476,
-      "artifact_digest": "sha256:b123e6386a42f3dc69054ca9f8e93e916728273db2702a9702184a40f7a9d498",
-      "ledger_sha256": "9c80bc1f86234696ad12031cfea972ac0bcea4528518a9d8c6e30af6d8ac9690"
+      "run_id": 30522392946,
+      "ledger_sha256": "0eb139572865628283f86c981990e59e076d5ef2a978a5967aace90d553e30dd",
+      "deterministic_replay_count": 2,
+      "deterministic_replay_same_sha": true,
+      "artifact_digest_is_transport_only": true
     }
   },
   "pending_final_gates": [
