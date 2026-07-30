@@ -94,16 +94,16 @@ jobs:
           python - <<'PY'
           import gzip,hashlib,json
           from pathlib import Path
-          a=Path('out-a/periodic_filing_ledger.csv.gz')
-          b=Path('out-b/periodic_filing_ledger.csv.gz')
+          a=Path('out-a/stage3_periodic_filing_ledger.csv.gz')
+          b=Path('out-b/stage3_periodic_filing_ledger.csv.gz')
           old=Path('old-final/stage3_periodic_filing_ledger.csv.gz')
           assert a.read_bytes()==b.read_bytes(), 'deterministic gzip bytes differ'
           new_sha=hashlib.sha256(a.read_bytes()).hexdigest()
           with gzip.open(a,'rb') as f:new_plain=f.read()
           with gzip.open(old,'rb') as f:old_plain=f.read()
           assert new_plain==old_plain, 'decompressed filing ledger changed'
-          aa=json.load(open('out-a/stage3_filing_ledger_audit.json',encoding='utf-8'))
-          bb=json.load(open('out-b/stage3_filing_ledger_audit.json',encoding='utf-8'))
+          aa=json.load(open('out-a/stage3_periodic_filing_ledger_audit.json',encoding='utf-8'))
+          bb=json.load(open('out-b/stage3_periodic_filing_ledger_audit.json',encoding='utf-8'))
           assert aa.get('pass') is True and not aa.get('errors'), aa
           assert bb.get('pass') is True and not bb.get('errors'), bb
           assert aa.get('ledger_sha256')==bb.get('ledger_sha256')==new_sha
