@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "status": "INTEGRATION_IN_PROGRESS",
+  "stage2_dependency": {
+    "version": "V3.2.25-stage2-final-freeze",
+    "fingerprint": "f17f7ab63f4532dda635eb7366e7df7bf5497a5ce814410105312bccb53125bb"
+  },
+  "project_unlock": {
+    "stage4_unlocked": false,
+    "alpha_training_allowed": false,
+    "live_signal_allowed": false
+  },
+  "authoritative_components": {
+    "S3G0_POINT_IN_TIME_FEATURE_CONTRACT": {
+      "source_ref": "stage3-point-in-time-features",
+      "run_id": 30265340598,
+      "status": "ACCEPTED_UPSTREAM_EVIDENCE",
+      "final_gate": true
+    },
+    "S3G1E_PERIODIC_FILING_LEDGER": {
+      "source_ref": "stage3-point-in-time-features",
+      "run_id": 30265340486,
+      "status": "ACCEPTED_UPSTREAM_EVIDENCE",
+      "final_gate": true
+    },
+    "S3G1G_REPORT_VERSION_SELECTION": {
+      "source_ref": "stage3-point-in-time-features",
+      "run_id": 30270405448,
+      "status": "ACCEPTED_UPSTREAM_EVIDENCE",
+      "final_gate": true
+    },
+    "S3G1I_POPULATION_PDF_PROBE": {
+      "source_ref": "stage3-validation-gates-v2",
+      "run_id": 30326328965,
+      "artifact_digest": "sha256:3883eb629aaa0325cd1db6d3a1eefc96929c9673711bb3c004217ac6254324b9",
+      "status": "ACCEPTED_UPSTREAM_EVIDENCE",
+      "final_gate": true
+    },
+    "S3G1J_FINANCIAL_RAW_VALUES": {
+      "source_pr": 63,
+      "source_ref": "stage3-s3g1j-v17-column-evidence",
+      "head_sha": "e98d26b962a58cecc5c6416214e3c798c5e8a49e",
+      "accepted_candidate_run_id": 30510347556,
+      "accepted_candidate_artifact": "stage3-s3g1j-v17-11-column-evidence-acceptance",
+      "accepted_candidate_artifact_digest": "sha256:b1143faaf2c1a91fd64e21ef35c05e787200d957f888613fa2f2a2fc23c43ad9",
+      "accepted_candidate_accounting": {
+        "frozen_single_source_input": 127,
+        "v14_successes": 14,
+        "v14_remaining": 113,
+        "v17_11_recovered": 31,
+        "v17_11_remaining_fail_closed": 82
+      },
+      "status": "ACCEPTED_CANDIDATE_NOT_FINAL",
+      "final_gate": false,
+      "final_requirement": "Full production-basis S3G1J finalizer must pass; exact-113 representative residual acceptance is not a Stage3 final gate."
+    },
+    "S3G2_ANNOUNCEMENT_LEDGER": {
+      "source_pr": 40,
+      "source_ref": "stage3-s3g2-instrument-repair-v2",
+      "head_sha": "1ac525aa0b56cd39b233e5c2da9e44d3707c55cb",
+      "latest_repair_run_id": 30340337606,
+      "latest_repair_artifact": "stage3-s3g2-announcement-instrument-repair-11",
+      "latest_repair_artifact_digest": "sha256:1022d91d8abd62b259be74f602f0ea783fc9eedb54ce2dad6f68a86b57c8ee5f",
+      "status": "REPAIR_ACCEPTED_FINAL_ASSEMBLY_PENDING",
+      "final_gate": false,
+      "final_requirement": "Reassemble all announcement shards on one integration head and pass the full point-in-time announcement finalizer."
+    },
+    "S3G3A_INDUSTRY_SOURCE_PROBE": {
+      "source_ref": "stage3-validation-gates-v2",
+      "run_id": 30326328969,
+      "artifact_digest": "sha256:a635409dbab2fdc61852432acfcb294f97b4468831f23a9fa01320abf39ba9af",
+      "status": "ACCEPTED_UPSTREAM_EVIDENCE",
+      "final_gate": true
+    },
+    "S3G3B_INDUSTRY_LEDGER": {
+      "source_pr": 35,
+      "source_ref": "stage3-s3g3b-validation",
+      "head_sha": "40dcab6df468bbf2d47dd48ac77ea150190c279b",
+      "run_id": 30331243641,
+      "artifact_digest": "sha256:f1da814c71fa698f3f10ce5dc7019bb86770f9d4e15ed7d7823a93a085adc872",
+      "ledger_sha256": "3d91678a111e12d4ba5262d2af4e0c2a643de13ac03076fb4e61e14db9ee9ece",
+      "status": "ACCEPTED_UPSTREAM_EVIDENCE",
+      "final_gate": true
+    },
+    "S3G4A_FORECAST_PARSER_PROBE": {
+      "source_ref": "stage3-validation-gates-v2",
+      "run_id": 30326328970,
+      "artifact_digest": "sha256:5384aed1c81782571486d32053b343218bb06a0aa45f1540faa4e619dd7d9ad4",
+      "status": "ACCEPTED_UPSTREAM_EVIDENCE",
+      "final_gate": true
+    },
+    "S3G4_EARNINGS_SURPRISE": {
+      "source_ref": "stage3-point-in-time-features",
+      "status": "FINAL_GATE_PENDING",
+      "final_gate": false
+    },
+    "S3GU_TRADING_UNIVERSE_POLICY": {
+      "source_ref": "stage3-validation-gates-v2",
+      "run_id": 30326328975,
+      "artifact_digest": "sha256:1942c9e7baa0823772201cc1f6652e660d8b4b60dd8b0559d94dcefe7da4c9fa",
+      "status": "ACCEPTED_UPSTREAM_EVIDENCE",
+      "final_gate": true
+    }
+  },
+  "non_merge_evidence_prs": [
+    44, 47, 52, 53, 56, 57, 58, 59, 61, 62, 64
+  ],
+  "superseded_s3g1j_production_prs": [
+    42, 43, 45, 46, 48, 49, 50, 51, 54, 55, 60
+  ],
+  "current_s3g1j_production_pr": 63,
+  "recommended_clean_integration_order": [
+    "S3G0/Foundation",
+    "S3G2 latest repair chain",
+    "S3G3A/B",
+    "S3G1J V17.11 runtime closure",
+    "S3G4A + S3G4",
+    "S3GU",
+    "Stage3 final lock/freeze"
+  ],
+  "policy": {
+    "diagnostic_prs_are_evidence_not_merge_units": true,
+    "accepted_candidate_does_not_equal_final_pass": true,
+    "no_accounting_tolerance_relaxation": true,
+    "no_pit_relaxation": true,
+    "no_security_identity_relaxation": true,
+    "unreliable_parse_remains_fail_closed": true
+  }
+}
