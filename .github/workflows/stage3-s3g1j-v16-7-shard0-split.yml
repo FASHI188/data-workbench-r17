@@ -1,0 +1,215 @@
+name: Stage3 S3G1J V16.7 Shard0 Split Exact Replay
+
+on:
+  pull_request:
+    branches: [stage3-s3g1j-coordinate-table-v14]
+    paths:
+      - '.github/workflows/stage3-s3g1j-v16-7-shard0-split.yml'
+      - 'scripts/probe_stage3_s3g1j_v16_7_shard0_chunk.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FROZEN_127_RUN: '30424465440'
+  V16_PRODUCTION_RUN: '30432739832'
+  PRIOR_EXACT_RUN: '30434179853'
+  PYTHONPATH: scripts
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require accepted V16.7 production fallback and frozen input
+        run: |
+          test "$(gh run view "$V16_PRODUCTION_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+          rm -rf prepared
+          gh run download "$FROZEN_127_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v15-single-source-input -D prepared
+          python - <<'PY'
+          import csv,gzip
+          with gzip.open('prepared/single_source_residual_versions.csv.gz','rt',encoding='utf-8',newline='') as f:
+              rows=list(csv.DictReader(f))
+          assert len(rows)==127, len(rows)
+          print('FROZEN_127_INPUT_PASS',len(rows))
+          PY
+
+  chunk:
+    needs: lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        part: [0,1,2,3,4,5,6,7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Restore exact frozen 127 input
+        run: |
+          rm -rf prepared build/v16-shard0-split
+          gh run download "$FROZEN_127_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v15-single-source-input -D prepared
+          test -f prepared/single_source_residual_versions.csv.gz
+      - name: Replay deterministic shard0 chunk with per-document progress
+        run: |
+          mkdir -p build/v16-shard0-split
+          python scripts/probe_stage3_s3g1j_v16_7_shard0_chunk.py \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --part ${{ matrix.part }} --parts 8 \
+            --out build/v16-shard0-split/chunk${{ matrix.part }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v16-shard0-chunk-${{ matrix.part }}
+          path: build/v16-shard0-split/chunk${{ matrix.part }}.json
+          retention-days: 90
+          compression-level: 0
+
+  summarize-shard0:
+    needs: chunk
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g1j-v16-shard0-chunk-*
+          path: chunks
+          merge-multiple: true
+      - name: Reassemble exact shard0 frozen accounting
+        run: |
+          python - <<'PY'
+          import glob,json,os
+          paths=sorted(glob.glob('chunks/chunk*.json'))
+          rows=[json.load(open(p,encoding='utf-8')) for p in paths]
+          rows.sort(key=lambda x:x['part'])
+          assert [r['part'] for r in rows]==list(range(8)), [r.get('part') for r in rows]
+          assert all(r['pass'] for r in rows), [{r['part']:r['errors']} for r in rows if not r['pass']]
+          ids=[aid for r in rows for aid in r['announcement_ids']]
+          assert len(ids)==41 and len(set(ids))==41, (len(ids),len(set(ids)))
+          assert sum(r['v14_success_count'] for r in rows)==5
+          assert sum(r['v14_remaining_count'] for r in rows)==36
+          assert sum(len(r['v14_success_path_regressions']) for r in rows)==0
+          assert sum(len(r['download_failures']) for r in rows)==0
+          assert sum(len(r['processing_failures']) for r in rows)==0
+          recoveries=[x for r in rows for x in r['v16_new_recoveries']]
+          remaining=[x for r in rows for x in r['v16_remaining']]
+          v14_paths=[x for r in rows for x in r['v14_success_paths']]
+          assert len(recoveries)+len(remaining)==36
+          assert all(
+              x['arbitration_ok'] and x['expected_date_ok'] and x['period_gate_ok'] and x['column_gate_ok']
+              for x in recoveries
+          )
+          report={
+            'gate':'S3G1J_V16_7_EXACT_113_SINGLE_SOURCE_REPLAY_SHARD',
+            'shard':0,
+            'shards':64,
+            'input_single_source_count':41,
+            'expected_input_single_source_count':41,
+            'v14_success_count':5,
+            'v14_remaining_count':36,
+            'expected_v14_remaining_count':36,
+            'v16_new_recovery_count':len(recoveries),
+            'v16_remaining_count':len(remaining),
+            'v14_success_paths':v14_paths,
+            'v14_success_path_regressions':[],
+            'v16_new_recoveries':recoveries,
+            'v16_remaining':remaining,
+            'download_failures':[],
+            'processing_failures':[],
+            'pass':True,
+            'errors':[],
+            'split_diagnostic_parts':8,
+            'stage4_alpha_locked':True,
+          }
+          os.makedirs('summary',exist_ok=True)
+          json.dump(report,open('summary/shard0.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+          print(json.dumps({
+            'input':41,'v14_success':5,'v14_remaining':36,
+            'v16_new_recovery':len(recoveries),'v16_remaining':len(remaining),'pass':True
+          },ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v16-exact-113-0-split
+          path: summary/shard0.json
+          retention-days: 90
+          compression-level: 0
+
+  exact-113-summary:
+    needs: summarize-shard0
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore previously completed shards 1,7,9 from the same exact replay run
+        run: |
+          rm -rf prior
+          mkdir -p prior
+          for s in 1 7 9; do
+            gh run download "$PRIOR_EXACT_RUN" -R "$GITHUB_REPOSITORY" \
+              -n "stage3-s3g1j-v16-exact-113-$s" -D "prior/shard$s"
+            test -f "prior/shard$s/shard$s.json"
+          done
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v16-exact-113-0-split
+          path: prior/shard0
+      - name: Enforce exact V14=113 baseline and V16.7 incremental recovery
+        run: |
+          python - <<'PY'
+          import glob,json,os
+          paths=sorted(glob.glob('prior/shard*/shard*.json'))
+          rows=[json.load(open(p,encoding='utf-8')) for p in paths]
+          rows.sort(key=lambda x:x['shard'])
+          assert [r['shard'] for r in rows]==[0,1,7,9], [r.get('shard') for r in rows]
+          assert all(r['pass'] for r in rows), [r.get('errors') for r in rows]
+          assert sum(r['input_single_source_count'] for r in rows)==127
+          assert sum(r['v14_success_count'] for r in rows)==14
+          assert sum(r['v14_remaining_count'] for r in rows)==113
+          assert sum(len(r['v14_success_path_regressions']) for r in rows)==0
+          recoveries=[x for r in rows for x in r['v16_new_recoveries']]
+          remaining=[x for r in rows for x in r['v16_remaining']]
+          assert len(recoveries)+len(remaining)==113
+          hard_evidence=all(
+              x['arbitration_ok'] and x['expected_date_ok'] and x['period_gate_ok'] and x['column_gate_ok']
+              for x in recoveries
+          )
+          assert hard_evidence
+          report={
+            'gate':'S3G1J_V16_7_EXACT_113_SINGLE_SOURCE_REPLAY_SPLIT_SHARD0',
+            'pass':True,
+            'frozen_input_count':127,
+            'v14_success_count':14,
+            'v14_remaining_count':113,
+            'v16_new_recovery_count':len(recoveries),
+            'v16_remaining_count':len(remaining),
+            'all_v14_success_paths_unchanged':True,
+            'all_v16_recoveries_have_period_column_identity_evidence':hard_evidence,
+            'per_shard':[{k:r[k] for k in ('shard','input_single_source_count','v14_success_count','v14_remaining_count','v16_new_recovery_count','v16_remaining_count')} for r in rows],
+            'v16_new_recoveries':recoveries,
+            'v16_remaining':remaining,
+            'shard0_execution':'8-way deterministic split; parser and frozen inputs unchanged',
+            'stage4_alpha_locked':True,
+          }
+          os.makedirs('summary',exist_ok=True)
+          json.dump(report,open('summary/v16_exact_113_split_summary.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+          print(json.dumps({k:report[k] for k in (
+              'frozen_input_count','v14_success_count','v14_remaining_count',
+              'v16_new_recovery_count','v16_remaining_count',
+              'all_v14_success_paths_unchanged','all_v16_recoveries_have_period_column_identity_evidence'
+          )},ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v16-exact-113-split-summary
+          path: summary/v16_exact_113_split_summary.json
+          retention-days: 90
+          compression-level: 0

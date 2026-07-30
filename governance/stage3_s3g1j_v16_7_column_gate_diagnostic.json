@@ -1,0 +1,16 @@
+{
+  "gate": "S3G1J_V16_7_FROZEN_DATE_COLUMN_ROLE_GATE",
+  "status": "PASS_DIAGNOSTIC_ONLY",
+  "geometry_run": 30431092961,
+  "acceptance_run": 30431702288,
+  "sample_reports": 12,
+  "recovered_reports": 10,
+  "column_role_pass_concepts": 30,
+  "expected_column_role_pass_concepts": 30,
+  "recovered_shape_ok": true,
+  "guard_000736_exact_current_values": true,
+  "errors": 0,
+  "production_acceptance": false,
+  "stage4_alpha_locked": true,
+  "next_required_gate": "V16 production fallback acceptance: legacy regression + 10 positive + 2 negative + PIT/issuer/period/column/identity gates"
+}

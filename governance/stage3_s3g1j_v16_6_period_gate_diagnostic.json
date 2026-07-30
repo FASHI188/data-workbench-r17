@@ -1,0 +1,46 @@
+{
+  "gate": "S3G1J_V16_6_STATEMENT_PERIOD_SPATIAL_DIAGNOSTIC",
+  "status": "PASS_DIAGNOSTIC_ONLY",
+  "accepted_run": 30430619172,
+  "sample_reports": 12,
+  "recovered_reports": 10,
+  "expected_recovered_ids": [
+    "1200948256",
+    "1203240204",
+    "1204557640",
+    "1207547788",
+    "1209728461",
+    "1212671853",
+    "1219442543",
+    "1221090309",
+    "1222949445",
+    "1223096939"
+  ],
+  "remaining_unrecovered_ids": ["1202637566", "1205969212"],
+  "period_guard_000736": {
+    "announcement_id": "1223096939",
+    "economic_date": "2024-12-31",
+    "selected_current_values": {
+      "TOTAL_ASSETS": "107697681763.55",
+      "TOTAL_LIABILITIES": "96659072585.14",
+      "TOTAL_EQUITY": "11038609178.41"
+    },
+    "forbidden_prior_values": {
+      "TOTAL_ASSETS": "122643867000.04",
+      "TOTAL_LIABILITIES": "104968810113.49",
+      "TOTAL_EQUITY": "17675056886.55"
+    },
+    "exact_current_values": true,
+    "period_evidence_ok": true,
+    "prior_values_not_selected": true
+  },
+  "constraints": {
+    "native_pdf_only": true,
+    "ocr_used": false,
+    "accounting_identity_tolerance": "0.005",
+    "statement_segment_must_contain_frozen_economic_date": true,
+    "stage4_alpha_locked": true
+  },
+  "production_acceptance": false,
+  "next_required_gate": "V16.7 current-period column-role binding"
+}
