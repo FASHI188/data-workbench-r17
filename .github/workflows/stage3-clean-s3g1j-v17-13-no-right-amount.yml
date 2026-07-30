@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - 'scripts/diagnose_stage3_s3g1j_v17_13_no_right_amount.py'
+      - 'scripts/run_stage3_s3g1j_v17_13_diagnostic_guarded.py'
       - '.github/workflows/stage3-clean-s3g1j-v17-13-no-right-amount.yml'
 
 permissions:
@@ -73,7 +74,7 @@ jobs:
           set +e
           out="build/s3g1j-v17-13/${{ matrix.announcement_id }}.json"
           mkdir -p "$(dirname "$out")"
-          python scripts/diagnose_stage3_s3g1j_v17_13_no_right_amount.py \
+          python scripts/run_stage3_s3g1j_v17_13_diagnostic_guarded.py \
             --versions prepared/single_source_residual_versions.csv.gz \
             --summary accepted/v17_12_residual_funnel.json \
             --announcement-id '${{ matrix.announcement_id }}' --out "$out" \
