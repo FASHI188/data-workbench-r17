@@ -1,4 +1,5 @@
 name: Repository Safety Audit
+# Full-history, redacted secret scan plus current-workflow write-capability audit.
 
 on:
   workflow_dispatch:
