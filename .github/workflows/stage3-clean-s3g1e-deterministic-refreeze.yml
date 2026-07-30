@@ -1,0 +1,126 @@
+name: Stage3 Clean S3G1E Deterministic Refreeze
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/stage3_deterministic_gzip.py'
+      - 'scripts/finalize_stage3_filing_ledger_v325_deterministic.py'
+      - '.github/workflows/stage3-clean-s3g1e-deterministic-refreeze.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  HISTORICAL_RUN: '30265340486'
+  HISTORICAL_HEAD: '97325fd9e91dde8ea3e2bee47c5c44dff4a8153c'
+  G2_RUN: '30262550161'
+  G3_RUN: '30263014914'
+  G2_INTERVAL_SHA: '2edf62f2d773b198ba1f02e996a741736e1b91830261723faeaa370a4f020ea7'
+  PYTHONPATH: scripts
+
+jobs:
+  refreeze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Lock historical S3G1E source run and shard artifact digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          conclusion=$(gh run view "$HISTORICAL_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')
+          head=$(gh run view "$HISTORICAL_RUN" -R "$GITHUB_REPOSITORY" --json headSha --jq '.headSha')
+          test "$conclusion" = success
+          test "$head" = "$HISTORICAL_HEAD"
+          python - <<'PY'
+          import json,os,subprocess
+          repo=os.environ['GITHUB_REPOSITORY']; run=os.environ['HISTORICAL_RUN']
+          x=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/actions/runs/{run}/artifacts'],text=True))['artifacts']
+          by={a['name']:a for a in x}
+          expected={
+            'stage3-s3g1e-filing-ledger-0':'sha256:ab575b615cffb3b4b78b5ef6570f17d8e2a9b826ef7922f90eee5701a0ac0664',
+            'stage3-s3g1e-filing-ledger-1':'sha256:08622eaabeb29732efc560c6253c2bd1a22dcbe378b6f20d1b4a12679240d8fe',
+            'stage3-s3g1e-filing-ledger-2':'sha256:14d8694b07021893bf33a6cd46eafff673c947d8ccd7ec0156a906eb8758cc10',
+            'stage3-s3g1e-filing-ledger-3':'sha256:9ca08943cd97e7978f81683ef80cac11c23aeca1fd95d4ce177abbb6c8854ed8',
+            'stage3-s3g1e-filing-ledger-4':'sha256:0e872a4cc4dca0ebbaf73c5391e74a35f7259bea34ad6b456cca0ede806bce2c',
+            'stage3-s3g1e-filing-ledger-5':'sha256:5db1f8b06e071a04464cda4e66f4f416386d8cd2449981bff2e3985ff4217297',
+            'stage3-s3g1e-filing-ledger-6':'sha256:b6f5983fd9799f802fef67f40ea6d36da48995ef8e0543afe3349f842c1112b9',
+            'stage3-s3g1e-filing-ledger-7':'sha256:f8158f099c715d196cb5c9228e4a7f692fd98dd6b62507766c877be9962df978',
+            'stage3-s3g1e-periodic-filing-ledger-final':'sha256:350105d16011b8863f27fc4bc319635e580ffafde847ba86e751159dd652e0a0',
+          }
+          for name,digest in expected.items():
+              assert name in by and not by[name].get('expired'), name
+              assert by[name].get('digest')==digest, (name,by[name].get('digest'),digest)
+          print('S3G1E_HISTORICAL_ARTIFACT_LOCK_PASS',len(expected))
+          PY
+      - name: Restore exact historical shard inputs and old accepted final artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf combined old-final g2 g3 out-a out-b
+          mkdir -p combined old-final
+          for i in 0 1 2 3 4 5 6 7; do
+            gh run download "$HISTORICAL_RUN" -R "$GITHUB_REPOSITORY" -n "stage3-s3g1e-filing-ledger-$i" -D "combined/$i"
+          done
+          gh run download "$HISTORICAL_RUN" -R "$GITHUB_REPOSITORY" -n stage3-s3g1e-periodic-filing-ledger-final -D old-final
+      - name: Restore exact Stage2 G2/G3 dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download "$G2_RUN" -R "$GITHUB_REPOSITORY" -n stage2-g2-historical-evidence -D g2
+          echo "$G2_INTERVAL_SHA  g2/security_intervals.csv" | sha256sum -c -
+          gh run download "$G3_RUN" -R "$GITHUB_REPOSITORY" -n stage2-g3-sse-601313-repaired-ohlcv -D g3
+      - name: Deterministically finalize twice from identical bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          g3root=$(dirname "$(find g3 -path '*/szse' -type d -print -quit)")
+          test -n "$g3root"
+          python scripts/finalize_stage3_filing_ledger_v325_deterministic.py \
+            --root combined --g2-intervals g2/security_intervals.csv --g3-root "$g3root" --out out-a
+          python scripts/finalize_stage3_filing_ledger_v325_deterministic.py \
+            --root combined --g2-intervals g2/security_intervals.csv --g3-root "$g3root" --out out-b
+      - name: Require byte identity and unchanged decompressed ledger semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip,glob,hashlib,json
+          from pathlib import Path
+          a=Path('out-a/periodic_filing_ledger.csv.gz')
+          b=Path('out-b/periodic_filing_ledger.csv.gz')
+          old=Path(glob.glob('old-final/**/periodic_filing_ledger.csv.gz',recursive=True)[0])
+          assert a.read_bytes()==b.read_bytes(), 'deterministic gzip bytes differ'
+          new_sha=hashlib.sha256(a.read_bytes()).hexdigest()
+          with gzip.open(a,'rb') as f:new_plain=f.read()
+          with gzip.open(old,'rb') as f:old_plain=f.read()
+          assert new_plain==old_plain, 'decompressed filing ledger changed'
+          aa=json.load(open('out-a/stage3_filing_ledger_audit.json',encoding='utf-8'))
+          bb=json.load(open('out-b/stage3_filing_ledger_audit.json',encoding='utf-8'))
+          assert aa.get('pass') is True and not aa.get('errors'), aa
+          assert bb.get('pass') is True and not bb.get('errors'), bb
+          assert aa.get('ledger_sha256')==bb.get('ledger_sha256')==new_sha
+          report={
+            'gate':'S3G1E_DETERMINISTIC_REFREEZE',
+            'pass':True,
+            'historical_run':30265340486,
+            'decompressed_content_identical_to_historical':True,
+            'deterministic_replay_count':2,
+            'deterministic_ledger_sha256':new_sha,
+            'errors':[],
+          }
+          Path('out-a/s3g1e_deterministic_refreeze.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
+          print(json.dumps(report,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1e-deterministic-refreeze
+          path: out-a
+          retention-days: 90
+          compression-level: 0
