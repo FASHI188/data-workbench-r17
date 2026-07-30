@@ -2,11 +2,6 @@ name: Stage3 Clean S3G1E Deterministic Refreeze
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'scripts/stage3_deterministic_gzip.py'
-      - 'scripts/finalize_stage3_filing_ledger_v325_deterministic.py'
-      - '.github/workflows/stage3-clean-s3g1e-deterministic-refreeze.yml'
 
 permissions:
   contents: read
