@@ -34,7 +34,7 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check \
             -c requirements/constraints-verified.txt \
-            requests openpyxl pytest pymupdf baostock pandas
+            requests beautifulsoup4 openpyxl pytest pymupdf baostock pandas
           python -m pip check
       - name: Assert exact installed versions
         run: |
@@ -42,6 +42,9 @@ jobs:
           from importlib.metadata import version
           expected = {
               'requests': '2.34.2',
+              'beautifulsoup4': '4.15.0',
+              'soupsieve': '2.9.1',
+              'typing-extensions': '4.16.0',
               'openpyxl': '3.1.5',
               'pytest': '9.1.1',
               'PyMuPDF': '1.28.0',
