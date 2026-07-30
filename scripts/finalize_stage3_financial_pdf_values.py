@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse,csv,gzip,hashlib,json
+import argparse,csv,gzip,hashlib,io,json
 from collections import Counter,defaultdict
 from datetime import date
 from pathlib import Path
@@ -24,9 +24,19 @@ def sha(path:Path)->str:
         for b in iter(lambda:f.read(1024*1024),b''):h.update(b)
     return h.hexdigest()
 
+
 def readgz(path:Path):
     with gzip.open(path,'rt',encoding='utf-8',newline='') as f:
         for r in csv.DictReader(f):yield r
+
+
+def write_deterministic_csv_gz(path:Path,fields,rows)->None:
+    # Canonical Stage3 fingerprints must not depend on output filename or wall-clock time.
+    with path.open('wb') as raw:
+        with gzip.GzipFile(filename='',mode='wb',fileobj=raw,compresslevel=9,mtime=0) as gz:
+            with io.TextIOWrapper(gz,encoding='utf-8',newline='') as f:
+                w=csv.DictWriter(f,fieldnames=fields);w.writeheader();w.writerows(rows)
+
 
 def main()->int:
     ap=argparse.ArgumentParser();ap.add_argument('--root',required=True);ap.add_argument('--versions',required=True);ap.add_argument('--stage2-manifest',required=True);ap.add_argument('--out',required=True);a=ap.parse_args()
@@ -82,14 +92,14 @@ def main()->int:
     numeric_out=out/'stage3_financial_raw_values.csv.gz';doc_out=out/'stage3_financial_documents.csv.gz'
     all_nums.sort(key=lambda r:(r['source_published_at'],r['exchange'],r['source_code'],r['announcement_id'],r['concept']))
     all_docs.sort(key=lambda r:(r['source_published_at'],r['exchange'],r['source_code'],r['announcement_id']))
-    with gzip.open(numeric_out,'wt',encoding='utf-8',newline='',compresslevel=9) as f:w=csv.DictWriter(f,fieldnames=NUMERIC_FIELDS);w.writeheader();w.writerows(all_nums)
-    with gzip.open(doc_out,'wt',encoding='utf-8',newline='',compresslevel=9) as f:w=csv.DictWriter(f,fieldnames=DOC_FIELDS);w.writeheader();w.writerows(all_docs)
+    write_deterministic_csv_gz(numeric_out,NUMERIC_FIELDS,all_nums)
+    write_deterministic_csv_gz(doc_out,DOC_FIELDS,all_docs)
     report={
         'gate':'S3G1J_ORIGINAL_PDF_FINANCIAL_VALUES_FINAL','pass':not errors,'stage2_version':stage2.get('version'),'stage2_fingerprint':stage2.get('stage2_dataset_fingerprint'),
         'canonical_version_count':len(expected_versions),'document_count':len(all_docs),'numeric_observation_count':len(all_nums),'concept_coverage':dict(coverage),
         'coverage_by_year':{k:dict(v) for k,v in sorted(by_year.items())},'coverage_by_family':{k:dict(v) for k,v in sorted(by_family.items())},
         'unresolved_tie_count':len(unresolved_ties),'document_error_count':len(bad_docs),'financial_values_sha256':sha(numeric_out),'financial_documents_sha256':sha(doc_out),
-        'authority':'CNINFO_ORIGINAL_FILING_PDF_BYTES_WITH_SHA256','historical_current_f10_used_as_truth':False,'errors':errors
+        'gzip_header_mtime':0,'gzip_embedded_filename':'','authority':'CNINFO_ORIGINAL_FILING_PDF_BYTES_WITH_SHA256','historical_current_f10_used_as_truth':False,'errors':errors
     }
     (out/'stage3_financial_raw_audit.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps({k:report[k] for k in ('gate','pass','canonical_version_count','document_count','numeric_observation_count','concept_coverage','unresolved_tie_count','document_error_count','errors')},ensure_ascii=False,indent=2))
