@@ -30,11 +30,7 @@ def main() -> int:
     req(project.get("alpha_training_allowed") is False, "project status unexpectedly allows Alpha training")
     req(project.get("live_signal_allowed") is False, "project status unexpectedly allows live signals")
 
-    expected_pending = {
-        "S3G1J_FINANCIAL_RAW_VALUES",
-        "S3G2_ANNOUNCEMENT_LEDGER",
-        "S3G4_EARNINGS_SURPRISE",
-    }
+    expected_pending = {"S3G1J_FINANCIAL_RAW_VALUES", "S3G4_EARNINGS_SURPRISE"}
     req(set(lock.get("remaining_unlocked_gates") or []) == expected_pending, "Stage3 final-lock pending gate set drift")
     components = authority.get("authoritative_components") or {}
     for gate in expected_pending:
@@ -52,8 +48,15 @@ def main() -> int:
     req(31 + 82 == 113, "S3G1J accepted accounting does not close")
 
     s3g2 = components.get("S3G2_ANNOUNCEMENT_LEDGER") or {}
-    req(s3g2.get("source_pr") == 40, "S3G2 authority does not point to PR #40")
-    req(s3g2.get("status") == "REPAIR_ACCEPTED_FINAL_ASSEMBLY_PENDING", "S3G2 repair must not be promoted to final PASS")
+    req(s3g2.get("repair_source_pr") == 40, "S3G2 repair provenance does not point to PR #40")
+    req(s3g2.get("status") == "FINAL_GATE_PASS" and s3g2.get("final_gate") is True, "S3G2 is not locked as final PASS")
+    req(s3g2.get("final_run_id") == 30521522476, "S3G2 final run drift")
+    req(s3g2.get("final_artifact_digest") == "sha256:b123e6386a42f3dc69054ca9f8e93e916728273db2702a9702184a40f7a9d498", "S3G2 final artifact digest drift")
+    req(s3g2.get("ledger_sha256") == "9c80bc1f86234696ad12031cfea972ac0bcea4528518a9d8c6e30af6d8ac9690", "S3G2 ledger SHA drift")
+    req(s3g2.get("security_identity_count") == 3402 and s3g2.get("g3_trading_days") == 2808, "S3G2 universe/calendar accounting drift")
+    lock_g2 = (lock.get("required_gates") or {}).get("S3G2_ANNOUNCEMENT_LEDGER") or {}
+    req(lock_g2.get("run_id") == 30521522476, "Stage3 final lock does not contain S3G2 final run")
+    req(lock_g2.get("artifact_digest") == s3g2.get("final_artifact_digest"), "Stage3 lock/authority S3G2 digest mismatch")
 
     s3g3b = components.get("S3G3B_INDUSTRY_LEDGER") or {}
     req(s3g3b.get("source_pr") == 35 and s3g3b.get("final_gate") is True, "S3G3B authority mismatch")
@@ -79,6 +82,8 @@ def main() -> int:
         "pass": not errors,
         "stage3_status": lock.get("status"),
         "pending_final_gates": sorted(expected_pending),
+        "s3g2_final_run": s3g2.get("final_run_id"),
+        "s3g2_ledger_sha256": s3g2.get("ledger_sha256"),
         "current_s3g1j_pr": authority.get("current_s3g1j_production_pr"),
         "s3g1j_candidate_recovered": accounting.get("v17_11_recovered"),
         "s3g1j_candidate_remaining_fail_closed": accounting.get("v17_11_remaining_fail_closed"),
