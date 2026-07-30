@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+# Shared clean-integration writer used only for deterministic Stage3 refreezes.
 import gzip
 import io
 from pathlib import Path
