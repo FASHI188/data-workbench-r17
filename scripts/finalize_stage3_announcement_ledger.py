@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse,bisect,csv,gzip,hashlib,json
+import argparse,bisect,csv,gzip,hashlib,io,json
 from collections import defaultdict,Counter
 from datetime import date,datetime
 from pathlib import Path
@@ -15,6 +15,14 @@ def sha(p:Path)->str:
 def readgz(p):
  with gzip.open(p,'rt',encoding='utf-8',newline='') as f:
   for r in csv.DictReader(f):yield r
+def write_deterministic_csv_gz(p:Path,fields,rows):
+ # Canonical Stage3 output must be byte-reproducible across clean reruns.
+ # Suppress filename and wall-clock mtime from the gzip header while preserving
+ # the existing CSV encoding/newline/compression semantics.
+ with p.open('wb') as raw:
+  with gzip.GzipFile(filename='',mode='wb',fileobj=raw,compresslevel=9,mtime=0) as gz:
+   with io.TextIOWrapper(gz,encoding='utf-8',newline='') as f:
+    w=csv.DictWriter(f,fieldnames=fields);w.writeheader();w.writerows(rows)
 def load_intervals(p):
  out={}
  with Path(p).open(encoding='utf-8',newline='') as f:
@@ -79,7 +87,7 @@ def main():
  if missing_url:errors.append(f'missing source URL {missing_url[:20]} count={len(missing_url)}')
  output.sort(key=lambda r:(r['source_published_at'],r['exchange'],r['source_code'],r['announcement_id']))
  p=out/'stage3_announcement_ledger.csv.gz'
- with gzip.open(p,'wt',encoding='utf-8',newline='',compresslevel=9) as f:w=csv.DictWriter(f,fieldnames=FIELDS);w.writeheader();w.writerows(output)
- report={'gate':'S3G2_POINT_IN_TIME_ANNOUNCEMENT_LEDGER','pass':not errors,'security_identity_count':selected,'g3_trading_days':len(days),'raw_category_rows':len(raw),'unique_announcements':len(output),'source_category_totals':dict(cat),'final_category_memberships':dict(cat_final),'code_time_remaps':len(remaps),'code_time_remap_samples':remaps[:100],'same_issuer_non_equity_instrument_rows':instrument_rows,'same_issuer_non_equity_instrument_announcements':len(instrument_announcements),'same_issuer_non_equity_instrument_samples':instrument_announcements[:100],'unusable_count':len(unusable),'unusable_samples':unusable[:100],'ledger_sha256':sha(p),'date_only_policy':'first strictly later G3 trading session','scalar_magnitude_from_title_allowed':False,'errors':errors}
+ write_deterministic_csv_gz(p,FIELDS,output)
+ report={'gate':'S3G2_POINT_IN_TIME_ANNOUNCEMENT_LEDGER','pass':not errors,'security_identity_count':selected,'g3_trading_days':len(days),'raw_category_rows':len(raw),'unique_announcements':len(output),'source_category_totals':dict(cat),'final_category_memberships':dict(cat_final),'code_time_remaps':len(remaps),'code_time_remap_samples':remaps[:100],'same_issuer_non_equity_instrument_rows':instrument_rows,'same_issuer_non_equity_instrument_announcements':len(instrument_announcements),'same_issuer_non_equity_instrument_samples':instrument_announcements[:100],'unusable_count':len(unusable),'unusable_samples':unusable[:100],'ledger_sha256':sha(p),'gzip_header_mtime':0,'gzip_embedded_filename':'','date_only_policy':'first strictly later G3 trading session','scalar_magnitude_from_title_allowed':False,'errors':errors}
  (out/'stage3_announcement_ledger_audit.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8');print(json.dumps(report,ensure_ascii=False,indent=2));return 0 if not errors else 2
 if __name__=='__main__':raise SystemExit(main())
