@@ -28,6 +28,7 @@ on:
       - 'tests/test_stage3_time_policy.py'
       - 'tests/test_stage3_trading_universe.py'
       - 'tests/test_stage3_announcement_transitions.py'
+      - 'tests/test_stage3_deterministic_gzip.py'
       - '.github/workflows/stage3-clean-core-contract.yml'
 
 permissions:
@@ -100,10 +101,11 @@ jobs:
               __import__(name)
           print('STAGE3_CORE_IMPORT_PASS', len(modules))
           PY
-      - name: Run PIT, filing, announcement identity and universe regressions
+      - name: Run PIT, filing, announcement identity, universe and deterministic-output regressions
         run: |
           pytest -q \
             tests/test_stage3_filing_ledger.py \
             tests/test_stage3_time_policy.py \
             tests/test_stage3_announcement_transitions.py \
-            tests/test_stage3_trading_universe.py
+            tests/test_stage3_trading_universe.py \
+            tests/test_stage3_deterministic_gzip.py
