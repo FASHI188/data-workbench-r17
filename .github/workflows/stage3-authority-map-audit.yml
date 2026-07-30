@@ -56,12 +56,30 @@ jobs:
             test "$actual" = "$digest"
           }
           verify_run 30510347556 stage3-s3g1j-v17-11-column-evidence-acceptance sha256:b1143faaf2c1a91fd64e21ef35c05e787200d957f888613fa2f2a2fc23c43ad9
-          verify_run 30521522476 stage3-s3g2-announcement-ledger-final sha256:b123e6386a42f3dc69054ca9f8e93e916728273db2702a9702184a40f7a9d498
           verify_run 30331243641 stage3-s3g3b-industry-classification-ledger sha256:f1da814c71fa698f3f10ce5dc7019bb86770f9d4e15ed7d7823a93a085adc872
           verify_run 30326328965 stage3-s3g1i-financial-pdf-population-probe sha256:3883eb629aaa0325cd1db6d3a1eefc96929c9673711bb3c004217ac6254324b9
           verify_run 30326328969 stage3-s3g3a-capco-industry-history-probe sha256:a635409dbab2fdc61852432acfcb294f97b4468831f23a9fa01320abf39ba9af
           verify_run 30326328970 stage3-s3g4a-earnings-forecast-parser-probe sha256:5384aed1c81782571486d32053b343218bb06a0aa45f1540faa4e619dd7d9ad4
           verify_run 30326328975 stage3-s3gu-trading-universe-policy sha256:1942c9e7baa0823772201cc1f6652e660d8b4b60dd8b0559d94dcefe7da4c9fa
+      - name: Verify deterministic S3G2 semantic evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          run=30522392946
+          expected_head=a71334cfb1221fd22329211b1272cab51128c4af
+          expected_ledger=0eb139572865628283f86c981990e59e076d5ef2a978a5967aace90d553e30dd
+          conclusion=$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')
+          headsha=$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json headSha --jq '.headSha')
+          test "$conclusion" = success
+          test "$headsha" = "$expected_head"
+          count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq '[.artifacts[] | select(.name=="stage3-s3g2-announcement-ledger-final")] | length')
+          test "$count" -ge 2
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq '.artifacts[] | select(.name=="stage3-s3g2-announcement-ledger-final") | .digest' | while read -r digest; do
+            case "$digest" in sha256:*) ;; *) exit 1 ;; esac
+          done
+          gh run view "$run" -R "$GITHUB_REPOSITORY" --log | grep -Fq "\"ledger_sha256\": \"$expected_ledger\""
+          gh run view "$run" -R "$GITHUB_REPOSITORY" --log | grep -Fq '"gzip_header_mtime": 0'
+          gh run view "$run" -R "$GITHUB_REPOSITORY" --log | grep -Fq '"errors": []'
       - name: Assert incomplete gates remain locked
         run: |
           python - <<'PY'
@@ -70,7 +88,11 @@ jobs:
           required=lock['required_gates']
           for gate in ('S3G1J_FINANCIAL_RAW_VALUES','S3G4_EARNINGS_SURPRISE'):
               assert required[gate]['run_id'] is None, (gate, required[gate])
-          assert required['S3G2_ANNOUNCEMENT_LEDGER']['run_id']==30521522476
+          g2=required['S3G2_ANNOUNCEMENT_LEDGER']
+          assert g2['run_id']==30522392946
+          assert g2['ledger_sha256']=='0eb139572865628283f86c981990e59e076d5ef2a978a5967aace90d553e30dd'
+          assert g2['deterministic_replay_count']==2
+          assert g2['artifact_digest_is_transport_only'] is True
           assert lock['status']=='NOT_READY'
-          print('STAGE3_LOCKED_WITH_S3G2_FINAL_PASS')
+          print('STAGE3_LOCKED_WITH_DETERMINISTIC_S3G2_FINAL_PASS')
           PY
