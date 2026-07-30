@@ -8,6 +8,8 @@ on:
       - 'config/security_code_transitions.json'
       - 'scripts/repair_g3_sse_code_transition.py'
       - 'scripts/audit_g3_code_identity.py'
+      - 'requirements/constraints-verified.txt'
+      - '.python-version'
       - '.github/workflows/stage2-g3-sse-601313-repair.yml'
 
 permissions:
@@ -28,8 +30,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-      - run: python -m pip install --disable-pip-version-check requests openpyxl
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests openpyxl
       - name: Restore corrected G2 lifecycle
         shell: bash
         run: |
@@ -80,6 +82,7 @@ jobs:
           cat data/ohlcv/g3_identity_stderr.log || true
           exit 0
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: stage2-g3-sse-601313-repaired-ohlcv
           path: |
