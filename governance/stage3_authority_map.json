@@ -11,24 +11,9 @@
     "live_signal_allowed": false
   },
   "authoritative_components": {
-    "S3G0_POINT_IN_TIME_FEATURE_CONTRACT": {
-      "source_ref": "stage3-point-in-time-features",
-      "run_id": 30265340598,
-      "status": "ACCEPTED_UPSTREAM_EVIDENCE",
-      "final_gate": true
-    },
-    "S3G1E_PERIODIC_FILING_LEDGER": {
-      "source_ref": "stage3-point-in-time-features",
-      "run_id": 30265340486,
-      "status": "ACCEPTED_UPSTREAM_EVIDENCE",
-      "final_gate": true
-    },
-    "S3G1G_REPORT_VERSION_SELECTION": {
-      "source_ref": "stage3-point-in-time-features",
-      "run_id": 30270405448,
-      "status": "ACCEPTED_UPSTREAM_EVIDENCE",
-      "final_gate": true
-    },
+    "S3G0_POINT_IN_TIME_FEATURE_CONTRACT": {"source_ref": "stage3-point-in-time-features", "run_id": 30265340598, "status": "ACCEPTED_UPSTREAM_EVIDENCE", "final_gate": true},
+    "S3G1E_PERIODIC_FILING_LEDGER": {"source_ref": "stage3-point-in-time-features", "run_id": 30265340486, "status": "ACCEPTED_UPSTREAM_EVIDENCE", "final_gate": true},
+    "S3G1G_REPORT_VERSION_SELECTION": {"source_ref": "stage3-point-in-time-features", "run_id": 30270405448, "status": "ACCEPTED_UPSTREAM_EVIDENCE", "final_gate": true},
     "S3G1I_POPULATION_PDF_PROBE": {
       "source_ref": "stage3-validation-gates-v2",
       "run_id": 30326328965,
@@ -43,27 +28,25 @@
       "accepted_candidate_run_id": 30510347556,
       "accepted_candidate_artifact": "stage3-s3g1j-v17-11-column-evidence-acceptance",
       "accepted_candidate_artifact_digest": "sha256:b1143faaf2c1a91fd64e21ef35c05e787200d957f888613fa2f2a2fc23c43ad9",
-      "accepted_candidate_accounting": {
-        "frozen_single_source_input": 127,
-        "v14_successes": 14,
-        "v14_remaining": 113,
-        "v17_11_recovered": 31,
-        "v17_11_remaining_fail_closed": 82
-      },
+      "accepted_candidate_accounting": {"frozen_single_source_input": 127, "v14_successes": 14, "v14_remaining": 113, "v17_11_recovered": 31, "v17_11_remaining_fail_closed": 82},
       "status": "ACCEPTED_CANDIDATE_NOT_FINAL",
       "final_gate": false,
       "final_requirement": "Full production-basis S3G1J finalizer must pass; exact-113 representative residual acceptance is not a Stage3 final gate."
     },
     "S3G2_ANNOUNCEMENT_LEDGER": {
-      "source_pr": 40,
-      "source_ref": "stage3-s3g2-instrument-repair-v2",
-      "head_sha": "1ac525aa0b56cd39b233e5c2da9e44d3707c55cb",
-      "latest_repair_run_id": 30340337606,
-      "latest_repair_artifact": "stage3-s3g2-announcement-instrument-repair-11",
-      "latest_repair_artifact_digest": "sha256:1022d91d8abd62b259be74f602f0ea783fc9eedb54ce2dad6f68a86b57c8ee5f",
-      "status": "REPAIR_ACCEPTED_FINAL_ASSEMBLY_PENDING",
-      "final_gate": false,
-      "final_requirement": "Reassemble all announcement shards on one integration head and pass the full point-in-time announcement finalizer."
+      "repair_source_pr": 40,
+      "repair_source_ref": "stage3-s3g2-instrument-repair-v2",
+      "repair_head_sha": "1ac525aa0b56cd39b233e5c2da9e44d3707c55cb",
+      "final_run_id": 30521522476,
+      "final_run_head_sha": "cdcbf11966e3b2ecedf99d308464017ff27f1d77",
+      "final_artifact": "stage3-s3g2-announcement-ledger-final",
+      "final_artifact_digest": "sha256:b123e6386a42f3dc69054ca9f8e93e916728273db2702a9702184a40f7a9d498",
+      "ledger_sha256": "9c80bc1f86234696ad12031cfea972ac0bcea4528518a9d8c6e30af6d8ac9690",
+      "security_identity_count": 3402,
+      "g3_trading_days": 2808,
+      "unique_announcements": 2138516,
+      "status": "FINAL_GATE_PASS",
+      "final_gate": true
     },
     "S3G3A_INDUSTRY_SOURCE_PROBE": {
       "source_ref": "stage3-validation-gates-v2",
@@ -89,11 +72,7 @@
       "status": "ACCEPTED_UPSTREAM_EVIDENCE",
       "final_gate": true
     },
-    "S3G4_EARNINGS_SURPRISE": {
-      "source_ref": "stage3-point-in-time-features",
-      "status": "FINAL_GATE_PENDING",
-      "final_gate": false
-    },
+    "S3G4_EARNINGS_SURPRISE": {"source_ref": "stage3-point-in-time-features", "status": "FINAL_GATE_PENDING", "final_gate": false},
     "S3GU_TRADING_UNIVERSE_POLICY": {
       "source_ref": "stage3-validation-gates-v2",
       "run_id": 30326328975,
@@ -102,22 +81,10 @@
       "final_gate": true
     }
   },
-  "non_merge_evidence_prs": [
-    44, 47, 52, 53, 56, 57, 58, 59, 61, 62, 64
-  ],
-  "superseded_s3g1j_production_prs": [
-    42, 43, 45, 46, 48, 49, 50, 51, 54, 55, 60
-  ],
+  "non_merge_evidence_prs": [44, 47, 52, 53, 56, 57, 58, 59, 61, 62, 64],
+  "superseded_s3g1j_production_prs": [42, 43, 45, 46, 48, 49, 50, 51, 54, 55, 60],
   "current_s3g1j_production_pr": 63,
-  "recommended_clean_integration_order": [
-    "S3G0/Foundation",
-    "S3G2 latest repair chain",
-    "S3G3A/B",
-    "S3G1J V17.11 runtime closure",
-    "S3G4A + S3G4",
-    "S3GU",
-    "Stage3 final lock/freeze"
-  ],
+  "recommended_clean_integration_order": ["S3G0/Foundation", "S3G2 final", "S3G3A/B", "S3G1J V17.11 runtime closure", "S3G4A + S3G4", "S3GU", "Stage3 final lock/freeze"],
   "policy": {
     "diagnostic_prs_are_evidence_not_merge_units": true,
     "accepted_candidate_does_not_equal_final_pass": true,
