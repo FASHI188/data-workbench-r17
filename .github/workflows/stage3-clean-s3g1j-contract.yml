@@ -1,5 +1,5 @@
 name: Stage3 Clean S3G1J Runtime Contract
-# Contract for the whitelisted production runtime closure and isolated candidate fallbacks.
+# Contract for the whitelisted production runtime closure and fail-closed regressions.
 
 on:
   workflow_dispatch:
@@ -45,7 +45,16 @@ jobs:
           python - <<'PY'
           import json
           x=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
-          assert x['file_count']==48, x
+          assert x['schema_version']==2, x
+          assert x['file_count']==51, x
+          p=x['v17_15_promotion']
+          assert p['exact_82_safety_run']==30534822941
+          assert p['source_sha_match_count']==82
+          assert p['baseline_recovered_count']==0
+          assert p['promoted_recovery_count']==1
+          assert p['promoted_recovery_announcement_ids']==['1225153907']
+          assert p['remaining_fail_closed_count']==81
+          assert p['production_wiring_status']=='PROMOTED_PENDING_PRODUCTION_EXACT_82_ACCEPTANCE'
           h=x['hard_invariants']
           assert h['accounting_identity_tolerance']=='0.005'
           assert h['original_pdf_authority'] is True
@@ -54,22 +63,27 @@ jobs:
           assert h['declared_issuer_gate_preserved'] is True
           assert h['unreliable_parse_fail_closed'] is True
           assert h['current_f10_historical_backfill_forbidden'] is True
+          assert h['global_row_tolerance_changed'] is False
+          assert h['adjacent_row_bridge_y_window']=='2.8 < delta <= 3.25'
           assert h['stage4_alpha_locked'] is True
+          assert x['production_final_status']=='NOT_FINAL'
           PY
-      - name: Import final runtime closure and isolated candidate module
+      - name: Import promoted production runtime closure
         run: |
           python - <<'PY'
           import sys
           sys.path.insert(0,'scripts')
           import extract_stage3_financial_pdf_values_v11 as extractor
-          import stage3_financial_pdf_parser_v10 as parser
+          import stage3_financial_pdf_parser_v11 as parser
           import stage3_financial_spatial_alias_v16_7 as column
-          import stage3_financial_spatial_alias_v17_15 as adjacent_candidate
+          import stage3_financial_spatial_alias_v17_15 as adjacent
           assert callable(extractor.parse_pdf_bytes)
+          assert extractor.METHOD.endswith('V17_15_STRICT_ADJACENT_ROW_FINAL_FALLBACK')
           assert callable(parser.parse_pdf_bytes)
+          assert parser.METHOD=='V17_15_STRICT_ADJACENT_ROW_FINAL_FALLBACK'
           assert callable(column.diagnose_spatial_balance_sheet_v16_7)
-          assert callable(adjacent_candidate.diagnose_spatial_balance_sheet_v17_15)
-          print('S3G1J_RUNTIME_IMPORT_PASS')
+          assert callable(adjacent.diagnose_spatial_balance_sheet_v17_15)
+          print('S3G1J_V17_15_PRODUCTION_RUNTIME_IMPORT_PASS')
           PY
       - name: Run inherited pure fail-closed regression contracts
         run: |
@@ -88,6 +102,7 @@ jobs:
             tests.test_stage3_v17_explicit_dual_evidence \
             tests.test_stage3_v17_column_evidence \
             tests.test_stage3_v17_15_adjacent_bridge \
+            tests.test_stage3_v17_15_production_parser \
             -v
       - name: Run official-PDF coordinate fallback regression
         run: python -m unittest tests.test_stage3_financial_coordinate_fallback_v14_integration -v
