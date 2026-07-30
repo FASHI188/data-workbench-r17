@@ -1,9 +1,11 @@
 name: Stage3 Clean S3G1J Runtime Contract
+# Contract for the whitelisted production runtime closure only.
 
 on:
   workflow_dispatch:
   pull_request:
     paths:
+      - 'governance/stage3_s3g1j_runtime_manifest.json'
       - 'scripts/extract_stage3_financial_pdf_values*.py'
       - 'scripts/stage3_financial_pdf_parser*.py'
       - 'scripts/stage3_financial_coordinate_fallback*.py'
@@ -38,6 +40,22 @@ jobs:
           python-version: '3.12.13'
       - name: Install verified Stage3 runtime
         run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf pytest
+      - name: Verify runtime provenance remains fail-closed
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          assert x['file_count']==48, x
+          h=x['hard_invariants']
+          assert h['accounting_identity_tolerance']=='0.005'
+          assert h['original_pdf_authority'] is True
+          assert h['source_sha_required'] is True
+          assert h['point_in_time_policy_preserved'] is True
+          assert h['declared_issuer_gate_preserved'] is True
+          assert h['unreliable_parse_fail_closed'] is True
+          assert h['current_f10_historical_backfill_forbidden'] is True
+          assert h['stage4_alpha_locked'] is True
+          PY
       - name: Import final runtime closure
         run: |
           python - <<'PY'
