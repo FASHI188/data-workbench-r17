@@ -1,0 +1,63 @@
+name: Stage3 S3G1J V17.4 Generic Dual Role AB
+
+on:
+  pull_request:
+    branches: [stage3-s3g1j-spatial-alias-columns-v16]
+    paths:
+      - '.github/workflows/stage3-s3g1j-v17-4-generic-dual-role-ab.yml'
+      - 'scripts/probe_stage3_s3g1j_v17_4_generic_dual_role_ab.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FROZEN_127_RUN: '30424465440'
+  V17_FUNNEL_RUN: '30506652840'
+  V17_3_RUN: '30508052978'
+  PYTHONPATH: scripts
+
+jobs:
+  ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - name: Require accepted V17/V17.3 evidence and restore frozen input
+        run: |
+          test "$(gh run view "$V17_FUNNEL_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+          test "$(gh run view "$V17_3_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+          rm -rf prepared v17 build/v17-4-generic-dual
+          gh run download "$FROZEN_127_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v15-single-source-input -D prepared
+          gh run download "$V17_FUNNEL_RUN" -R "$GITHUB_REPOSITORY" \
+            -n stage3-s3g1j-v17-residual-funnel-summary -D v17
+          test -f prepared/single_source_residual_versions.csv.gz
+          test -f v17/v17_residual_funnel.json
+          python - <<'PY'
+          import json
+          s=json.load(open('v17/v17_residual_funnel.json',encoding='utf-8'))
+          assert s['pass'] and s['category_counts']['NO_FORMAL_GROUP_EVENT']==17
+          assert s['stage4_alpha_locked'] is True
+          print('V17_4_LOCK_PASS',17)
+          PY
+      - name: Run diagnostic-only structural A/B on exact 17 residual PDFs
+        run: |
+          mkdir -p build/v17-4-generic-dual
+          python scripts/probe_stage3_s3g1j_v17_4_generic_dual_role_ab.py \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --v17-summary v17/v17_residual_funnel.json \
+            --out build/v17-4-generic-dual/generic_dual_role_ab.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-4-generic-dual-role-ab
+          path: build/v17-4-generic-dual/generic_dual_role_ab.json
+          retention-days: 90
+          compression-level: 0
