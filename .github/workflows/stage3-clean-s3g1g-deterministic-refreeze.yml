@@ -18,9 +18,14 @@ env:
   GH_TOKEN: ${{ github.token }}
   REFERENCE_RUN: '30382694721'
   REFERENCE_HEAD: 'aa70f769d937978718f47be747ad763fe09f2818'
-  REFERENCE_ARTIFACT: 'stage3-s3g1j-v13-production-acceptance'
-  REFERENCE_ARTIFACT_DIGEST: 'sha256:9755581103927bda1b11bce5fa06f8ef5695a5b0ae522e017eb4798505254a6c'
-  REFERENCE_PLAIN_SHA: '3330d20b5568f101ce417fce33689f6c09e2c61267f15dd0a0617d3557367571'
+  REFERENCE_ARTIFACT: 'stage3-s3g1j-identity-arbitration-v13'
+  REFERENCE_ARTIFACT_DIGEST: 'sha256:d5a1d819bf8e8a6b748480208a7ec4657de73380fdef7a6fd69a33d859159844'
+  REFERENCE_PLAIN_SHA: '14629abffc77e4c8a37fada0fa14ddae598fe8d0ef02d075ed19abc1e3651066'
+  FILING_LEDGER_RUN: '30265340486'
+  FILING_LEDGER_HEAD: '97325fd9e91dde8ea3e2bee47c5c44dff4a8153c'
+  FILING_LEDGER_ARTIFACT: 'stage3-s3g1e-periodic-filing-ledger-final'
+  FILING_LEDGER_ARTIFACT_DIGEST: 'sha256:350105d16011b8863f27fc4bc319635e580ffafde847ba86e751159dd652e0a0'
+  FILING_LEDGER_PLAIN_SHA: '373450168129c39225804d21816cc725e532988d505f80f208b76c576082a350'
   PYTHONPATH: scripts
 
 jobs:
@@ -32,32 +37,42 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12.13'
-      - name: Lock accepted V12.1 full-selection reference artifact
+      - name: Lock accepted V12.1 output and exact S3G1E input artifacts
         shell: bash
         run: |
           set -euo pipefail
-          conclusion=$(gh run view "$REFERENCE_RUN" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')
-          head=$(gh run view "$REFERENCE_RUN" -R "$GITHUB_REPOSITORY" --json headSha --jq '.headSha')
-          test "$conclusion" = success
-          test "$head" = "$REFERENCE_HEAD"
-          actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$REFERENCE_RUN/artifacts" --jq ".artifacts[] | select(.name==\"$REFERENCE_ARTIFACT\") | .digest")
-          test "$actual" = "$REFERENCE_ARTIFACT_DIGEST"
+          lock_artifact() {
+            run="$1"; head_expected="$2"; artifact="$3"; digest_expected="$4"
+            conclusion=$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')
+            head=$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json headSha --jq '.headSha')
+            test "$conclusion" = success
+            test "$head" = "$head_expected"
+            actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq ".artifacts[] | select(.name==\"$artifact\") | .digest")
+            test "$actual" = "$digest_expected"
+          }
+          lock_artifact "$REFERENCE_RUN" "$REFERENCE_HEAD" "$REFERENCE_ARTIFACT" "$REFERENCE_ARTIFACT_DIGEST"
+          lock_artifact "$FILING_LEDGER_RUN" "$FILING_LEDGER_HEAD" "$FILING_LEDGER_ARTIFACT" "$FILING_LEDGER_ARTIFACT_DIGEST"
       - name: Restore exact accepted input and V12.1 output
+        shell: bash
         run: |
-          rm -rf reference out-a out-b
+          set -euo pipefail
+          rm -rf reference filing-ledger out-a out-b
           gh run download "$REFERENCE_RUN" -R "$GITHUB_REPOSITORY" -n "$REFERENCE_ARTIFACT" -D reference
+          gh run download "$FILING_LEDGER_RUN" -R "$GITHUB_REPOSITORY" -n "$FILING_LEDGER_ARTIFACT" -D filing-ledger
+          test -f filing-ledger/stage3_periodic_filing_ledger.csv.gz
       - name: Locate and validate accepted full-selection basis
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY' > /tmp/s3g1g.env
           import gzip,glob,hashlib,json,os
-          ledgers=glob.glob('reference/**/s3g1e/**/periodic_filing_ledger.csv.gz',recursive=True)
+          ledger='filing-ledger/stage3_periodic_filing_ledger.csv.gz'
           refs=glob.glob('reference/**/v3/stage3_financial_report_versions_v3.csv.gz',recursive=True)
           audits=glob.glob('reference/**/v3/stage3_financial_report_versions_v3_audit.json',recursive=True)
-          assert len(ledgers)==1, ledgers
           assert len(refs)==1, refs
           assert len(audits)==1, audits
+          with gzip.open(ledger,'rb') as f: ledger_plain=f.read()
+          assert hashlib.sha256(ledger_plain).hexdigest()==os.environ['FILING_LEDGER_PLAIN_SHA']
           with gzip.open(refs[0],'rb') as f: plain=f.read()
           plain_sha=hashlib.sha256(plain).hexdigest()
           assert plain_sha==os.environ['REFERENCE_PLAIN_SHA'], plain_sha
@@ -66,7 +81,7 @@ jobs:
           assert a.get('versions')==13077, a
           assert a.get('source_switch_count')==5, a
           assert a.get('no_full_authority_count')==0, a
-          print('INPUT='+ledgers[0])
+          print('INPUT='+ledger)
           print('REFERENCE='+refs[0])
           PY
           cat /tmp/s3g1g.env
@@ -104,6 +119,7 @@ jobs:
             'gate':'S3G1G_V12_1_DETERMINISTIC_REFREEZE',
             'pass':True,
             'reference_run':30382694721,
+            'filing_ledger_run':30265340486,
             'versions':13077,
             'source_switch_count':5,
             'no_full_authority_count':0,
@@ -117,8 +133,11 @@ jobs:
           print(json.dumps(report,indent=2))
           PY
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: stage3-s3g1g-v12-1-deterministic-refreeze
-          path: out-a
+          path: |
+            out-a
+            out-b
           retention-days: 90
           compression-level: 0
