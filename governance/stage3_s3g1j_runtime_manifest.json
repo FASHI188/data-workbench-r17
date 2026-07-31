@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "integration_branch": "agent/stage3-clean-integration",
   "scope": "S3G1J production runtime closure and formal regression tests only; historical probes and diagnostic workflows are excluded from production authority",
   "source_candidate": {
@@ -29,7 +29,7 @@
       "1225153907"
     ],
     "remaining_fail_closed_count": 81,
-    "production_wiring_status": "ACCEPTED_IN_COMBINED_V17_17_PRODUCTION_REPLAY"
+    "production_wiring_status": "ACCEPTED_IN_COMBINED_V17_21_PRODUCTION_REPLAY"
   },
   "v17_17_promotion": {
     "exact_81_safety_run": 30548199275,
@@ -55,10 +55,44 @@
       "1212731093"
     ],
     "remaining_fail_closed_count": 80,
+    "production_wiring_status": "ACCEPTED_IN_COMBINED_V17_21_PRODUCTION_REPLAY"
+  },
+  "v17_21_promotion": {
+    "exact_80_residual_diagnostic_run": 30593361140,
+    "exact_80_residual_diagnostic_artifact": "stage3-s3g1j-v17-18-exact-80-residual-diagnostic",
+    "exact_80_residual_diagnostic_artifact_digest": "sha256:3713c252f8045c3e8a13133b18ab71c16336f22be636c518503f20b859d75957",
+    "exact_one_identity_diagnostic_run": 30594382890,
+    "exact_one_identity_diagnostic_artifact": "stage3-s3g1j-v17-19-exact-one-identity-diagnostic",
+    "exact_one_identity_diagnostic_artifact_digest": "sha256:6b6395f9e2c530002f1c663d3a14ac8a4764384fd5338118498f3e9e2b5f470e",
+    "exact_one_asset_total_geometry_run": 30595448528,
+    "exact_one_asset_total_geometry_artifact": "stage3-s3g1j-v17-20-exact-one-asset-total-geometry",
+    "exact_one_asset_total_geometry_artifact_digest": "sha256:e5db4edc20f314fa1ae44b3f4796415d5c0fc90a5f0186e6b053a01d12d976c0",
+    "candidate_exact_80_safety_run": 30595448576,
+    "candidate_exact_80_safety_head_sha": "3ba1c26ab6d60fc4eac11b34c7f256e87129f121",
+    "candidate_exact_80_safety_artifact": "stage3-s3g1j-v17-21-exact-80-safety-replay",
+    "candidate_exact_80_safety_artifact_digest": "sha256:08f1ec96e39d2faef113dd8254df134d6aa29783c03d85df820ebd7d5ce63d3e",
+    "production_acceptance_run": 30645504197,
+    "production_acceptance_head_sha": "ae967fda2c53796e9b886b54f1ab7b7ea69f6623",
+    "production_exact_80_artifact": "stage3-s3g1j-v17-21-production-exact-80-acceptance",
+    "production_exact_80_artifact_digest": "sha256:1c4209c3b037a5b308fd46cc1d9959c2425111ed982a96eaeef978cc4721b7ac",
+    "combined_production_exact_82_artifact": "stage3-s3g1j-v17-21-combined-production-exact-82-acceptance",
+    "combined_production_exact_82_artifact_digest": "sha256:3779e0a7a6f6697ade3a58d6463a2200bf06b83855b4800a5750ebed5ca312f5",
+    "source_sha_match_count": 82,
+    "combined_production_recovered_count": 3,
+    "combined_production_recovered_announcement_ids": [
+      "1212731093",
+      "1219311356",
+      "1225153907"
+    ],
+    "v17_21_incremental_recovery_count": 1,
+    "v17_21_incremental_recovery_announcement_ids": [
+      "1219311356"
+    ],
+    "remaining_fail_closed_count": 79,
     "production_wiring_status": "PRODUCTION_ACCEPTED_NOT_FINAL"
   },
-  "integration_commit": "0eb4a62daeb8e01b9a15d764c94e9151438e3393",
-  "file_count": 55,
+  "integration_commit": "8c83e92d4261215f93e66aa47597d61f00043dad",
+  "file_count": 60,
   "scope_class": "PRODUCTION_RUNTIME_AND_FAIL_CLOSED_REGRESSION_TESTS_ONLY",
   "excluded_classes": [
     "probe_scripts",
@@ -81,7 +115,8 @@
     "V17.11 trusted frozen-date column evidence",
     "V17.15 exact-terminal adjacent-row final fallback",
     "V17.17 strict total-equity and paired two-row frozen-date header final fallback",
-    "V17.17 formal deterministic 64-shard extraction output contract"
+    "V17.21 exact reverse-adjacent asset-total final fallback",
+    "V17.21 generation-locked deterministic 64-shard extraction and finalizer contract"
   ],
   "hard_invariants": {
     "accounting_identity_tolerance": "0.005",
@@ -97,11 +132,19 @@
     "paired_header_evidence_source": "V17_17_STRICT_THREE_COLUMN_TWO_ROW_YEAR_MONTH_DAY_HEADER",
     "paired_header_column_count": 3,
     "paired_header_expected_column_index": 0,
+    "reverse_asset_total_alias": "资产总计",
+    "reverse_asset_total_y_window": "5.50 <= delta <= 6.25",
+    "reverse_asset_total_amount_column_count": 2,
     "e_equals_a_minus_l_inference": false,
     "formal_shard_count": 64,
+    "formal_runtime_generation": "V17.21",
+    "formal_shard_gate": "S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_21",
+    "formal_parser_method": "CNINFO_ORIGINAL_PDF_PYMUPDF_V13_V17_21_EXACT_REVERSE_ADJACENT_ASSET_TOTAL_FINAL_FALLBACK",
+    "formal_methodology_version": "V3.3.3-V17.21",
     "formal_shard_gzip_mtime": 0,
     "formal_shard_embedded_filename": "",
     "formal_numeric_source_format": "PDF",
+    "mixed_runtime_generation_forbidden": true,
     "stage4_alpha_locked": true
   },
   "tests": {
@@ -112,8 +155,13 @@
     "v17_17_production_parser_contracts": 5,
     "v17_17_formal_shard_output_contracts": 1,
     "v17_17_exact_81_source_sha_replay": 81,
-    "v17_17_combined_production_exact_82_source_sha_replay": 82
+    "v17_17_combined_production_exact_82_source_sha_replay": 82,
+    "v17_21_production_parser_contracts": 6,
+    "v17_21_final_chain_contracts": 4,
+    "v17_21_candidate_exact_80_source_sha_replay": 80,
+    "v17_21_production_exact_80_source_sha_replay": 80,
+    "v17_21_combined_production_exact_82_source_sha_replay": 82
   },
   "production_final_status": "NOT_FINAL",
-  "remaining_final_requirement": "Full 64-shard S3G1J final build and finalizer; accepted V17.17 production runtime leaves 80 residual documents fail closed."
+  "remaining_final_requirement": "Full 64-shard S3G1J final build and finalizer; accepted V17.21 production runtime leaves 79 residual documents fail closed."
 }
