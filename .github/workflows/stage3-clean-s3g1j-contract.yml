@@ -81,8 +81,13 @@ jobs:
           assert h['paired_header_column_count']==3
           assert h['paired_header_expected_column_index']==0
           assert h['e_equals_a_minus_l_inference'] is False
+          assert h['formal_shard_count']==64
+          assert h['formal_shard_gzip_mtime']==0
+          assert h['formal_shard_embedded_filename']==''
+          assert h['formal_numeric_source_format']=='PDF'
           assert h['stage4_alpha_locked'] is True
-          assert x['tests']['v17_17_production_parser_contracts']==4
+          assert x['tests']['v17_17_production_parser_contracts']==5
+          assert x['tests']['v17_17_formal_shard_output_contracts']==1
           assert x['tests']['v17_17_combined_production_exact_82_source_sha_replay']==82
           assert x['production_final_status']=='NOT_FINAL'
           PY
@@ -98,6 +103,8 @@ jobs:
           import stage3_financial_spatial_alias_v17_17 as paired
           assert callable(extractor.parse_pdf_bytes)
           assert extractor.METHOD.endswith('V17_17_STRICT_TOTAL_EQUITY_PAIRED_HEADER_FINAL_FALLBACK')
+          assert extractor.METHODOLOGY_VERSION=='V3.3.3-V17.17'
+          assert callable(extractor.write_deterministic_csv_gz)
           assert callable(parser.parse_pdf_bytes)
           assert parser.METHOD=='V17_17_STRICT_TOTAL_EQUITY_PAIRED_HEADER_FINAL_FALLBACK'
           assert callable(column.diagnose_spatial_balance_sheet_v16_7)
