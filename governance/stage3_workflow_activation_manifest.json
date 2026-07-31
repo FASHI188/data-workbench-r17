@@ -9,7 +9,8 @@
     ".github/workflows/stage3-authority-map-audit.yml",
     ".github/workflows/stage3-clean-core-contract.yml",
     ".github/workflows/stage3-clean-s3g1j-contract.yml",
-    ".github/workflows/stage3-clean-s3g1j-v17-21-production.yml"
+    ".github/workflows/stage3-clean-s3g1j-v17-21-production.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-21-full-final.yml"
   ],
   "removed_from_active_workflows": [
     ".github/workflows/stage3-clean-s3g1e-deterministic-refreeze.yml",
