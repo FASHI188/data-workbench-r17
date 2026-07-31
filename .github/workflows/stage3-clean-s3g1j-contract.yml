@@ -45,16 +45,27 @@ jobs:
           python - <<'PY'
           import json
           x=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
-          assert x['schema_version']==2, x
-          assert x['file_count']==51, x
-          p=x['v17_15_promotion']
-          assert p['exact_82_safety_run']==30534822941
-          assert p['source_sha_match_count']==82
-          assert p['baseline_recovered_count']==0
-          assert p['promoted_recovery_count']==1
-          assert p['promoted_recovery_announcement_ids']==['1225153907']
-          assert p['remaining_fail_closed_count']==81
-          assert p['production_wiring_status']=='PROMOTED_PENDING_PRODUCTION_EXACT_82_ACCEPTANCE'
+          assert x['schema_version']==3, x
+          assert x['file_count']==55, x
+          p15=x['v17_15_promotion']
+          assert p15['accepted_production_exact_82_run']==30535567713
+          assert p15['source_sha_match_count']==82
+          assert p15['promoted_recovery_count']==1
+          assert p15['promoted_recovery_announcement_ids']==['1225153907']
+          assert p15['remaining_fail_closed_count']==81
+          assert p15['production_wiring_status']=='ACCEPTED_IN_COMBINED_V17_17_PRODUCTION_REPLAY'
+          p17=x['v17_17_promotion']
+          assert p17['exact_81_safety_run']==30548199275
+          assert p17['production_exact_81_run']==30550485070
+          assert p17['combined_production_exact_82_run']==30551663340
+          assert p17['combined_production_exact_82_head_sha']=='a6bff5c3b46d7715e731df16be77f9daf7e9bc29'
+          assert p17['combined_production_exact_82_artifact_digest']=='sha256:cc73d7e1cfc35f6209176b17b37db69cb5edacb8895d1edb447effd797a89541'
+          assert p17['source_sha_match_count']==82
+          assert p17['combined_production_recovered_count']==2
+          assert p17['combined_production_recovered_announcement_ids']==['1212731093','1225153907']
+          assert p17['v17_17_incremental_recovery_announcement_ids']==['1212731093']
+          assert p17['remaining_fail_closed_count']==80
+          assert p17['production_wiring_status']=='PRODUCTION_ACCEPTED_NOT_FINAL'
           h=x['hard_invariants']
           assert h['accounting_identity_tolerance']=='0.005'
           assert h['original_pdf_authority'] is True
@@ -65,7 +76,14 @@ jobs:
           assert h['current_f10_historical_backfill_forbidden'] is True
           assert h['global_row_tolerance_changed'] is False
           assert h['adjacent_row_bridge_y_window']=='2.8 < delta <= 3.25'
+          assert h['strict_total_equity_alias']=='股东权益总计'
+          assert h['paired_header_evidence_source']=='V17_17_STRICT_THREE_COLUMN_TWO_ROW_YEAR_MONTH_DAY_HEADER'
+          assert h['paired_header_column_count']==3
+          assert h['paired_header_expected_column_index']==0
+          assert h['e_equals_a_minus_l_inference'] is False
           assert h['stage4_alpha_locked'] is True
+          assert x['tests']['v17_17_production_parser_contracts']==4
+          assert x['tests']['v17_17_combined_production_exact_82_source_sha_replay']==82
           assert x['production_final_status']=='NOT_FINAL'
           PY
       - name: Import promoted production runtime closure
@@ -73,17 +91,19 @@ jobs:
           python - <<'PY'
           import sys
           sys.path.insert(0,'scripts')
-          import extract_stage3_financial_pdf_values_v11 as extractor
-          import stage3_financial_pdf_parser_v11 as parser
+          import extract_stage3_financial_pdf_values_v12 as extractor
+          import stage3_financial_pdf_parser_v12 as parser
           import stage3_financial_spatial_alias_v16_7 as column
           import stage3_financial_spatial_alias_v17_15 as adjacent
+          import stage3_financial_spatial_alias_v17_17 as paired
           assert callable(extractor.parse_pdf_bytes)
-          assert extractor.METHOD.endswith('V17_15_STRICT_ADJACENT_ROW_FINAL_FALLBACK')
+          assert extractor.METHOD.endswith('V17_17_STRICT_TOTAL_EQUITY_PAIRED_HEADER_FINAL_FALLBACK')
           assert callable(parser.parse_pdf_bytes)
-          assert parser.METHOD=='V17_15_STRICT_ADJACENT_ROW_FINAL_FALLBACK'
+          assert parser.METHOD=='V17_17_STRICT_TOTAL_EQUITY_PAIRED_HEADER_FINAL_FALLBACK'
           assert callable(column.diagnose_spatial_balance_sheet_v16_7)
           assert callable(adjacent.diagnose_spatial_balance_sheet_v17_15)
-          print('S3G1J_V17_15_PRODUCTION_RUNTIME_IMPORT_PASS')
+          assert callable(paired.diagnose_spatial_balance_sheet_v17_17)
+          print('S3G1J_V17_17_PRODUCTION_RUNTIME_IMPORT_PASS')
           PY
       - name: Run inherited pure fail-closed regression contracts
         run: |
@@ -103,6 +123,7 @@ jobs:
             tests.test_stage3_v17_column_evidence \
             tests.test_stage3_v17_15_adjacent_bridge \
             tests.test_stage3_v17_15_production_parser \
+            tests.test_stage3_v17_17_production_parser \
             -v
       - name: Run official-PDF coordinate fallback regression
         run: python -m unittest tests.test_stage3_financial_coordinate_fallback_v14_integration -v
