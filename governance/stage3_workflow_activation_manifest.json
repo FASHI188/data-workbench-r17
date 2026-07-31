@@ -1,16 +1,26 @@
 {
   "schema_version": 1,
-  "status": "ACTIVE_WORKFLOW_SET_REDUCED",
-  "effective_from_head": "dccb8a2c960e882ea0afb33250d2281a902171ee",
-  "policy": "Historical diagnostics, superseded candidates and frozen evidence workflows are retained through Git history, immutable run IDs and artifact digests, but are removed from the active .github/workflows directory so ordinary pull-request synchronization cannot rerun or redefine historical evidence.",
+  "status": "ACTIVE_WORKFLOW_SET_WITH_TEMPORARY_DIAGNOSTIC",
+  "effective_from_head": "f9e2326858e89fdc95b393e8e240da0ba0bf6d40",
+  "policy": "Historical diagnostics, superseded candidates and frozen evidence workflows are retained through Git history, immutable run IDs and artifact digests, but are removed from the active .github/workflows directory so ordinary pull-request synchronization cannot rerun or redefine historical evidence. One explicitly named diagnostic may be activated temporarily when it is source-locked, read-only, fail-closed and retired after its artifact is reviewed.",
   "active_stage3_workflows": [
     ".github/workflows/repository-safety-audit.yml",
     ".github/workflows/runtime-reproducibility.yml",
     ".github/workflows/stage3-authority-map-audit.yml",
     ".github/workflows/stage3-clean-core-contract.yml",
     ".github/workflows/stage3-clean-s3g1j-contract.yml",
-    ".github/workflows/stage3-clean-s3g1j-v17-21-production.yml"
+    ".github/workflows/stage3-clean-s3g1j-v17-21-production.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-22-601111-page47.yml"
   ],
+  "temporary_diagnostic": {
+    "workflow": ".github/workflows/stage3-clean-s3g1j-v17-22-601111-page47.yml",
+    "scope": "Exact announcement 1217717273 / 601111 / 2023H1 pages 44-50 native PDF structure only",
+    "no_parser_change": true,
+    "no_ocr": true,
+    "no_accounting_inference": true,
+    "source_sha_required": true,
+    "retire_after_artifact_review": true
+  },
   "removed_from_active_workflows": [
     ".github/workflows/stage3-clean-s3g1e-deterministic-refreeze.yml",
     ".github/workflows/stage3-clean-s3g1g-deterministic-refreeze.yml",
@@ -32,7 +42,7 @@
     ".github/workflows/stage3-clean-s3g2-final.yml"
   ],
   "evidence_retention": {
-    "workflow_definitions": "Git history at and before dccb8a2c960e882ea0afb33250d2281a902171ee",
+    "workflow_definitions": "Git history at and before dccb8a2c960e882ea0afb33250d2281a902171ee plus the temporary diagnostic commit",
     "accepted_runs": "Referenced by governance/stage3_authority_map.json and governance/stage3_s3g1j_runtime_manifest.json",
     "artifact_identity": "Semantic dataset hashes remain authoritative; artifact archive digests remain transport-instance evidence only"
   },

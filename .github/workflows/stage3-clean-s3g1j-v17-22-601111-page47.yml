@@ -1,0 +1,95 @@
+name: Stage3 Clean S3G1J V17.22 601111 Page47 Diagnostic
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/diagnose_stage3_s3g1j_v17_22_601111_page47.py'
+      - '.github/workflows/stage3-clean-s3g1j-v17-22-601111-page47.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FROZEN_RUN: '30424465440'
+  FROZEN_HEAD: 'be42608b75f77af13c36620da7e7fa03c563afde'
+  FROZEN_ARTIFACT: 'stage3-s3g1j-v15-single-source-input'
+  FROZEN_DIGEST: 'sha256:272f52239adc2fc5d4343ec091495dffcd39324b425784cdf5a7491f63a2e6fd'
+  ACCEPTED_RUN: '30510347556'
+  ACCEPTED_HEAD: 'e98d26b962a58cecc5c6416214e3c798c5e8a49e'
+  ACCEPTED_ARTIFACT: 'stage3-s3g1j-v17-11-column-evidence-acceptance'
+  ACCEPTED_DIGEST: 'sha256:b1143faaf2c1a91fd64e21ef35c05e787200d957f888613fa2f2a2fc23c43ad9'
+  V17_21_RUN: '30645504197'
+  V17_21_HEAD: 'ae967fda2c53796e9b886b54f1ab7b7ea69f6623'
+  V17_21_ARTIFACT: 'stage3-s3g1j-v17-21-combined-production-exact-82-acceptance'
+  V17_21_DIGEST: 'sha256:3779e0a7a6f6697ade3a58d6463a2200bf06b83855b4800a5750ebed5ca312f5'
+  PYTHONPATH: scripts
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact verified diagnostic dependencies
+        run: python -m pip install --disable-pip-version-check --constraint requirements/constraints-verified.txt requests PyMuPDF
+      - name: Lock exact frozen, source-SHA, and V17.21 production evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          lock_run_artifact() {
+            run="$1"; expected_head="$2"; artifact="$3"; expected_digest="$4"
+            for attempt in 1 2 3 4 5 6; do
+              conclusion=$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion' 2>/dev/null || true)
+              head=$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json headSha --jq '.headSha' 2>/dev/null || true)
+              actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq ".artifacts[] | select(.name==\"$artifact\") | .digest" 2>/dev/null || true)
+              if [ "$conclusion" = success ] && [ "$head" = "$expected_head" ] && [ "$actual" = "$expected_digest" ]; then
+                return 0
+              fi
+              sleep $((attempt * 3))
+            done
+            echo "failed to lock run=$run artifact=$artifact" >&2
+            return 1
+          }
+          lock_run_artifact "$FROZEN_RUN" "$FROZEN_HEAD" "$FROZEN_ARTIFACT" "$FROZEN_DIGEST"
+          lock_run_artifact "$ACCEPTED_RUN" "$ACCEPTED_HEAD" "$ACCEPTED_ARTIFACT" "$ACCEPTED_DIGEST"
+          lock_run_artifact "$V17_21_RUN" "$V17_21_HEAD" "$V17_21_ARTIFACT" "$V17_21_DIGEST"
+          python - <<'PY'
+          import json
+          x=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          assert x['schema_version']==4
+          assert x['v17_21_promotion']['remaining_fail_closed_count']==79
+          assert x['production_final_status']=='NOT_FINAL'
+          assert x['hard_invariants']['stage4_alpha_locked'] is True
+          PY
+      - name: Restore exact diagnostic inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf prepared accepted promoted build/v17-22
+          gh run download "$FROZEN_RUN" -R "$GITHUB_REPOSITORY" -n "$FROZEN_ARTIFACT" -D prepared
+          gh run download "$ACCEPTED_RUN" -R "$GITHUB_REPOSITORY" -n "$ACCEPTED_ARTIFACT" -D accepted
+          gh run download "$V17_21_RUN" -R "$GITHUB_REPOSITORY" -n "$V17_21_ARTIFACT" -D promoted
+          test -f prepared/single_source_residual_versions.csv.gz
+          test -f accepted/v17_11_column_evidence_acceptance.json
+          test -f promoted/candidate/shard0.json
+      - name: Diagnose page 47 native text and graphics without OCR
+        run: |
+          mkdir -p build/v17-22
+          python scripts/diagnose_stage3_s3g1j_v17_22_601111_page47.py \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --v17-11-acceptance accepted/v17_11_column_evidence_acceptance.json \
+            --v17-21-shard0 promoted/candidate/shard0.json \
+            --out build/v17-22/v17_22_601111_page47_native_structure.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-22-601111-page47-native-structure
+          path: build/v17-22
+          retention-days: 90
+          compression-level: 0
