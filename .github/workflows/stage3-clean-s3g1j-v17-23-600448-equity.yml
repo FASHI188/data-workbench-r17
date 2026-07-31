@@ -1,12 +1,11 @@
-name: Stage3 Clean S3G1J V17.22 601111 Page47 Diagnostic
+name: Stage3 Clean S3G1J V17.23 600448 Equity Geometry
 
 on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'scripts/diagnose_stage3_s3g1j_v17_22_601111_page47.py'
-      - 'scripts/diagnose_stage3_s3g1j_v17_22_1_601111_image_boundary.py'
-      - '.github/workflows/stage3-clean-s3g1j-v17-22-601111-page47.yml'
+      - 'scripts/diagnose_stage3_s3g1j_v17_23_600448_equity_geometry.py'
+      - '.github/workflows/stage3-clean-s3g1j-v17-23-600448-equity.yml'
 
 permissions:
   contents: read
@@ -49,12 +48,9 @@ jobs:
               conclusion=$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion' 2>/dev/null || true)
               head=$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json headSha --jq '.headSha' 2>/dev/null || true)
               actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq ".artifacts[] | select(.name==\"$artifact\") | .digest" 2>/dev/null || true)
-              if [ "$conclusion" = success ] && [ "$head" = "$expected_head" ] && [ "$actual" = "$expected_digest" ]; then
-                return 0
-              fi
+              if [ "$conclusion" = success ] && [ "$head" = "$expected_head" ] && [ "$actual" = "$expected_digest" ]; then return 0; fi
               sleep $((attempt * 3))
             done
-            echo "failed to lock run=$run artifact=$artifact" >&2
             return 1
           }
           lock_run_artifact "$FROZEN_RUN" "$FROZEN_HEAD" "$FROZEN_ARTIFACT" "$FROZEN_DIGEST"
@@ -68,29 +64,29 @@ jobs:
           assert x['production_final_status']=='NOT_FINAL'
           assert x['hard_invariants']['stage4_alpha_locked'] is True
           PY
-      - name: Restore exact diagnostic inputs
+      - name: Restore exact inputs
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf prepared accepted promoted build/v17-22
+          rm -rf prepared accepted promoted build/v17-23
           gh run download "$FROZEN_RUN" -R "$GITHUB_REPOSITORY" -n "$FROZEN_ARTIFACT" -D prepared
           gh run download "$ACCEPTED_RUN" -R "$GITHUB_REPOSITORY" -n "$ACCEPTED_ARTIFACT" -D accepted
           gh run download "$V17_21_RUN" -R "$GITHUB_REPOSITORY" -n "$V17_21_ARTIFACT" -D promoted
           test -f prepared/single_source_residual_versions.csv.gz
           test -f accepted/v17_11_column_evidence_acceptance.json
           test -f promoted/candidate/shard0.json
-      - name: Correct header classification and prove page 48 native-text boundary
+      - name: Diagnose exact group equity alias and row geometry
         run: |
-          mkdir -p build/v17-22
-          python scripts/diagnose_stage3_s3g1j_v17_22_1_601111_image_boundary.py \
+          mkdir -p build/v17-23
+          python scripts/diagnose_stage3_s3g1j_v17_23_600448_equity_geometry.py \
             --versions prepared/single_source_residual_versions.csv.gz \
             --v17-11-acceptance accepted/v17_11_column_evidence_acceptance.json \
             --v17-21-shard0 promoted/candidate/shard0.json \
-            --out build/v17-22/v17_22_1_601111_image_boundary.json
+            --out build/v17-23/v17_23_600448_equity_geometry.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: stage3-s3g1j-v17-22-1-601111-image-boundary
-          path: build/v17-22
+          name: stage3-s3g1j-v17-23-600448-equity-geometry
+          path: build/v17-23
           retention-days: 90
           compression-level: 0
