@@ -57,7 +57,7 @@
     "remaining_fail_closed_count": 80,
     "production_wiring_status": "PRODUCTION_ACCEPTED_NOT_FINAL"
   },
-  "integration_commit": "a6bff5c3b46d7715e731df16be77f9daf7e9bc29",
+  "integration_commit": "0eb4a62daeb8e01b9a15d764c94e9151438e3393",
   "file_count": 55,
   "scope_class": "PRODUCTION_RUNTIME_AND_FAIL_CLOSED_REGRESSION_TESTS_ONLY",
   "excluded_classes": [
@@ -80,7 +80,8 @@
     "V17.7 explicit role/unit evidence",
     "V17.11 trusted frozen-date column evidence",
     "V17.15 exact-terminal adjacent-row final fallback",
-    "V17.17 strict total-equity and paired two-row frozen-date header final fallback"
+    "V17.17 strict total-equity and paired two-row frozen-date header final fallback",
+    "V17.17 formal deterministic 64-shard extraction output contract"
   ],
   "hard_invariants": {
     "accounting_identity_tolerance": "0.005",
@@ -97,6 +98,10 @@
     "paired_header_column_count": 3,
     "paired_header_expected_column_index": 0,
     "e_equals_a_minus_l_inference": false,
+    "formal_shard_count": 64,
+    "formal_shard_gzip_mtime": 0,
+    "formal_shard_embedded_filename": "",
+    "formal_numeric_source_format": "PDF",
     "stage4_alpha_locked": true
   },
   "tests": {
@@ -104,7 +109,8 @@
     "official_pdf_positive_samples": 5,
     "official_pdf_negative_samples": 3,
     "v17_15_exact_82_source_sha_replay": 82,
-    "v17_17_production_parser_contracts": 4,
+    "v17_17_production_parser_contracts": 5,
+    "v17_17_formal_shard_output_contracts": 1,
     "v17_17_exact_81_source_sha_replay": 81,
     "v17_17_combined_production_exact_82_source_sha_replay": 82
   },
