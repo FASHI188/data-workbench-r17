@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "integration_branch": "agent/stage3-clean-integration",
   "scope": "S3G1J production runtime closure and formal regression tests only; historical probes and diagnostic workflows are excluded from production authority",
   "source_candidate": {
@@ -18,6 +18,10 @@
     "exact_82_safety_head_sha": "85f59e96d5e80ae00b657562c39a01e0bb4ed275",
     "exact_82_safety_artifact": "stage3-s3g1j-v17-15-exact-82-safety-replay",
     "exact_82_safety_artifact_digest": "sha256:67641d6bd9623af196b1bc608f0b63469fc001ef5cecb43624e34d640aa527ff",
+    "accepted_production_exact_82_run": 30535567713,
+    "accepted_production_exact_82_head_sha": "55ce359de27f32343f272b4d53d167f08ee38ea1",
+    "accepted_production_exact_82_artifact": "stage3-s3g1j-v17-15-exact-82-safety-replay",
+    "accepted_production_exact_82_artifact_digest": "sha256:6bb7fe3530c1f56486092a99476e7a72669b40f172334281920ca244e785ba98",
     "source_sha_match_count": 82,
     "baseline_recovered_count": 0,
     "promoted_recovery_count": 1,
@@ -25,10 +29,36 @@
       "1225153907"
     ],
     "remaining_fail_closed_count": 81,
-    "production_wiring_status": "PROMOTED_PENDING_PRODUCTION_EXACT_82_ACCEPTANCE"
+    "production_wiring_status": "ACCEPTED_IN_COMBINED_V17_17_PRODUCTION_REPLAY"
   },
-  "integration_commit": "0a7a8f1e20a2b2e643e4afc468cfd7657ce62621",
-  "file_count": 51,
+  "v17_17_promotion": {
+    "exact_81_safety_run": 30548199275,
+    "exact_81_safety_head_sha": "c9fe774466cd146fbab394a906d409d2086ff2d6",
+    "exact_81_safety_artifact": "stage3-s3g1j-v17-17-exact-81-safety-replay",
+    "exact_81_safety_artifact_digest": "sha256:695c328f9f989ed181833247cea38868e424cedea0fcfc7a6ee28f0ab835307e",
+    "production_exact_81_run": 30550485070,
+    "production_exact_81_head_sha": "93c712498ade4167c7e9adb91d01dcd4a886eb51",
+    "production_exact_81_artifact": "stage3-s3g1j-v17-17-production-exact-81-acceptance",
+    "production_exact_81_artifact_digest": "sha256:7606566fd37633c6c47f0efd7f9f6605819077a582d61b5aa06ee87d30421e5c",
+    "combined_production_exact_82_run": 30551663340,
+    "combined_production_exact_82_head_sha": "a6bff5c3b46d7715e731df16be77f9daf7e9bc29",
+    "combined_production_exact_82_artifact": "stage3-s3g1j-v17-17-combined-production-exact-82-acceptance",
+    "combined_production_exact_82_artifact_digest": "sha256:cc73d7e1cfc35f6209176b17b37db69cb5edacb8895d1edb447effd797a89541",
+    "source_sha_match_count": 82,
+    "combined_production_recovered_count": 2,
+    "combined_production_recovered_announcement_ids": [
+      "1212731093",
+      "1225153907"
+    ],
+    "v17_17_incremental_recovery_count": 1,
+    "v17_17_incremental_recovery_announcement_ids": [
+      "1212731093"
+    ],
+    "remaining_fail_closed_count": 80,
+    "production_wiring_status": "PRODUCTION_ACCEPTED_NOT_FINAL"
+  },
+  "integration_commit": "a6bff5c3b46d7715e731df16be77f9daf7e9bc29",
+  "file_count": 55,
   "scope_class": "PRODUCTION_RUNTIME_AND_FAIL_CLOSED_REGRESSION_TESTS_ONLY",
   "excluded_classes": [
     "probe_scripts",
@@ -49,7 +79,8 @@
     "V16.7 contextual period/column fallback",
     "V17.7 explicit role/unit evidence",
     "V17.11 trusted frozen-date column evidence",
-    "V17.15 exact-terminal adjacent-row final fallback"
+    "V17.15 exact-terminal adjacent-row final fallback",
+    "V17.17 strict total-equity and paired two-row frozen-date header final fallback"
   ],
   "hard_invariants": {
     "accounting_identity_tolerance": "0.005",
@@ -61,14 +92,22 @@
     "current_f10_historical_backfill_forbidden": true,
     "global_row_tolerance_changed": false,
     "adjacent_row_bridge_y_window": "2.8 < delta <= 3.25",
+    "strict_total_equity_alias": "股东权益总计",
+    "paired_header_evidence_source": "V17_17_STRICT_THREE_COLUMN_TWO_ROW_YEAR_MONTH_DAY_HEADER",
+    "paired_header_column_count": 3,
+    "paired_header_expected_column_index": 0,
+    "e_equals_a_minus_l_inference": false,
     "stage4_alpha_locked": true
   },
   "tests": {
     "pure_fail_closed_contracts": 88,
     "official_pdf_positive_samples": 5,
     "official_pdf_negative_samples": 3,
-    "v17_15_exact_82_source_sha_replay": 82
+    "v17_15_exact_82_source_sha_replay": 82,
+    "v17_17_production_parser_contracts": 4,
+    "v17_17_exact_81_source_sha_replay": 81,
+    "v17_17_combined_production_exact_82_source_sha_replay": 82
   },
   "production_final_status": "NOT_FINAL",
-  "remaining_final_requirement": "Full 64-shard S3G1J final build and finalizer; current promoted runtime still leaves 81 accepted residual documents fail closed."
+  "remaining_final_requirement": "Full 64-shard S3G1J final build and finalizer; accepted V17.17 production runtime leaves 80 residual documents fail closed."
 }
