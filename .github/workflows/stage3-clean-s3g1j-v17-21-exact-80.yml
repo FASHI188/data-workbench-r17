@@ -31,17 +31,36 @@ env:
 jobs:
   lock-inputs:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Lock exact residual and geometry evidence
         shell: bash
         run: |
           set -euo pipefail
+          gh_api_retry() {
+            endpoint="$1"
+            for attempt in 1 2 3 4 5 6; do
+              if output=$(gh api "$endpoint" 2>gh-api-error.log); then
+                printf '%s' "$output"
+                return 0
+              fi
+              cat gh-api-error.log >&2 || true
+              sleep $((attempt * 15))
+            done
+            echo "GitHub API retry budget exhausted for $endpoint" >&2
+            return 1
+          }
           lock_run_artifact() {
             run="$1"; expected_head="$2"; artifact="$3"; expected_digest="$4"
-            test "$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')" = success
-            test "$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json headSha --jq '.headSha')" = "$expected_head"
-            actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq ".artifacts[] | select(.name==\"$artifact\") | .digest")
+            run_json=$(gh_api_retry "repos/$GITHUB_REPOSITORY/actions/runs/$run")
+            conclusion=$(jq -r '.conclusion' <<<"$run_json")
+            head=$(jq -r '.head_sha' <<<"$run_json")
+            test "$conclusion" = success
+            test "$head" = "$expected_head"
+            artifact_json=$(gh_api_retry "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts")
+            actual=$(jq -r --arg artifact "$artifact" '.artifacts[] | select(.name==$artifact) | .digest' <<<"$artifact_json")
+            test -n "$actual"
             test "$actual" = "$expected_digest"
           }
           lock_run_artifact "$FROZEN_RUN" "$FROZEN_HEAD" "$FROZEN_ARTIFACT" "$FROZEN_DIGEST"
@@ -68,10 +87,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          download_artifact_retry() {
+            run="$1"; artifact="$2"; destination="$3"
+            for attempt in 1 2 3 4 5 6; do
+              rm -rf "$destination"
+              if gh run download "$run" -R "$GITHUB_REPOSITORY" -n "$artifact" -D "$destination" 2>gh-download-error.log; then
+                return 0
+              fi
+              cat gh-download-error.log >&2 || true
+              sleep $((attempt * 15))
+            done
+            echo "GitHub artifact download retry budget exhausted for run=$run artifact=$artifact" >&2
+            return 1
+          }
           rm -rf prepared v1718 v1720 build/s3g1j-v17-21
-          gh run download "$FROZEN_RUN" -R "$GITHUB_REPOSITORY" -n "$FROZEN_ARTIFACT" -D prepared
-          gh run download "$V17_18_RUN" -R "$GITHUB_REPOSITORY" -n "$V17_18_ARTIFACT" -D v1718
-          gh run download "$V17_20_RUN" -R "$GITHUB_REPOSITORY" -n "$V17_20_ARTIFACT" -D v1720
+          download_artifact_retry "$FROZEN_RUN" "$FROZEN_ARTIFACT" prepared
+          download_artifact_retry "$V17_18_RUN" "$V17_18_ARTIFACT" v1718
+          download_artifact_retry "$V17_20_RUN" "$V17_20_ARTIFACT" v1720
           test -f prepared/single_source_residual_versions.csv.gz
           test -f v1718/candidate/shard0.json
           test -f v1718/candidate/shard1.json
