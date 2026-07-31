@@ -4,6 +4,10 @@ import unittest
 from unittest.mock import patch
 
 import stage3_financial_pdf_parser_v13 as parser
+from tests.test_stage3_v17_21_final_chain import (
+    S3G1JFinalizerIdentityTests,
+    V1721ShardManifestTests,
+)
 
 
 def candidate(concept: str, raw: str, value: str, page: int, *, reverse: bool = False):
