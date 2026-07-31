@@ -1,0 +1,245 @@
+name: Stage3 Clean S3G1J V17.18 Exact-80 Residual Diagnostic
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/diagnose_stage3_s3g1j_v17_18_exact80.py'
+      - '.github/workflows/stage3-clean-s3g1j-v17-18-exact-80.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FROZEN_RUN: '30424465440'
+  FROZEN_HEAD: 'be42608b75f77af13c36620da7e7fa03c563afde'
+  FROZEN_ARTIFACT: 'stage3-s3g1j-v15-single-source-input'
+  FROZEN_DIGEST: 'sha256:272f52239adc2fc5d4343ec091495dffcd39324b425784cdf5a7491f63a2e6fd'
+  ACCEPTED_RUN: '30510347556'
+  ACCEPTED_HEAD: 'e98d26b962a58cecc5c6416214e3c798c5e8a49e'
+  ACCEPTED_ARTIFACT: 'stage3-s3g1j-v17-11-column-evidence-acceptance'
+  ACCEPTED_DIGEST: 'sha256:b1143faaf2c1a91fd64e21ef35c05e787200d957f888613fa2f2a2fc23c43ad9'
+  COMBINED_RUN: '30551663340'
+  COMBINED_HEAD: 'a6bff5c3b46d7715e731df16be77f9daf7e9bc29'
+  COMBINED_ARTIFACT: 'stage3-s3g1j-v17-17-combined-production-exact-82-acceptance'
+  COMBINED_DIGEST: 'sha256:cc73d7e1cfc35f6209176b17b37db69cb5edacb8895d1edb447effd797a89541'
+  PYTHONPATH: scripts
+
+jobs:
+  lock-inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lock exact frozen, source-SHA, and combined production evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          lock_run_artifact() {
+            run="$1"; expected_head="$2"; artifact="$3"; expected_digest="$4"
+            test "$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')" = success
+            test "$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json headSha --jq '.headSha')" = "$expected_head"
+            actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq ".artifacts[] | select(.name==\"$artifact\") | .digest")
+            test "$actual" = "$expected_digest"
+          }
+          lock_run_artifact "$FROZEN_RUN" "$FROZEN_HEAD" "$FROZEN_ARTIFACT" "$FROZEN_DIGEST"
+          lock_run_artifact "$ACCEPTED_RUN" "$ACCEPTED_HEAD" "$ACCEPTED_ARTIFACT" "$ACCEPTED_DIGEST"
+          lock_run_artifact "$COMBINED_RUN" "$COMBINED_HEAD" "$COMBINED_ARTIFACT" "$COMBINED_DIGEST"
+
+  diagnose:
+    needs: lock-inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0, 1, 7, 9]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact verified diagnostic dependencies
+        run: python -m pip install --disable-pip-version-check --constraint requirements/constraints-verified.txt requests PyMuPDF
+      - name: Restore exact accepted inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf prepared accepted combined build/s3g1j-v17-18-exact80
+          gh run download "$FROZEN_RUN" -R "$GITHUB_REPOSITORY" -n "$FROZEN_ARTIFACT" -D prepared
+          gh run download "$ACCEPTED_RUN" -R "$GITHUB_REPOSITORY" -n "$ACCEPTED_ARTIFACT" -D accepted
+          gh run download "$COMBINED_RUN" -R "$GITHUB_REPOSITORY" -n "$COMBINED_ARTIFACT" -D combined
+          test -f prepared/single_source_residual_versions.csv.gz
+          test -f accepted/v17_11_column_evidence_acceptance.json
+          test -f combined/summary/s3g1j_v17_17_combined_production_exact_82_acceptance.json
+      - name: Diagnose exact current 80 without changing production policy
+        shell: bash
+        run: |
+          set +e
+          out="build/s3g1j-v17-18-exact80/shard${{ matrix.shard }}.json"
+          mkdir -p "$(dirname "$out")"
+          python scripts/diagnose_stage3_s3g1j_v17_18_exact80.py \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --v17-11-acceptance accepted/v17_11_column_evidence_acceptance.json \
+            --v17-17-summary combined/summary/s3g1j_v17_17_combined_production_exact_82_acceptance.json \
+            --shard ${{ matrix.shard }} --shards 64 --out "$out" \
+            > "${out%.json}.stdout.log" 2> "${out%.json}.stderr.log"
+          code=$?
+          echo "DIAGNOSTIC_EXIT=$code" >> "$GITHUB_ENV"
+          cat "${out%.json}.stdout.log" || true
+          tail -100 "${out%.json}.stderr.log" || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-18-exact80-${{ matrix.shard }}
+          path: build/s3g1j-v17-18-exact80
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve diagnostic execution failure
+        if: env.DIAGNOSTIC_EXIT != '0'
+        run: exit 1
+
+  summarize:
+    needs: diagnose
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g1j-v17-18-exact80-*
+          path: candidate
+          merge-multiple: true
+      - name: Restore exact source-SHA and combined production evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf accepted combined
+          gh run download "$ACCEPTED_RUN" -R "$GITHUB_REPOSITORY" -n "$ACCEPTED_ARTIFACT" -D accepted
+          gh run download "$COMBINED_RUN" -R "$GITHUB_REPOSITORY" -n "$COMBINED_ARTIFACT" -D combined
+          test -f accepted/v17_11_column_evidence_acceptance.json
+          test -f combined/summary/s3g1j_v17_17_combined_production_exact_82_acceptance.json
+      - name: Enforce exact 80 and aggregate current production residual clusters
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import glob,json,os
+          from collections import Counter,defaultdict
+
+          paths=sorted(glob.glob('candidate/shard*.json'))
+          reports=[json.load(open(path,encoding='utf-8')) for path in paths]
+          reports.sort(key=lambda row:row['shard'])
+          assert [row['shard'] for row in reports]==[0,1,7,9], [row.get('shard') for row in reports]
+          assert all(row.get('pass') is True for row in reports), [row.get('diagnostic_failures') for row in reports]
+          assert sum(row['input_residual_count'] for row in reports)==80
+          assert sum(row['diagnosed_count'] for row in reports)==80
+          assert sum(row['source_sha_match_count'] for row in reports)==80
+
+          rows=[item for report in reports for item in report['diagnostics']]
+          assert len(rows)==80
+          actual={str(row['announcement_id']):row for row in rows}
+          assert len(actual)==80
+
+          accepted=json.load(open('accepted/v17_11_column_evidence_acceptance.json',encoding='utf-8'))
+          combined=json.load(open('combined/summary/s3g1j_v17_17_combined_production_exact_82_acceptance.json',encoding='utf-8'))
+          assert accepted.get('pass') is True and accepted.get('v17_11_remaining_count')==82
+          assert combined.get('pass') is True and combined.get('input_count')==82
+          recovered={str(value) for value in combined['production_recovered_announcement_ids']}
+          assert recovered=={'1212731093','1225153907'}
+          expected={str(row['announcement_id']):row for row in accepted['remaining'] if str(row['announcement_id']) not in recovered}
+          assert set(actual)==set(expected)
+
+          sha_mismatches=[]
+          unexpected_blocks=[]
+          missing_errors=[]
+          for aid,row in actual.items():
+              if row['source_sha256']!=expected[aid]['sha256']:
+                  sha_mismatches.append({'announcement_id':aid,'expected':expected[aid]['sha256'],'actual':row['source_sha256']})
+              if row.get('production_balance_sheet_block') is not None:
+                  unexpected_blocks.append(aid)
+              if not row.get('production_validation_errors'):
+                  missing_errors.append(aid)
+          assert not sha_mismatches, sha_mismatches
+          assert not unexpected_blocks, unexpected_blocks
+          assert not missing_errors, missing_errors
+
+          funnel=Counter(row['funnel_category'] for row in rows)
+          structural=Counter(tag for row in rows for tag in row['structural_tags'])
+          extension=Counter(tag for row in rows for tag in row['extension_tags'])
+          raw_all=[row for row in rows if row.get('raw_balance_all_found')]
+          family=defaultdict(Counter)
+          year=defaultdict(Counter)
+          examples=defaultdict(list)
+          for row in rows:
+              category=row['funnel_category']
+              family[row['report_family']][category]+=1
+              year[row['economic_date'][:4]][category]+=1
+              if len(examples[category])<12:
+                  examples[category].append({
+                      'announcement_id':row['announcement_id'],
+                      'source_code':row['source_code'],
+                      'report_family':row['report_family'],
+                      'economic_date':row['economic_date'],
+                      'raw_balance_all_found':row['raw_balance_all_found'],
+                      'structural_tags':row['structural_tags'],
+                      'extension_tags':row['extension_tags'],
+                  })
+
+          repair_priority=[
+              'COLUMN_ROLE_GATE',
+              'CANDIDATES_NO_VALID_IDENTITY',
+              'MISSING_CONCEPT_POST_AMOUNT_FILTER',
+              'MISSING_CONCEPT_NO_RIGHT_AMOUNT',
+              'MISSING_CONCEPT_PERIOD_GATE',
+              'MISSING_CONCEPT_NO_UNIT_CONTEXT',
+              'MISSING_CONCEPT_NO_GROUP_ROLE_BINDING',
+              'MISSING_CONCEPT_NO_ALIAS_ROWS',
+              'NO_FORMAL_GROUP_EVENT',
+              'NO_CANDIDATE_PAGES',
+          ]
+          next_categories=[category for category in repair_priority if funnel.get(category,0)>0]
+          report={
+              'gate':'S3G1J_V17_18_EXACT_80_RESIDUAL_DIAGNOSTIC',
+              'pass':True,
+              'diagnostic_only':True,
+              'no_parser_change':True,
+              'no_ocr':True,
+              'source_pdf_sha_matches_accepted_count':80,
+              'input_residual_count':80,
+              'diagnosed_count':80,
+              'validated_balance_sheet_block_count':0,
+              'raw_a_l_e_all_found_count':len(raw_all),
+              'raw_a_l_e_all_found_announcement_ids':sorted(row['announcement_id'] for row in raw_all),
+              'funnel_category_counts':dict(funnel),
+              'structural_tag_counts':dict(structural),
+              'extension_tag_counts':dict(extension),
+              'family_funnel_counts':{key:dict(value) for key,value in sorted(family.items())},
+              'year_funnel_counts':{key:dict(value) for key,value in sorted(year.items())},
+              'category_examples':dict(examples),
+              'repair_priority_categories_present':next_categories,
+              'per_shard':[
+                  {key:row[key] for key in ('shard','input_residual_count','diagnosed_count','source_sha_match_count','funnel_category_counts','structural_tag_counts','extension_tag_counts')}
+                  for row in reports
+              ],
+              'accounting_tolerance_changed':False,
+              'global_row_tolerance_changed':False,
+              'source_policy_changed':False,
+              'stage4_alpha_locked':True,
+              'errors':[],
+          }
+          os.makedirs('summary',exist_ok=True)
+          json.dump(report,open('summary/s3g1j_v17_18_exact_80_residual_diagnostic.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-18-exact-80-residual-diagnostic
+          path: |
+            summary
+            candidate
+          retention-days: 90
+          compression-level: 0
