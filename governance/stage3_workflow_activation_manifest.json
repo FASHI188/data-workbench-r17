@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "status": "ACTIVE_WORKFLOW_SET_WITH_TEMPORARY_CANDIDATE",
-  "effective_from_head": "409bcf5d9c79f92bdf8f2ceb0e1d4f2502d37f3a",
-  "policy": "Historical diagnostics, superseded candidates and frozen evidence workflows are retained through Git history, immutable run IDs and artifact digests, but are removed from the active .github/workflows directory so ordinary pull-request synchronization cannot rerun or redefine historical evidence. One explicitly named candidate-safety workflow may be activated temporarily when it is source-locked, exact-residual-bounded, fail-closed and retired after its artifact is reviewed.",
+  "status": "ACTIVE_WORKFLOW_SET_WITH_TEMPORARY_PRODUCTION_ACCEPTANCE",
+  "effective_from_parent_head": "f73c2ebd89cb4be816e626b181cec5198e01a12e",
+  "policy": "Historical diagnostics, superseded candidates and frozen evidence workflows are retained through Git history, immutable run IDs and artifact digests, but are removed from the active .github/workflows directory so ordinary pull-request synchronization cannot rerun or redefine historical evidence. One explicitly named production-acceptance workflow may be activated temporarily when it is source-locked, exact-residual-bounded, fail-closed and retired or promoted only after its artifact is reviewed.",
   "active_stage3_workflows": [
     ".github/workflows/repository-safety-audit.yml",
     ".github/workflows/runtime-reproducibility.yml",
@@ -10,22 +10,34 @@
     ".github/workflows/stage3-clean-core-contract.yml",
     ".github/workflows/stage3-clean-s3g1j-contract.yml",
     ".github/workflows/stage3-clean-s3g1j-v17-21-production.yml",
-    ".github/workflows/stage3-clean-s3g1j-v17-24-exact-79.yml"
+    ".github/workflows/stage3-clean-s3g1j-v17-24-production.yml"
   ],
-  "temporary_candidate": {
-    "workflow": ".github/workflows/stage3-clean-s3g1j-v17-24-exact-79.yml",
-    "scope": "Exact current 79 residuals; only announcement 1221568845 / 600448 / 2024Q3 may recover through exact normalized alias 所有者权益（或d股东权益）合计",
-    "candidate_only": true,
-    "production_parser_changed": false,
+  "temporary_production_acceptance": {
+    "workflow": ".github/workflows/stage3-clean-s3g1j-v17-24-production.yml",
+    "candidate_run": 30650516337,
+    "candidate_head_sha": "f73c2ebd89cb4be816e626b181cec5198e01a12e",
+    "candidate_artifact": "stage3-s3g1j-v17-24-exact-79-candidate-safety",
+    "candidate_artifact_digest": "sha256:1982c801013ac43398612d6b558abc41c9143c58f670c28523da580ec0b3368a",
+    "scope": "Exact current 79 residuals and combined accepted exact-82 basis; only announcement 1221568845 may be newly recovered through exact normalized alias 所有者权益（或d股东权益）合计, while all three V17.21 accepted recovery paths must remain unchanged.",
+    "expected_exact79_recovery_announcement_ids": [
+      "1221568845"
+    ],
+    "expected_exact82_recovery_announcement_ids": [
+      "1212731093",
+      "1219311356",
+      "1221568845",
+      "1225153907"
+    ],
+    "expected_remaining_fail_closed_count": 78,
+    "production_parser_changed": true,
     "fuzzy_alias_matching_enabled": false,
     "no_ocr": true,
     "no_accounting_inference": true,
     "source_sha_required": true,
     "accounting_tolerance": "0.005",
-    "expected_recovery_announcement_ids": [
-      "1221568845"
-    ],
-    "retire_after_artifact_review": true
+    "global_row_tolerance_changed": false,
+    "stage4_alpha_locked": true,
+    "runtime_manifest_promotion_pending": true
   },
   "removed_from_active_workflows": [
     ".github/workflows/stage3-clean-s3g1e-deterministic-refreeze.yml",
@@ -47,6 +59,7 @@
     ".github/workflows/stage3-clean-s3g1j-v17-21-exact-80.yml",
     ".github/workflows/stage3-clean-s3g1j-v17-22-601111-page47.yml",
     ".github/workflows/stage3-clean-s3g1j-v17-23-600448-equity.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-24-exact-79.yml",
     ".github/workflows/stage3-clean-s3g2-final.yml"
   ],
   "evidence_retention": {
