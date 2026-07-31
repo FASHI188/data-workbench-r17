@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "status": "ACTIVE_WORKFLOW_SET_WITH_TEMPORARY_DIAGNOSTIC",
-  "effective_from_head": "62aa41e036f401efbf297905462fb38d02a76dd1",
-  "policy": "Historical diagnostics, superseded candidates and frozen evidence workflows are retained through Git history, immutable run IDs and artifact digests, but are removed from the active .github/workflows directory so ordinary pull-request synchronization cannot rerun or redefine historical evidence. One explicitly named diagnostic may be activated temporarily when it is source-locked, read-only, fail-closed and retired after its artifact is reviewed.",
+  "status": "ACTIVE_WORKFLOW_SET_WITH_TEMPORARY_CANDIDATE",
+  "effective_from_head": "409bcf5d9c79f92bdf8f2ceb0e1d4f2502d37f3a",
+  "policy": "Historical diagnostics, superseded candidates and frozen evidence workflows are retained through Git history, immutable run IDs and artifact digests, but are removed from the active .github/workflows directory so ordinary pull-request synchronization cannot rerun or redefine historical evidence. One explicitly named candidate-safety workflow may be activated temporarily when it is source-locked, exact-residual-bounded, fail-closed and retired after its artifact is reviewed.",
   "active_stage3_workflows": [
     ".github/workflows/repository-safety-audit.yml",
     ".github/workflows/runtime-reproducibility.yml",
@@ -10,15 +10,21 @@
     ".github/workflows/stage3-clean-core-contract.yml",
     ".github/workflows/stage3-clean-s3g1j-contract.yml",
     ".github/workflows/stage3-clean-s3g1j-v17-21-production.yml",
-    ".github/workflows/stage3-clean-s3g1j-v17-23-600448-equity.yml"
+    ".github/workflows/stage3-clean-s3g1j-v17-24-exact-79.yml"
   ],
-  "temporary_diagnostic": {
-    "workflow": ".github/workflows/stage3-clean-s3g1j-v17-23-600448-equity.yml",
-    "scope": "Exact announcement 1221568845 / 600448 / 2024Q3 group equity alias and row geometry",
-    "no_parser_change": true,
+  "temporary_candidate": {
+    "workflow": ".github/workflows/stage3-clean-s3g1j-v17-24-exact-79.yml",
+    "scope": "Exact current 79 residuals; only announcement 1221568845 / 600448 / 2024Q3 may recover through exact normalized alias 所有者权益（或d股东权益）合计",
+    "candidate_only": true,
+    "production_parser_changed": false,
+    "fuzzy_alias_matching_enabled": false,
     "no_ocr": true,
     "no_accounting_inference": true,
     "source_sha_required": true,
+    "accounting_tolerance": "0.005",
+    "expected_recovery_announcement_ids": [
+      "1221568845"
+    ],
     "retire_after_artifact_review": true
   },
   "removed_from_active_workflows": [
@@ -40,6 +46,7 @@
     ".github/workflows/stage3-clean-s3g1j-v17-20-exact-one-asset-total.yml",
     ".github/workflows/stage3-clean-s3g1j-v17-21-exact-80.yml",
     ".github/workflows/stage3-clean-s3g1j-v17-22-601111-page47.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-23-600448-equity.yml",
     ".github/workflows/stage3-clean-s3g2-final.yml"
   ],
   "evidence_retention": {

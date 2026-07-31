@@ -1,0 +1,293 @@
+name: Stage3 Clean S3G1J V17.24 Exact-79 Candidate Safety
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/stage3_financial_spatial_alias_v17_24.py'
+      - 'scripts/stage3_financial_pdf_parser_v14.py'
+      - 'scripts/probe_stage3_s3g1j_v17_24_exact79.py'
+      - 'tests/test_stage3_v17_24_corrupted_equity.py'
+      - '.github/workflows/stage3-clean-s3g1j-v17-24-exact-79.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FROZEN_RUN: '30424465440'
+  FROZEN_HEAD: 'be42608b75f77af13c36620da7e7fa03c563afde'
+  FROZEN_ARTIFACT: 'stage3-s3g1j-v15-single-source-input'
+  FROZEN_DIGEST: 'sha256:272f52239adc2fc5d4343ec091495dffcd39324b425784cdf5a7491f63a2e6fd'
+  V17_21_RUN: '30645504197'
+  V17_21_HEAD: 'ae967fda2c53796e9b886b54f1ab7b7ea69f6623'
+  V17_21_ARTIFACT: 'stage3-s3g1j-v17-21-combined-production-exact-82-acceptance'
+  V17_21_DIGEST: 'sha256:3779e0a7a6f6697ade3a58d6463a2200bf06b83855b4800a5750ebed5ca312f5'
+  V17_23_RUN: '30649879407'
+  V17_23_HEAD: '409bcf5d9c79f92bdf8f2ceb0e1d4f2502d37f3a'
+  V17_23_ARTIFACT: 'stage3-s3g1j-v17-23-600448-equity-geometry'
+  V17_23_DIGEST: 'sha256:265e29707de173b7cb2f236ab38c96ec500a4292de9ebb6395a02a21c69e72ca'
+  PYTHONPATH: scripts
+
+jobs:
+  lock-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact verified candidate dependencies
+        run: python -m pip install --disable-pip-version-check --constraint requirements/constraints-verified.txt requests PyMuPDF
+      - name: Lock exact frozen, V17.21 production and V17.23 geometry evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh_api_retry() {
+            endpoint="$1"
+            for attempt in 1 2 3 4 5 6; do
+              if output=$(gh api "$endpoint" 2>gh-api-error.log); then
+                printf '%s' "$output"
+                return 0
+              fi
+              cat gh-api-error.log >&2 || true
+              sleep $((attempt * 15))
+            done
+            return 1
+          }
+          lock_run_artifact() {
+            run="$1"; expected_head="$2"; artifact="$3"; expected_digest="$4"
+            run_json=$(gh_api_retry "repos/$GITHUB_REPOSITORY/actions/runs/$run")
+            test "$(jq -r '.conclusion' <<<"$run_json")" = success
+            test "$(jq -r '.head_sha' <<<"$run_json")" = "$expected_head"
+            artifact_json=$(gh_api_retry "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts")
+            actual=$(jq -r --arg artifact "$artifact" '.artifacts[] | select(.name==$artifact) | .digest' <<<"$artifact_json")
+            test -n "$actual"
+            test "$actual" = "$expected_digest"
+          }
+          lock_run_artifact "$FROZEN_RUN" "$FROZEN_HEAD" "$FROZEN_ARTIFACT" "$FROZEN_DIGEST"
+          lock_run_artifact "$V17_21_RUN" "$V17_21_HEAD" "$V17_21_ARTIFACT" "$V17_21_DIGEST"
+          lock_run_artifact "$V17_23_RUN" "$V17_23_HEAD" "$V17_23_ARTIFACT" "$V17_23_DIGEST"
+          python - <<'PY'
+          import json
+          x=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          assert x['schema_version']==4
+          assert x['v17_21_promotion']['remaining_fail_closed_count']==79
+          assert x['production_final_status']=='NOT_FINAL'
+          assert x['hard_invariants']['stage4_alpha_locked'] is True
+          PY
+      - name: Restore and verify exact candidate basis
+        shell: bash
+        run: |
+          set -euo pipefail
+          download_artifact_retry() {
+            run="$1"; artifact="$2"; destination="$3"
+            for attempt in 1 2 3 4 5 6; do
+              rm -rf "$destination"
+              if gh run download "$run" -R "$GITHUB_REPOSITORY" -n "$artifact" -D "$destination" 2>gh-download-error.log; then
+                return 0
+              fi
+              cat gh-download-error.log >&2 || true
+              sleep $((attempt * 15))
+            done
+            return 1
+          }
+          download_artifact_retry "$FROZEN_RUN" "$FROZEN_ARTIFACT" prepared
+          download_artifact_retry "$V17_21_RUN" "$V17_21_ARTIFACT" promoted
+          download_artifact_retry "$V17_23_RUN" "$V17_23_ARTIFACT" v1723
+          test -f prepared/single_source_residual_versions.csv.gz
+          test -f promoted/candidate/shard0.json
+          test -f promoted/candidate/shard1.json
+          test -f promoted/candidate/shard7.json
+          test -f promoted/candidate/shard9.json
+          test -f v1723/v17_23_600448_equity_geometry.json
+          python - <<'PY'
+          import json
+          x=json.load(open('v1723/v17_23_600448_equity_geometry.json',encoding='utf-8'))
+          assert x['pass'] is True
+          assert x['announcement_id']=='1221568845'
+          assert x['source_sha256']=='fa72059d35715f20df620691538528f720fe3ae42581c172c853f26799befb93'
+          assert x['production_candidate_counts']=={'TOTAL_ASSETS':3,'TOTAL_LIABILITIES':1,'TOTAL_EQUITY':0}
+          rows=[
+              row['text']
+              for page in x['pages']
+              for row in page['relevant_rows']
+          ]
+          expected='所有者权益（或d 股东权益）合计 1,260,141,935.13 1,257,210,563.29'
+          assert rows.count(expected)==1, rows
+          assert x['no_ocr'] is True
+          assert x['no_accounting_inference'] is True
+          PY
+      - name: Run strict V17.24 candidate unit contracts
+        run: python -m unittest tests.test_stage3_v17_24_corrupted_equity -v
+      - name: Import candidate-only parser
+        run: |
+          python - <<'PY'
+          import stage3_financial_pdf_parser_v14 as parser
+          import stage3_financial_spatial_alias_v17_24 as spatial
+          assert parser.METHOD=='V17_24_EXACT_CORRUPTED_GROUP_EQUITY_ALIAS_CANDIDATE'
+          assert spatial.CORRUPTED_EQUITY_ALIAS=='所有者权益（或d股东权益）合计'
+          assert callable(parser.parse_pdf_bytes)
+          assert callable(spatial.diagnose_spatial_balance_sheet_v17_24)
+          print('S3G1J_V17_24_CANDIDATE_IMPORT_PASS')
+          PY
+
+  replay:
+    needs: lock-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0, 1, 7, 9]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact verified candidate dependencies
+        run: python -m pip install --disable-pip-version-check --constraint requirements/constraints-verified.txt requests PyMuPDF
+      - name: Restore exact frozen versions and V17.21 production residuals
+        shell: bash
+        run: |
+          set -euo pipefail
+          download_artifact_retry() {
+            run="$1"; artifact="$2"; destination="$3"
+            for attempt in 1 2 3 4 5 6; do
+              rm -rf "$destination"
+              if gh run download "$run" -R "$GITHUB_REPOSITORY" -n "$artifact" -D "$destination" 2>gh-download-error.log; then
+                return 0
+              fi
+              cat gh-download-error.log >&2 || true
+              sleep $((attempt * 15))
+            done
+            return 1
+          }
+          rm -rf prepared promoted build/v17-24
+          download_artifact_retry "$FROZEN_RUN" "$FROZEN_ARTIFACT" prepared
+          download_artifact_retry "$V17_21_RUN" "$V17_21_ARTIFACT" promoted
+          test -f prepared/single_source_residual_versions.csv.gz
+          test -f promoted/candidate/shard0.json
+          test -f promoted/candidate/shard1.json
+          test -f promoted/candidate/shard7.json
+          test -f promoted/candidate/shard9.json
+      - name: Run V17.24 candidate over exact current 79
+        shell: bash
+        run: |
+          set +e
+          out="build/v17-24/shard${{ matrix.shard }}.json"
+          mkdir -p "$(dirname "$out")"
+          python scripts/probe_stage3_s3g1j_v17_24_exact79.py \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --v17-21-root promoted \
+            --shard ${{ matrix.shard }} --shards 64 --out "$out" \
+            > "${out%.json}.stdout.log" 2> "${out%.json}.stderr.log"
+          code=$?
+          echo "REPLAY_EXIT=$code" >> "$GITHUB_ENV"
+          cat "${out%.json}.stdout.log" || true
+          tail -100 "${out%.json}.stderr.log" || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-24-exact79-${{ matrix.shard }}
+          path: build/v17-24
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve candidate safety failure
+        if: env.REPLAY_EXIT != '0'
+        run: exit 1
+
+  summarize:
+    needs: replay
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g1j-v17-24-exact79-*
+          path: candidate
+          merge-multiple: true
+      - name: Require exact-one recovery and 78 fail-closed residuals
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import glob,json,os
+          paths=sorted(glob.glob('candidate/shard*.json'))
+          reports=[json.load(open(path,encoding='utf-8')) for path in paths]
+          reports.sort(key=lambda row:row['shard'])
+          assert [row['shard'] for row in reports]==[0,1,7,9]
+          assert all(row.get('pass') is True for row in reports), [row.get('execution_failures') for row in reports]
+          assert sum(row['input_count'] for row in reports)==79
+          assert sum(row['processed_count'] for row in reports)==79
+          assert sum(row['source_sha_match_count'] for row in reports)==79
+          rows=[item for report in reports for item in report['results']]
+          assert len(rows)==79
+          assert len({row['announcement_id'] for row in rows})==79
+          recovered=sorted(row['announcement_id'] for row in rows if row['candidate_recovered'])
+          assert recovered==['1221568845'], recovered
+          target=next(row for row in rows if row['announcement_id']=='1221568845')
+          block=target['balance_sheet_block']
+          assert block['arbitration']=='V17_24_GROUP_PERIOD_FROZEN_DATE_A_EQUALS_L_PLUS_E_EXACT_CORRUPTED_EQUITY_ALIAS'
+          assert block['corrupted_equity_selected_concepts']==['TOTAL_EQUITY']
+          assert block['corrupted_equity_alias']=='所有者权益（或d股东权益）合计'
+          assert block['corrupted_equity_amount_column_count']==2
+          assert block['column_role_gate_pass'] is True
+          assert str(block['identity_residual_cny']) in {'0','0.0','0.00'}
+          assert block['identity_tolerance']=='0.005'
+          assert block['global_row_tolerance_changed'] is False
+          assert block['e_equals_a_minus_l_inference'] is False
+          nonrecovered=[row for row in rows if not row['candidate_recovered']]
+          assert len(nonrecovered)==78
+          assert all(row['validation_errors'] for row in nonrecovered)
+          report={
+              'gate':'S3G1J_V17_24_EXACT_79_CANDIDATE_SAFETY',
+              'pass':True,
+              'candidate_only':True,
+              'production_parser_changed':False,
+              'input_count':79,
+              'source_sha_match_count':79,
+              'candidate_recovered_count':1,
+              'candidate_recovered_announcement_ids':recovered,
+              'remaining_fail_closed_count':78,
+              'target_values':{
+                  'TOTAL_ASSETS':'3642768851.01',
+                  'TOTAL_LIABILITIES':'2382626915.88',
+                  'TOTAL_EQUITY':'1260141935.13',
+              },
+              'corrupted_equity_alias':'所有者权益（或d股东权益）合计',
+              'fuzzy_alias_matching_enabled':False,
+              'accounting_tolerance':'0.005',
+              'accounting_tolerance_changed':False,
+              'global_row_tolerance_changed':False,
+              'e_equals_a_minus_l_inference':False,
+              'source_policy_changed':False,
+              'stage4_alpha_locked':True,
+              'per_shard':[
+                  {key:row[key] for key in (
+                      'shard','input_count','processed_count',
+                      'source_sha_match_count',
+                      'candidate_recovered_announcement_ids'
+                  )}
+                  for row in reports
+              ],
+              'target_result':target,
+              'errors':[],
+          }
+          os.makedirs('summary',exist_ok=True)
+          json.dump(report,open('summary/s3g1j_v17_24_exact_79_candidate_safety.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-24-exact-79-candidate-safety
+          path: |
+            summary
+            candidate
+          retention-days: 90
+          compression-level: 0
