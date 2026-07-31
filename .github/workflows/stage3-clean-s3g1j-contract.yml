@@ -45,27 +45,31 @@ jobs:
           python - <<'PY'
           import json
           x=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
-          assert x['schema_version']==3, x
-          assert x['file_count']==55, x
+          assert x['schema_version']==4, x
+          assert x['file_count']==60, x
           p15=x['v17_15_promotion']
           assert p15['accepted_production_exact_82_run']==30535567713
           assert p15['source_sha_match_count']==82
-          assert p15['promoted_recovery_count']==1
           assert p15['promoted_recovery_announcement_ids']==['1225153907']
           assert p15['remaining_fail_closed_count']==81
-          assert p15['production_wiring_status']=='ACCEPTED_IN_COMBINED_V17_17_PRODUCTION_REPLAY'
+          assert p15['production_wiring_status']=='ACCEPTED_IN_COMBINED_V17_21_PRODUCTION_REPLAY'
           p17=x['v17_17_promotion']
-          assert p17['exact_81_safety_run']==30548199275
-          assert p17['production_exact_81_run']==30550485070
           assert p17['combined_production_exact_82_run']==30551663340
-          assert p17['combined_production_exact_82_head_sha']=='a6bff5c3b46d7715e731df16be77f9daf7e9bc29'
-          assert p17['combined_production_exact_82_artifact_digest']=='sha256:cc73d7e1cfc35f6209176b17b37db69cb5edacb8895d1edb447effd797a89541'
-          assert p17['source_sha_match_count']==82
-          assert p17['combined_production_recovered_count']==2
           assert p17['combined_production_recovered_announcement_ids']==['1212731093','1225153907']
-          assert p17['v17_17_incremental_recovery_announcement_ids']==['1212731093']
           assert p17['remaining_fail_closed_count']==80
-          assert p17['production_wiring_status']=='PRODUCTION_ACCEPTED_NOT_FINAL'
+          assert p17['production_wiring_status']=='ACCEPTED_IN_COMBINED_V17_21_PRODUCTION_REPLAY'
+          p21=x['v17_21_promotion']
+          assert p21['candidate_exact_80_safety_run']==30595448576
+          assert p21['production_acceptance_run']==30645504197
+          assert p21['production_acceptance_head_sha']=='ae967fda2c53796e9b886b54f1ab7b7ea69f6623'
+          assert p21['production_exact_80_artifact_digest']=='sha256:1c4209c3b037a5b308fd46cc1d9959c2425111ed982a96eaeef978cc4721b7ac'
+          assert p21['combined_production_exact_82_artifact_digest']=='sha256:3779e0a7a6f6697ade3a58d6463a2200bf06b83855b4800a5750ebed5ca312f5'
+          assert p21['source_sha_match_count']==82
+          assert p21['combined_production_recovered_count']==3
+          assert p21['combined_production_recovered_announcement_ids']==['1212731093','1219311356','1225153907']
+          assert p21['v17_21_incremental_recovery_announcement_ids']==['1219311356']
+          assert p21['remaining_fail_closed_count']==79
+          assert p21['production_wiring_status']=='PRODUCTION_ACCEPTED_NOT_FINAL'
           h=x['hard_invariants']
           assert h['accounting_identity_tolerance']=='0.005'
           assert h['original_pdf_authority'] is True
@@ -78,39 +82,50 @@ jobs:
           assert h['adjacent_row_bridge_y_window']=='2.8 < delta <= 3.25'
           assert h['strict_total_equity_alias']=='股东权益总计'
           assert h['paired_header_evidence_source']=='V17_17_STRICT_THREE_COLUMN_TWO_ROW_YEAR_MONTH_DAY_HEADER'
-          assert h['paired_header_column_count']==3
-          assert h['paired_header_expected_column_index']==0
+          assert h['reverse_asset_total_alias']=='资产总计'
+          assert h['reverse_asset_total_y_window']=='5.50 <= delta <= 6.25'
+          assert h['reverse_asset_total_amount_column_count']==2
           assert h['e_equals_a_minus_l_inference'] is False
           assert h['formal_shard_count']==64
+          assert h['formal_runtime_generation']=='V17.21'
+          assert h['formal_shard_gate']=='S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_21'
+          assert h['formal_parser_method']=='CNINFO_ORIGINAL_PDF_PYMUPDF_V13_V17_21_EXACT_REVERSE_ADJACENT_ASSET_TOTAL_FINAL_FALLBACK'
+          assert h['formal_methodology_version']=='V3.3.3-V17.21'
           assert h['formal_shard_gzip_mtime']==0
           assert h['formal_shard_embedded_filename']==''
           assert h['formal_numeric_source_format']=='PDF'
+          assert h['mixed_runtime_generation_forbidden'] is True
           assert h['stage4_alpha_locked'] is True
-          assert x['tests']['v17_17_production_parser_contracts']==5
-          assert x['tests']['v17_17_formal_shard_output_contracts']==1
-          assert x['tests']['v17_17_combined_production_exact_82_source_sha_replay']==82
+          assert x['tests']['v17_21_production_parser_contracts']==6
+          assert x['tests']['v17_21_final_chain_contracts']==4
+          assert x['tests']['v17_21_production_exact_80_source_sha_replay']==80
+          assert x['tests']['v17_21_combined_production_exact_82_source_sha_replay']==82
           assert x['production_final_status']=='NOT_FINAL'
           PY
-      - name: Import promoted production runtime closure
+      - name: Import promoted V17.21 production runtime closure
         run: |
           python - <<'PY'
           import sys
           sys.path.insert(0,'scripts')
-          import extract_stage3_financial_pdf_values_v12 as extractor
-          import stage3_financial_pdf_parser_v12 as parser
+          import extract_stage3_financial_pdf_values_v13 as extractor
+          import stage3_financial_pdf_parser_v13 as parser
           import stage3_financial_spatial_alias_v16_7 as column
           import stage3_financial_spatial_alias_v17_15 as adjacent
           import stage3_financial_spatial_alias_v17_17 as paired
+          import stage3_financial_spatial_alias_v17_21 as reverse_asset
+          import finalize_stage3_financial_pdf_values as finalizer
           assert callable(extractor.parse_pdf_bytes)
-          assert extractor.METHOD.endswith('V17_17_STRICT_TOTAL_EQUITY_PAIRED_HEADER_FINAL_FALLBACK')
-          assert extractor.METHODOLOGY_VERSION=='V3.3.3-V17.17'
-          assert callable(extractor.write_deterministic_csv_gz)
-          assert callable(parser.parse_pdf_bytes)
-          assert parser.METHOD=='V17_17_STRICT_TOTAL_EQUITY_PAIRED_HEADER_FINAL_FALLBACK'
+          assert extractor.METHOD=='CNINFO_ORIGINAL_PDF_PYMUPDF_V13_V17_21_EXACT_REVERSE_ADJACENT_ASSET_TOTAL_FINAL_FALLBACK'
+          assert extractor.METHODOLOGY_VERSION=='V3.3.3-V17.21'
+          assert extractor.SHARD_GATE=='S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_21'
+          assert callable(extractor._rewrite_v17_21_shard_manifest)
+          assert parser.METHOD=='V17_21_EXACT_REVERSE_ADJACENT_ASSET_TOTAL_FINAL_FALLBACK'
           assert callable(column.diagnose_spatial_balance_sheet_v16_7)
           assert callable(adjacent.diagnose_spatial_balance_sheet_v17_15)
           assert callable(paired.diagnose_spatial_balance_sheet_v17_17)
-          print('S3G1J_V17_17_PRODUCTION_RUNTIME_IMPORT_PASS')
+          assert callable(reverse_asset.diagnose_spatial_balance_sheet_v17_21)
+          assert callable(finalizer._validate_shard_manifests)
+          print('S3G1J_V17_21_PRODUCTION_RUNTIME_IMPORT_PASS')
           PY
       - name: Run inherited pure fail-closed regression contracts
         run: |
@@ -132,5 +147,7 @@ jobs:
             tests.test_stage3_v17_15_production_parser \
             tests.test_stage3_v17_17_production_parser \
             -v
+      - name: Run V17.21 production and final-chain contracts
+        run: python -m unittest tests.test_stage3_v17_21_production_parser -v
       - name: Run official-PDF coordinate fallback regression
         run: python -m unittest tests.test_stage3_financial_coordinate_fallback_v14_integration -v
