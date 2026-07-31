@@ -1,0 +1,80 @@
+name: Stage3 Clean S3G1J V17.20 Split Total-Assets Geometry
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/diagnose_stage3_s3g1j_v17_20_split_total_assets.py'
+      - '.github/workflows/stage3-clean-s3g1j-v17-20-split-total-assets.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FROZEN_RUN: '30424465440'
+  FROZEN_HEAD: 'be42608b75f77af13c36620da7e7fa03c563afde'
+  FROZEN_ARTIFACT: 'stage3-s3g1j-v15-single-source-input'
+  FROZEN_DIGEST: 'sha256:272f52239adc2fc5d4343ec091495dffcd39324b425784cdf5a7491f63a2e6fd'
+  ACCEPTED_RUN: '30510347556'
+  ACCEPTED_HEAD: 'e98d26b962a58cecc5c6416214e3c798c5e8a49e'
+  ACCEPTED_ARTIFACT: 'stage3-s3g1j-v17-11-column-evidence-acceptance'
+  ACCEPTED_DIGEST: 'sha256:b1143faaf2c1a91fd64e21ef35c05e787200d957f888613fa2f2a2fc23c43ad9'
+  V17_19_RUN: '30594382890'
+  V17_19_HEAD: '74f9a8a98c296869265476003964ff81f1992a25'
+  V17_19_ARTIFACT: 'stage3-s3g1j-v17-19-exact-one-identity-diagnostic'
+  V17_19_DIGEST: 'sha256:6b6395f9e2c530002f1c663d3a14ac8a4764384fd5338118498f3e9e2b5f470e'
+  PYTHONPATH: scripts
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact verified diagnostic dependencies
+        run: python -m pip install --disable-pip-version-check --constraint requirements/constraints-verified.txt requests PyMuPDF
+      - name: Lock exact source and V17.19 evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          lock_run_artifact() {
+            run="$1"; expected_head="$2"; artifact="$3"; expected_digest="$4"
+            test "$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json conclusion --jq '.conclusion')" = success
+            test "$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json headSha --jq '.headSha')" = "$expected_head"
+            actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq ".artifacts[] | select(.name==\"$artifact\") | .digest")
+            test "$actual" = "$expected_digest"
+          }
+          lock_run_artifact "$FROZEN_RUN" "$FROZEN_HEAD" "$FROZEN_ARTIFACT" "$FROZEN_DIGEST"
+          lock_run_artifact "$ACCEPTED_RUN" "$ACCEPTED_HEAD" "$ACCEPTED_ARTIFACT" "$ACCEPTED_DIGEST"
+          lock_run_artifact "$V17_19_RUN" "$V17_19_HEAD" "$V17_19_ARTIFACT" "$V17_19_DIGEST"
+      - name: Restore exact inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf prepared accepted prior build/v17-20
+          gh run download "$FROZEN_RUN" -R "$GITHUB_REPOSITORY" -n "$FROZEN_ARTIFACT" -D prepared
+          gh run download "$ACCEPTED_RUN" -R "$GITHUB_REPOSITORY" -n "$ACCEPTED_ARTIFACT" -D accepted
+          gh run download "$V17_19_RUN" -R "$GITHUB_REPOSITORY" -n "$V17_19_ARTIFACT" -D prior
+          test -f prepared/single_source_residual_versions.csv.gz
+          test -f accepted/v17_11_column_evidence_acceptance.json
+          test -f prior/v17_19_exact_one_identity_diagnostic.json
+      - name: Diagnose exact split total-assets geometry
+        run: |
+          mkdir -p build/v17-20
+          python scripts/diagnose_stage3_s3g1j_v17_20_split_total_assets.py \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --v17-11-acceptance accepted/v17_11_column_evidence_acceptance.json \
+            --v17-19-report prior/v17_19_exact_one_identity_diagnostic.json \
+            --out build/v17-20/v17_20_split_total_assets_geometry.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-20-split-total-assets-geometry
+          path: build/v17-20
+          retention-days: 90
+          compression-level: 0
