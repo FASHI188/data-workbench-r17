@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "status": "ACTIVE_WORKFLOW_SET_REDUCED",
+  "effective_from_head": "dccb8a2c960e882ea0afb33250d2281a902171ee",
+  "policy": "Historical diagnostics, superseded candidates and frozen evidence workflows are retained through Git history, immutable run IDs and artifact digests, but are removed from the active .github/workflows directory so ordinary pull-request synchronization cannot rerun or redefine historical evidence.",
+  "active_stage3_workflows": [
+    ".github/workflows/repository-safety-audit.yml",
+    ".github/workflows/runtime-reproducibility.yml",
+    ".github/workflows/stage3-authority-map-audit.yml",
+    ".github/workflows/stage3-clean-core-contract.yml",
+    ".github/workflows/stage3-clean-s3g1j-contract.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-21-production.yml"
+  ],
+  "removed_from_active_workflows": [
+    ".github/workflows/stage3-clean-s3g1e-deterministic-refreeze.yml",
+    ".github/workflows/stage3-clean-s3g1g-deterministic-refreeze.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-11-remaining-diagnostic.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-13-no-right-amount.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-14-adjacent-amount-rows.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-15-adjacent-bridge.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-15-exact-82.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-16-equity-terminal.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-17-exact-81.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-17-header-geometry.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-17-production-drift.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-17-production-exact-81.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-17-production-exact-82.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-18-exact-80.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-19-exact-one-identity.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-20-exact-one-asset-total.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-21-exact-80.yml",
+    ".github/workflows/stage3-clean-s3g2-final.yml"
+  ],
+  "evidence_retention": {
+    "workflow_definitions": "Git history at and before dccb8a2c960e882ea0afb33250d2281a902171ee",
+    "accepted_runs": "Referenced by governance/stage3_authority_map.json and governance/stage3_s3g1j_runtime_manifest.json",
+    "artifact_identity": "Semantic dataset hashes remain authoritative; artifact archive digests remain transport-instance evidence only"
+  },
+  "stage3_status_changed": false,
+  "stage4_alpha_live_unlocked": false
+}
