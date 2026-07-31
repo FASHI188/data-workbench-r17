@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "gate": "S3G1J_V17_21_FULL_64_SHARD_FINAL_PLAN",
+  "status": "IMPLEMENTED_PENDING_MACHINE_RESULT",
+  "base_head": "f9e2326858e89fdc95b393e8e240da0ba0bf6d40",
+  "workflow": ".github/workflows/stage3-clean-s3g1j-v17-21-full-final.yml",
+  "canonical_version_count": 121354,
+  "shard_count": 64,
+  "max_parallel": 8,
+  "runtime_generation": "V17.21",
+  "expected_shard_gate": "S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_21",
+  "expected_parser_method": "CNINFO_ORIGINAL_PDF_PYMUPDF_V13_V17_21_EXACT_REVERSE_ADJACENT_ASSET_TOTAL_FINAL_FALLBACK",
+  "expected_methodology_version": "V3.3.3-V17.21",
+  "locked_inputs": {
+    "stage2_fingerprint": "f17f7ab63f4532dda635eb7366e7df7bf5497a5ce814410105312bccb53125bb",
+    "s3g1g_run": 30530426842,
+    "s3g1g_artifact_digest": "sha256:85182a88292148665f3a2f2cbf521357fc8ab7da3a45145c7aa7033f581217cb",
+    "s3g1g_gzip_sha256": "7138261c020355d5daec32c435580a14425be364d06fba6e23fa9930673249ef",
+    "s3g1g_plain_sha256": "14629abffc77e4c8a37fada0fa14ddae598fe8d0ef02d075ed19abc1e3651066",
+    "s3g1i_run": 30326328965,
+    "s3g1i_artifact_digest": "sha256:3883eb629aaa0325cd1db6d3a1eefc96929c9673711bb3c004217ac6254324b9",
+    "v17_21_production_run": 30645504197,
+    "v17_21_exact80_digest": "sha256:1c4209c3b037a5b308fd46cc1d9959c2425111ed982a96eaeef978cc4721b7ac",
+    "v17_21_exact82_digest": "sha256:3779e0a7a6f6697ade3a58d6463a2200bf06b83855b4800a5750ebed5ca312f5"
+  },
+  "hard_invariants": {
+    "original_pdf_authority": true,
+    "source_sha_required": true,
+    "accounting_identity_tolerance": "0.005",
+    "current_f10_historical_backfill_forbidden": true,
+    "mixed_runtime_generation_forbidden": true,
+    "stage4_alpha_locked": true
+  },
+  "expected_first_result": "The first full run may fail closed because V17.21 still has 79 accepted residual documents. Any failure must produce shard artifacts and a final audit rather than being hidden.",
+  "stage3_status_changed": false,
+  "errors": []
+}
