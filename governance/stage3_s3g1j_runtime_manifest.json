@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "integration_branch": "agent/stage3-clean-integration",
   "scope": "S3G1J production runtime closure and formal regression tests only; historical probes and diagnostic workflows are excluded from production authority",
   "source_candidate": {
@@ -91,8 +91,8 @@
     "remaining_fail_closed_count": 79,
     "production_wiring_status": "PRODUCTION_ACCEPTED_NOT_FINAL"
   },
-  "integration_commit": "8c83e92d4261215f93e66aa47597d61f00043dad",
-  "file_count": 60,
+  "integration_commit": "6e03376556a31e2fc6fdc9e0bb9e8fd1ef30a8fe",
+  "file_count": 70,
   "scope_class": "PRODUCTION_RUNTIME_AND_FAIL_CLOSED_REGRESSION_TESTS_ONLY",
   "excluded_classes": [
     "probe_scripts",
@@ -116,7 +116,9 @@
     "V17.15 exact-terminal adjacent-row final fallback",
     "V17.17 strict total-equity and paired two-row frozen-date header final fallback",
     "V17.21 exact reverse-adjacent asset-total final fallback",
-    "V17.21 generation-locked deterministic 64-shard extraction and finalizer contract"
+    "V17.21 generation-locked deterministic 64-shard extraction and finalizer contract",
+    "V17.24 exact corrupted group-equity alias final fallback",
+    "V17.24 authoritative legacy-block equality compatibility acceptance"
   ],
   "hard_invariants": {
     "accounting_identity_tolerance": "0.005",
@@ -137,15 +139,18 @@
     "reverse_asset_total_amount_column_count": 2,
     "e_equals_a_minus_l_inference": false,
     "formal_shard_count": 64,
-    "formal_runtime_generation": "V17.21",
-    "formal_shard_gate": "S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_21",
-    "formal_parser_method": "CNINFO_ORIGINAL_PDF_PYMUPDF_V13_V17_21_EXACT_REVERSE_ADJACENT_ASSET_TOTAL_FINAL_FALLBACK",
-    "formal_methodology_version": "V3.3.3-V17.21",
+    "formal_runtime_generation": "V17.24",
+    "formal_shard_gate": "S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_24",
+    "formal_parser_method": "CNINFO_ORIGINAL_PDF_PYMUPDF_V14_V17_24_EXACT_CORRUPTED_GROUP_EQUITY_ALIAS_FINAL_FALLBACK",
+    "formal_methodology_version": "V3.3.4-V17.24",
     "formal_shard_gzip_mtime": 0,
     "formal_shard_embedded_filename": "",
     "formal_numeric_source_format": "PDF",
     "mixed_runtime_generation_forbidden": true,
-    "stage4_alpha_locked": true
+    "stage4_alpha_locked": true,
+    "corrupted_equity_alias": "所有者权益（或d股东权益）合计",
+    "corrupted_equity_amount_column_count": 2,
+    "prior_recovery_block_equality_required": true
   },
   "tests": {
     "pure_fail_closed_contracts": 88,
@@ -160,8 +165,55 @@
     "v17_21_final_chain_contracts": 4,
     "v17_21_candidate_exact_80_source_sha_replay": 80,
     "v17_21_production_exact_80_source_sha_replay": 80,
-    "v17_21_combined_production_exact_82_source_sha_replay": 82
+    "v17_21_combined_production_exact_82_source_sha_replay": 82,
+    "v17_24_corrupted_equity_contracts": 3,
+    "v17_24_production_parser_contracts": 4,
+    "v17_24_acceptance_baseline_contracts": 3,
+    "v17_24_combined_production_exact_82_source_sha_replay": 82,
+    "v17_24_residual_source_sha_replay": 79
   },
   "production_final_status": "NOT_FINAL",
-  "remaining_final_requirement": "Full 64-shard S3G1J final build and finalizer; accepted V17.21 production runtime leaves 79 residual documents fail closed."
+  "remaining_final_requirement": "Accepted V17.24 runtime leaves 78 documents fail closed in the frozen representative subset; the authoritative full-basis V17.21 final run remains FAIL_CLOSED with 1,380 document errors. Build a deterministic full-basis residual classifier, apply evidence-backed narrow repairs, and rerun all 64 shards plus the hardened finalizer.",
+  "v17_24_promotion": {
+    "candidate_safety_run": 30650516337,
+    "candidate_safety_head_sha": "f73c2ebd89cb4be816e626b181cec5198e01a12e",
+    "candidate_safety_artifact": "stage3-s3g1j-v17-24-exact-79-candidate-safety",
+    "candidate_safety_artifact_digest": "sha256:1982c801013ac43398612d6b558abc41c9143c58f670c28523da580ec0b3368a",
+    "superseded_false_positive_run": 30651790668,
+    "superseded_false_positive_reason": "legacy accepted block omitted later no-inference metadata key; authoritative block and values were unchanged",
+    "accepted_production_run": 30685830808,
+    "accepted_production_head_sha": "92de74e7898be36239dc163e3811c9ae3f732e60",
+    "accepted_production_artifact": "stage3-s3g1j-v17-24-production-acceptance-compat",
+    "accepted_production_artifact_digest": "sha256:4865dd03537c70208d2a4358cf8b54ab65408510fce838017a4bf77bee30a98d",
+    "source_sha_match_count": 82,
+    "combined_production_recovered_count": 4,
+    "combined_production_recovered_announcement_ids": [
+      "1212731093",
+      "1219311356",
+      "1221568845",
+      "1225153907"
+    ],
+    "v17_24_incremental_recovery_count": 1,
+    "v17_24_incremental_recovery_announcement_ids": [
+      "1221568845"
+    ],
+    "remaining_fail_closed_count": 78,
+    "prior_recovery_blocks_equal_v17_21_authority": true,
+    "legacy_no_inference_key_compatibility": true,
+    "production_wiring_status": "PRODUCTION_ACCEPTED_NOT_FINAL"
+  },
+  "full_basis_v17_21_final": {
+    "run": 30649251360,
+    "artifact": "stage3-s3g1j-v17-21-full-final",
+    "artifact_digest": "sha256:7faff72949a6e0a98f49088bce99bc2df37c7cbcb0259b39d1b2655fc02f6086",
+    "canonical_report_version_moments": 121354,
+    "document_rows": 121354,
+    "numeric_observations": 1051772,
+    "financial_values_sha256": "0c1fa22f6e759520c3631e127f2708385dcd76f85684c14b60aef702e2a54c4e",
+    "financial_documents_sha256": "de31e148abd19f866b863135d0361ab2728e97577a8e584b7572fdbcbcaa06d8",
+    "document_error_count": 1380,
+    "unresolved_tie_count": 1297,
+    "single_canonical_parser_failure_count": 1196,
+    "verdict": "FAIL_CLOSED"
+  }
 }
