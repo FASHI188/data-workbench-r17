@@ -1,12 +1,15 @@
-name: Stage3 S3G1J V17.25 Finalize Existing 64 Shards V3
+name: Stage3 S3G1J V17.26 Exact-Source Scope Repair Final V4
 
 on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'scripts/compare_stage3_s3g1j_v17_25_full_final.py'
-      - 'scripts/compare_stage3_s3g1j_v17_25_full_values.py'
-      - 'tests/test_stage3_v17_25_full_final_comparator.py'
+      - 'scripts/stage3_financial_pdf_parser_v18.py'
+      - 'scripts/extract_stage3_financial_pdf_values_v16.py'
+      - 'scripts/promote_stage3_s3g1j_v17_26_full_shards.py'
+      - 'scripts/compare_stage3_s3g1j_v17_26_full_final.py'
+      - 'scripts/compare_stage3_s3g1j_v17_26_full_values.py'
+      - 'tests/test_stage3_v17_26_balance_only_parser.py'
       - '.github/workflows/stage3-s3g1j-v17-25-full-final-v2.yml'
 
 permissions:
@@ -19,54 +22,76 @@ env:
   SOURCE_RUN: '30692117760'
   SOURCE_HEAD: 'f9329e2f6a83d38dfd86291a4fd7d4bbfbf1b6b1'
   FULL_RUN: '30649251360'
+  FULL_HEAD: '6b274dbd32734ab0af6a75a6d595925278dd8973'
+  INPUT_ARTIFACT: 'stage3-s3g1j-v17-21-full-final-input'
   INPUT_DIGEST: 'sha256:54a7e78b0defe34748abb18695aa758dcee65ddd978b6707d83ef5dd89f0ab10'
+  PREVIOUS_ARTIFACT: 'stage3-s3g1j-v17-21-full-final'
   PREVIOUS_DIGEST: 'sha256:7faff72949a6e0a98f49088bce99bc2df37c7cbcb0259b39d1b2655fc02f6086'
-  SHARD_GATE: 'S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_25'
-  PARSER_METHOD: 'CNINFO_ORIGINAL_PDF_PYMUPDF_V15_V17_25_EXACT_SOURCE_GENERIC_GROUP_WITNESS_PRODUCTION'
-  METHODOLOGY: 'V3.3.5-V17.25'
+  SHARD_GATE: 'S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_26'
+  PARSER_METHOD: 'CNINFO_ORIGINAL_PDF_PYMUPDF_V16_V17_26_EXACT_SOURCE_BALANCE_ONLY_PRODUCTION'
+  METHODOLOGY: 'V3.3.6-V17.26'
 
 jobs:
-  lock-evidence:
+  lock-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12.13'
       - run: python -m pip install --disable-pip-version-check --constraint requirements/constraints-verified.txt requests PyMuPDF
-      - name: Lock the completed V17.25 shard evidence
+      - name: Lock source runs and artifacts
         shell: bash
         run: |
           set -euo pipefail
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" > /tmp/source-run.json
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts?per_page=100" > /tmp/source-artifacts.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$FULL_RUN" > /tmp/full-run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$FULL_RUN/artifacts?per_page=100" > /tmp/full-artifacts.json
           python - <<'PY'
           import json, os
-          run=json.load(open('/tmp/source-run.json',encoding='utf-8'))
-          assert run['head_sha']==os.environ['SOURCE_HEAD']
-          assert run['conclusion']=='failure'
+          source=json.load(open('/tmp/source-run.json',encoding='utf-8'))
+          assert source['head_sha']==os.environ['SOURCE_HEAD']
+          assert source['conclusion']=='failure'
           payload=json.load(open('/tmp/source-artifacts.json',encoding='utf-8'))
           prefix='stage3-s3g1j-v17-25-full-final-v2-shard-'
           rows=[row for row in payload['artifacts'] if row['name'].startswith(prefix)]
           assert len(rows)==64, len(rows)
-          identities=sorted(int(row['name'][len(prefix):]) for row in rows)
-          assert identities==list(range(64)), identities
+          assert sorted(int(row['name'][len(prefix):]) for row in rows)==list(range(64))
+          assert len({row['id'] for row in rows})==64
           assert all(row['workflow_run']['head_sha']==os.environ['SOURCE_HEAD'] for row in rows)
           assert all(not row['expired'] for row in rows)
-          assert len({row['id'] for row in rows})==64
-          print('S3G1J_V17_25_EXISTING_64_SHARD_LOCK_PASS')
-          PY
-      - name: Run comparator contracts
-        run: |
-          python -m unittest tests.test_stage3_v17_25_full_final_comparator -v
-          python -m py_compile scripts/compare_stage3_s3g1j_v17_25_full_final.py
-          python -m py_compile scripts/compare_stage3_s3g1j_v17_25_full_values.py
 
-  finalize:
-    needs: lock-evidence
+          full=json.load(open('/tmp/full-run.json',encoding='utf-8'))
+          assert full['head_sha']==os.environ['FULL_HEAD']
+          artifacts=json.load(open('/tmp/full-artifacts.json',encoding='utf-8'))['artifacts']
+          by_name={row['name']:row for row in artifacts}
+          for name,digest in [
+              (os.environ['INPUT_ARTIFACT'],os.environ['INPUT_DIGEST']),
+              (os.environ['PREVIOUS_ARTIFACT'],os.environ['PREVIOUS_DIGEST']),
+          ]:
+              row=by_name[name]
+              assert row['digest']==digest,(name,row['digest'])
+              assert row['workflow_run']['head_sha']==os.environ['FULL_HEAD']
+              assert not row['expired']
+          print('S3G1J_V17_26_LOCK_PASS')
+          PY
+      - name: Run V17.26 contracts
+        run: |
+          python -m unittest tests.test_stage3_v17_26_balance_only_parser -v
+          python -m unittest tests.test_stage3_v17_25_full_final_comparator -v
+          python -m py_compile \
+            scripts/stage3_financial_pdf_parser_v18.py \
+            scripts/extract_stage3_financial_pdf_values_v16.py \
+            scripts/promote_stage3_s3g1j_v17_26_full_shards.py \
+            scripts/compare_stage3_s3g1j_v17_26_full_final.py \
+            scripts/compare_stage3_s3g1j_v17_26_full_values.py
+
+  repair-finalize:
+    needs: lock-and-test
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -94,7 +119,58 @@ jobs:
           repository: FASHI188/data-workbench-r17
           run-id: 30649251360
           github-token: ${{ github.token }}
-      - name: Finalize the frozen 64 shards
+      - name: Build exact two-document target ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/target
+          python - <<'PY'
+          import csv,gzip,io
+          from pathlib import Path
+          source=Path('prepared/stage3_financial_report_versions.csv.gz')
+          out=Path('build/target/target_versions.csv.gz')
+          targets={'1207035181','1221568845'}
+          with gzip.open(source,'rt',encoding='utf-8',newline='') as handle:
+              reader=csv.DictReader(handle)
+              fields=reader.fieldnames
+              rows=[row for row in reader if row['canonical_announcement_id'] in targets]
+          assert len(rows)==2
+          assert {row['canonical_announcement_id'] for row in rows}==targets
+          with out.open('wb') as raw:
+              with gzip.GzipFile(filename='',mode='wb',fileobj=raw,compresslevel=9,mtime=0) as gz:
+                  with io.TextIOWrapper(gz,encoding='utf-8',newline='') as text:
+                      writer=csv.DictWriter(text,fieldnames=fields)
+                      writer.writeheader(); writer.writerows(rows)
+          PY
+          python scripts/extract_stage3_financial_pdf_values_v16.py \
+            --versions build/target/target_versions.csv.gz \
+            --shard 0 --shards 1 --out build/target/extract
+          python - <<'PY'
+          import csv,gzip,json
+          root='build/target/extract/'
+          manifest=json.load(open(root+'financial_extract_shard00.manifest.json',encoding='utf-8'))
+          assert manifest['pass'] is True
+          assert manifest['error_count']==0
+          assert manifest['document_rows']==2
+          assert manifest['numeric_rows']==6
+          assert manifest['runtime_generation']=='V17.26'
+          with gzip.open(root+'financial_documents_shard00.csv.gz','rt',encoding='utf-8',newline='') as f:
+              docs=list(csv.DictReader(f))
+          assert {row['announcement_id'] for row in docs}=={'1207035181','1221568845'}
+          assert all(row['numeric_observations']=='3' for row in docs)
+          assert all(row['tier1_found']=='0' and row['tier2_found']=='3' for row in docs)
+          print(json.dumps(manifest,ensure_ascii=False,indent=2))
+          PY
+      - name: Promote immutable V17.25 shards to V17.26 evidence
+        run: |
+          mkdir -p build/promotion
+          python scripts/promote_stage3_s3g1j_v17_26_full_shards.py \
+            --root partials \
+            --target-values build/target/extract/financial_values_shard00.csv.gz \
+            --target-documents build/target/extract/financial_documents_shard00.csv.gz \
+            --out-report build/promotion/stage3_s3g1j_v17_26_full_shard_promotion.json \
+            --source-run 30692117760
+      - name: Finalize promoted 64-shard evidence
         shell: bash
         run: |
           set +e
@@ -113,91 +189,101 @@ jobs:
           cat build/final/finalizer.stdout.log || true
           tail -200 build/final/finalizer.stderr.log || true
           exit 0
-      - name: Require complete deterministic output
+      - name: Require complete V17.26 deterministic output
         shell: bash
         run: |
           set -euo pipefail
-          test "$FINALIZER_EXIT" = 0 || test "$FINALIZER_EXIT" = 2
+          test "$FINALIZER_EXIT" = 2
           test -f build/final/stage3_financial_raw_values.csv.gz
           test -f build/final/stage3_financial_documents.csv.gz
           test -f build/final/stage3_financial_raw_audit.json
           python - <<'PY'
           import glob,json,os
           manifests=glob.glob('partials/**/financial_extract_shard*.manifest.json',recursive=True)
-          assert len(manifests)==64, len(manifests)
+          assert len(manifests)==64
           assert sorted(json.load(open(p,encoding='utf-8'))['shard'] for p in manifests)==list(range(64))
           x=json.load(open('build/final/stage3_financial_raw_audit.json',encoding='utf-8'))
-          assert x['shard_gate']==os.environ['SHARD_GATE']
-          assert x['runtime_generation']=='V17.25'
-          assert x['parser_method']==os.environ['PARSER_METHOD']
-          assert x['methodology_version']==os.environ['METHODOLOGY']
-          assert x['canonical_version_count']==121354
-          assert x['document_count']==121354
-          assert x['numeric_observation_count']==1051790
-          assert x['document_error_count']==1378
-          assert x['unresolved_tie_count']==1295
-          assert x['authority']=='CNINFO_ORIGINAL_FILING_PDF_BYTES_WITH_SHA256'
-          assert x['historical_current_f10_used_as_truth'] is False
-          assert x['stage4_alpha_locked'] is True
-          print(json.dumps({'data_pass':x['pass'],'documents':x['document_count'],'numeric':x['numeric_observation_count'],'document_errors':x['document_error_count'],'unresolved_ties':x['unresolved_tie_count']},ensure_ascii=False,indent=2))
+          expected={
+              'shard_gate':os.environ['SHARD_GATE'],
+              'runtime_generation':'V17.26',
+              'parser_method':os.environ['PARSER_METHOD'],
+              'methodology_version':os.environ['METHODOLOGY'],
+              'canonical_version_count':121354,
+              'document_count':121354,
+              'numeric_observation_count':1051778,
+              'document_error_count':1378,
+              'unresolved_tie_count':1295,
+              'authority':'CNINFO_ORIGINAL_FILING_PDF_BYTES_WITH_SHA256',
+              'historical_current_f10_used_as_truth':False,
+              'stage4_alpha_locked':True,
+              'pass':False,
+          }
+          for key,value in expected.items():
+              assert x[key]==value,(key,x[key],value)
+          print(json.dumps(x,ensure_ascii=False,indent=2))
           PY
-      - name: Enforce semantic document non-regression
+      - name: Enforce V17.26 document non-regression
         run: |
           previous_docs=$(find previous -name stage3_financial_documents.csv.gz -print -quit)
           previous_audit=$(find previous -name stage3_financial_raw_audit.json -print -quit)
           test -n "$previous_docs" && test -n "$previous_audit"
-          python scripts/compare_stage3_s3g1j_v17_25_full_final.py \
+          python scripts/compare_stage3_s3g1j_v17_26_full_final.py \
             --previous "$previous_docs" \
             --current build/final/stage3_financial_documents.csv.gz \
             --previous-audit "$previous_audit" \
             --current-audit build/final/stage3_financial_raw_audit.json \
-            --out build/final/stage3_s3g1j_v17_25_full_basis_non_regression.json
-      - name: Enforce full numeric semantic non-regression
+            --out build/final/stage3_s3g1j_v17_26_full_basis_non_regression.json
+      - name: Enforce V17.26 full numeric semantic non-regression
         run: |
           previous_values=$(find previous -name stage3_financial_raw_values.csv.gz -print -quit)
           test -n "$previous_values"
-          python scripts/compare_stage3_s3g1j_v17_25_full_values.py \
+          python scripts/compare_stage3_s3g1j_v17_26_full_values.py \
             --previous "$previous_values" \
             --current build/final/stage3_financial_raw_values.csv.gz \
-            --out build/final/stage3_s3g1j_v17_25_full_values_non_regression.json
-      - name: Record execution verdict separately from data verdict
+            --out build/final/stage3_s3g1j_v17_26_full_values_non_regression.json
+      - name: Record execution and data verdicts separately
         run: |
           python - <<'PY'
           import json
           audit=json.load(open('build/final/stage3_financial_raw_audit.json',encoding='utf-8'))
-          docs=json.load(open('build/final/stage3_s3g1j_v17_25_full_basis_non_regression.json',encoding='utf-8'))
-          values=json.load(open('build/final/stage3_s3g1j_v17_25_full_values_non_regression.json',encoding='utf-8'))
-          assert docs['pass'] is True and docs['errors']==[]
-          assert values['pass'] is True and values['errors']==[]
+          docs=json.load(open('build/final/stage3_s3g1j_v17_26_full_basis_non_regression.json',encoding='utf-8'))
+          values=json.load(open('build/final/stage3_s3g1j_v17_26_full_values_non_regression.json',encoding='utf-8'))
+          promotion=json.load(open('build/promotion/stage3_s3g1j_v17_26_full_shard_promotion.json',encoding='utf-8'))
+          assert docs['pass'] and values['pass'] and promotion['pass']
           execution={
-            'gate':'S3G1J_V17_25_FINALIZE_EXISTING_64_SHARDS_V3',
-            'source_run':30692117760,
-            'source_head':'f9329e2f6a83d38dfd86291a4fd7d4bbfbf1b6b1',
-            'execution_pass':True,
-            'document_non_regression_pass':True,
-            'numeric_non_regression_pass':True,
-            'final_data_gate_pass':audit['pass'],
-            'final_data_verdict':'PASS' if audit['pass'] else 'FAIL_CLOSED',
-            'canonical_version_count':audit['canonical_version_count'],
-            'document_count':audit['document_count'],
-            'numeric_observation_count':audit['numeric_observation_count'],
-            'document_error_count':audit['document_error_count'],
-            'unresolved_tie_count':audit['unresolved_tie_count'],
-            'financial_values_sha256':audit['financial_values_sha256'],
-            'financial_documents_sha256':audit['financial_documents_sha256'],
-            'changed_announcement_ids':docs['actual_changed_announcement_ids'],
-            'non_target_numeric_semantic_sha256':values['current_non_target_semantic_sha256'],
-            'unexpected_regression_count':docs['unexpected_regression_count'],
-            'stage3_status':'NOT_READY' if not audit['pass'] else 'FINAL_REVIEW_REQUIRED',
-            'stage4_alpha_locked':True,
-            'errors':[],
+              'gate':'S3G1J_V17_26_EXACT_SOURCE_SCOPE_REPAIR_FULL_FINAL',
+              'source_run':30692117760,
+              'execution_pass':True,
+              'document_non_regression_pass':True,
+              'numeric_non_regression_pass':True,
+              'non_balance_target_concepts_promoted':False,
+              'final_data_gate_pass':audit['pass'],
+              'final_data_verdict':'FAIL_CLOSED',
+              'canonical_version_count':audit['canonical_version_count'],
+              'document_count':audit['document_count'],
+              'numeric_observation_count':audit['numeric_observation_count'],
+              'document_error_count':audit['document_error_count'],
+              'unresolved_tie_count':audit['unresolved_tie_count'],
+              'financial_values_sha256':audit['financial_values_sha256'],
+              'financial_documents_sha256':audit['financial_documents_sha256'],
+              'changed_announcement_ids':docs['actual_changed_announcement_ids'],
+              'target_numeric_observations_each':3,
+              'non_target_numeric_semantic_sha256':values['current_non_target_semantic_sha256'],
+              'unexpected_regression_count':docs['unexpected_regression_count'],
+              'stage3_status':'NOT_READY',
+              'stage4_alpha_locked':True,
+              'errors':[],
           }
-          json.dump(execution,open('build/final/stage3_s3g1j_v17_25_full_execution.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+          with open('build/final/stage3_s3g1j_v17_26_full_execution.json','w',encoding='utf-8') as f:
+              json.dump(execution,f,ensure_ascii=False,indent=2)
           print(json.dumps(execution,ensure_ascii=False,indent=2))
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: stage3-s3g1j-v17-25-full-final-v3
-          path: build/final
+          name: stage3-s3g1j-v17-26-full-final
+          path: |
+            build/final
+            build/promotion
+            build/target/extract/financial_extract_shard00.manifest.json
           retention-days: 90
           compression-level: 0
