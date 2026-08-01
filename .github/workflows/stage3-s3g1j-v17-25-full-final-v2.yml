@@ -6,7 +6,7 @@ on:
     paths:
       - 'scripts/stage3_financial_pdf_parser_v18.py'
       - 'scripts/extract_stage3_financial_pdf_values_v16.py'
-      - 'scripts/promote_stage3_s3g1j_v17_26_full_shards.py'
+      - 'scripts/promote_stage3_s3g1j_v17_26_full_shards_v2.py'
       - 'scripts/compare_stage3_s3g1j_v17_26_full_final_v2.py'
       - 'scripts/compare_stage3_s3g1j_v17_26_full_values.py'
       - 'tests/test_stage3_v17_26_balance_only_parser.py'
@@ -85,7 +85,7 @@ jobs:
           python -m py_compile \
             scripts/stage3_financial_pdf_parser_v18.py \
             scripts/extract_stage3_financial_pdf_values_v16.py \
-            scripts/promote_stage3_s3g1j_v17_26_full_shards.py \
+            scripts/promote_stage3_s3g1j_v17_26_full_shards_v2.py \
             scripts/compare_stage3_s3g1j_v17_26_full_final_v2.py \
             scripts/compare_stage3_s3g1j_v17_26_full_values.py
 
@@ -165,7 +165,7 @@ jobs:
       - name: Promote immutable V17.25 shards to V17.26 evidence
         run: |
           mkdir -p build/promotion
-          python scripts/promote_stage3_s3g1j_v17_26_full_shards.py \
+          python scripts/promote_stage3_s3g1j_v17_26_full_shards_v2.py \
             --root partials \
             --target-values build/target/extract/financial_values_shard00.csv.gz \
             --target-documents build/target/extract/financial_documents_shard00.csv.gz \
