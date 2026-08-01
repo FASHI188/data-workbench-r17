@@ -1,7 +1,7 @@
 {
-  "schema_version": 4,
-  "status": "ACTIVE_WORKFLOW_SET_WITH_ACCEPTED_V17_24_RUNTIME_CLASSIFIER_AND_P0_DIAGNOSTIC",
-  "effective_from_parent_head": "d7385a9def2db95e8185a9136a01ebbcf7aa58a0",
+  "schema_version": 5,
+  "status": "ACTIVE_WORKFLOW_SET_WITH_ACCEPTED_V17_24_RUNTIME_CLASSIFIER_P0_AND_LAYOUT_EVIDENCE",
+  "effective_from_parent_head": "4d30271311c973a1e972812a204807451a4934d4",
   "policy": "Historical diagnostics, superseded candidates, frozen evidence workflows and completed one-shot evidence jobs are retained through Git history, immutable run IDs and artifact digests, but are removed from the active .github/workflows directory so ordinary pull-request synchronization cannot rerun or redefine historical evidence. Accepted production authority must be source-locked, exact-residual-bounded, fail-closed and registered in the S3G1J runtime manifest. Accepted diagnostic evidence must be separately registered and must not be relabeled as production final evidence or used to relax accounting/source gates without a later production-safety replay.",
   "active_stage3_workflows": [
     ".github/workflows/repository-safety-audit.yml",
@@ -23,16 +23,8 @@
     "accepted_head_sha": "92de74e7898be36239dc163e3811c9ae3f732e60",
     "accepted_artifact": "stage3-s3g1j-v17-24-production-acceptance-compat",
     "accepted_artifact_digest": "sha256:4865dd03537c70208d2a4358cf8b54ab65408510fce838017a4bf77bee30a98d",
-    "scope": "Exact frozen residual subset and combined exact-82 basis; only announcement 1221568845 is newly recovered through the exact normalized alias 所有者权益（或d股东权益）合计, while all three V17.21 accepted balance-sheet blocks must remain exactly equal to their authoritative baseline.",
-    "expected_residual_recovery_announcement_ids": [
-      "1221568845"
-    ],
-    "expected_combined_recovery_announcement_ids": [
-      "1212731093",
-      "1219311356",
-      "1221568845",
-      "1225153907"
-    ],
+    "expected_residual_recovery_announcement_ids": ["1221568845"],
+    "expected_combined_recovery_announcement_ids": ["1212731093", "1219311356", "1221568845", "1225153907"],
     "expected_remaining_fail_closed_count": 78,
     "source_sha_required": true,
     "accounting_tolerance": "0.005",
@@ -89,6 +81,23 @@
     "workflow_retired_after_acceptance": true,
     "governance_manifest": "governance/stage3_s3g1j_p0_v17_24_diagnostic_v1.json"
   },
+  "accepted_p0_layout_evidence": {
+    "status": "MACHINE_ACCEPTED_DIAGNOSTIC_EVIDENCE_NOT_PRODUCTION_PROMOTION",
+    "run": 30688404543,
+    "head_sha": "a7b1c812481e00d45035274cf746985bd7282c58",
+    "artifact_id": 8814765745,
+    "artifact": "stage3-s3g1j-p0-layout-evidence-v1",
+    "artifact_digest": "sha256:22b8fd0612c7550dadec6336856fbe1ad5461e5526a4d2a48c0919fab53f122b",
+    "report_sha256": "44010177f49751eb2ccfd7f8a536848ec386ce73b5b7f0db46773f23b10907da",
+    "processed_count": 22,
+    "source_sha_match_count": 22,
+    "strict_generic_group_witness_candidate_count": 8,
+    "missing_equity_group_bound_count": 0,
+    "missing_equity_parent_bound_count": 17,
+    "missing_equity_unbound_count": 8,
+    "workflow_retired_after_acceptance": true,
+    "governance_manifest": "governance/stage3_s3g1j_p0_layout_evidence_v1.json"
+  },
   "removed_from_active_workflows": [
     ".github/workflows/stage3-clean-s3g1e-deterministic-refreeze.yml",
     ".github/workflows/stage3-clean-s3g1g-deterministic-refreeze.yml",
@@ -113,6 +122,7 @@
     ".github/workflows/stage3-clean-s3g1j-v17-24-production.yml",
     ".github/workflows/stage3-s3g1j-full-basis-residual-classifier-v1.yml",
     ".github/workflows/stage3-s3g1j-p0-v17-24-diagnostic-v1.yml",
+    ".github/workflows/stage3-s3g1j-p0-layout-evidence-v1.yml",
     ".github/workflows/stage3-clean-s3g2-final.yml"
   ],
   "evidence_retention": {
