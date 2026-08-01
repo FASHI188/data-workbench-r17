@@ -25,6 +25,52 @@ def read_documents(path: Path) -> dict[str, dict]:
     return out
 
 
+def _normalize_json(value):
+    if isinstance(value, dict):
+        return {key: _normalize_json(value[key]) for key in sorted(value)}
+    if isinstance(value, list):
+        normalized = [_normalize_json(item) for item in value]
+        return sorted(
+            normalized,
+            key=lambda item: json.dumps(
+                item,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ),
+        )
+    return value
+
+
+def canonical_document_error(value: str) -> str:
+    """Canonicalize structured error evidence without changing its content.
+
+    Historical tie/value-conflict errors are JSON arrays whose element order can vary
+    when equivalent evidence is rebuilt. The array order is not semantic, but every
+    key, scalar, duplicate and nested value remains part of the comparison.
+    Non-JSON errors are compared byte-for-byte as before.
+    """
+    if not value:
+        return ""
+    try:
+        parsed = json.loads(value)
+    except (TypeError, json.JSONDecodeError):
+        return value
+    return json.dumps(
+        _normalize_json(parsed),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def comparable_value(row: dict, field: str) -> str:
+    value = row.get(field, "")
+    if field == "document_error":
+        return canonical_document_error(value)
+    return value
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--previous", required=True)
@@ -66,7 +112,7 @@ def main() -> int:
         delta = {
             field: {"previous": old.get(field, ""), "current": new.get(field, "")}
             for field in comparable
-            if old.get(field, "") != new.get(field, "")
+            if comparable_value(old, field) != comparable_value(new, field)
         }
         if delta:
             changed.append({"announcement_id": aid, "delta": delta})
