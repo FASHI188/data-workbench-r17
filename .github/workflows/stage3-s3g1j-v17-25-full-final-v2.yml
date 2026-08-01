@@ -7,9 +7,10 @@ on:
       - 'scripts/stage3_financial_pdf_parser_v18.py'
       - 'scripts/extract_stage3_financial_pdf_values_v16.py'
       - 'scripts/promote_stage3_s3g1j_v17_26_full_shards.py'
-      - 'scripts/compare_stage3_s3g1j_v17_26_full_final.py'
+      - 'scripts/compare_stage3_s3g1j_v17_26_full_final_v2.py'
       - 'scripts/compare_stage3_s3g1j_v17_26_full_values.py'
       - 'tests/test_stage3_v17_26_balance_only_parser.py'
+      - 'tests/test_stage3_v17_26_full_final_comparator.py'
       - '.github/workflows/stage3-s3g1j-v17-25-full-final-v2.yml'
 
 permissions:
@@ -80,12 +81,12 @@ jobs:
       - name: Run V17.26 contracts
         run: |
           python -m unittest tests.test_stage3_v17_26_balance_only_parser -v
-          python -m unittest tests.test_stage3_v17_25_full_final_comparator -v
+          python -m unittest tests.test_stage3_v17_26_full_final_comparator -v
           python -m py_compile \
             scripts/stage3_financial_pdf_parser_v18.py \
             scripts/extract_stage3_financial_pdf_values_v16.py \
             scripts/promote_stage3_s3g1j_v17_26_full_shards.py \
-            scripts/compare_stage3_s3g1j_v17_26_full_final.py \
+            scripts/compare_stage3_s3g1j_v17_26_full_final_v2.py \
             scripts/compare_stage3_s3g1j_v17_26_full_values.py
 
   repair-finalize:
@@ -227,7 +228,7 @@ jobs:
           previous_docs=$(find previous -name stage3_financial_documents.csv.gz -print -quit)
           previous_audit=$(find previous -name stage3_financial_raw_audit.json -print -quit)
           test -n "$previous_docs" && test -n "$previous_audit"
-          python scripts/compare_stage3_s3g1j_v17_26_full_final.py \
+          python scripts/compare_stage3_s3g1j_v17_26_full_final_v2.py \
             --previous "$previous_docs" \
             --current build/final/stage3_financial_documents.csv.gz \
             --previous-audit "$previous_audit" \
@@ -270,6 +271,7 @@ jobs:
               'target_numeric_observations_each':3,
               'non_target_numeric_semantic_sha256':values['current_non_target_semantic_sha256'],
               'unexpected_regression_count':docs['unexpected_regression_count'],
+              'nested_evidence_order_preserved':docs['nested_evidence_order_preserved'],
               'stage3_status':'NOT_READY',
               'stage4_alpha_locked':True,
               'errors':[],
