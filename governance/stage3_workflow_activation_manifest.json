@@ -1,8 +1,8 @@
 {
-  "schema_version": 3,
-  "status": "ACTIVE_WORKFLOW_SET_WITH_ACCEPTED_V17_24_RUNTIME_AND_FULL_BASIS_CLASSIFIER",
-  "effective_from_parent_head": "4c4e073e6060272275279a1e5faaf2b7d0634006",
-  "policy": "Historical diagnostics, superseded candidates, frozen evidence workflows and completed one-shot classifiers are retained through Git history, immutable run IDs and artifact digests, but are removed from the active .github/workflows directory so ordinary pull-request synchronization cannot rerun or redefine historical evidence. Accepted production authority must be source-locked, exact-residual-bounded, fail-closed and registered in the S3G1J runtime manifest. Accepted diagnostic classification evidence must be separately registered and must not be relabeled as production final evidence.",
+  "schema_version": 4,
+  "status": "ACTIVE_WORKFLOW_SET_WITH_ACCEPTED_V17_24_RUNTIME_CLASSIFIER_AND_P0_DIAGNOSTIC",
+  "effective_from_parent_head": "d7385a9def2db95e8185a9136a01ebbcf7aa58a0",
+  "policy": "Historical diagnostics, superseded candidates, frozen evidence workflows and completed one-shot evidence jobs are retained through Git history, immutable run IDs and artifact digests, but are removed from the active .github/workflows directory so ordinary pull-request synchronization cannot rerun or redefine historical evidence. Accepted production authority must be source-locked, exact-residual-bounded, fail-closed and registered in the S3G1J runtime manifest. Accepted diagnostic evidence must be separately registered and must not be relabeled as production final evidence or used to relax accounting/source gates without a later production-safety replay.",
   "active_stage3_workflows": [
     ".github/workflows/repository-safety-audit.yml",
     ".github/workflows/runtime-reproducibility.yml",
@@ -72,6 +72,23 @@
     "workflow_retired_after_acceptance": true,
     "governance_manifest": "governance/stage3_s3g1j_full_basis_residual_classifier_v1.json"
   },
+  "accepted_p0_current_v17_24_diagnostic": {
+    "status": "MACHINE_ACCEPTED_DIAGNOSTIC_EVIDENCE_NOT_PRODUCTION_PROMOTION",
+    "run": 30687837626,
+    "head_sha": "ef083b267625a4942c6f4e736d2c8178aa4a594d",
+    "artifact_id": 8814662441,
+    "artifact": "stage3-s3g1j-p0-current-v17-24-diagnostic-v1",
+    "artifact_digest": "sha256:b4e310fbb2b41d33d2c2c545589a6af53487dbfd1492dbb971d860fdcb4a14f0",
+    "report_sha256": "a3121a6a16261ed622a6b88fcc2db77fe791c317c133dddd2e45be8a523b943d",
+    "target_count": 22,
+    "source_sha_match_count": 22,
+    "current_v17_24_recovered_count": 0,
+    "current_v17_24_fail_closed_count": 22,
+    "missing_all_spatial_candidates_count": 11,
+    "missing_equity_spatial_candidate_count": 11,
+    "workflow_retired_after_acceptance": true,
+    "governance_manifest": "governance/stage3_s3g1j_p0_v17_24_diagnostic_v1.json"
+  },
   "removed_from_active_workflows": [
     ".github/workflows/stage3-clean-s3g1e-deterministic-refreeze.yml",
     ".github/workflows/stage3-clean-s3g1g-deterministic-refreeze.yml",
@@ -95,6 +112,7 @@
     ".github/workflows/stage3-clean-s3g1j-v17-24-exact-79.yml",
     ".github/workflows/stage3-clean-s3g1j-v17-24-production.yml",
     ".github/workflows/stage3-s3g1j-full-basis-residual-classifier-v1.yml",
+    ".github/workflows/stage3-s3g1j-p0-v17-24-diagnostic-v1.yml",
     ".github/workflows/stage3-clean-s3g2-final.yml"
   ],
   "evidence_retention": {
