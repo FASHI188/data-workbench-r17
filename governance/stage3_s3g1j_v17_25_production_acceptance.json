@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "gate": "S3G1J_V17_25_PRODUCTION_ACCEPTANCE",
+  "status": "MACHINE_ACCEPTED_PRODUCTION_EVIDENCE_RUNTIME_PROMOTION_PENDING",
+  "accepted_run": 30691109646,
+  "accepted_head_sha": "23aa096d8e31ec158a409b8a15392d69a8384fb0",
+  "artifact_id": 8815758398,
+  "artifact": "stage3-s3g1j-v17-25-production-acceptance",
+  "artifact_digest": "sha256:575e3eecd0fa196f80671bfd4cd75b00d87656a13bf9f382f302cb0453b21370",
+  "report_sha256": "77b351a084309e12bbbc758c5686b727612127bc798995827e3e28ab51aef69c",
+  "input_count_exact83": 83,
+  "source_sha_match_count": 83,
+  "production_recovered_announcement_ids": [
+    "1207035181",
+    "1212731093",
+    "1219311356",
+    "1221568845",
+    "1225153907"
+  ],
+  "previous_v17_24_recovery_announcement_ids": [
+    "1212731093",
+    "1219311356",
+    "1221568845",
+    "1225153907"
+  ],
+  "incremental_v17_25_recovery_announcement_ids": [
+    "1207035181"
+  ],
+  "remaining_fail_closed_count": 78,
+  "previous_82_results_equal_v17_24": true,
+  "target": {
+    "announcement_id": "1207035181",
+    "source_code": "000985",
+    "report_family": "Q3",
+    "economic_date": "2019-09-30",
+    "source_sha256": "320e3a950a4768e73766d57a09bcf34d893d4da949b8ed5a1b2f887852e76229",
+    "parser_method": "V17_25_EXACT_SOURCE_GENERIC_GROUP_WITNESS_PRODUCTION",
+    "arbitration": "V17_25_EXACT_SOURCE_GENERIC_GROUP_WITNESS_A_EQUALS_L_PLUS_E",
+    "production_runtime_generation": "V17.25",
+    "selected_pages": {
+      "TOTAL_ASSETS": 8,
+      "TOTAL_LIABILITIES": 9,
+      "TOTAL_EQUITY": 9
+    },
+    "selected_aliases": {
+      "TOTAL_ASSETS": "资产总计",
+      "TOTAL_LIABILITIES": "负债合计",
+      "TOTAL_EQUITY": "所有者权益合计"
+    },
+    "accounting_tolerance": "0.005",
+    "identity_relative_error": "0",
+    "identity_residual_cny": "0.00",
+    "column_role_gate_pass": true,
+    "candidate_only": false
+  },
+  "hard_boundaries": {
+    "source_policy_changed": false,
+    "global_row_tolerance_changed": false,
+    "fuzzy_alias_matching_enabled": false,
+    "ocr_enabled": false,
+    "e_equals_a_minus_l_inference": false,
+    "production_data_changed": false,
+    "stage3_status": "NOT_READY",
+    "stage4_alpha_live_locked": true,
+    "main_changed": false
+  },
+  "checks": {
+    "prepare": "SUCCESS",
+    "replay_shards": "8/8 SUCCESS",
+    "deterministic_finalizer": "SUCCESS",
+    "repository_safety": "SUCCESS",
+    "runtime_reproducibility": "SUCCESS",
+    "v17_24_runtime_contract": "SUCCESS"
+  },
+  "next_requirement": "Promote the accepted V17.25 parser, extractor generation, shard gate, methodology and accepted run/artifact/digest into the formal runtime manifest and contract; then rerun all active authority/safety/runtime checks."
+}
