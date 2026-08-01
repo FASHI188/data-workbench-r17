@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "status": "ACTIVE_WORKFLOW_SET_WITH_TEMPORARY_PRODUCTION_ACCEPTANCE",
-  "effective_from_parent_head": "f73c2ebd89cb4be816e626b181cec5198e01a12e",
-  "policy": "Historical diagnostics, superseded candidates and frozen evidence workflows are retained through Git history, immutable run IDs and artifact digests, but are removed from the active .github/workflows directory so ordinary pull-request synchronization cannot rerun or redefine historical evidence. One explicitly named production-acceptance workflow may be activated temporarily when it is source-locked, exact-residual-bounded, fail-closed and retired or promoted only after its artifact is reviewed.",
+  "status": "ACTIVE_WORKFLOW_SET_WITH_ACCEPTED_V17_24_PENDING_RUNTIME_MANIFEST",
+  "effective_from_parent_head": "ffc67dae2a1f8cf7602acab3e28cb1cdc3c0f148",
+  "policy": "Historical diagnostics, superseded candidates and frozen evidence workflows are retained through Git history, immutable run IDs and artifact digests, but are removed from the active .github/workflows directory so ordinary pull-request synchronization cannot rerun or redefine historical evidence. A production-acceptance workflow remains active only when source-locked, exact-residual-bounded and fail-closed; superseded acceptance implementations are retired after a replacement gate succeeds.",
   "active_stage3_workflows": [
     ".github/workflows/repository-safety-audit.yml",
     ".github/workflows/runtime-reproducibility.yml",
@@ -10,34 +10,47 @@
     ".github/workflows/stage3-clean-core-contract.yml",
     ".github/workflows/stage3-clean-s3g1j-contract.yml",
     ".github/workflows/stage3-clean-s3g1j-v17-21-production.yml",
-    ".github/workflows/stage3-clean-s3g1j-v17-24-production.yml"
+    ".github/workflows/stage3-clean-s3g1j-v17-24-acceptance-compat.yml"
   ],
-  "temporary_production_acceptance": {
-    "workflow": ".github/workflows/stage3-clean-s3g1j-v17-24-production.yml",
-    "candidate_run": 30650516337,
-    "candidate_head_sha": "f73c2ebd89cb4be816e626b181cec5198e01a12e",
-    "candidate_artifact": "stage3-s3g1j-v17-24-exact-79-candidate-safety",
-    "candidate_artifact_digest": "sha256:1982c801013ac43398612d6b558abc41c9143c58f670c28523da580ec0b3368a",
-    "scope": "Exact current 79 residuals and combined accepted exact-82 basis; only announcement 1221568845 may be newly recovered through exact normalized alias 所有者权益（或d股东权益）合计, while all three V17.21 accepted recovery paths must remain unchanged.",
-    "expected_exact79_recovery_announcement_ids": [
+  "accepted_v17_24_production_acceptance": {
+    "workflow": ".github/workflows/stage3-clean-s3g1j-v17-24-acceptance-compat.yml",
+    "run": 30685830808,
+    "head_sha": "92de74e7898be36239dc163e3811c9ae3f732e60",
+    "artifact": "stage3-s3g1j-v17-24-production-acceptance-compat",
+    "artifact_digest": "sha256:4865dd03537c70208d2a4358cf8b54ab65408510fce838017a4bf77bee30a98d",
+    "source_candidate_run": 30650516337,
+    "source_candidate_head_sha": "f73c2ebd89cb4be816e626b181cec5198e01a12e",
+    "source_candidate_artifact": "stage3-s3g1j-v17-24-exact-79-candidate-safety",
+    "source_candidate_artifact_digest": "sha256:1982c801013ac43398612d6b558abc41c9143c58f670c28523da580ec0b3368a",
+    "scope": "Exact current 79 residuals and combined accepted exact-82 basis. Only announcement 1221568845 is newly recovered through the exact normalized alias 所有者权益（或d股东权益）合计. The three V17.21 accepted balance-sheet blocks are required to equal their authoritative V17.21 blocks exactly.",
+    "exact79_recovery_announcement_ids": [
       "1221568845"
     ],
-    "expected_exact82_recovery_announcement_ids": [
+    "exact82_recovery_announcement_ids": [
       "1212731093",
       "1219311356",
       "1221568845",
       "1225153907"
     ],
-    "expected_remaining_fail_closed_count": 78,
+    "remaining_fail_closed_count": 78,
+    "legacy_blocks_required_equal_v17_21": true,
     "production_parser_changed": true,
     "fuzzy_alias_matching_enabled": false,
     "no_ocr": true,
-    "no_accounting_inference": true,
+    "no_accounting_inference_for_new_recovery": true,
     "source_sha_required": true,
     "accounting_tolerance": "0.005",
     "global_row_tolerance_changed": false,
     "stage4_alpha_locked": true,
     "runtime_manifest_promotion_pending": true
+  },
+  "retired_v17_24_false_positive_gate": {
+    "workflow": ".github/workflows/stage3-clean-s3g1j-v17-24-production.yml",
+    "failed_run": 30651790668,
+    "failed_head_sha": "959305ffde968cdc94a23f76ca3217b959425250",
+    "reason": "The parser preserved the accepted 1225153907 V17.15 block, but the old validator treated the absence of a later-added e_equals_a_minus_l_inference metadata key as if inference were enabled. The replacement gate validates prior blocks by exact equality with the authoritative V17.21 artifact and keeps every explicit hard gate for the new V17.24 recovery.",
+    "parser_regression_proven": false,
+    "retained_as_historical_evidence": true
   },
   "removed_from_active_workflows": [
     ".github/workflows/stage3-clean-s3g1e-deterministic-refreeze.yml",
@@ -60,11 +73,12 @@
     ".github/workflows/stage3-clean-s3g1j-v17-22-601111-page47.yml",
     ".github/workflows/stage3-clean-s3g1j-v17-23-600448-equity.yml",
     ".github/workflows/stage3-clean-s3g1j-v17-24-exact-79.yml",
+    ".github/workflows/stage3-clean-s3g1j-v17-24-production.yml",
     ".github/workflows/stage3-clean-s3g2-final.yml"
   ],
   "evidence_retention": {
     "workflow_definitions": "Git history plus immutable run IDs and artifact digests",
-    "accepted_runs": "Referenced by governance/stage3_authority_map.json and governance/stage3_s3g1j_runtime_manifest.json",
+    "accepted_runs": "Referenced by governance/stage3_authority_map.json and governance/stage3_s3g1j_runtime_manifest.json after promotion",
     "artifact_identity": "Semantic dataset hashes remain authoritative; artifact archive digests remain transport-instance evidence only"
   },
   "stage3_status_changed": false,
