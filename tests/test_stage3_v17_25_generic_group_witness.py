@@ -16,11 +16,17 @@ class V1725GenericGroupWitnessTests(unittest.TestCase):
     ) -> fitz.Document:
         doc = fitz.open()
         page = doc.new_page(width=595, height=842)
-        page.insert_text((72, 72), title, fontsize=12)
+        # Use PyMuPDF's built-in Simplified Chinese font so the synthetic
+        # fixture preserves extractable CJK text on Linux runners.
+        page.insert_text((72, 72), title, fontsize=12, fontname="china-s")
         if witness is not None:
-            page.insert_text((72, 120), witness, fontsize=10)
+            page.insert_text(
+                (72, 120), witness, fontsize=10, fontname="china-s"
+            )
         if total is not None:
-            page.insert_text((72, 150), total, fontsize=10)
+            page.insert_text(
+                (72, 150), total, fontsize=10, fontname="china-s"
+            )
         return doc
 
     def test_exact_group_witness_promotes_generic_title(self):
