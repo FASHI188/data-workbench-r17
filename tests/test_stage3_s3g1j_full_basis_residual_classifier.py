@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from scripts import classify_stage3_s3g1j_full_basis_residuals as classifier
+import classify_stage3_s3g1j_full_basis_residuals as classifier
 
 
 class FullBasisResidualClassifierTests(unittest.TestCase):
