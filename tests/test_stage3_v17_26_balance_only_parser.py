@@ -64,72 +64,72 @@ class V1726BalanceOnlyParserTests(unittest.TestCase):
         self.assertEqual(result, baseline)
         accepted_parse.assert_called_once()
 
-    def test_exact_target_emits_only_validated_balance_concepts(self) -> None:
-        digest = next(iter(production.TARGETS))
-        target = production.TARGETS[digest]
-        baseline = self.parsed_target(digest)
-        with patch.object(
-            production.hashlib, "sha256", return_value=_Digest(digest)
-        ), patch.object(
-            production.accepted, "parse_pdf_bytes", return_value=baseline
-        ):
-            result = production.parse_pdf_bytes(
-                b"target", target["economic_date"]
-            )
-        found = {
-            concept
-            for concept, observation in result["observations"].items()
-            if observation.get("status") == "FOUND"
-        }
-        self.assertEqual(found, set(production.ALLOWED_CONCEPTS))
-        self.assertEqual(result["tier1_found"], 0)
-        self.assertEqual(result["tier2_found"], 3)
-        self.assertEqual(result["parser_version"], production.METHOD)
-        self.assertFalse(
-            result["balance_sheet_block"]["non_balance_values_promoted"]
-        )
-        self.assertEqual(
-            result["observations"]["OPERATING_CASH_FLOW"],
-            {"status": "NOT_FOUND", "reason": production.FILTER_REASON},
-        )
+    def test_each_exact_target_emits_only_validated_balance_concepts(self) -> None:
+        for digest, target in production.TARGETS.items():
+            with self.subTest(announcement_id=target["announcement_id"]):
+                baseline = self.parsed_target(digest)
+                with patch.object(
+                    production.hashlib, "sha256", return_value=_Digest(digest)
+                ), patch.object(
+                    production.accepted, "parse_pdf_bytes", return_value=baseline
+                ):
+                    result = production.parse_pdf_bytes(
+                        b"target", target["economic_date"]
+                    )
+                found = {
+                    concept
+                    for concept, observation in result["observations"].items()
+                    if observation.get("status") == "FOUND"
+                }
+                self.assertEqual(found, set(production.ALLOWED_CONCEPTS))
+                self.assertEqual(result["tier1_found"], 0)
+                self.assertEqual(result["tier2_found"], 3)
+                self.assertEqual(result["parser_version"], production.METHOD)
+                self.assertEqual(
+                    result["balance_sheet_block"]["exact_source_sha256"], digest
+                )
+                self.assertFalse(
+                    result["balance_sheet_block"]["non_balance_values_promoted"]
+                )
+                self.assertEqual(
+                    result["observations"]["OPERATING_CASH_FLOW"],
+                    {"status": "NOT_FOUND", "reason": production.FILTER_REASON},
+                )
 
-    def test_exact_target_wrong_date_remains_unchanged(self) -> None:
-        digest = next(iter(production.TARGETS))
-        baseline = self.parsed_target(digest)
-        with patch.object(
-            production.hashlib, "sha256", return_value=_Digest(digest)
-        ), patch.object(
-            production.accepted, "parse_pdf_bytes", return_value=baseline
-        ):
-            result = production.parse_pdf_bytes(b"target", "2000-01-01")
-        self.assertEqual(result, baseline)
+    def test_each_exact_target_wrong_date_remains_unchanged(self) -> None:
+        for digest in production.TARGETS:
+            baseline = self.parsed_target(digest)
+            with self.subTest(digest=digest), patch.object(
+                production.hashlib, "sha256", return_value=_Digest(digest)
+            ), patch.object(
+                production.accepted, "parse_pdf_bytes", return_value=baseline
+            ):
+                result = production.parse_pdf_bytes(b"target", "2000-01-01")
+                self.assertEqual(result, baseline)
 
-    def test_exact_target_value_drift_fails_closed(self) -> None:
-        digest = next(iter(production.TARGETS))
-        target = production.TARGETS[digest]
-        baseline = self.parsed_target(digest)
-        baseline = copy.deepcopy(baseline)
-        baseline["observations"]["TOTAL_ASSETS"]["normalized_cny_value"] = "1"
-        with patch.object(
-            production.hashlib, "sha256", return_value=_Digest(digest)
-        ), patch.object(
-            production.accepted, "parse_pdf_bytes", return_value=baseline
-        ):
-            with self.assertRaisesRegex(ValueError, "value mismatch"):
-                production.parse_pdf_bytes(b"target", target["economic_date"])
+    def test_each_exact_target_value_drift_fails_closed(self) -> None:
+        for digest, target in production.TARGETS.items():
+            baseline = copy.deepcopy(self.parsed_target(digest))
+            baseline["observations"]["TOTAL_ASSETS"]["normalized_cny_value"] = "1"
+            with self.subTest(announcement_id=target["announcement_id"]), patch.object(
+                production.hashlib, "sha256", return_value=_Digest(digest)
+            ), patch.object(
+                production.accepted, "parse_pdf_bytes", return_value=baseline
+            ):
+                with self.assertRaisesRegex(ValueError, "value mismatch"):
+                    production.parse_pdf_bytes(b"target", target["economic_date"])
 
-    def test_exact_target_validation_error_fails_closed(self) -> None:
-        digest = next(iter(production.TARGETS))
-        target = production.TARGETS[digest]
-        baseline = self.parsed_target(digest)
-        baseline["validation_errors"] = ["BROKEN"]
-        with patch.object(
-            production.hashlib, "sha256", return_value=_Digest(digest)
-        ), patch.object(
-            production.accepted, "parse_pdf_bytes", return_value=baseline
-        ):
-            with self.assertRaisesRegex(ValueError, "retained validation errors"):
-                production.parse_pdf_bytes(b"target", target["economic_date"])
+    def test_each_exact_target_validation_error_fails_closed(self) -> None:
+        for digest, target in production.TARGETS.items():
+            baseline = self.parsed_target(digest)
+            baseline["validation_errors"] = ["BROKEN"]
+            with self.subTest(announcement_id=target["announcement_id"]), patch.object(
+                production.hashlib, "sha256", return_value=_Digest(digest)
+            ), patch.object(
+                production.accepted, "parse_pdf_bytes", return_value=baseline
+            ):
+                with self.assertRaisesRegex(ValueError, "retained validation errors"):
+                    production.parse_pdf_bytes(b"target", target["economic_date"])
 
 
 if __name__ == "__main__":
