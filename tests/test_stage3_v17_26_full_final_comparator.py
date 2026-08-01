@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import unittest
 
-from scripts.compare_stage3_s3g1j_v17_26_full_final import canonical_document_error
+from scripts.compare_stage3_s3g1j_v17_26_full_final_v2 import canonical_document_error
 
 
 class V1726FullFinalComparatorTests(unittest.TestCase):
