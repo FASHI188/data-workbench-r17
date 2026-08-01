@@ -21,7 +21,7 @@ slim_evidence = prior.slim_evidence
 
 def parse_pdf_bytes(raw: bytes, economic_date: str) -> dict:
     parsed = dict(v17_26_parse_pdf_bytes(raw, economic_date))
-    parsed["declared_a_share_codes"] = prior.prior.prior.prior.v15.v14.v9.declared_a_share_codes(raw)
+    parsed["declared_a_share_codes"] = prior.prior.prior.v15.v14.v9.declared_a_share_codes(raw)
     return parsed
 
 
