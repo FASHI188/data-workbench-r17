@@ -1,0 +1,139 @@
+name: Stage3 S3G1J P0 Current V17.24 Diagnostic V1
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/diagnose_stage3_s3g1j_p0_v17_24.py'
+      - 'tests/test_stage3_s3g1j_p0_v17_24_diagnostic.py'
+      - '.github/workflows/stage3-s3g1j-p0-v17-24-diagnostic-v1.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FULL_RUN: '30649251360'
+  FULL_HEAD: '6b274dbd32734ab0af6a75a6d595925278dd8973'
+  FULL_ARTIFACT: 'stage3-s3g1j-v17-21-full-final'
+  FULL_DIGEST: 'sha256:7faff72949a6e0a98f49088bce99bc2df37c7cbcb0259b39d1b2655fc02f6086'
+  FULL_DOCUMENTS_GZIP_SHA256: 'de31e148abd19f866b863135d0361ab2728e97577a8e584b7572fdbcbcaa06d8'
+  CLASSIFIER_RUN: '30687393120'
+  CLASSIFIER_HEAD: '2837fc4d4de85c100f920a3ec847330016c77870'
+  CLASSIFIER_ARTIFACT: 'stage3-s3g1j-full-basis-residual-classification-v1'
+  CLASSIFIER_DIGEST: 'sha256:3451a94bb70758bbb93d3be4600ad7e0d8d65de618928b1c635f8a29686f7052'
+  P0_GZIP_SHA256: '6b66c8a43df0359d1cbf2fd6e7e8188f3c841bbe59657b6b8773b6f2a9919142'
+  V17_24_RUN: '30685830808'
+  V17_24_HEAD: '92de74e7898be36239dc163e3811c9ae3f732e60'
+  V17_24_ARTIFACT: 'stage3-s3g1j-v17-24-production-acceptance-compat'
+  V17_24_DIGEST: 'sha256:4865dd03537c70208d2a4358cf8b54ab65408510fce838017a4bf77bee30a98d'
+  PYTHONPATH: scripts
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact verified diagnostic dependencies
+        run: python -m pip install --disable-pip-version-check --constraint requirements/constraints-verified.txt requests PyMuPDF
+      - name: Lock full-basis, classifier and V17.24 authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh_api_retry() {
+            endpoint="$1"
+            for attempt in 1 2 3 4 5 6; do
+              if output=$(gh api "$endpoint" 2>gh-api-error.log); then
+                printf '%s' "$output"
+                return 0
+              fi
+              cat gh-api-error.log >&2 || true
+              sleep $((attempt * 15))
+            done
+            return 1
+          }
+          lock_run_artifact() {
+            run="$1"; expected_conclusion="$2"; expected_head="$3"; artifact="$4"; expected_digest="$5"
+            run_json=$(gh_api_retry "repos/$GITHUB_REPOSITORY/actions/runs/$run")
+            test "$(jq -r '.conclusion' <<<"$run_json")" = "$expected_conclusion"
+            test "$(jq -r '.head_sha' <<<"$run_json")" = "$expected_head"
+            artifact_json=$(gh_api_retry "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts")
+            actual=$(jq -r --arg artifact "$artifact" '.artifacts[] | select(.name==$artifact) | .digest' <<<"$artifact_json")
+            test -n "$actual"
+            test "$actual" = "$expected_digest"
+          }
+          lock_run_artifact "$FULL_RUN" failure "$FULL_HEAD" "$FULL_ARTIFACT" "$FULL_DIGEST"
+          lock_run_artifact "$CLASSIFIER_RUN" success "$CLASSIFIER_HEAD" "$CLASSIFIER_ARTIFACT" "$CLASSIFIER_DIGEST"
+          lock_run_artifact "$V17_24_RUN" success "$V17_24_HEAD" "$V17_24_ARTIFACT" "$V17_24_DIGEST"
+      - name: Download locked evidence artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          download_retry() {
+            run="$1"; artifact="$2"; destination="$3"
+            for attempt in 1 2 3 4 5 6; do
+              rm -rf "$destination"
+              if gh run download "$run" -R "$GITHUB_REPOSITORY" -n "$artifact" -D "$destination"; then
+                return 0
+              fi
+              sleep $((attempt * 15))
+            done
+            return 1
+          }
+          download_retry "$FULL_RUN" "$FULL_ARTIFACT" full
+          download_retry "$CLASSIFIER_RUN" "$CLASSIFIER_ARTIFACT" classifier
+          test -f full/build/stage3-financial-raw-final/stage3_financial_documents.csv.gz
+          test -f classifier/s3g1j_full_basis_p0_safe_near_complete.csv.gz
+      - name: Run diagnostic contracts
+        run: python -m unittest tests.test_stage3_s3g1j_p0_v17_24_diagnostic -v
+      - name: Diagnose remaining current-runtime P0 population
+        run: |
+          python scripts/diagnose_stage3_s3g1j_p0_v17_24.py \
+            --p0-ledger classifier/s3g1j_full_basis_p0_safe_near_complete.csv.gz \
+            --p0-gzip-sha256 "$P0_GZIP_SHA256" \
+            --full-documents full/build/stage3-financial-raw-final/stage3_financial_documents.csv.gz \
+            --full-documents-gzip-sha256 "$FULL_DOCUMENTS_GZIP_SHA256" \
+            --exclude-announcement-id 1221568845 \
+            --out build/s3g1j-p0-v17-24-diagnostic-v1/report.json
+      - name: Enforce diagnostic accounting and locks
+        run: |
+          python - <<'PY'
+          import json
+          path='build/s3g1j-p0-v17-24-diagnostic-v1/report.json'
+          x=json.load(open(path,encoding='utf-8'))
+          assert x['gate']=='S3G1J_P0_CURRENT_V17_24_DIAGNOSTIC_V1'
+          assert x['pass'] is True and x['errors']==[]
+          assert x['source_basis_p0_count']==23
+          assert x['excluded_accepted_recovery_announcement_ids']==['1221568845']
+          assert x['target_count']==22
+          assert x['processed_count']==22
+          assert x['source_sha_match_count']==22
+          assert x['v17_21_recovered_count']==0
+          assert x['v17_24_recovered_count']+x['v17_24_fail_closed_count']==22
+          assert len(x['results'])==22
+          assert not x['execution_failures']
+          assert x['accounting_tolerance_changed'] is False
+          assert x['source_policy_changed'] is False
+          assert x['parser_changed'] is False
+          assert x['production_data_changed'] is False
+          assert x['stage3_status']=='NOT_READY'
+          assert x['stage4_alpha_locked'] is True
+          print(json.dumps({
+              'v17_24_recovered_count':x['v17_24_recovered_count'],
+              'v17_24_recovered_announcement_ids':x['v17_24_recovered_announcement_ids'],
+              'v17_24_fail_closed_count':x['v17_24_fail_closed_count'],
+              'signature_counts':x['signature_counts'],
+              'candidate_count_patterns':x['candidate_count_patterns'],
+          },ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-p0-current-v17-24-diagnostic-v1
+          path: build/s3g1j-p0-v17-24-diagnostic-v1
+          retention-days: 90
+          compression-level: 0
