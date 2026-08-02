@@ -1,12 +1,13 @@
 {
-  "schema_version": 7,
-  "status": "ACTIVE_WORKFLOW_SET_WITH_ACCEPTED_V17_25_RUNTIME_AND_ACCEPTED_V17_26_FULL_BASIS_EVIDENCE",
+  "schema_version": 8,
+  "status": "ACTIVE_WORKFLOW_SET_WITH_ACCEPTED_V17_26_FAIL_CLOSED_RUNTIME",
   "policy": "Only long-lived read-only safety, authority, runtime and accepted-evidence contracts remain active. Completed candidate, production-acceptance, classifier, diagnostic and full-basis workflows are retained through Git history, immutable run IDs and artifact digests but removed from the active workflow directory after acceptance.",
   "previous_activation_manifest": {
-    "schema_version": 6,
-    "source_head_sha": "153634a632d7df1c8a8dc94602e52c6a862dd188",
-    "git_blob_sha": "96260746f5faf98d12a9620f64acb6b8d50ea0a8",
-    "accepted_runtime_generation": "V17.25"
+    "schema_version": 7,
+    "source_head_sha": "41a9f8fe5684eb0e0eb5141543c9d597182fb27f",
+    "git_blob_sha": "35307d3d2e14da454f8a438fc186bdbe6ca60818",
+    "accepted_runtime_generation": "V17.25",
+    "accepted_v17_26_evidence_pending_runtime_promotion": true
   },
   "active_stage3_workflows": [
     ".github/workflows/repository-safety-audit.yml",
@@ -19,29 +20,33 @@
     ".github/workflows/stage3-s3g1j-v17-26-evidence-contract.yml"
   ],
   "accepted_production_runtime": {
-    "generation": "V17.25",
+    "generation": "V17.26",
+    "status": "FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED",
     "runtime_manifest": "governance/stage3_s3g1j_runtime_manifest.json",
-    "runtime_manifest_schema": 6,
-    "candidate_safety_run": 30690306327,
-    "candidate_safety_artifact_digest": "sha256:b63cdb341ab30d62bb25bf49cc8c94d3ffdc8df97fd9e39c9aada0629c867dd9",
-    "production_acceptance_run": 30691109646,
-    "production_acceptance_head_sha": "23aa096d8e31ec158a409b8a15392d69a8384fb0",
-    "production_acceptance_artifact": "stage3-s3g1j-v17-25-production-acceptance",
-    "production_acceptance_artifact_digest": "sha256:575e3eecd0fa196f80671bfd4cd75b00d87656a13bf9f382f302cb0453b21370",
-    "production_recovered_announcement_ids": [
-      "1207035181",
-      "1212731093",
-      "1219311356",
-      "1221568845",
-      "1225153907"
-    ],
-    "incremental_recovery_announcement_ids": [
-      "1207035181"
-    ],
-    "representative_remaining_fail_closed_count": 78,
-    "full_basis_final_pending": false,
-    "production_final_status": "SUPERSEDED_BY_ACCEPTED_V17_26_FULL_BASIS_SCOPE_REPAIR_EVIDENCE",
-    "runtime_manifest_promotion_pending": true
+    "runtime_manifest_schema": 7,
+    "evidence_manifest": "governance/stage3_s3g1j_v17_26_full_final.json",
+    "acceptance_run": 30733013665,
+    "acceptance_head_sha": "ed81a8f167c7b158167a8bdafa1799b7047666af",
+    "acceptance_artifact_id": 8828600783,
+    "acceptance_artifact": "stage3-s3g1j-v17-26-full-final",
+    "acceptance_artifact_digest": "sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b",
+    "runtime_generation": "V17.26",
+    "shard_gate": "S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_26",
+    "extractor": "scripts/extract_stage3_financial_pdf_values_v16.py",
+    "parser": "scripts/stage3_financial_pdf_parser_v18.py",
+    "methodology_version": "V3.3.6-V17.26",
+    "canonical_version_count": 121354,
+    "numeric_observation_count": 1051778,
+    "document_error_count": 1378,
+    "unresolved_tie_count": 1295,
+    "target_numeric_observations_each": 3,
+    "non_balance_target_concepts_promoted": false,
+    "non_target_numeric_semantic_sha256": "f9f7751943b113db9488b0b7b1d33ffbd93e1e3eb56486ca8e399f252a5953b4",
+    "unexpected_regression_count": 0,
+    "execution_verdict": "PASS",
+    "data_verdict": "FAIL_CLOSED",
+    "runtime_manifest_promotion_pending": false,
+    "production_final_status": "FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED"
   },
   "accepted_v17_26_full_basis_evidence": {
     "evidence_manifest": "governance/stage3_s3g1j_v17_26_full_final.json",
@@ -69,8 +74,9 @@
     "unexpected_regression_count": 0,
     "final_data_verdict": "FAIL_CLOSED",
     "stage3_status": "NOT_READY",
-    "runtime_manifest_promotion_pending": true,
-    "one_shot_workflow_retired_after_acceptance": true
+    "runtime_manifest_promotion_pending": false,
+    "one_shot_workflow_retired_after_acceptance": true,
+    "evidence_contract_active": true
   },
   "retained_evidence": {
     "full_basis_v17_21_final": {
@@ -78,18 +84,6 @@
       "artifact_digest": "sha256:7faff72949a6e0a98f49088bce99bc2df37c7cbcb0259b39d1b2655fc02f6086",
       "document_error_count": 1380,
       "verdict": "FAIL_CLOSED"
-    },
-    "full_basis_classifier": {
-      "run": 30687393120,
-      "artifact_digest": "sha256:3451a94bb70758bbb93d3be4600ad7e0d8d65de618928b1c635f8a29686f7052"
-    },
-    "p0_v17_24_diagnostic": {
-      "run": 30687837626,
-      "artifact_digest": "sha256:b4e310fbb2b41d33d2c2c545589a6af53487dbfd1492dbb971d860fdcb4a14f0"
-    },
-    "p0_layout_evidence": {
-      "run": 30688404543,
-      "artifact_digest": "sha256:22b8fd0612c7550dadec6336856fbe1ad5461e5526a4d2a48c0919fab53f122b"
     },
     "v17_25_candidate_safety": {
       "run": 30690306327,
@@ -115,7 +109,8 @@
       "execution_verdict": "PASS",
       "data_verdict": "FAIL_CLOSED",
       "workflow_retired_after_acceptance": true,
-      "evidence_contract_active": true
+      "evidence_contract_active": true,
+      "runtime_promoted": true
     }
   },
   "removed_one_shot_workflows": [
@@ -135,6 +130,7 @@
     "fuzzy_alias_matching_enabled": false,
     "ocr_enabled": false,
     "e_equals_a_minus_l_inference": false,
+    "candidate_resolver_reused_for_v17_26_targets": false,
     "non_balance_target_concepts_promoted": false,
     "stage3_status": "NOT_READY",
     "stage4_alpha_live_locked": true,
