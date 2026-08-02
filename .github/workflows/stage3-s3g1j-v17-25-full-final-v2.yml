@@ -1,4 +1,4 @@
-name: Stage3 S3G1J V17.26 Exact-Source Scope Repair Final V4
+name: Stage3 S3G1J V17.26 Exact-Source Scope Repair Final V5
 
 on:
   workflow_dispatch:
@@ -6,6 +6,7 @@ on:
     paths:
       - 'scripts/stage3_financial_pdf_parser_v18.py'
       - 'scripts/extract_stage3_financial_pdf_values_v16.py'
+      - 'scripts/build_stage3_s3g1j_v17_26_exact_target_ledger.py'
       - 'scripts/promote_stage3_s3g1j_v17_26_full_shards_v2.py'
       - 'scripts/compare_stage3_s3g1j_v17_26_full_final_v2.py'
       - 'scripts/compare_stage3_s3g1j_v17_26_full_values.py'
@@ -85,6 +86,7 @@ jobs:
           python -m py_compile \
             scripts/stage3_financial_pdf_parser_v18.py \
             scripts/extract_stage3_financial_pdf_values_v16.py \
+            scripts/build_stage3_s3g1j_v17_26_exact_target_ledger.py \
             scripts/promote_stage3_s3g1j_v17_26_full_shards_v2.py \
             scripts/compare_stage3_s3g1j_v17_26_full_final_v2.py \
             scripts/compare_stage3_s3g1j_v17_26_full_values.py
@@ -120,32 +122,14 @@ jobs:
           repository: FASHI188/data-workbench-r17
           run-id: 30649251360
           github-token: ${{ github.token }}
-      - name: Build exact two-document target ledger
+      - name: Build exact selected-source target ledger
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p build/target
-          python - <<'PY'
-          import csv,gzip,io
-          from pathlib import Path
-          source=Path('prepared/stage3_financial_report_versions.csv.gz')
-          out=Path('build/target/target_versions.csv.gz')
-          targets={'1207035181','1221568845'}
-          with gzip.open(source,'rt',encoding='utf-8',newline='') as handle:
-              reader=csv.DictReader(handle)
-              fields=reader.fieldnames
-              rows=[row for row in reader if row['canonical_announcement_id'] in targets]
-          assert len(rows)==2
-          assert {row['canonical_announcement_id'] for row in rows}==targets
-          with out.open('wb') as raw:
-              with gzip.GzipFile(filename='',mode='wb',fileobj=raw,compresslevel=9,mtime=0) as gz:
-                  with io.TextIOWrapper(gz,encoding='utf-8',newline='') as text:
-                      writer=csv.DictWriter(text,fieldnames=fields)
-                      writer.writeheader(); writer.writerows(rows)
-          PY
-          python scripts/extract_stage3_financial_pdf_values_v16.py \
-            --versions build/target/target_versions.csv.gz \
-            --shard 0 --shards 1 --out build/target/extract
+          python scripts/build_stage3_s3g1j_v17_26_exact_target_ledger.py \
+            --root partials \
+            --out build/target/extract \
+            --source-run 30692117760
           python - <<'PY'
           import csv,gzip,json
           root='build/target/extract/'
@@ -155,11 +139,21 @@ jobs:
           assert manifest['document_rows']==2
           assert manifest['numeric_rows']==6
           assert manifest['runtime_generation']=='V17.26'
+          assert manifest['exact_selected_source_only'] is True
+          assert manifest['candidate_resolver_reused'] is False
+          assert manifest['non_balance_values_promoted'] is False
+          assert manifest['source_target_numeric_counts']=={'1207035181':9,'1221568845':9}
           with gzip.open(root+'financial_documents_shard00.csv.gz','rt',encoding='utf-8',newline='') as f:
               docs=list(csv.DictReader(f))
+          with gzip.open(root+'financial_values_shard00.csv.gz','rt',encoding='utf-8',newline='') as f:
+              values=list(csv.DictReader(f))
           assert {row['announcement_id'] for row in docs}=={'1207035181','1221568845'}
           assert all(row['numeric_observations']=='3' for row in docs)
           assert all(row['tier1_found']=='0' and row['tier2_found']=='3' for row in docs)
+          assert len(values)==6
+          by_aid={aid:{row['concept'] for row in values if row['announcement_id']==aid} for aid in {'1207035181','1221568845'}}
+          expected={'TOTAL_ASSETS','TOTAL_LIABILITIES','TOTAL_EQUITY'}
+          assert all(concepts==expected for concepts in by_aid.values())
           print(json.dumps(manifest,ensure_ascii=False,indent=2))
           PY
       - name: Promote immutable V17.25 shards to V17.26 evidence
@@ -250,13 +244,16 @@ jobs:
           docs=json.load(open('build/final/stage3_s3g1j_v17_26_full_basis_non_regression.json',encoding='utf-8'))
           values=json.load(open('build/final/stage3_s3g1j_v17_26_full_values_non_regression.json',encoding='utf-8'))
           promotion=json.load(open('build/promotion/stage3_s3g1j_v17_26_full_shard_promotion.json',encoding='utf-8'))
-          assert docs['pass'] and values['pass'] and promotion['pass']
+          target=json.load(open('build/target/extract/financial_extract_shard00.manifest.json',encoding='utf-8'))
+          assert docs['pass'] and values['pass'] and promotion['pass'] and target['pass']
           execution={
               'gate':'S3G1J_V17_26_EXACT_SOURCE_SCOPE_REPAIR_FULL_FINAL',
               'source_run':30692117760,
               'execution_pass':True,
               'document_non_regression_pass':True,
               'numeric_non_regression_pass':True,
+              'target_selected_source_lock_pass':True,
+              'candidate_resolver_reused':False,
               'non_balance_target_concepts_promoted':False,
               'final_data_gate_pass':audit['pass'],
               'final_data_verdict':'FAIL_CLOSED',
