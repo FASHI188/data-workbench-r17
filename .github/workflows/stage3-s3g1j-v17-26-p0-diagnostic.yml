@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - 'scripts/diagnose_stage3_s3g1j_v17_26_p0.py'
+      - 'scripts/diagnose_stage3_s3g1j_v17_26_p0_candidate_spatial.py'
       - 'tests/test_stage3_s3g1j_v17_26_p0_diagnostic.py'
       - '.github/workflows/stage3-s3g1j-v17-26-p0-diagnostic.yml'
 
@@ -27,7 +28,7 @@ env:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -64,7 +65,9 @@ jobs:
       - name: Run diagnostic contracts
         run: |
           python -m unittest tests.test_stage3_s3g1j_v17_26_p0_diagnostic -v
-          python -m py_compile scripts/diagnose_stage3_s3g1j_v17_26_p0.py
+          python -m py_compile \
+            scripts/diagnose_stage3_s3g1j_v17_26_p0.py \
+            scripts/diagnose_stage3_s3g1j_v17_26_p0_candidate_spatial.py
       - uses: actions/download-artifact@v4
         with:
           name: stage3-s3g1j-v17-26-residual-classification-v2
@@ -90,38 +93,61 @@ jobs:
             --p0-ledger "$p0" \
             --documents "$documents" \
             --out build/p0/stage3_s3g1j_v17_26_p0_diagnostic.json
+      - name: Diagnose generic-role candidate spatial funnels
+        shell: bash
+        run: |
+          set -euo pipefail
+          p0=$(find classifier -name s3g1j_v17_26_p0_safe_near_complete.csv.gz -print -quit)
+          documents=$(find full -name stage3_financial_documents.csv.gz -print -quit)
+          python scripts/diagnose_stage3_s3g1j_v17_26_p0_candidate_spatial.py \
+            --p0-ledger "$p0" \
+            --documents "$documents" \
+            --base-report build/p0/stage3_s3g1j_v17_26_p0_diagnostic.json \
+            --out build/p0/stage3_s3g1j_v17_26_p0_candidate_spatial.json
       - name: Require exact source and fail-closed accounting
         run: |
           python - <<'PY'
           import json
-          p='build/p0/stage3_s3g1j_v17_26_p0_diagnostic.json'
-          x=json.load(open(p,encoding='utf-8'))
-          assert x['pass'] is True and x['errors']==[]
-          assert x['target_count']==21
-          assert x['processed_count']==21
-          assert x['source_sha_match_count']==21
-          assert x['current_recovered_count']==0
-          assert x['v17_26_equals_v17_25_count']==21
-          assert x['signature_counts']=={
+          base=json.load(open('build/p0/stage3_s3g1j_v17_26_p0_diagnostic.json',encoding='utf-8'))
+          candidate=json.load(open('build/p0/stage3_s3g1j_v17_26_p0_candidate_spatial.json',encoding='utf-8'))
+          assert base['pass'] is True and base['errors']==[]
+          assert base['target_count']==21
+          assert base['processed_count']==21
+          assert base['source_sha_match_count']==21
+          assert base['current_recovered_count']==0
+          assert base['v17_26_equals_v17_25_count']==21
+          assert base['signature_counts']=={
               'MISSING_CANDIDATES_TOTAL_ASSETS_TOTAL_LIABILITIES_TOTAL_EQUITY':10,
               'MISSING_CANDIDATES_TOTAL_EQUITY':11,
           }
-          assert x['candidate_count_patterns']=={
+          assert base['candidate_count_patterns']=={
               '{"TOTAL_ASSETS":0,"TOTAL_EQUITY":0,"TOTAL_LIABILITIES":0}':10,
               '{"TOTAL_ASSETS":3,"TOTAL_EQUITY":0,"TOTAL_LIABILITIES":1}':11,
           }
-          assert x['generic_group_witness_promoted_count']==7
-          assert x['generic_group_witness_promoted_announcement_ids']==[
+          expected=[
               '1200907104','1201708762','1202195310','1202774611',
               '1203358200','1204077386','1205543437',
           ]
-          assert x['parser_changed'] is False
-          assert x['runtime_authority_changed'] is False
-          assert x['production_data_changed'] is False
-          assert x['trained_model_changed'] is False
-          assert x['stage3_status']=='NOT_READY'
-          assert x['stage4_alpha_locked'] is True
-          print(json.dumps({k:v for k,v in x.items() if k!='results'},ensure_ascii=False,indent=2))
+          assert base['generic_group_witness_promoted_count']==7
+          assert base['generic_group_witness_promoted_announcement_ids']==expected
+          assert candidate['pass'] is True and candidate['errors']==[]
+          assert candidate['processed_count']==21
+          assert candidate['source_sha_match_count']==21
+          assert candidate['generic_group_witness_promoted_announcement_ids']==expected
+          assert candidate['candidate_recovered_count']==0
+          assert candidate['candidate_only_statement_role_override'] is True
+          assert candidate['formal_runtime_changed'] is False
+          for x in (base,candidate):
+              assert x['parser_changed'] is False
+              assert x['runtime_authority_changed'] is False
+              assert x['production_data_changed'] is False
+              assert x['trained_model_changed'] is False
+              assert x['stage3_status']=='NOT_READY'
+              assert x['stage4_alpha_locked'] is True
+          print(json.dumps({
+              'base':{k:v for k,v in base.items() if k!='results'},
+              'candidate':{k:v for k,v in candidate.items() if k!='results'},
+          },ensure_ascii=False,indent=2))
           PY
       - uses: actions/upload-artifact@v4
         with:
