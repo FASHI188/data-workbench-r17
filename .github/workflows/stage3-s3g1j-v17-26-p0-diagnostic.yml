@@ -1,0 +1,131 @@
+name: Stage3 S3G1J V17.26 Current P0 Diagnostic
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/diagnose_stage3_s3g1j_v17_26_p0.py'
+      - 'tests/test_stage3_s3g1j_v17_26_p0_diagnostic.py'
+      - '.github/workflows/stage3-s3g1j-v17-26-p0-diagnostic.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  CLASSIFIER_RUN: '30734063100'
+  CLASSIFIER_HEAD: 'd9dc3119cc710a46174fb9d5ce9a6f1518ea5c50'
+  CLASSIFIER_ARTIFACT: 'stage3-s3g1j-v17-26-residual-classification-v2'
+  CLASSIFIER_DIGEST: 'sha256:f667e5e494e6ac1456a370b5dab47677b4925d0466beedceec3e47bdeb5f16a5'
+  FULL_RUN: '30733013665'
+  FULL_HEAD: 'ed81a8f167c7b158167a8bdafa1799b7047666af'
+  FULL_ARTIFACT: 'stage3-s3g1j-v17-26-full-final'
+  FULL_DIGEST: 'sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b'
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified diagnostic runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - name: Lock classifier and full-basis artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CLASSIFIER_RUN" > /tmp/classifier-run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CLASSIFIER_RUN/artifacts?per_page=100" > /tmp/classifier-artifacts.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$FULL_RUN" > /tmp/full-run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$FULL_RUN/artifacts?per_page=100" > /tmp/full-artifacts.json
+          python - <<'PY'
+          import json, os
+          for prefix, run_path, artifacts_path, expected_head, expected_name, expected_digest in [
+              ('classifier','/tmp/classifier-run.json','/tmp/classifier-artifacts.json',os.environ['CLASSIFIER_HEAD'],os.environ['CLASSIFIER_ARTIFACT'],os.environ['CLASSIFIER_DIGEST']),
+              ('full','/tmp/full-run.json','/tmp/full-artifacts.json',os.environ['FULL_HEAD'],os.environ['FULL_ARTIFACT'],os.environ['FULL_DIGEST']),
+          ]:
+              run=json.load(open(run_path,encoding='utf-8'))
+              assert run['head_sha']==expected_head,(prefix,run['head_sha'])
+              assert run['conclusion']=='success',(prefix,run['conclusion'])
+              rows=json.load(open(artifacts_path,encoding='utf-8'))['artifacts']
+              matches=[row for row in rows if row['name']==expected_name]
+              assert len(matches)==1,(prefix,len(matches))
+              artifact=matches[0]
+              assert artifact['digest']==expected_digest,(prefix,artifact['digest'])
+              assert artifact['workflow_run']['head_sha']==expected_head
+              assert not artifact['expired']
+          print('S3G1J_V17_26_P0_INPUT_LOCK_PASS')
+          PY
+      - name: Run diagnostic contracts
+        run: |
+          python -m unittest tests.test_stage3_s3g1j_v17_26_p0_diagnostic -v
+          python -m py_compile scripts/diagnose_stage3_s3g1j_v17_26_p0.py
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-26-residual-classification-v2
+          path: classifier
+          repository: FASHI188/data-workbench-r17
+          run-id: 30734063100
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-26-full-final
+          path: full
+          repository: FASHI188/data-workbench-r17
+          run-id: 30733013665
+          github-token: ${{ github.token }}
+      - name: Diagnose all current V17.26 P0 documents
+        shell: bash
+        run: |
+          set -euo pipefail
+          p0=$(find classifier -name s3g1j_v17_26_p0_safe_near_complete.csv.gz -print -quit)
+          documents=$(find full -name stage3_financial_documents.csv.gz -print -quit)
+          test -n "$p0" && test -n "$documents"
+          python scripts/diagnose_stage3_s3g1j_v17_26_p0.py \
+            --p0-ledger "$p0" \
+            --documents "$documents" \
+            --out build/p0/stage3_s3g1j_v17_26_p0_diagnostic.json
+      - name: Require exact source and fail-closed accounting
+        run: |
+          python - <<'PY'
+          import json
+          p='build/p0/stage3_s3g1j_v17_26_p0_diagnostic.json'
+          x=json.load(open(p,encoding='utf-8'))
+          assert x['pass'] is True and x['errors']==[]
+          assert x['target_count']==21
+          assert x['processed_count']==21
+          assert x['source_sha_match_count']==21
+          assert x['current_recovered_count']==0
+          assert x['v17_26_equals_v17_25_count']==21
+          assert x['signature_counts']=={
+              'MISSING_CANDIDATES_TOTAL_ASSETS_TOTAL_LIABILITIES_TOTAL_EQUITY':10,
+              'MISSING_CANDIDATES_TOTAL_EQUITY':11,
+          }
+          assert x['candidate_count_patterns']=={
+              '{"TOTAL_ASSETS":0,"TOTAL_EQUITY":0,"TOTAL_LIABILITIES":0}':10,
+              '{"TOTAL_ASSETS":3,"TOTAL_EQUITY":0,"TOTAL_LIABILITIES":1}':11,
+          }
+          assert x['generic_group_witness_promoted_count']==7
+          assert x['generic_group_witness_promoted_announcement_ids']==[
+              '1200907104','1201708762','1202195310','1202774611',
+              '1203358200','1204077386','1205543437',
+          ]
+          assert x['parser_changed'] is False
+          assert x['runtime_authority_changed'] is False
+          assert x['production_data_changed'] is False
+          assert x['trained_model_changed'] is False
+          assert x['stage3_status']=='NOT_READY'
+          assert x['stage4_alpha_locked'] is True
+          print(json.dumps({k:v for k,v in x.items() if k!='results'},ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-26-current-p0-diagnostic
+          path: build/p0
+          retention-days: 90
+          compression-level: 0
