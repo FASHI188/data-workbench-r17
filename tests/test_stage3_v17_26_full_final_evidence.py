@@ -11,6 +11,12 @@ ACTIVATION = ROOT / "governance/stage3_workflow_activation_manifest.json"
 RETIRED_WORKFLOW = (
     ROOT / ".github/workflows/stage3-s3g1j-v17-25-full-final-v2.yml"
 )
+EVIDENCE_CONTRACT = (
+    ROOT / ".github/workflows/stage3-s3g1j-v17-26-evidence-contract.yml"
+)
+EVIDENCE_CONTRACT_NAME = (
+    ".github/workflows/stage3-s3g1j-v17-26-evidence-contract.yml"
+)
 
 
 class V1726FullFinalEvidenceTests(unittest.TestCase):
@@ -70,14 +76,19 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(numeric["current_non_target_semantic_sha256"], expected)
         self.assertEqual(numeric["non_target_value_drift"], 0)
 
-    def test_activation_manifest_retains_locks_and_retires_one_shot(self) -> None:
+    def test_activation_manifest_retains_locks_and_contract_lifecycle(self) -> None:
         self.assertEqual(self.activation["schema_version"], 7)
         accepted = self.activation["accepted_v17_26_full_basis_evidence"]
         self.assertEqual(accepted["run"], 30733013665)
         self.assertEqual(accepted["final_data_verdict"], "FAIL_CLOSED")
         self.assertEqual(accepted["stage3_status"], "NOT_READY")
         self.assertIs(accepted["runtime_manifest_promotion_pending"], True)
-        self.assertIs(accepted["workflow_retired_after_acceptance"], True)
+        self.assertIs(accepted["one_shot_workflow_retired_after_acceptance"], True)
+        self.assertEqual(
+            accepted["evidence_contract_workflow"], EVIDENCE_CONTRACT_NAME
+        )
+        self.assertIn(EVIDENCE_CONTRACT_NAME, self.activation["active_stage3_workflows"])
+        self.assertTrue(EVIDENCE_CONTRACT.exists())
         self.assertIn(
             ".github/workflows/stage3-s3g1j-v17-25-full-final-v2.yml",
             self.activation["removed_one_shot_workflows"],
