@@ -1,7 +1,7 @@
 {
   "schema_version": 7,
   "status": "ACTIVE_WORKFLOW_SET_WITH_ACCEPTED_V17_25_RUNTIME_AND_ACCEPTED_V17_26_FULL_BASIS_EVIDENCE",
-  "policy": "Only long-lived read-only safety, authority and runtime contracts remain active. Completed candidate, production-acceptance, classifier, diagnostic and full-basis workflows are retained through Git history, immutable run IDs and artifact digests but removed from the active workflow directory after acceptance.",
+  "policy": "Only long-lived read-only safety, authority, runtime and accepted-evidence contracts remain active. Completed candidate, production-acceptance, classifier, diagnostic and full-basis workflows are retained through Git history, immutable run IDs and artifact digests but removed from the active workflow directory after acceptance.",
   "previous_activation_manifest": {
     "schema_version": 6,
     "source_head_sha": "153634a632d7df1c8a8dc94602e52c6a862dd188",
@@ -15,7 +15,8 @@
     ".github/workflows/stage3-clean-core-contract.yml",
     ".github/workflows/stage3-clean-s3g1j-contract.yml",
     ".github/workflows/stage3-clean-s3g1j-v17-21-production.yml",
-    ".github/workflows/stage3-clean-s3g1j-v17-24-acceptance-compat.yml"
+    ".github/workflows/stage3-clean-s3g1j-v17-24-acceptance-compat.yml",
+    ".github/workflows/stage3-s3g1j-v17-26-evidence-contract.yml"
   ],
   "accepted_production_runtime": {
     "generation": "V17.25",
@@ -44,6 +45,7 @@
   },
   "accepted_v17_26_full_basis_evidence": {
     "evidence_manifest": "governance/stage3_s3g1j_v17_26_full_final.json",
+    "evidence_contract_workflow": ".github/workflows/stage3-s3g1j-v17-26-evidence-contract.yml",
     "run": 30733013665,
     "head_sha": "ed81a8f167c7b158167a8bdafa1799b7047666af",
     "artifact_id": 8828600783,
@@ -68,7 +70,7 @@
     "final_data_verdict": "FAIL_CLOSED",
     "stage3_status": "NOT_READY",
     "runtime_manifest_promotion_pending": true,
-    "workflow_retired_after_acceptance": true
+    "one_shot_workflow_retired_after_acceptance": true
   },
   "retained_evidence": {
     "full_basis_v17_21_final": {
@@ -112,7 +114,8 @@
       "artifact_digest": "sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b",
       "execution_verdict": "PASS",
       "data_verdict": "FAIL_CLOSED",
-      "workflow_retired_after_acceptance": true
+      "workflow_retired_after_acceptance": true,
+      "evidence_contract_active": true
     }
   },
   "removed_one_shot_workflows": [
