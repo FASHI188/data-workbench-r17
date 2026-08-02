@@ -76,14 +76,15 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(numeric["current_non_target_semantic_sha256"], expected)
         self.assertEqual(numeric["non_target_value_drift"], 0)
 
-    def test_activation_manifest_retains_locks_and_contract_lifecycle(self) -> None:
-        self.assertEqual(self.activation["schema_version"], 7)
+    def test_activation_manifest_retains_evidence_after_runtime_promotion(self) -> None:
+        self.assertEqual(self.activation["schema_version"], 8)
         accepted = self.activation["accepted_v17_26_full_basis_evidence"]
         self.assertEqual(accepted["run"], 30733013665)
         self.assertEqual(accepted["final_data_verdict"], "FAIL_CLOSED")
         self.assertEqual(accepted["stage3_status"], "NOT_READY")
-        self.assertIs(accepted["runtime_manifest_promotion_pending"], True)
+        self.assertIs(accepted["runtime_manifest_promotion_pending"], False)
         self.assertIs(accepted["one_shot_workflow_retired_after_acceptance"], True)
+        self.assertIs(accepted["evidence_contract_active"], True)
         self.assertEqual(
             accepted["evidence_contract_workflow"], EVIDENCE_CONTRACT_NAME
         )
@@ -94,6 +95,10 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
             self.activation["removed_one_shot_workflows"],
         )
         self.assertFalse(RETIRED_WORKFLOW.exists())
+        runtime = self.activation["accepted_production_runtime"]
+        self.assertEqual(runtime["generation"], "V17.26")
+        self.assertIs(runtime["runtime_manifest_promotion_pending"], False)
+        self.assertEqual(runtime["data_verdict"], "FAIL_CLOSED")
         boundaries = self.activation["hard_boundaries"]
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertIs(boundaries["stage4_alpha_live_locked"], True)

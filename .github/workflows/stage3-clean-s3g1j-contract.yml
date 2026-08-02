@@ -6,6 +6,8 @@ on:
   pull_request:
     paths:
       - 'governance/stage3_s3g1j_runtime_manifest.json'
+      - 'governance/stage3_s3g1j_v17_26_full_final.json'
+      - 'governance/stage3_workflow_activation_manifest.json'
       - 'config/stage3_s3g1j_v10_diagnostic_samples.json'
       - 'scripts/extract_stage3_financial_pdf_values*.py'
       - 'scripts/stage3_financial_pdf_parser*.py'
@@ -14,7 +16,10 @@ on:
       - 'scripts/stage3_financial_statement_blocks*.py'
       - 'scripts/select_stage3_financial_report_versions*.py'
       - 'scripts/compare_stage3_financial_report_versions_v3.py'
+      - 'scripts/compare_stage3_s3g1j_v17_26_*.py'
       - 'scripts/build_stage3_partial_body_ledger_v12.py'
+      - 'scripts/build_stage3_s3g1j_v17_26_exact_target_ledger.py'
+      - 'scripts/promote_stage3_s3g1j_v17_26_full_shards*.py'
       - 'scripts/accept_stage3_s3g1j_v17_*.py'
       - 'scripts/finalize_stage3_financial_pdf_values.py'
       - 'tests/test_stage3_financial_*.py'
@@ -41,124 +46,50 @@ jobs:
           python-version: '3.12.13'
       - name: Install verified Stage3 runtime
         run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf pytest
-      - name: Verify V17.25 runtime authority remains fail-closed
+      - name: Verify V17.26 runtime promotion and fail-closed authority
+        run: |
+          python -m unittest \
+            tests.test_stage3_v17_26_runtime_promotion \
+            tests.test_stage3_v17_26_full_final_evidence \
+            -v
+      - name: Import promoted V17.26 production runtime closure
         run: |
           python - <<'PY'
           import json
-          x=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
-          assert x['schema_version']==6, x
-          assert x['integration_branch']=='agent/stage3-clean-integration'
-          previous=x['previous_manifest']
-          assert previous['schema_version']==5
-          assert previous['source_head_sha']=='971f975fe4e4385f82443c08a7109002ba356e36'
-          assert previous['git_blob_sha']=='052328d7e2cd2b2f5b8974394844aa69c809fb80'
-          assert previous['formal_runtime_generation']=='V17.24'
-          assert previous['accepted_production_run']==30685830808
-          assert previous['accepted_production_artifact_digest']=='sha256:4865dd03537c70208d2a4358cf8b54ab65408510fce838017a4bf77bee30a98d'
+          import extract_stage3_financial_pdf_values_v16 as extractor
+          import stage3_financial_pdf_parser_v18 as parser
+          import finalize_stage3_financial_pdf_values as finalizer
 
-          authority=x['current_production_authority']
-          assert authority['generation']=='V17.25'
-          assert authority['status']=='PRODUCTION_ACCEPTED_NOT_FINAL'
-          candidate=authority['candidate_safety']
-          assert candidate['run']==30690306327
-          assert candidate['head_sha']=='db28bc96283e3d003527a5dd007ff056892e9db4'
-          assert candidate['artifact_digest']=='sha256:b63cdb341ab30d62bb25bf49cc8c94d3ffdc8df97fd9e39c9aada0629c867dd9'
-          assert candidate['report_sha256']=='f985cc7d1d24f42e4908bc27a556dcd92393261907181a57237e25bdd412c331'
-          assert candidate['source_sha_match_count']==104
-          assert candidate['candidate_recovered_announcement_ids']==['1207035181']
-          production=authority['production_acceptance']
-          assert production['run']==30691109646
-          assert production['head_sha']=='23aa096d8e31ec158a409b8a15392d69a8384fb0'
-          assert production['artifact_id']==8815758398
-          assert production['artifact_digest']=='sha256:575e3eecd0fa196f80671bfd4cd75b00d87656a13bf9f382f302cb0453b21370'
-          assert production['report_sha256']=='77b351a084309e12bbbc758c5686b727612127bc798995827e3e28ab51aef69c'
-          assert production['input_count_exact83']==83
-          assert production['source_sha_match_count']==83
-          assert production['previous_82_results_equal_v17_24'] is True
-          assert production['production_recovered_announcement_ids']==['1207035181','1212731093','1219311356','1221568845','1225153907']
-          assert production['incremental_recovery_announcement_ids']==['1207035181']
-          assert production['remaining_fail_closed_count']==78
-
-          runtime=x['formal_runtime']
-          assert runtime['runtime_generation']=='V17.25'
-          assert runtime['shard_count']==64
-          assert runtime['shard_gate']=='S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_25'
-          assert runtime['extractor_path']=='scripts/extract_stage3_financial_pdf_values_v15.py'
-          assert runtime['extractor_method']=='CNINFO_ORIGINAL_PDF_PYMUPDF_V15_V17_25_EXACT_SOURCE_GENERIC_GROUP_WITNESS_PRODUCTION'
-          assert runtime['parser_path']=='scripts/stage3_financial_pdf_parser_v17.py'
-          assert runtime['parser_method']=='V17_25_EXACT_SOURCE_GENERIC_GROUP_WITNESS_PRODUCTION'
-          assert runtime['methodology_version']=='V3.3.5-V17.25'
-          assert runtime['finalizer_path']=='scripts/finalize_stage3_financial_pdf_values.py'
-          assert runtime['gzip_mtime']==0
-          assert runtime['gzip_embedded_filename']==''
-          assert runtime['numeric_source_format']=='PDF'
-          assert runtime['mixed_runtime_generation_forbidden'] is True
-
-          target=x['v17_25_exact_source_gate']
-          assert target['announcement_id']=='1207035181'
-          assert target['source_code']=='000985'
-          assert target['economic_date']=='2019-09-30'
-          assert target['source_sha256']=='320e3a950a4768e73766d57a09bcf34d893d4da949b8ed5a1b2f887852e76229'
-          assert target['group_witness_alias']=='归属于母公司所有者权益合计'
-          assert target['total_equity_alias']=='所有者权益合计'
-          assert target['witness_amount_column_count']==2
-          assert target['selected_pages']=={'TOTAL_ASSETS':8,'TOTAL_LIABILITIES':9,'TOTAL_EQUITY':9}
-          assert target['identity_relative_error']=='0'
-          assert target['identity_residual_cny']=='0.00'
-          assert target['column_role_gate_pass'] is True
-          assert target['all_other_sources_return_v17_24_result_unchanged'] is True
-
-          h=x['hard_invariants']
-          assert h['accounting_identity_tolerance']=='0.005'
-          assert h['original_pdf_authority'] is True
-          assert h['source_sha_required'] is True
-          assert h['point_in_time_policy_preserved'] is True
-          assert h['declared_issuer_gate_preserved'] is True
-          assert h['unreliable_parse_fail_closed'] is True
-          assert h['current_f10_historical_backfill_forbidden'] is True
-          assert h['global_row_tolerance_changed'] is False
-          assert h['fuzzy_alias_matching_enabled'] is False
-          assert h['ocr_enabled'] is False
-          assert h['e_equals_a_minus_l_inference'] is False
-          assert h['exact_source_bounded_extension'] is True
-          assert h['previous_v17_24_results_required_equal'] is True
-          assert h['stage4_alpha_locked'] is True
-
-          full=x['full_basis_last_completed_final']
-          assert full['generation']=='V17.21'
-          assert full['run']==30649251360
-          assert full['artifact_digest']=='sha256:7faff72949a6e0a98f49088bce99bc2df37c7cbcb0259b39d1b2655fc02f6086'
-          assert full['canonical_report_version_moments']==121354
-          assert full['document_error_count']==1380
-          assert full['verdict']=='FAIL_CLOSED'
-          assert x['production_final_status']=='NOT_FINAL'
-          status=x['project_status']
-          assert status=={
+          manifest=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          assert manifest['schema_version']==7
+          assert manifest['integration_branch']=='agent/stage3-clean-integration'
+          assert manifest['current_production_authority']['generation']=='V17.26'
+          assert manifest['current_production_authority']['status']=='FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED'
+          assert manifest['production_final_status']=='FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED'
+          assert manifest['full_basis_last_completed_final']['verdict']=='FAIL_CLOSED'
+          assert manifest['project_status']=={
               'stage3':'NOT_READY',
               'stage4':'LOCKED',
               'alpha_training':'NOT_ALLOWED',
               'live_signals':'NOT_ALLOWED',
               'main_changed':False,
           }
-          PY
-      - name: Import promoted V17.25 production runtime closure
-        run: |
-          python - <<'PY'
-          import extract_stage3_financial_pdf_values_v15 as extractor
-          import stage3_financial_pdf_parser_v17 as parser
-          import stage3_financial_statement_blocks_v17_25 as witness
-          import finalize_stage3_financial_pdf_values as finalizer
+
           assert callable(extractor.parse_pdf_bytes)
-          assert extractor.RUNTIME_GENERATION=='V17.25'
-          assert extractor.METHOD=='CNINFO_ORIGINAL_PDF_PYMUPDF_V15_V17_25_EXACT_SOURCE_GENERIC_GROUP_WITNESS_PRODUCTION'
-          assert extractor.METHODOLOGY_VERSION=='V3.3.5-V17.25'
-          assert extractor.SHARD_GATE=='S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_25'
-          assert callable(extractor._rewrite_v17_25_shard_manifest)
-          assert parser.METHOD=='V17_25_EXACT_SOURCE_GENERIC_GROUP_WITNESS_PRODUCTION'
-          assert parser.TARGET_SOURCE_SHA256=='320e3a950a4768e73766d57a09bcf34d893d4da949b8ed5a1b2f887852e76229'
-          assert witness.GROUP_WITNESS_ALIAS=='归属于母公司所有者权益合计'
+          assert extractor.RUNTIME_GENERATION=='V17.26'
+          assert extractor.METHOD=='CNINFO_ORIGINAL_PDF_PYMUPDF_V16_V17_26_EXACT_SOURCE_BALANCE_ONLY_PRODUCTION'
+          assert extractor.METHODOLOGY_VERSION=='V3.3.6-V17.26'
+          assert extractor.SHARD_GATE=='S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_26'
+          assert parser.METHOD=='V17_26_EXACT_SOURCE_BALANCE_ONLY_PRODUCTION'
+          assert set(parser.TARGETS)=={
+              '320e3a950a4768e73766d57a09bcf34d893d4da949b8ed5a1b2f887852e76229',
+              'fa72059d35715f20df620691538528f720fe3ae42581c172c853f26799befb93',
+          }
+          assert set(parser.ALLOWED_CONCEPTS)=={
+              'TOTAL_ASSETS','TOTAL_LIABILITIES','TOTAL_EQUITY'
+          }
           assert callable(finalizer._validate_shard_manifests)
-          print('S3G1J_V17_25_PRODUCTION_RUNTIME_IMPORT_PASS')
+          print('S3G1J_V17_26_PRODUCTION_RUNTIME_IMPORT_PASS')
           PY
       - name: Run inherited pure fail-closed regression contracts
         run: |
@@ -188,12 +119,20 @@ jobs:
             tests.test_stage3_v17_24_production_parser \
             tests.test_stage3_v17_24_acceptance_baseline \
             -v
-      - name: Run V17.25 production and generation-lock regressions
+      - name: Run V17.25 inherited production regressions
         run: |
           python -m unittest \
             tests.test_stage3_v17_25_generic_group_witness \
             tests.test_stage3_v17_25_production_parser \
             tests.test_stage3_v17_25_runtime_promotion \
+            -v
+      - name: Run V17.26 production, evidence and comparator regressions
+        run: |
+          python -m unittest \
+            tests.test_stage3_v17_26_balance_only_parser \
+            tests.test_stage3_v17_26_full_final_comparator \
+            tests.test_stage3_v17_26_full_final_evidence \
+            tests.test_stage3_v17_26_runtime_promotion \
             -v
       - name: Run official-PDF coordinate fallback regression
         run: python -m unittest tests.test_stage3_financial_coordinate_fallback_v14_integration -v
