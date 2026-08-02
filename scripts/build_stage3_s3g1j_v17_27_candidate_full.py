@@ -9,6 +9,7 @@ import json
 import time
 from collections import Counter
 from pathlib import Path
+from typing import Callable
 
 import requests
 
@@ -51,6 +52,49 @@ def semantic_sha(rows: list[dict[str, str]], fields: list[str]) -> str:
             )
         )
     return digest.hexdigest()
+
+
+def canonical_rows(
+    rows: list[dict[str, str]],
+    fields: list[str],
+    primary_key: Callable[[dict[str, str]], tuple[str, ...]],
+) -> list[dict[str, str]]:
+    """Canonicalize a ledger as an exact row multiset, independent of input order."""
+    return sorted(
+        (dict(row) for row in rows),
+        key=lambda row: (
+            *primary_key(row),
+            *(row.get(field, "") for field in fields),
+        ),
+    )
+
+
+def require_exact_rows(
+    label: str,
+    source_rows: list[dict[str, str]],
+    candidate_rows: list[dict[str, str]],
+    fields: list[str],
+    primary_key: Callable[[dict[str, str]], tuple[str, ...]],
+) -> None:
+    source = canonical_rows(source_rows, fields, primary_key)
+    candidate = canonical_rows(candidate_rows, fields, primary_key)
+    if len(source) != len(candidate):
+        raise ValueError(
+            f"{label} row count changed source={len(source)} candidate={len(candidate)}"
+        )
+    for index, (before, after) in enumerate(zip(source, candidate, strict=True)):
+        if before == after:
+            continue
+        changed = {
+            field: {"source": before.get(field, ""), "candidate": after.get(field, "")}
+            for field in fields
+            if before.get(field, "") != after.get(field, "")
+        }
+        raise ValueError(
+            f"{label} row changed index={index} "
+            f"source_key={primary_key(before)} candidate_key={primary_key(after)} "
+            f"changed={json.dumps(changed, ensure_ascii=False, sort_keys=True)}"
+        )
 
 
 def download(session: requests.Session, url: str) -> bytes:
@@ -302,12 +346,27 @@ def main() -> int:
     non_target_candidate_docs = [
         row for row in candidate_docs if row["announcement_id"] not in TARGETS_BY_AID
     ]
-    if non_target_source_docs != non_target_candidate_docs:
-        raise ValueError("non-target document rows changed")
-    if source_values != [
+    require_exact_rows(
+        "non-target document",
+        non_target_source_docs,
+        non_target_candidate_docs,
+        common.DOC_FIELDS,
+        lambda row: (row.get("announcement_id", ""),),
+    )
+
+    non_target_source_values = [
+        row for row in source_values if row["announcement_id"] not in TARGETS_BY_AID
+    ]
+    non_target_candidate_values = [
         row for row in candidate_values if row["announcement_id"] not in TARGETS_BY_AID
-    ]:
-        raise ValueError("non-target numeric rows changed")
+    ]
+    require_exact_rows(
+        "non-target numeric",
+        non_target_source_values,
+        non_target_candidate_values,
+        common.NUMERIC_FIELDS,
+        lambda row: (row.get("announcement_id", ""), row.get("concept", "")),
+    )
 
     source_errors = sum(
         row["document_status"] != "PASS" or bool(row["document_error"])
@@ -349,18 +408,13 @@ def main() -> int:
         "document_error_reduction": source_errors - candidate_errors,
         "non_target_document_rows": len(non_target_source_docs),
         "non_target_document_exact_equal": True,
-        "non_target_numeric_rows": len(source_values),
+        "non_target_numeric_rows": len(non_target_source_values),
         "non_target_numeric_exact_equal": True,
         "source_numeric_semantic_sha256": semantic_sha(
-            source_values, common.NUMERIC_FIELDS
+            non_target_source_values, common.NUMERIC_FIELDS
         ),
         "candidate_non_target_numeric_semantic_sha256": semantic_sha(
-            [
-                row
-                for row in candidate_values
-                if row["announcement_id"] not in TARGETS_BY_AID
-            ],
-            common.NUMERIC_FIELDS,
+            non_target_candidate_values, common.NUMERIC_FIELDS
         ),
         "candidate_documents_sha256": sha256(docs_path),
         "candidate_values_sha256": sha256(values_path),
