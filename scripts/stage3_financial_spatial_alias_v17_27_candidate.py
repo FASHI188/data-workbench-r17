@@ -55,9 +55,8 @@ def _collect_candidates(
         for row in candidates.get(concept, []):
             if str(row.get("alias") or "") != TARGET_ALIASES[concept]:
                 continue
-            if concept == "TOTAL_EQUITY" and (
-                row.get("strict_corrupted_equity_alias_v17_24")
-                or row.get("strict_same_row_equity_total")
+            if concept == "TOTAL_EQUITY" and row.get(
+                "strict_corrupted_equity_alias_v17_24"
             ):
                 continue
             filtered[concept].append(row)
@@ -135,7 +134,7 @@ def diagnose_normal_equity_identity_candidate(
             "generic_group_witness": witness,
             "identity_recovered_before_column_gate": True,
             "recovered": bool(all_pass),
-            "identity": identity if all_pass else None,
+            "identity": identity,
             "column_role_gate": {
                 "pass": bool(all_pass),
                 "concepts": evidence,
@@ -147,7 +146,7 @@ def diagnose_normal_equity_identity_candidate(
             },
             "selected": {
                 concept: accepted._serialize(candidate)
-                for concept, candidate in (chosen.items() if all_pass else [])
+                for concept, candidate in chosen.items()
             },
         }
     finally:
