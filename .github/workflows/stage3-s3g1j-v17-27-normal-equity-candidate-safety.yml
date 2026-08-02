@@ -110,7 +110,7 @@ jobs:
         run: |
           set -euo pipefail
           documents=$(find full -name stage3_financial_documents.csv.gz -print -quit)
-          values=$(find full -name stage3_financial_values.csv.gz -print -quit)
+          values=$(find full -name stage3_financial_raw_values.csv.gz -print -quit)
           test -n "$documents" && test -n "$values"
           ls -lh "$documents" "$values"
           set +e
