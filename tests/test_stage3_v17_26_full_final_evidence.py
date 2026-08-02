@@ -76,8 +76,8 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(numeric["current_non_target_semantic_sha256"], expected)
         self.assertEqual(numeric["non_target_value_drift"], 0)
 
-    def test_activation_manifest_retains_evidence_after_runtime_promotion(self) -> None:
-        self.assertEqual(self.activation["schema_version"], 8)
+    def test_activation_manifest_retains_full_final_after_classification(self) -> None:
+        self.assertEqual(self.activation["schema_version"], 9)
         accepted = self.activation["accepted_v17_26_full_basis_evidence"]
         self.assertEqual(accepted["run"], 30733013665)
         self.assertEqual(accepted["final_data_verdict"], "FAIL_CLOSED")
@@ -99,6 +99,9 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(runtime["generation"], "V17.26")
         self.assertIs(runtime["runtime_manifest_promotion_pending"], False)
         self.assertEqual(runtime["data_verdict"], "FAIL_CLOSED")
+        classification = self.activation["accepted_v17_26_residual_classification"]
+        self.assertIs(classification["diagnostic_only"], True)
+        self.assertIs(classification["runtime_authority_changed"], False)
         boundaries = self.activation["hard_boundaries"]
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertIs(boundaries["stage4_alpha_live_locked"], True)
