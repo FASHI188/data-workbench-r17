@@ -115,8 +115,8 @@ class V1726RuntimePromotionTests(unittest.TestCase):
             "FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED",
         )
 
-    def test_activation_manifest_promotes_runtime_without_unlocking_project(self) -> None:
-        self.assertEqual(self.activation["schema_version"], 8)
+    def test_activation_manifest_preserves_runtime_under_diagnostic_evidence(self) -> None:
+        self.assertEqual(self.activation["schema_version"], 9)
         accepted = self.activation["accepted_production_runtime"]
         self.assertEqual(accepted["generation"], "V17.26")
         self.assertEqual(accepted["runtime_manifest_schema"], 7)
@@ -129,6 +129,10 @@ class V1726RuntimePromotionTests(unittest.TestCase):
             evidence["artifact_digest"],
             self.evidence["accepted_run"]["artifact_digest"],
         )
+        classification = self.activation["accepted_v17_26_residual_classification"]
+        self.assertIs(classification["diagnostic_only"], True)
+        self.assertIs(classification["runtime_authority_changed"], False)
+        self.assertEqual(classification["residual_document_rows"], 1378)
         boundaries = self.activation["hard_boundaries"]
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertIs(boundaries["stage4_alpha_live_locked"], True)
