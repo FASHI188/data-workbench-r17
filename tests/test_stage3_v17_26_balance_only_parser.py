@@ -4,6 +4,7 @@ import copy
 import unittest
 from unittest.mock import patch
 
+import extract_stage3_financial_pdf_values_v16 as extractor
 import stage3_financial_pdf_parser_v18 as production
 
 
@@ -130,6 +131,18 @@ class V1726BalanceOnlyParserTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(ValueError, "retained validation errors"):
                     production.parse_pdf_bytes(b"target", target["economic_date"])
+
+    def test_extractor_wrapper_uses_stable_declared_code_gate(self) -> None:
+        parsed = {"parser_version": production.METHOD, "observations": {}}
+        with patch.object(
+            extractor, "v17_26_parse_pdf_bytes", return_value=parsed
+        ) as parser_call, patch.object(
+            extractor, "declared_a_share_codes", return_value=["000985"]
+        ) as code_call:
+            result = extractor.parse_pdf_bytes(b"exact-pdf", "2019-09-30")
+        self.assertEqual(result["declared_a_share_codes"], ["000985"])
+        parser_call.assert_called_once_with(b"exact-pdf", "2019-09-30")
+        code_call.assert_called_once_with(b"exact-pdf")
 
 
 if __name__ == "__main__":
