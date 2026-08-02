@@ -1,12 +1,12 @@
 {
-  "schema_version": 6,
-  "status": "ACTIVE_WORKFLOW_SET_WITH_ACCEPTED_V17_25_RUNTIME_AND_RETAINED_DIAGNOSTIC_EVIDENCE",
-  "policy": "Only long-lived read-only safety, authority and runtime contracts remain active. Completed candidate, production-acceptance, classifier and diagnostic workflows are retained through Git history, immutable run IDs and artifact digests but removed from the active workflow directory after acceptance.",
+  "schema_version": 7,
+  "status": "ACTIVE_WORKFLOW_SET_WITH_ACCEPTED_V17_25_RUNTIME_AND_ACCEPTED_V17_26_FULL_BASIS_EVIDENCE",
+  "policy": "Only long-lived read-only safety, authority and runtime contracts remain active. Completed candidate, production-acceptance, classifier, diagnostic and full-basis workflows are retained through Git history, immutable run IDs and artifact digests but removed from the active workflow directory after acceptance.",
   "previous_activation_manifest": {
-    "schema_version": 5,
-    "source_head_sha": "971f975fe4e4385f82443c08a7109002ba356e36",
-    "git_blob_sha": "60c4af25f541472ff7766e5e762f902a5345dc16",
-    "accepted_runtime_generation": "V17.24"
+    "schema_version": 6,
+    "source_head_sha": "153634a632d7df1c8a8dc94602e52c6a862dd188",
+    "git_blob_sha": "96260746f5faf98d12a9620f64acb6b8d50ea0a8",
+    "accepted_runtime_generation": "V17.25"
   },
   "active_stage3_workflows": [
     ".github/workflows/repository-safety-audit.yml",
@@ -38,8 +38,37 @@
       "1207035181"
     ],
     "representative_remaining_fail_closed_count": 78,
-    "full_basis_final_pending": true,
-    "production_final_status": "NOT_FINAL"
+    "full_basis_final_pending": false,
+    "production_final_status": "SUPERSEDED_BY_ACCEPTED_V17_26_FULL_BASIS_SCOPE_REPAIR_EVIDENCE",
+    "runtime_manifest_promotion_pending": true
+  },
+  "accepted_v17_26_full_basis_evidence": {
+    "evidence_manifest": "governance/stage3_s3g1j_v17_26_full_final.json",
+    "run": 30733013665,
+    "head_sha": "ed81a8f167c7b158167a8bdafa1799b7047666af",
+    "artifact_id": 8828600783,
+    "artifact": "stage3-s3g1j-v17-26-full-final",
+    "artifact_digest": "sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b",
+    "execution_pass": true,
+    "document_non_regression_pass": true,
+    "numeric_non_regression_pass": true,
+    "canonical_version_count": 121354,
+    "document_count": 121354,
+    "numeric_observation_count": 1051778,
+    "document_error_count": 1378,
+    "unresolved_tie_count": 1295,
+    "changed_announcement_ids": [
+      "1207035181",
+      "1221568845"
+    ],
+    "target_numeric_observations_each": 3,
+    "non_balance_target_concepts_promoted": false,
+    "non_target_numeric_semantic_sha256": "f9f7751943b113db9488b0b7b1d33ffbd93e1e3eb56486ca8e399f252a5953b4",
+    "unexpected_regression_count": 0,
+    "final_data_verdict": "FAIL_CLOSED",
+    "stage3_status": "NOT_READY",
+    "runtime_manifest_promotion_pending": true,
+    "workflow_retired_after_acceptance": true
   },
   "retained_evidence": {
     "full_basis_v17_21_final": {
@@ -68,6 +97,21 @@
     "v17_25_production_acceptance": {
       "run": 30691109646,
       "artifact_digest": "sha256:575e3eecd0fa196f80671bfd4cd75b00d87656a13bf9f382f302cb0453b21370",
+      "workflow_retired_after_acceptance": true,
+      "full_basis_target_scope_later_rejected": true
+    },
+    "v17_25_full_shards_rejected_scope": {
+      "run": 30692117760,
+      "head_sha": "f9329e2f6a83d38dfd86291a4fd7d4bbfbf1b6b1",
+      "shard_count": 64,
+      "target_rows_rejected": "9_PLUS_9",
+      "reason": "PRODUCTION_ACCEPTANCE_COVERED_ONLY_A_L_E_BUT_FULL_EXTRACTION_PROMOTED_UNVALIDATED_NON_BALANCE_CONCEPTS"
+    },
+    "v17_26_full_basis_final": {
+      "run": 30733013665,
+      "artifact_digest": "sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b",
+      "execution_verdict": "PASS",
+      "data_verdict": "FAIL_CLOSED",
       "workflow_retired_after_acceptance": true
     }
   },
@@ -77,7 +121,8 @@
     ".github/workflows/stage3-s3g1j-p0-layout-evidence-v1.yml",
     ".github/workflows/stage3-s3g1j-v17-25-candidate-safety.yml",
     ".github/workflows/stage3-s3g1j-v17-25-candidate-safety-sharded.yml",
-    ".github/workflows/stage3-s3g1j-v17-25-production-acceptance.yml"
+    ".github/workflows/stage3-s3g1j-v17-25-production-acceptance.yml",
+    ".github/workflows/stage3-s3g1j-v17-25-full-final-v2.yml"
   ],
   "hard_boundaries": {
     "source_sha_required": true,
@@ -87,8 +132,11 @@
     "fuzzy_alias_matching_enabled": false,
     "ocr_enabled": false,
     "e_equals_a_minus_l_inference": false,
+    "non_balance_target_concepts_promoted": false,
     "stage3_status": "NOT_READY",
     "stage4_alpha_live_locked": true,
+    "committed_production_data_changed": false,
+    "trained_model_changed": false,
     "main_changed": false
   }
 }
