@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import unittest
+from decimal import Decimal
 from unittest import mock
 
 import stage3_financial_pdf_parser_v19_candidate as candidate
@@ -34,9 +35,9 @@ class V1727NormalEquityCandidateTests(unittest.TestCase):
         for row in candidate.TARGETS.values():
             values = row["values"]
             self.assertEqual(
-                float(values["TOTAL_ASSETS"]),
-                float(values["TOTAL_LIABILITIES"])
-                + float(values["TOTAL_EQUITY"]),
+                Decimal(values["TOTAL_ASSETS"]),
+                Decimal(values["TOTAL_LIABILITIES"])
+                + Decimal(values["TOTAL_EQUITY"]),
             )
 
     def test_candidate_scope_and_layout_are_frozen(self) -> None:
