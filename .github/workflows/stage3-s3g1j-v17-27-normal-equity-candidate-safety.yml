@@ -113,6 +113,31 @@ jobs:
           values=$(find full -name stage3_financial_raw_values.csv.gz -print -quit)
           test -n "$documents" && test -n "$values"
           ls -lh "$documents" "$values"
+          DOCUMENTS="$documents" python - <<'PY'
+          import json, os
+          import fitz
+          import build_stage3_s3g1j_v17_27_candidate_full as builder
+          documents=builder.read_gz(builder.Path(os.environ['DOCUMENTS']))
+          by_aid={row['announcement_id']:row for row in documents}
+          session=builder.requests.Session()
+          session.headers.update({'User-Agent':'data-workbench-r17-v17-27-candidate-preflight/1.0','Accept':'application/pdf,*/*;q=0.8'})
+          for aid in sorted(builder.TARGETS_BY_AID):
+              row=by_aid[aid]
+              source=builder.source_evidence(row,aid)
+              raw=builder.download(session,source['url'])
+              with fitz.open(stream=raw,filetype='pdf') as doc:
+                  diagnostic=builder.parser_candidate.spatial.diagnose_normal_equity_identity_candidate(doc,row['economic_date'])
+              print(json.dumps({
+                  'announcement_id':aid,
+                  'candidate_counts':diagnostic.get('candidate_counts'),
+                  'witness_count':(diagnostic.get('generic_group_witness') or {}).get('promoted_generic_group_count'),
+                  'identity_recovered_before_column_gate':diagnostic.get('identity_recovered_before_column_gate'),
+                  'recovered':diagnostic.get('recovered'),
+                  'identity':diagnostic.get('identity'),
+                  'selected':diagnostic.get('selected'),
+                  'column_role_gate':diagnostic.get('column_role_gate'),
+              },ensure_ascii=False,default=str))
+          PY
           set +e
           python -u scripts/build_stage3_s3g1j_v17_27_candidate_full.py \
             --documents "$documents" \
