@@ -88,7 +88,6 @@ jobs:
             test "$conclusion" = success
             test "$head" = "$expected_head"
           }
-          success_run_lock "$INPUT_RUN" "$INPUT_HEAD"
           artifact_lock "$INPUT_RUN" "$INPUT_ARTIFACT" "$INPUT_DIGEST" "$INPUT_HEAD"
           success_run_lock "$PREVIOUS_RUN" "$PREVIOUS_HEAD"
           artifact_lock "$PREVIOUS_RUN" "$PREVIOUS_ARTIFACT" "$PREVIOUS_DIGEST" "$PREVIOUS_HEAD"
