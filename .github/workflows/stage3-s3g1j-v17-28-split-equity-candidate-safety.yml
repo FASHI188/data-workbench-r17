@@ -1,0 +1,159 @@
+name: Stage3 S3G1J V17.28 Split Equity Candidate Safety
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/stage3_financial_pdf_parser_v20_candidate.py'
+      - 'scripts/build_stage3_s3g1j_v17_28_candidate_full.py'
+      - 'tests/test_stage3_s3g1j_v17_28_split_equity_candidate.py'
+      - '.github/workflows/stage3-s3g1j-v17-28-split-equity-candidate-safety.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  SOURCE_RUN: '30806818977'
+  SOURCE_HEAD: 'fa77d30a2ccdd3664beab01fd7ff7b5d16761726'
+  SOURCE_ARTIFACT_ID: '8854139999'
+  SOURCE_ARTIFACT: 'stage3-s3g1j-v17-27-full-final'
+  SOURCE_DIGEST: 'sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721'
+  DOCUMENTS_SHA256: 'c2abe07baaa76efb80a30cfdd4e762ad07814f6aa795a92b9c0504f7944ab99a'
+  VALUES_SHA256: '4c518fbca2ece45ed535789d4cf66dd86d2717d6499f872234c5d3ece09280fe'
+  EXISTING_NUMERIC_SEMANTIC_SHA256: '05b914b03dbcc23d3f6eca560189afbfe6ea427913f9cf1380fa09cdea6aa8d7'
+
+jobs:
+  candidate-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified candidate runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - name: Lock accepted V17.27 full-basis artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_payload=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN")
+          test "$(jq -r '.head_sha' <<<"$run_payload")" = "$SOURCE_HEAD"
+          test "$(jq -r '.conclusion' <<<"$run_payload")" = success
+          payload=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts?per_page=100")
+          count=$(jq -r --arg name "$SOURCE_ARTIFACT" '[.artifacts[] | select(.name==$name)] | length' <<<"$payload")
+          test "$count" = 1
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[] | select(.name==$name) | .id' <<<"$payload")" = "$SOURCE_ARTIFACT_ID"
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[] | select(.name==$name) | .digest' <<<"$payload")" = "$SOURCE_DIGEST"
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[] | select(.name==$name) | .workflow_run.head_sha' <<<"$payload")" = "$SOURCE_HEAD"
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[] | select(.name==$name) | .expired' <<<"$payload")" = false
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-27-full-final
+          path: accepted
+          repository: FASHI188/data-workbench-r17
+          run-id: 30806818977
+          github-token: ${{ github.token }}
+      - name: Lock accepted document and numeric ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          documents=$(find accepted -name stage3_financial_documents.csv.gz -print -quit)
+          values=$(find accepted -name stage3_financial_raw_values.csv.gz -print -quit)
+          test -n "$documents" && test -n "$values"
+          test "$(sha256sum "$documents" | awk '{print $1}')" = "$DOCUMENTS_SHA256"
+          test "$(sha256sum "$values" | awk '{print $1}')" = "$VALUES_SHA256"
+          echo "DOCUMENTS=$documents" >> "$GITHUB_ENV"
+          echo "VALUES=$values" >> "$GITHUB_ENV"
+      - name: Run candidate scope and fail-closed contracts
+        run: |
+          python -m unittest tests.test_stage3_s3g1j_v17_28_split_equity_candidate -v
+          python -m py_compile \
+            scripts/stage3_financial_pdf_parser_v20_candidate.py \
+            scripts/build_stage3_s3g1j_v17_28_candidate_full.py
+      - name: Build complete V17.28 candidate basis
+        run: |
+          mkdir -p build/candidate
+          python scripts/build_stage3_s3g1j_v17_28_candidate_full.py \
+            --documents "$DOCUMENTS" \
+            --values "$VALUES" \
+            --out build/candidate
+      - name: Enforce exact candidate population, accounting and non-regression
+        run: |
+          python - <<'PY'
+          import csv,gzip,json
+          from pathlib import Path
+
+          root=Path('build/candidate')
+          report=json.loads((root/'stage3_s3g1j_v17_28_candidate_safety.json').read_text(encoding='utf-8'))
+          assert report['gate']=='S3G1J_V17_28_SPLIT_GROUP_EQUITY_CANDIDATE_SAFETY'
+          assert report['candidate_only'] is True
+          assert report['formal_runtime_generation']=='V17.27'
+          assert report['candidate_generation']=='V17.28'
+          assert report['target_announcement_ids']==['1207621057','1209825769']
+          assert report['target_count']==2
+          assert report['target_numeric_rows']==6
+          assert report['source_document_rows']==121354
+          assert report['candidate_document_rows']==121354
+          assert report['source_numeric_rows']==1051793
+          assert report['candidate_numeric_rows']==1051799
+          assert report['source_document_errors']==1373
+          assert report['candidate_document_errors']==1371
+          assert report['document_error_reduction']==2
+          assert report['source_unresolved_ties']==1290
+          assert report['candidate_unresolved_ties']==1288
+          assert report['unresolved_tie_reduction']==2
+          assert report['non_target_document_rows']==121352
+          assert report['non_target_document_exact_equal'] is True
+          assert report['existing_numeric_rows']==1051793
+          assert report['existing_numeric_exact_equal'] is True
+          assert report['stable_numeric_field_count']==22
+          assert report['source_existing_numeric_semantic_sha256']==os.environ['EXISTING_NUMERIC_SEMANTIC_SHA256']
+          assert report['candidate_existing_numeric_semantic_sha256']==os.environ['EXISTING_NUMERIC_SEMANTIC_SHA256']
+          assert report['non_balance_values_promoted'] is False
+          assert report['e_equals_a_minus_l_inference'] is False
+          assert report['production_runtime_changed'] is False
+          assert report['production_data_changed'] is False
+          assert report['candidate_promotion_authorized'] is False
+          assert report['final_data_verdict']=='FAIL_CLOSED'
+          assert report['stage3_status']=='NOT_READY'
+          assert report['stage4_alpha_live_locked'] is True
+          assert report['main_changed'] is False
+          assert report['pass'] is True and report['errors']==[]
+
+          with gzip.open(root/'stage3_financial_documents_v17_28_candidate.csv.gz','rt',encoding='utf-8',newline='') as f:
+              docs={row['announcement_id']:row for row in csv.DictReader(f) if row['announcement_id'] in {'1207621057','1209825769'}}
+          assert set(docs)=={'1207621057','1209825769'}
+          for aid,row in docs.items():
+              assert row['document_status']=='PASS'
+              assert row['document_error']==''
+              assert row['tie_resolution']=='SINGLE_CANONICAL'
+              assert row['numeric_observations']=='3'
+              assert row['tier1_found']=='0' and row['tier2_found']=='3'
+              assert row['selected_source_sha256'] in {
+                  'b2aa4afa67e2b02010d5ba708d4e5fe02138623ff4bc48718c03029111a64568',
+                  '0bd1da8bdac0aff2a3e99b83adc29e7b60e959c99dd29b8ab88cbda1344b441c',
+              }
+          with gzip.open(root/'stage3_financial_values_v17_28_candidate.csv.gz','rt',encoding='utf-8',newline='') as f:
+              values=[row for row in csv.DictReader(f) if row['announcement_id'] in docs]
+          assert len(values)==6
+          assert {row['concept'] for row in values}=={'TOTAL_ASSETS','TOTAL_LIABILITIES','TOTAL_EQUITY'}
+          assert all(row['source_format']=='PDF' for row in values)
+          assert all(row['extraction_method']=='V17_28_EXACT_SOURCE_SPLIT_GROUP_EQUITY_CANDIDATE' for row in values)
+          print('S3G1J_V17_28_CANDIDATE_FULL_BASIS_ACCEPTANCE_PASS')
+          PY
+        env:
+          EXISTING_NUMERIC_SEMANTIC_SHA256: ${{ env.EXISTING_NUMERIC_SEMANTIC_SHA256 }}
+      - name: Record candidate output identities
+        run: |
+          sha256sum build/candidate/* | sort | tee build/candidate/output_sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-28-split-equity-candidate-safety
+          path: build/candidate
+          retention-days: 30
+          compression-level: 0
