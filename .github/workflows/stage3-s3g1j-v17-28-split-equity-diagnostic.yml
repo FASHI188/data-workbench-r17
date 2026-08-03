@@ -1,0 +1,138 @@
+name: Stage3 S3G1J V17.28 Split Equity Diagnostic
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/diagnose_stage3_s3g1j_v17_28_split_equity.py'
+      - 'tests/test_stage3_s3g1j_v17_28_split_equity.py'
+      - '.github/workflows/stage3-s3g1j-v17-28-split-equity-diagnostic.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  SOURCE_RUN: '30806818977'
+  SOURCE_HEAD: 'fa77d30a2ccdd3664beab01fd7ff7b5d16761726'
+  SOURCE_ARTIFACT_ID: '8854139999'
+  SOURCE_ARTIFACT: 'stage3-s3g1j-v17-27-full-final'
+  SOURCE_DIGEST: 'sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721'
+  DOCUMENTS_SHA256: 'c2abe07baaa76efb80a30cfdd4e762ad07814f6aa795a92b9c0504f7944ab99a'
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified diagnostic runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - name: Lock accepted V17.27 full-basis artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_payload=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN")
+          test "$(jq -r '.head_sha' <<<"$run_payload")" = "$SOURCE_HEAD"
+          test "$(jq -r '.conclusion' <<<"$run_payload")" = success
+          payload=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts?per_page=100")
+          count=$(jq -r --arg name "$SOURCE_ARTIFACT" '[.artifacts[] | select(.name==$name)] | length' <<<"$payload")
+          test "$count" = 1
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[] | select(.name==$name) | .id' <<<"$payload")" = "$SOURCE_ARTIFACT_ID"
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[] | select(.name==$name) | .digest' <<<"$payload")" = "$SOURCE_DIGEST"
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[] | select(.name==$name) | .workflow_run.head_sha' <<<"$payload")" = "$SOURCE_HEAD"
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[] | select(.name==$name) | .expired' <<<"$payload")" = false
+          echo V17_28_SOURCE_ARTIFACT_LOCK_PASS
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-27-full-final
+          path: accepted
+          repository: FASHI188/data-workbench-r17
+          run-id: 30806818977
+          github-token: ${{ github.token }}
+      - name: Lock source document ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          documents=$(find accepted -name stage3_financial_documents.csv.gz -print -quit)
+          test -n "$documents"
+          test "$(sha256sum "$documents" | awk '{print $1}')" = "$DOCUMENTS_SHA256"
+          echo "DOCUMENTS=$documents" >> "$GITHUB_ENV"
+      - name: Run split-equity safety contracts
+        run: |
+          python -m unittest tests.test_stage3_s3g1j_v17_28_split_equity -v
+          python -m py_compile scripts/diagnose_stage3_s3g1j_v17_28_split_equity.py
+      - name: Execute source-locked diagnostic
+        run: |
+          mkdir -p build
+          python scripts/diagnose_stage3_s3g1j_v17_28_split_equity.py \
+            --documents "$DOCUMENTS" \
+            --out build/stage3_s3g1j_v17_28_split_equity_diagnostic.json
+      - name: Enforce exact diagnostic result and locked boundaries
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path=Path('build/stage3_s3g1j_v17_28_split_equity_diagnostic.json')
+          report=json.loads(path.read_text(encoding='utf-8'))
+          assert report['gate']=='S3G1J_V17_28_SPLIT_EQUITY_DIAGNOSTIC_V1'
+          assert report['source_full_basis_run']==30806818977
+          assert report['source_full_basis_artifact_id']==8854139999
+          assert report['source_documents_gzip_sha256']=='c2abe07baaa76efb80a30cfdd4e762ad07814f6aa795a92b9c0504f7944ab99a'
+          assert report['target_count']==2
+          assert report['processed_count']==2
+          assert report['source_sha_match_count']==2
+          assert report['target_announcement_ids']==['1207621057','1209825769']
+          assert report['pass'] is True and report['errors']==[]
+          by_id={row['announcement_id']:row for row in report['results']}
+          assert set(by_id)=={'1207621057','1209825769'}
+          assert by_id['1207621057']['source_sha256']=='b2aa4afa67e2b02010d5ba708d4e5fe02138623ff4bc48718c03029111a64568'
+          assert by_id['1207621057']['source_bytes']==477621
+          assert by_id['1207621057']['explicit_rows']['TOTAL_EQUITY']['pattern']=='LABEL_AND_AMOUNTS_THEN_CONTINUATION'
+          assert by_id['1207621057']['explicit_rows']['TOTAL_EQUITY']['values']==['3249566596.93','3163797498.46']
+          assert by_id['1209825769']['source_sha256']=='0bd1da8bdac0aff2a3e99b83adc29e7b60e959c99dd29b8ab88cbda1344b441c'
+          assert by_id['1209825769']['source_bytes']==633887
+          assert by_id['1209825769']['explicit_rows']['TOTAL_EQUITY']['pattern']=='LABEL_THEN_AMOUNTS_THEN_CONTINUATION'
+          assert by_id['1209825769']['explicit_rows']['TOTAL_EQUITY']['values']==['1303323546.81','1261570672.73']
+          for row in by_id.values():
+              assert row['formal_runtime_recovered'] is False
+              assert row['existing_spatial_candidate_counts']=={
+                  'TOTAL_ASSETS':3,'TOTAL_LIABILITIES':1,'TOTAL_EQUITY':0
+              }
+              assert row['existing_spatial_recovered'] is False
+              assert row['group_event']['role']=='GROUP'
+              assert row['equity_value_is_explicit_pdf_text'] is True
+              assert row['equity_value_inferred_as_assets_minus_liabilities'] is False
+              assert row['diagnostic_candidate_pass'] is True
+              assert row['automatic_recovery_authorized'] is False
+              assert len(row['identity']['columns'])==2
+              assert all(item['identity_residual_cny']=='0.00' for item in row['identity']['columns'])
+          for key in (
+              'parser_changed','runtime_authority_changed','production_data_changed',
+              'trained_model_changed','source_policy_changed','point_in_time_policy_changed',
+              'issuer_gate_changed','accounting_tolerance_changed','ocr_enabled',
+              'fuzzy_alias_matching_enabled','equity_inference_enabled',
+              'automatic_recovery_authorized','main_changed',
+          ):
+              assert report[key] is False,key
+          assert report['stage3_status']=='NOT_READY'
+          assert report['stage4_alpha_live_locked'] is True
+          print('S3G1J_V17_28_SPLIT_EQUITY_DIAGNOSTIC_ACCEPTANCE_PASS')
+          PY
+      - name: Record report identity
+        run: |
+          sha256sum build/stage3_s3g1j_v17_28_split_equity_diagnostic.json \
+            | tee build/stage3_s3g1j_v17_28_split_equity_diagnostic.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-28-split-equity-diagnostic
+          path: build
+          retention-days: 30
+          compression-level: 0
