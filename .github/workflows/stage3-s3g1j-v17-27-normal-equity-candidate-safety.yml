@@ -1,0 +1,193 @@
+name: Stage3 S3G1J V17.27 Normal Equity Candidate Safety
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/stage3_financial_spatial_alias_v17_27_candidate.py'
+      - 'scripts/stage3_financial_pdf_parser_v19_candidate.py'
+      - 'scripts/build_stage3_s3g1j_v17_27_candidate_full.py'
+      - 'tests/test_stage3_s3g1j_v17_27_normal_equity_candidate.py'
+      - '.github/workflows/stage3-s3g1j-v17-27-normal-equity-candidate-safety.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  FULL_RUN: '30733013665'
+  FULL_HEAD: 'ed81a8f167c7b158167a8bdafa1799b7047666af'
+  FULL_ARTIFACT: 'stage3-s3g1j-v17-26-full-final'
+  FULL_DIGEST: 'sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b'
+  P0_RUN: '30746041129'
+  P0_HEAD: '49a05c1b02bc6d4b49e8d825c3e23a092187f8db'
+  P0_ARTIFACT: 'stage3-s3g1j-v17-26-p0-candidate-detail-v3'
+  P0_DIGEST: 'sha256:2b6a0086b8180c305531309fe76879d950c53169a46715a232802fe7eef26db5'
+
+jobs:
+  candidate-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified candidate runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - name: Lock accepted full basis and P0 diagnostic artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for prefix in FULL P0; do
+            run_var="${prefix}_RUN"
+            head_var="${prefix}_HEAD"
+            artifact_var="${prefix}_ARTIFACT"
+            digest_var="${prefix}_DIGEST"
+            run_id="${!run_var}"
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" > "/tmp/${prefix,,}-run.json"
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts?per_page=100" > "/tmp/${prefix,,}-artifacts.json"
+          done
+          python - <<'PY'
+          import json, os
+          for prefix in ('FULL','P0'):
+              low=prefix.lower()
+              run=json.load(open(f'/tmp/{low}-run.json',encoding='utf-8'))
+              assert run['head_sha']==os.environ[f'{prefix}_HEAD'],(prefix,run['head_sha'])
+              assert run['conclusion']=='success',(prefix,run['conclusion'])
+              rows=json.load(open(f'/tmp/{low}-artifacts.json',encoding='utf-8'))['artifacts']
+              matches=[row for row in rows if row['name']==os.environ[f'{prefix}_ARTIFACT']]
+              assert len(matches)==1,(prefix,len(matches))
+              artifact=matches[0]
+              assert artifact['digest']==os.environ[f'{prefix}_DIGEST'],(prefix,artifact['digest'])
+              assert artifact['workflow_run']['head_sha']==os.environ[f'{prefix}_HEAD']
+              assert not artifact['expired']
+          print('S3G1J_V17_27_CANDIDATE_INPUT_LOCK_PASS')
+          PY
+      - name: Run candidate parser contracts
+        run: |
+          python -m unittest tests.test_stage3_s3g1j_v17_27_normal_equity_candidate -v
+          python -m py_compile \
+            scripts/stage3_financial_spatial_alias_v17_27_candidate.py \
+            scripts/stage3_financial_pdf_parser_v19_candidate.py \
+            scripts/build_stage3_s3g1j_v17_27_candidate_full.py
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-26-full-final
+          path: full
+          repository: FASHI188/data-workbench-r17
+          run-id: 30733013665
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-26-p0-candidate-detail-v3
+          path: p0
+          repository: FASHI188/data-workbench-r17
+          run-id: 30746041129
+          github-token: ${{ github.token }}
+      - name: Verify accepted P0 evidence identity
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          accepted=next(Path('p0').rglob('stage3_s3g1j_v17_26_p0_candidate_detail_v3.json'))
+          raw=next(Path('p0').rglob('stage3_s3g1j_v17_26_p0_candidate_spatial_v2_raw.json'))
+          assert hashlib.sha256(accepted.read_bytes()).hexdigest()=='b3ab013938ad41c673e1125336b2abda1fde8edff68e21f8ef3ba8cbdee00b54'
+          assert hashlib.sha256(raw.read_bytes()).hexdigest()=='8a958ad58a89d6b911358aff472018dc39a62b2d3d3547ae7808db1b8fdbbfbe'
+          x=json.loads(accepted.read_text(encoding='utf-8'))
+          assert x['identity_present_but_public_gate_rejected_announcement_ids']==[
+              '1200907104','1201708762','1202195310','1202774611','1203358200'
+          ]
+          assert x['period_or_role_gate_removed_candidates_announcement_ids']==[
+              '1204077386','1205543437'
+          ]
+          print('S3G1J_V17_27_P0_EVIDENCE_LOCK_PASS')
+          PY
+      - name: Build and compare complete candidate ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          documents=$(find full -name stage3_financial_documents.csv.gz -print -quit)
+          values=$(find full -name stage3_financial_raw_values.csv.gz -print -quit)
+          test -n "$documents" && test -n "$values"
+          ls -lh "$documents" "$values"
+          DOCUMENTS="$documents" python - <<'PY'
+          import json, os
+          import fitz
+          import build_stage3_s3g1j_v17_27_candidate_full as builder
+          documents=builder.read_gz(builder.Path(os.environ['DOCUMENTS']))
+          by_aid={row['announcement_id']:row for row in documents}
+          session=builder.requests.Session()
+          session.headers.update({'User-Agent':'data-workbench-r17-v17-27-candidate-preflight/1.0','Accept':'application/pdf,*/*;q=0.8'})
+          for aid in sorted(builder.TARGETS_BY_AID):
+              row=by_aid[aid]
+              source=builder.source_evidence(row,aid)
+              raw=builder.download(session,source['url'])
+              with fitz.open(stream=raw,filetype='pdf') as doc:
+                  diagnostic=builder.parser_candidate.spatial.diagnose_normal_equity_identity_candidate(doc,row['economic_date'])
+              print(json.dumps({
+                  'announcement_id':aid,
+                  'candidate_counts':diagnostic.get('candidate_counts'),
+                  'witness_count':(diagnostic.get('generic_group_witness') or {}).get('promoted_generic_group_count'),
+                  'identity_recovered_before_column_gate':diagnostic.get('identity_recovered_before_column_gate'),
+                  'recovered':diagnostic.get('recovered'),
+                  'identity':diagnostic.get('identity'),
+                  'selected':diagnostic.get('selected'),
+                  'column_role_gate':diagnostic.get('column_role_gate'),
+              },ensure_ascii=False,default=str))
+          PY
+          set +e
+          python -u scripts/build_stage3_s3g1j_v17_27_candidate_full.py \
+            --documents "$documents" \
+            --values "$values" \
+            --out build/v17_27_candidate > /tmp/v17_27_builder.log 2>&1
+          rc=$?
+          set -e
+          cat /tmp/v17_27_builder.log
+          exit "$rc"
+      - name: Require exact five recoveries and full non-regression
+        run: |
+          python - <<'PY'
+          import json
+          p='build/v17_27_candidate/stage3_s3g1j_v17_27_candidate_safety.json'
+          x=json.load(open(p,encoding='utf-8'))
+          expected=['1200907104','1201708762','1202195310','1202774611','1203358200']
+          assert x['pass'] is True and x['errors']==[]
+          assert x['candidate_only'] is True
+          assert x['formal_runtime_generation']=='V17.26'
+          assert x['candidate_generation']=='V17.27'
+          assert x['target_announcement_ids']==expected
+          assert x['target_count']==5 and x['target_numeric_rows']==15
+          assert x['source_document_rows']==121354
+          assert x['candidate_document_rows']==121354
+          assert x['source_numeric_rows']==1051778
+          assert x['candidate_numeric_rows']==1051793
+          assert x['source_document_errors']==1378
+          assert x['candidate_document_errors']==1373
+          assert x['document_error_reduction']==5
+          assert x['non_target_document_rows']==121349
+          assert x['non_target_document_exact_equal'] is True
+          assert x['non_target_numeric_rows']==1051778
+          assert x['non_target_numeric_exact_equal'] is True
+          assert x['source_numeric_semantic_sha256']==x['candidate_non_target_numeric_semantic_sha256']
+          assert x['non_balance_values_promoted'] is False
+          assert x['production_runtime_changed'] is False
+          assert x['production_data_changed'] is False
+          assert x['trained_model_changed'] is False
+          assert x['final_data_verdict']=='FAIL_CLOSED'
+          assert x['stage3_status']=='NOT_READY'
+          assert x['stage4_alpha_locked'] is True
+          assert x['main_changed'] is False
+          assert all(d['identity_relative_error']=='0' for d in x['target_details'])
+          assert all(d['identity_residual_cny'] in ('0','0.00') for d in x['target_details'])
+          assert all(d['column_role_gate_pass'] is True for d in x['target_details'])
+          print(json.dumps({k:v for k,v in x.items() if k!='target_details'},ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-27-normal-equity-candidate-safety
+          path: build/v17_27_candidate
+          retention-days: 90
+          compression-level: 0
