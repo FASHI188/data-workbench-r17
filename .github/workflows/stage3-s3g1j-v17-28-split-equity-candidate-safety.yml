@@ -6,6 +6,7 @@ on:
     paths:
       - 'scripts/stage3_financial_pdf_parser_v20_candidate.py'
       - 'scripts/build_stage3_s3g1j_v17_28_candidate_full.py'
+      - 'scripts/build_stage3_s3g1j_v17_28_candidate_full_v2.py'
       - 'tests/test_stage3_s3g1j_v17_28_split_equity_candidate.py'
       - '.github/workflows/stage3-s3g1j-v17-28-split-equity-candidate-safety.yml'
 
@@ -73,11 +74,12 @@ jobs:
           python -m unittest tests.test_stage3_s3g1j_v17_28_split_equity_candidate -v
           python -m py_compile \
             scripts/stage3_financial_pdf_parser_v20_candidate.py \
-            scripts/build_stage3_s3g1j_v17_28_candidate_full.py
+            scripts/build_stage3_s3g1j_v17_28_candidate_full.py \
+            scripts/build_stage3_s3g1j_v17_28_candidate_full_v2.py
       - name: Build complete V17.28 candidate basis
         run: |
           mkdir -p build/candidate
-          python scripts/build_stage3_s3g1j_v17_28_candidate_full.py \
+          python scripts/build_stage3_s3g1j_v17_28_candidate_full_v2.py \
             --documents "$DOCUMENTS" \
             --values "$VALUES" \
             --out build/candidate
@@ -89,7 +91,7 @@ jobs:
 
           root=Path('build/candidate')
           report=json.loads((root/'stage3_s3g1j_v17_28_candidate_safety.json').read_text(encoding='utf-8'))
-          assert report['gate']=='S3G1J_V17_28_SPLIT_GROUP_EQUITY_CANDIDATE_SAFETY'
+          assert report['gate']=='S3G1J_V17_28_SPLIT_GROUP_EQUITY_CANDIDATE_SAFETY_V2'
           assert report['candidate_only'] is True
           assert report['formal_runtime_generation']=='V17.27'
           assert report['candidate_generation']=='V17.28'
@@ -103,6 +105,13 @@ jobs:
           assert report['source_document_errors']==1373
           assert report['candidate_document_errors']==1371
           assert report['document_error_reduction']==2
+          assert report['unresolved_tie_definition']==['TIE_SOURCE_INCOMPLETE','TIE_VALUE_CONFLICT']
+          assert report['source_unresolved_tie_taxonomy']=={
+              'TIE_SOURCE_INCOMPLETE':1276,'TIE_VALUE_CONFLICT':14
+          }
+          assert report['candidate_unresolved_tie_taxonomy']=={
+              'TIE_SOURCE_INCOMPLETE':1274,'TIE_VALUE_CONFLICT':14
+          }
           assert report['source_unresolved_ties']==1290
           assert report['candidate_unresolved_ties']==1288
           assert report['unresolved_tie_reduction']==2
