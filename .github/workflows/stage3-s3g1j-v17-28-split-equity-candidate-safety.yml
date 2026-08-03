@@ -7,6 +7,7 @@ on:
       - 'scripts/stage3_financial_pdf_parser_v20_candidate.py'
       - 'scripts/build_stage3_s3g1j_v17_28_candidate_full.py'
       - 'scripts/build_stage3_s3g1j_v17_28_candidate_full_v2.py'
+      - 'scripts/build_stage3_s3g1j_v17_28_candidate_full_v3.py'
       - 'tests/test_stage3_s3g1j_v17_28_split_equity_candidate.py'
       - '.github/workflows/stage3-s3g1j-v17-28-split-equity-candidate-safety.yml'
 
@@ -24,7 +25,8 @@ env:
   SOURCE_DIGEST: 'sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721'
   DOCUMENTS_SHA256: 'c2abe07baaa76efb80a30cfdd4e762ad07814f6aa795a92b9c0504f7944ab99a'
   VALUES_SHA256: '4c518fbca2ece45ed535789d4cf66dd86d2717d6499f872234c5d3ece09280fe'
-  EXISTING_NUMERIC_SEMANTIC_SHA256: '05b914b03dbcc23d3f6eca560189afbfe6ea427913f9cf1380fa09cdea6aa8d7'
+  FULL_V17_27_NUMERIC_SEMANTIC_SHA256: 'bcb154cc4d80a81acd409e64dc35c2902a5aeb37726b313df936717caf400672'
+  INHERITED_PRE_V17_27_NUMERIC_SEMANTIC_SHA256: '05b914b03dbcc23d3f6eca560189afbfe6ea427913f9cf1380fa09cdea6aa8d7'
 
 jobs:
   candidate-safety:
@@ -75,11 +77,12 @@ jobs:
           python -m py_compile \
             scripts/stage3_financial_pdf_parser_v20_candidate.py \
             scripts/build_stage3_s3g1j_v17_28_candidate_full.py \
-            scripts/build_stage3_s3g1j_v17_28_candidate_full_v2.py
+            scripts/build_stage3_s3g1j_v17_28_candidate_full_v2.py \
+            scripts/build_stage3_s3g1j_v17_28_candidate_full_v3.py
       - name: Build complete V17.28 candidate basis
         run: |
           mkdir -p build/candidate
-          python scripts/build_stage3_s3g1j_v17_28_candidate_full_v2.py \
+          python scripts/build_stage3_s3g1j_v17_28_candidate_full_v3.py \
             --documents "$DOCUMENTS" \
             --values "$VALUES" \
             --out build/candidate
@@ -91,7 +94,7 @@ jobs:
 
           root=Path('build/candidate')
           report=json.loads((root/'stage3_s3g1j_v17_28_candidate_safety.json').read_text(encoding='utf-8'))
-          assert report['gate']=='S3G1J_V17_28_SPLIT_GROUP_EQUITY_CANDIDATE_SAFETY_V2'
+          assert report['gate']=='S3G1J_V17_28_SPLIT_GROUP_EQUITY_CANDIDATE_SAFETY_V3'
           assert report['candidate_only'] is True
           assert report['formal_runtime_generation']=='V17.27'
           assert report['candidate_generation']=='V17.28'
@@ -120,8 +123,15 @@ jobs:
           assert report['existing_numeric_rows']==1051793
           assert report['existing_numeric_exact_equal'] is True
           assert report['stable_numeric_field_count']==22
-          assert report['source_existing_numeric_semantic_sha256']==os.environ['EXISTING_NUMERIC_SEMANTIC_SHA256']
-          assert report['candidate_existing_numeric_semantic_sha256']==os.environ['EXISTING_NUMERIC_SEMANTIC_SHA256']
+          assert report['source_existing_numeric_semantic_sha256']==os.environ['FULL_V17_27_NUMERIC_SEMANTIC_SHA256']
+          assert report['candidate_existing_numeric_semantic_sha256']==os.environ['FULL_V17_27_NUMERIC_SEMANTIC_SHA256']
+          scope=report['numeric_semantic_identity_scope']
+          assert scope['full_v17_27_rows']==1051793
+          assert scope['full_v17_27_semantic_sha256']==os.environ['FULL_V17_27_NUMERIC_SEMANTIC_SHA256']
+          assert scope['inherited_pre_v17_27_rows']==1051778
+          assert scope['inherited_pre_v17_27_semantic_sha256']==os.environ['INHERITED_PRE_V17_27_NUMERIC_SEMANTIC_SHA256']
+          assert scope['v17_27_added_rows']==15
+          assert scope['populations_must_not_be_interchanged'] is True
           assert report['non_balance_values_promoted'] is False
           assert report['e_equals_a_minus_l_inference'] is False
           assert report['production_runtime_changed'] is False
@@ -154,8 +164,6 @@ jobs:
           assert all(row['extraction_method']=='V17_28_EXACT_SOURCE_SPLIT_GROUP_EQUITY_CANDIDATE' for row in values)
           print('S3G1J_V17_28_CANDIDATE_FULL_BASIS_ACCEPTANCE_PASS')
           PY
-        env:
-          EXISTING_NUMERIC_SEMANTIC_SHA256: ${{ env.EXISTING_NUMERIC_SEMANTIC_SHA256 }}
       - name: Record candidate output identities
         run: |
           sha256sum build/candidate/* | sort | tee build/candidate/output_sha256.txt
