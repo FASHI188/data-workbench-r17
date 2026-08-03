@@ -84,7 +84,7 @@ jobs:
       - name: Enforce exact candidate population, accounting and non-regression
         run: |
           python - <<'PY'
-          import csv,gzip,json
+          import csv,gzip,json,os
           from pathlib import Path
 
           root=Path('build/candidate')
