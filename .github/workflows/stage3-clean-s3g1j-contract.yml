@@ -7,6 +7,7 @@ on:
     paths:
       - 'governance/stage3_s3g1j_runtime_manifest.json'
       - 'governance/stage3_s3g1j_v17_26_full_final.json'
+      - 'governance/stage3_s3g1j_v17_27_candidate_safety.json'
       - 'governance/stage3_workflow_activation_manifest.json'
       - 'config/stage3_s3g1j_v10_diagnostic_samples.json'
       - 'scripts/extract_stage3_financial_pdf_values*.py'
@@ -19,10 +20,12 @@ on:
       - 'scripts/compare_stage3_s3g1j_v17_26_*.py'
       - 'scripts/build_stage3_partial_body_ledger_v12.py'
       - 'scripts/build_stage3_s3g1j_v17_26_exact_target_ledger.py'
+      - 'scripts/build_stage3_s3g1j_v17_27_candidate_full.py'
       - 'scripts/promote_stage3_s3g1j_v17_26_full_shards*.py'
       - 'scripts/accept_stage3_s3g1j_v17_*.py'
       - 'scripts/finalize_stage3_financial_pdf_values.py'
       - 'tests/test_stage3_financial_*.py'
+      - 'tests/test_stage3_s3g1j_v17_27_normal_equity_candidate.py'
       - 'tests/test_stage3_unique_usable_tie_v15.py'
       - 'tests/test_stage3_statement_blocks_v16_3.py'
       - 'tests/test_stage3_v16_contextual_parser.py'
@@ -46,27 +49,33 @@ jobs:
           python-version: '3.12.13'
       - name: Install verified Stage3 runtime
         run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf pytest
-      - name: Verify V17.26 runtime promotion and fail-closed authority
+      - name: Verify V17.27 runtime promotion and retained V17.26 full basis
         run: |
           python -m unittest \
+            tests.test_stage3_v17_27_runtime_promotion \
             tests.test_stage3_v17_26_runtime_promotion \
             tests.test_stage3_v17_26_full_final_evidence \
             -v
-      - name: Import promoted V17.26 production runtime closure
+      - name: Import promoted V17.27 production runtime closure
         run: |
           python - <<'PY'
           import json
-          import extract_stage3_financial_pdf_values_v16 as extractor
-          import stage3_financial_pdf_parser_v18 as parser
+          import extract_stage3_financial_pdf_values_v17 as extractor
+          import stage3_financial_pdf_parser_v19 as parser
           import finalize_stage3_financial_pdf_values as finalizer
 
           manifest=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
-          assert manifest['schema_version']==7
+          activation=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
+          evidence=json.load(open('governance/stage3_s3g1j_v17_27_candidate_safety.json',encoding='utf-8'))
+          assert manifest['schema_version']==8
           assert manifest['integration_branch']=='agent/stage3-clean-integration'
-          assert manifest['current_production_authority']['generation']=='V17.26'
-          assert manifest['current_production_authority']['status']=='FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED'
-          assert manifest['production_final_status']=='FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED'
+          assert manifest['current_production_authority']['generation']=='V17.27'
+          assert manifest['current_production_authority']['status']=='RUNTIME_PROMOTED_PENDING_FULL_BASIS_EXECUTION_FAIL_CLOSED'
+          assert manifest['production_final_status']=='RUNTIME_PROMOTED_PENDING_FULL_BASIS_EXECUTION_FAIL_CLOSED'
+          assert manifest['full_basis_last_completed_final']['generation']=='V17.26'
           assert manifest['full_basis_last_completed_final']['verdict']=='FAIL_CLOSED'
+          assert manifest['next_full_basis_required']['generation']=='V17.27'
+          assert manifest['next_full_basis_required']['status']=='PENDING_MACHINE_EXECUTION_AND_ACCEPTANCE'
           assert manifest['project_status']=={
               'stage3':'NOT_READY',
               'stage4':'LOCKED',
@@ -76,20 +85,30 @@ jobs:
           }
 
           assert callable(extractor.parse_pdf_bytes)
-          assert extractor.RUNTIME_GENERATION=='V17.26'
-          assert extractor.METHOD=='CNINFO_ORIGINAL_PDF_PYMUPDF_V16_V17_26_EXACT_SOURCE_BALANCE_ONLY_PRODUCTION'
-          assert extractor.METHODOLOGY_VERSION=='V3.3.6-V17.26'
-          assert extractor.SHARD_GATE=='S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_26'
-          assert parser.METHOD=='V17_26_EXACT_SOURCE_BALANCE_ONLY_PRODUCTION'
+          assert extractor.RUNTIME_GENERATION=='V17.27'
+          assert extractor.METHOD=='CNINFO_ORIGINAL_PDF_PYMUPDF_V17_V17_27_EXACT_SOURCE_NORMAL_EQUITY_PRODUCTION'
+          assert extractor.METHODOLOGY_VERSION=='V3.3.7-V17.27'
+          assert extractor.SHARD_GATE=='S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_27'
+          assert parser.METHOD=='V17_27_EXACT_SOURCE_NORMAL_EQUITY_IDENTITY_PRODUCTION'
           assert set(parser.TARGETS)=={
-              '320e3a950a4768e73766d57a09bcf34d893d4da949b8ed5a1b2f887852e76229',
-              'fa72059d35715f20df620691538528f720fe3ae42581c172c853f26799befb93',
+              '87a313e900dd74ec976e2c6e5c0eeb0e7c7cfd5e68c31e9ede3ae8c01c7e9d49',
+              'e7af0c09c31f0be1e83fdb118c603a141c094739767de01b90f57680ce9596a8',
+              '04b84b49ce4e36a4c9089e13cd46f717ef27c7d93c141533d7d7ff2299513925',
+              'eb0c9e0b559e1960316f3844ac32e7299cf31391fec1d83ee6b4fb2fe37aef14',
+              '3d009555c7acb24c7d9cc0cb52ec3d5e43c473379b0c02c5bc832d6a3d773c82',
           }
           assert set(parser.ALLOWED_CONCEPTS)=={
               'TOTAL_ASSETS','TOTAL_LIABILITIES','TOTAL_EQUITY'
           }
+          assert evidence['accepted_run']['run']==30747664549
+          assert evidence['accepted_run']['artifact_digest']==parser.CANDIDATE_ARTIFACT_DIGEST
+          assert evidence['result']['candidate_document_errors']==1373
+          assert evidence['promotion_boundaries']['full_basis_v17_27_execution_completed'] is False
+          assert activation['schema_version']==10
+          assert activation['accepted_production_runtime']['generation']=='V17.27'
+          assert activation['accepted_production_runtime']['full_basis_execution_pending'] is True
           assert callable(finalizer._validate_shard_manifests)
-          print('S3G1J_V17_26_PRODUCTION_RUNTIME_IMPORT_PASS')
+          print('S3G1J_V17_27_PRODUCTION_RUNTIME_IMPORT_PASS')
           PY
       - name: Run inherited pure fail-closed regression contracts
         run: |
@@ -126,13 +145,19 @@ jobs:
             tests.test_stage3_v17_25_production_parser \
             tests.test_stage3_v17_25_runtime_promotion \
             -v
-      - name: Run V17.26 production, evidence and comparator regressions
+      - name: Run V17.26 completed full-basis regressions
         run: |
           python -m unittest \
             tests.test_stage3_v17_26_balance_only_parser \
             tests.test_stage3_v17_26_full_final_comparator \
             tests.test_stage3_v17_26_full_final_evidence \
             tests.test_stage3_v17_26_runtime_promotion \
+            -v
+      - name: Run V17.27 candidate and production promotion regressions
+        run: |
+          python -m unittest \
+            tests.test_stage3_s3g1j_v17_27_normal_equity_candidate \
+            tests.test_stage3_v17_27_runtime_promotion \
             -v
       - name: Run official-PDF coordinate fallback regression
         run: python -m unittest tests.test_stage3_financial_coordinate_fallback_v14_integration -v

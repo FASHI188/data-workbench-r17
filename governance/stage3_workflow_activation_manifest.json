@@ -1,13 +1,14 @@
 {
-  "schema_version": 9,
-  "status": "ACTIVE_WORKFLOW_SET_WITH_ACCEPTED_V17_26_RUNTIME_AND_CURRENT_RESIDUAL_CLASSIFICATION",
+  "schema_version": 10,
+  "status": "ACTIVE_WORKFLOW_SET_WITH_V17_27_RUNTIME_PENDING_FULL_BASIS_EXECUTION",
   "policy": "Only long-lived read-only safety, authority, runtime and accepted-evidence contracts remain active. Completed candidate, production-acceptance, classifier, diagnostic and full-basis workflows are retained through Git history, immutable run IDs and artifact digests but removed from the active workflow directory after acceptance.",
   "previous_activation_manifest": {
-    "schema_version": 8,
-    "source_head_sha": "e3f30a31133b92d278628dc5f1e5f3032dbf32cf",
-    "git_blob_sha": "858e3c04f300722b404490f3751e0fc77df7c626",
+    "schema_version": 9,
+    "source_head_sha": "30ab382cfc83ed9df4e551dac95fa07291bb91e0",
+    "git_blob_sha": "7d54173dad7436cf623b05fe4c3a2f409b4e56da",
     "accepted_runtime_generation": "V17.26",
-    "current_residual_classification_pending": true
+    "accepted_candidate_generation": "V17.27",
+    "v17_27_runtime_promotion_pending": true
   },
   "active_stage3_workflows": [
     ".github/workflows/repository-safety-audit.yml",
@@ -17,36 +18,65 @@
     ".github/workflows/stage3-clean-s3g1j-contract.yml",
     ".github/workflows/stage3-clean-s3g1j-v17-21-production.yml",
     ".github/workflows/stage3-clean-s3g1j-v17-24-acceptance-compat.yml",
-    ".github/workflows/stage3-s3g1j-v17-26-evidence-contract.yml"
+    ".github/workflows/stage3-s3g1j-v17-26-evidence-contract.yml",
+    ".github/workflows/stage3-s3g1j-v17-27-evidence-contract.yml"
   ],
   "accepted_production_runtime": {
-    "generation": "V17.26",
-    "status": "FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED",
+    "generation": "V17.27",
+    "status": "RUNTIME_PROMOTED_PENDING_FULL_BASIS_EXECUTION_FAIL_CLOSED",
     "runtime_manifest": "governance/stage3_s3g1j_runtime_manifest.json",
-    "runtime_manifest_schema": 7,
-    "evidence_manifest": "governance/stage3_s3g1j_v17_26_full_final.json",
-    "acceptance_run": 30733013665,
-    "acceptance_head_sha": "ed81a8f167c7b158167a8bdafa1799b7047666af",
-    "acceptance_artifact_id": 8828600783,
-    "acceptance_artifact": "stage3-s3g1j-v17-26-full-final",
-    "acceptance_artifact_digest": "sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b",
-    "runtime_generation": "V17.26",
-    "shard_gate": "S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_26",
-    "extractor": "scripts/extract_stage3_financial_pdf_values_v16.py",
-    "parser": "scripts/stage3_financial_pdf_parser_v18.py",
-    "methodology_version": "V3.3.6-V17.26",
-    "canonical_version_count": 121354,
-    "numeric_observation_count": 1051778,
-    "document_error_count": 1378,
+    "runtime_manifest_schema": 8,
+    "evidence_manifest": "governance/stage3_s3g1j_v17_27_candidate_safety.json",
+    "acceptance_run": 30747664549,
+    "acceptance_head_sha": "ae9e80d90e227772cca88cc3b7ebadd2c6cfb7ca",
+    "acceptance_artifact_id": 8833408494,
+    "acceptance_artifact": "stage3-s3g1j-v17-27-normal-equity-candidate-safety",
+    "acceptance_artifact_digest": "sha256:d279df39e62f4f0f4fd655267788473dd34945113f677635563ce38f3af88513",
+    "runtime_generation": "V17.27",
+    "shard_gate": "S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_27",
+    "extractor": "scripts/extract_stage3_financial_pdf_values_v17.py",
+    "parser": "scripts/stage3_financial_pdf_parser_v19.py",
+    "methodology_version": "V3.3.7-V17.27",
+    "full_basis_execution_pending": true,
+    "last_completed_full_basis_generation": "V17.26",
+    "last_completed_full_basis_run": 30733013665,
+    "candidate_document_count": 121354,
+    "candidate_numeric_observation_count": 1051793,
+    "candidate_document_error_count": 1373,
     "unresolved_tie_count": 1295,
     "target_numeric_observations_each": 3,
     "non_balance_target_concepts_promoted": false,
-    "non_target_numeric_semantic_sha256": "f9f7751943b113db9488b0b7b1d33ffbd93e1e3eb56486ca8e399f252a5953b4",
     "unexpected_regression_count": 0,
-    "execution_verdict": "PASS",
+    "runtime_contract_verdict": "PASS_PENDING_EXACT_HEAD_CI",
     "data_verdict": "FAIL_CLOSED",
     "runtime_manifest_promotion_pending": false,
-    "production_final_status": "FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED"
+    "production_final_status": "RUNTIME_PROMOTED_PENDING_FULL_BASIS_EXECUTION_FAIL_CLOSED"
+  },
+  "accepted_v17_27_candidate_safety": {
+    "evidence_manifest": "governance/stage3_s3g1j_v17_27_candidate_safety.json",
+    "evidence_contract_workflow": ".github/workflows/stage3-s3g1j-v17-27-evidence-contract.yml",
+    "run": 30747664549,
+    "head_sha": "ae9e80d90e227772cca88cc3b7ebadd2c6cfb7ca",
+    "artifact_id": 8833408494,
+    "artifact": "stage3-s3g1j-v17-27-normal-equity-candidate-safety",
+    "artifact_digest": "sha256:d279df39e62f4f0f4fd655267788473dd34945113f677635563ce38f3af88513",
+    "source_document_rows": 121354,
+    "candidate_document_rows": 121354,
+    "source_numeric_rows": 1051778,
+    "candidate_numeric_rows": 1051793,
+    "source_document_errors": 1378,
+    "candidate_document_errors": 1373,
+    "target_document_count": 5,
+    "target_numeric_rows": 15,
+    "non_target_document_rows": 121349,
+    "existing_numeric_rows_exact_equal": true,
+    "existing_numeric_semantic_sha256": "1ac6089451427bbf38dc07e83e9f43a80bbffe6b288096d91019ff107516ed0a",
+    "unexpected_regression_count": 0,
+    "candidate_data_verdict": "FAIL_CLOSED",
+    "runtime_promoted": true,
+    "full_basis_execution_pending": true,
+    "one_shot_workflow_retired_after_acceptance": true,
+    "evidence_contract_active": true
   },
   "accepted_v17_26_full_basis_evidence": {
     "evidence_manifest": "governance/stage3_s3g1j_v17_26_full_final.json",
@@ -68,13 +98,10 @@
       "1207035181",
       "1221568845"
     ],
-    "target_numeric_observations_each": 3,
-    "non_balance_target_concepts_promoted": false,
-    "non_target_numeric_semantic_sha256": "f9f7751943b113db9488b0b7b1d33ffbd93e1e3eb56486ca8e399f252a5953b4",
     "unexpected_regression_count": 0,
     "final_data_verdict": "FAIL_CLOSED",
     "stage3_status": "NOT_READY",
-    "runtime_manifest_promotion_pending": false,
+    "historical_full_basis_authority_retained": true,
     "one_shot_workflow_retired_after_acceptance": true,
     "evidence_contract_active": true
   },
@@ -94,12 +121,6 @@
       "1207035181",
       "1221568845"
     ],
-    "classification_ledger_plaintext_sha256": "d685467918213b5b5b333dd7f893d633aebce9dd0d7d738082241e74a3519009",
-    "classification_ledger_gzip_sha256": "e39fdc8dea8639bf00d56f80a00cfba842c6194a787736bdcf40b2ab1accea89",
-    "p0_ledger_plaintext_sha256": "3500694439fc4573b1546c001b647ecb0bee6804691df8306727255debbeef49",
-    "p0_ledger_gzip_sha256": "75f41b4576fc843b93bca6ac98f12a12e72475daaa0f00473e2a6edae5fdcf90",
-    "migration_ledger_plaintext_sha256": "275e8a25490d324bfe69e76e9945f5193199697f5661e3555aa3ed8c305319f4",
-    "migration_ledger_gzip_sha256": "88fc642649f2c6448edcc9d5b8ae09753042b4b5086b43ca9af8677aabf7aa38",
     "diagnostic_only": true,
     "parser_changed": false,
     "runtime_authority_changed": false,
@@ -113,12 +134,6 @@
       "document_error_count": 1380,
       "verdict": "FAIL_CLOSED"
     },
-    "full_basis_classifier_v1": {
-      "run": 30687393120,
-      "artifact_digest": "sha256:3451a94bb70758bbb93d3be4600ad7e0d8d65de618928b1c635f8a29686f7052",
-      "residual_document_rows": 1380,
-      "superseded_by_current_classifier": true
-    },
     "v17_25_candidate_safety": {
       "run": 30690306327,
       "artifact_digest": "sha256:b63cdb341ab30d62bb25bf49cc8c94d3ffdc8df97fd9e39c9aada0629c867dd9",
@@ -130,13 +145,6 @@
       "workflow_retired_after_acceptance": true,
       "full_basis_target_scope_later_rejected": true
     },
-    "v17_25_full_shards_rejected_scope": {
-      "run": 30692117760,
-      "head_sha": "f9329e2f6a83d38dfd86291a4fd7d4bbfbf1b6b1",
-      "shard_count": 64,
-      "target_rows_rejected": "9_PLUS_9",
-      "reason": "PRODUCTION_ACCEPTANCE_COVERED_ONLY_A_L_E_BUT_FULL_EXTRACTION_PROMOTED_UNVALIDATED_NON_BALANCE_CONCEPTS"
-    },
     "v17_26_full_basis_final": {
       "run": 30733013665,
       "artifact_digest": "sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b",
@@ -144,15 +152,18 @@
       "data_verdict": "FAIL_CLOSED",
       "workflow_retired_after_acceptance": true,
       "evidence_contract_active": true,
-      "runtime_promoted": true
+      "runtime_generation_superseded_by_v17_27": true,
+      "last_completed_full_basis": true
     },
-    "v17_26_residual_classification_v2": {
-      "run": 30734063100,
-      "artifact_digest": "sha256:f667e5e494e6ac1456a370b5dab47677b4925d0466beedceec3e47bdeb5f16a5",
-      "residual_document_rows": 1378,
-      "p0_safe_near_complete_count": 21,
+    "v17_27_candidate_safety": {
+      "run": 30747664549,
+      "artifact_digest": "sha256:d279df39e62f4f0f4fd655267788473dd34945113f677635563ce38f3af88513",
+      "execution_verdict": "PASS",
+      "candidate_data_verdict": "FAIL_CLOSED",
       "workflow_retired_after_acceptance": true,
-      "evidence_contract_active": true
+      "evidence_contract_active": true,
+      "runtime_promoted": true,
+      "full_basis_execution_pending": true
     }
   },
   "removed_one_shot_workflows": [
@@ -163,7 +174,8 @@
     ".github/workflows/stage3-s3g1j-v17-25-candidate-safety-sharded.yml",
     ".github/workflows/stage3-s3g1j-v17-25-production-acceptance.yml",
     ".github/workflows/stage3-s3g1j-v17-25-full-final-v2.yml",
-    ".github/workflows/stage3-s3g1j-v17-26-residual-classifier.yml"
+    ".github/workflows/stage3-s3g1j-v17-26-residual-classifier.yml",
+    ".github/workflows/stage3-s3g1j-v17-27-normal-equity-candidate-safety.yml"
   ],
   "hard_boundaries": {
     "source_sha_required": true,
@@ -173,9 +185,9 @@
     "fuzzy_alias_matching_enabled": false,
     "ocr_enabled": false,
     "e_equals_a_minus_l_inference": false,
-    "candidate_resolver_reused_for_v17_26_targets": false,
+    "non_target_v17_26_output_required_unchanged": true,
     "non_balance_target_concepts_promoted": false,
-    "residual_classification_is_diagnostic_only": true,
+    "v17_27_full_basis_execution_pending": true,
     "stage3_status": "NOT_READY",
     "stage4_alpha_live_locked": true,
     "committed_production_data_changed": false,
