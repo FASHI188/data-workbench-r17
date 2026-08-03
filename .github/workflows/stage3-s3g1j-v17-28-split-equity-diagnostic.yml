@@ -5,7 +5,9 @@ on:
   pull_request:
     paths:
       - 'scripts/diagnose_stage3_s3g1j_v17_28_split_equity.py'
+      - 'scripts/diagnose_stage3_s3g1j_v17_28_split_equity_v2.py'
       - 'tests/test_stage3_s3g1j_v17_28_split_equity.py'
+      - 'tests/test_stage3_s3g1j_v17_28_split_equity_v2.py'
       - '.github/workflows/stage3-s3g1j-v17-28-split-equity-diagnostic.yml'
 
 permissions:
@@ -65,12 +67,17 @@ jobs:
           echo "DOCUMENTS=$documents" >> "$GITHUB_ENV"
       - name: Run split-equity safety contracts
         run: |
-          python -m unittest tests.test_stage3_s3g1j_v17_28_split_equity -v
-          python -m py_compile scripts/diagnose_stage3_s3g1j_v17_28_split_equity.py
+          python -m unittest \
+            tests.test_stage3_s3g1j_v17_28_split_equity \
+            tests.test_stage3_s3g1j_v17_28_split_equity_v2 \
+            -v
+          python -m py_compile \
+            scripts/diagnose_stage3_s3g1j_v17_28_split_equity.py \
+            scripts/diagnose_stage3_s3g1j_v17_28_split_equity_v2.py
       - name: Execute source-locked diagnostic
         run: |
           mkdir -p build
-          python scripts/diagnose_stage3_s3g1j_v17_28_split_equity.py \
+          python scripts/diagnose_stage3_s3g1j_v17_28_split_equity_v2.py \
             --documents "$DOCUMENTS" \
             --out build/stage3_s3g1j_v17_28_split_equity_diagnostic.json
       - name: Enforce exact diagnostic result and locked boundaries
@@ -107,6 +114,8 @@ jobs:
               }
               assert row['existing_spatial_recovered'] is False
               assert row['group_event']['role']=='GROUP'
+              assert row['header_context']['date_text_object_count']>=1
+              assert row['header_context']['duplicate_exact_date_objects_allowed'] is True
               assert row['equity_value_is_explicit_pdf_text'] is True
               assert row['equity_value_inferred_as_assets_minus_liabilities'] is False
               assert row['diagnostic_candidate_pass'] is True
