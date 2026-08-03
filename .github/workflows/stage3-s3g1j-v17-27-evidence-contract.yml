@@ -1,0 +1,120 @@
+name: Stage3 S3G1J V17.27 Evidence Contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'governance/stage3_s3g1j_runtime_manifest.json'
+      - 'governance/stage3_s3g1j_v17_27_candidate_safety.json'
+      - 'governance/stage3_workflow_activation_manifest.json'
+      - 'scripts/stage3_financial_pdf_parser_v19.py'
+      - 'scripts/stage3_financial_pdf_parser_v19_candidate.py'
+      - 'scripts/stage3_financial_spatial_alias_v17_27_candidate.py'
+      - 'scripts/extract_stage3_financial_pdf_values_v17.py'
+      - 'scripts/build_stage3_s3g1j_v17_27_candidate_full.py'
+      - 'tests/test_stage3_s3g1j_v17_27_normal_equity_candidate.py'
+      - 'tests/test_stage3_v17_27_runtime_promotion.py'
+      - '.github/workflows/stage3-s3g1j-v17-27-evidence-contract.yml'
+      - '.github/workflows/stage3-s3g1j-v17-27-normal-equity-candidate-safety.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  CANDIDATE_RUN: '30747664549'
+  CANDIDATE_HEAD: 'ae9e80d90e227772cca88cc3b7ebadd2c6cfb7ca'
+  CANDIDATE_ARTIFACT_ID: '8833408494'
+  CANDIDATE_ARTIFACT: 'stage3-s3g1j-v17-27-normal-equity-candidate-safety'
+  CANDIDATE_DIGEST: 'sha256:d279df39e62f4f0f4fd655267788473dd34945113f677635563ce38f3af88513'
+
+jobs:
+  evidence-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified evidence runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - name: Lock accepted V17.27 candidate run and artifact
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN" > /tmp/v17_27-run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN/artifacts?per_page=100" > /tmp/v17_27-artifacts.json
+          python - <<'PY'
+          import json, os
+          run=json.load(open('/tmp/v17_27-run.json',encoding='utf-8'))
+          assert run['head_sha']==os.environ['CANDIDATE_HEAD'],run['head_sha']
+          assert run['conclusion']=='success',run['conclusion']
+          artifacts=json.load(open('/tmp/v17_27-artifacts.json',encoding='utf-8'))['artifacts']
+          matches=[row for row in artifacts if row['name']==os.environ['CANDIDATE_ARTIFACT']]
+          assert len(matches)==1,len(matches)
+          artifact=matches[0]
+          assert str(artifact['id'])==os.environ['CANDIDATE_ARTIFACT_ID'],artifact['id']
+          assert artifact['digest']==os.environ['CANDIDATE_DIGEST'],artifact['digest']
+          assert artifact['workflow_run']['head_sha']==os.environ['CANDIDATE_HEAD']
+          assert not artifact['expired']
+          print('S3G1J_V17_27_ACCEPTED_ARTIFACT_LOCK_PASS')
+          PY
+      - name: Verify registered V17.27 evidence and runtime promotion
+        run: |
+          python -m unittest \
+            tests.test_stage3_s3g1j_v17_27_normal_equity_candidate \
+            tests.test_stage3_v17_27_runtime_promotion \
+            -v
+      - name: Retain completed V17.26 full-basis authority
+        run: |
+          python -m unittest \
+            tests.test_stage3_v17_26_full_final_evidence \
+            tests.test_stage3_v17_26_runtime_promotion \
+            -v
+      - name: Import formal V17.27 production closure
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import build_stage3_s3g1j_v17_27_candidate_full as builder
+          import extract_stage3_financial_pdf_values_v17 as extractor
+          import stage3_financial_pdf_parser_v19 as parser
+
+          evidence=json.load(open('governance/stage3_s3g1j_v17_27_candidate_safety.json',encoding='utf-8'))
+          runtime=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          activation=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
+          assert evidence['accepted_run']['run']==30747664549
+          assert evidence['accepted_run']['artifact_id']==8833408494
+          assert evidence['accepted_run']['artifact_digest']==parser.CANDIDATE_ARTIFACT_DIGEST
+          assert evidence['result']['target_document_count']==5
+          assert evidence['result']['target_numeric_rows']==15
+          assert evidence['result']['candidate_document_errors']==1373
+          assert evidence['result']['unexpected_regression_count']==0
+          assert evidence['promotion_boundaries']['full_basis_v17_27_execution_completed'] is False
+          assert runtime['schema_version']==8
+          assert runtime['current_production_authority']['generation']=='V17.27'
+          assert runtime['formal_runtime']['parser_method']==parser.METHOD
+          assert runtime['formal_runtime']['extractor_method']==extractor.METHOD
+          assert runtime['full_basis_last_completed_final']['generation']=='V17.26'
+          assert runtime['next_full_basis_required']['generation']=='V17.27'
+          assert runtime['next_full_basis_required']['status']=='PENDING_MACHINE_EXECUTION_AND_ACCEPTANCE'
+          assert activation['schema_version']==10
+          assert activation['accepted_production_runtime']['generation']=='V17.27'
+          assert activation['accepted_production_runtime']['full_basis_execution_pending'] is True
+          assert set(parser.TARGETS)==set(builder.parser_candidate.TARGETS)
+          assert callable(parser.parse_pdf_bytes)
+          assert callable(extractor.parse_pdf_bytes)
+          one_shot=Path('.github/workflows/stage3-s3g1j-v17-27-normal-equity-candidate-safety.yml')
+          assert not one_shot.exists()
+          print('S3G1J_V17_27_PRODUCTION_EVIDENCE_IMPORT_PASS')
+          PY
+      - name: Compile V17.27 production and retained candidate utilities
+        run: |
+          python -m py_compile \
+            scripts/stage3_financial_pdf_parser_v19.py \
+            scripts/stage3_financial_pdf_parser_v19_candidate.py \
+            scripts/stage3_financial_spatial_alias_v17_27_candidate.py \
+            scripts/extract_stage3_financial_pdf_values_v17.py \
+            scripts/build_stage3_s3g1j_v17_27_candidate_full.py
