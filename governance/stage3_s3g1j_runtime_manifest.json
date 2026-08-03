@@ -1,20 +1,20 @@
 {
-  "schema_version": 8,
+  "schema_version": 9,
   "integration_branch": "agent/stage3-clean-integration",
-  "scope": "Current S3G1J production runtime authority projection. V17.27 promotes only five machine-accepted source/date normal-equity identities over the accepted V17.26 runtime. The last completed full-basis execution remains V17.26 and the data verdict remains fail-closed until a separate V17.27 64-shard execution is accepted.",
+  "scope": "Current S3G1J production runtime and completed full-basis authority. V17.27 remains exact-source bounded to five normal-equity identities over retained V17.26 behavior. The V17.27 64-shard execution is machine accepted with a fail-closed data verdict.",
   "previous_manifest": {
-    "schema_version": 7,
-    "source_head_sha": "30ab382cfc83ed9df4e551dac95fa07291bb91e0",
-    "git_blob_sha": "382eab41d7bf42ea26471f8a93d4c17343804c4e",
-    "formal_runtime_generation": "V17.26",
-    "accepted_full_basis_run": 30733013665,
-    "accepted_full_basis_artifact_digest": "sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b",
+    "schema_version": 8,
+    "source_head_sha": "cd8495e3243e69437cf85ec9c1adf1422b958094",
+    "git_blob_sha": "2bb1d4f7d512a5c2eab14b0894b25413e4cd334b",
+    "formal_runtime_generation": "V17.27",
+    "full_basis_execution_pending": true,
     "history_retention": "Git history plus immutable run IDs, artifact digests and governance evidence manifests"
   },
   "current_production_authority": {
     "generation": "V17.27",
-    "status": "RUNTIME_PROMOTED_PENDING_FULL_BASIS_EXECUTION_FAIL_CLOSED",
-    "evidence_manifest": "governance/stage3_s3g1j_v17_27_candidate_safety.json",
+    "status": "FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED",
+    "candidate_evidence_manifest": "governance/stage3_s3g1j_v17_27_candidate_safety.json",
+    "full_basis_evidence_manifest": "governance/stage3_s3g1j_v17_27_full_final.json",
     "candidate_acceptance": {
       "run": 30747664549,
       "head_sha": "ae9e80d90e227772cca88cc3b7ebadd2c6cfb7ca",
@@ -36,10 +36,28 @@
       "unexpected_regression_count": 0,
       "candidate_data_verdict": "FAIL_CLOSED"
     },
+    "full_basis_acceptance": {
+      "run": 30806818977,
+      "head_sha": "fa77d30a2ccdd3664beab01fd7ff7b5d16761726",
+      "artifact_id": 8854139999,
+      "artifact": "stage3-s3g1j-v17-27-full-final",
+      "artifact_digest": "sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721",
+      "execution_pass": true,
+      "document_non_regression_pass": true,
+      "numeric_non_regression_pass": true,
+      "independent_artifact_recheck_pass": true,
+      "document_count": 121354,
+      "numeric_observation_count": 1051793,
+      "document_error_count": 1373,
+      "unresolved_tie_count": 1290,
+      "target_document_count": 5,
+      "target_numeric_rows": 15,
+      "unexpected_document_regression_count": 0,
+      "final_data_verdict": "FAIL_CLOSED"
+    },
     "runtime_promotion": {
-      "full_basis_execution_pending": true,
+      "full_basis_execution_pending": false,
       "candidate_resolver_reused": true,
-      "candidate_output_requires_production_wrapper": true,
       "selected_source_lock_pass": true,
       "target_numeric_observations_each": 3,
       "non_balance_target_concepts_promoted": false,
@@ -78,29 +96,20 @@
         "report_family": "Q3",
         "economic_date": "2019-09-30",
         "source_sha256": "320e3a950a4768e73766d57a09bcf34d893d4da949b8ed5a1b2f887852e76229",
-        "numeric_observations": 3,
-        "values": {
-          "TOTAL_ASSETS": "760508375.73",
-          "TOTAL_LIABILITIES": "176499397.46",
-          "TOTAL_EQUITY": "584008978.27"
-        }
+        "numeric_observations": 3
       },
       "1221568845": {
         "source_code": "600448",
         "report_family": "Q3",
         "economic_date": "2024-09-30",
         "source_sha256": "fa72059d35715f20df620691538528f720fe3ae42581c172c853f26799befb93",
-        "numeric_observations": 3,
-        "values": {
-          "TOTAL_ASSETS": "3642768851.01",
-          "TOTAL_LIABILITIES": "2382626915.88",
-          "TOTAL_EQUITY": "1260141935.13"
-        }
+        "numeric_observations": 3
       }
     }
   },
   "v17_27_exact_source_gates": {
-    "evidence_manifest": "governance/stage3_s3g1j_v17_27_candidate_safety.json",
+    "candidate_evidence_manifest": "governance/stage3_s3g1j_v17_27_candidate_safety.json",
+    "full_basis_evidence_manifest": "governance/stage3_s3g1j_v17_27_full_final.json",
     "allowed_concepts": [
       "TOTAL_ASSETS",
       "TOTAL_LIABILITIES",
@@ -151,49 +160,58 @@
     "scripts/extract_stage3_financial_pdf_values_v16.py",
     "scripts/finalize_stage3_financial_pdf_values.py",
     "governance/stage3_s3g1j_v17_27_candidate_safety.json",
+    "governance/stage3_s3g1j_v17_27_full_final.json",
     "governance/stage3_s3g1j_v17_26_full_final.json",
     "tests/test_stage3_v17_27_runtime_promotion.py",
+    "tests/test_stage3_v17_27_full_final_evidence.py",
     "tests/test_stage3_s3g1j_v17_27_normal_equity_candidate.py",
     "tests/test_stage3_v17_26_full_final_evidence.py"
   ],
   "full_basis_last_completed_final": {
-    "generation": "V17.26",
-    "run": 30733013665,
-    "head_sha": "ed81a8f167c7b158167a8bdafa1799b7047666af",
-    "artifact_id": 8828600783,
-    "artifact": "stage3-s3g1j-v17-26-full-final",
-    "artifact_digest": "sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b",
+    "generation": "V17.27",
+    "run": 30806818977,
+    "head_sha": "fa77d30a2ccdd3664beab01fd7ff7b5d16761726",
+    "artifact_id": 8854139999,
+    "artifact": "stage3-s3g1j-v17-27-full-final",
+    "artifact_digest": "sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721",
     "canonical_report_version_moments": 121354,
     "document_rows": 121354,
-    "numeric_observations": 1051778,
-    "document_error_count": 1378,
-    "unresolved_tie_count": 1295,
+    "numeric_observations": 1051793,
+    "document_error_count": 1373,
+    "unresolved_tie_count": 1290,
     "changed_announcement_ids": [
-      "1207035181",
-      "1221568845"
-    ],
-    "unexpected_regression_count": 0,
-    "verdict": "FAIL_CLOSED"
-  },
-  "next_full_basis_required": {
-    "generation": "V17.27",
-    "shard_count": 64,
-    "expected_document_rows": 121354,
-    "expected_numeric_rows_if_candidate_effect_reproduces": 1051793,
-    "expected_document_errors_if_candidate_effect_reproduces": 1373,
-    "expected_unresolved_ties": 1295,
-    "expected_changed_announcement_ids": [
       "1200907104",
       "1201708762",
       "1202195310",
       "1202774611",
       "1203358200"
     ],
-    "status": "PENDING_MACHINE_EXECUTION_AND_ACCEPTANCE",
-    "expected_values_are_not_yet_production_acceptance": true
+    "target_numeric_rows": 15,
+    "unexpected_regression_count": 0,
+    "existing_numeric_semantic_sha256": "05b914b03dbcc23d3f6eca560189afbfe6ea427913f9cf1380fa09cdea6aa8d7",
+    "verdict": "FAIL_CLOSED"
   },
-  "production_final_status": "RUNTIME_PROMOTED_PENDING_FULL_BASIS_EXECUTION_FAIL_CLOSED",
-  "remaining_final_requirement": "Execute and independently accept the V17.27 64-shard full basis, then resolve or retain fail-closed the remaining document errors; complete S3G4, Stage3 final freeze and the post-2026-07-24 freshness gate. Runtime promotion is not a Stage3 PASS.",
+  "historical_full_basis_final": {
+    "generation": "V17.26",
+    "run": 30733013665,
+    "head_sha": "ed81a8f167c7b158167a8bdafa1799b7047666af",
+    "artifact_id": 8828600783,
+    "artifact_digest": "sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b",
+    "document_rows": 121354,
+    "numeric_observations": 1051778,
+    "document_error_count": 1378,
+    "unresolved_tie_count": 1295,
+    "verdict": "FAIL_CLOSED",
+    "retained": true
+  },
+  "next_full_basis_required": {
+    "generation": "V17.27",
+    "status": "COMPLETED_AND_ACCEPTED",
+    "accepted_run": 30806818977,
+    "expected_values_are_not_yet_production_acceptance": false
+  },
+  "production_final_status": "FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED",
+  "remaining_final_requirement": "Resolve or retain fail-closed the remaining 1,373 document errors and 1,290 unresolved ties; complete S3G4, Stage3 final freeze and the post-2026-07-24 freshness gate. Full-basis acceptance is not a Stage3 PASS.",
   "project_status": {
     "stage3": "NOT_READY",
     "stage4": "LOCKED",
