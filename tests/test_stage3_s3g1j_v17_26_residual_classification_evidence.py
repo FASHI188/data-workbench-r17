@@ -77,7 +77,7 @@ class V1726ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertEqual(hashes["gzip_embedded_filename"], "")
 
     def test_activation_retains_diagnostic_without_rewriting_history(self) -> None:
-        self.assertEqual(self.activation["schema_version"], 10)
+        self.assertEqual(self.activation["schema_version"], 11)
         accepted = self.activation["accepted_v17_26_residual_classification"]
         self.assertEqual(accepted["run"], 30734063100)
         self.assertEqual(accepted["artifact_id"], 8828913247)
@@ -96,9 +96,16 @@ class V1726ResidualClassificationEvidenceTests(unittest.TestCase):
         )
         runtime = self.activation["accepted_production_runtime"]
         self.assertEqual(runtime["generation"], "V17.27")
-        self.assertIs(runtime["full_basis_execution_pending"], True)
-        self.assertEqual(runtime["last_completed_full_basis_generation"], "V17.26")
+        self.assertIs(runtime["full_basis_execution_pending"], False)
+        self.assertEqual(runtime["last_completed_full_basis_generation"], "V17.27")
+        self.assertEqual(runtime["last_completed_full_basis_run"], 30806818977)
+        self.assertEqual(runtime["document_error_count"], 1373)
+        self.assertEqual(runtime["unresolved_tie_count"], 1290)
         self.assertEqual(runtime["data_verdict"], "FAIL_CLOSED")
+        historical = self.activation["accepted_v17_26_full_basis_evidence"]
+        self.assertEqual(historical["run"], 30733013665)
+        self.assertEqual(historical["document_error_count"], 1378)
+        self.assertIs(historical["historical_full_basis_authority_retained"], True)
         boundaries = self.activation["hard_boundaries"]
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertIs(boundaries["stage4_alpha_live_locked"], True)

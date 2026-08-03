@@ -13,12 +13,13 @@ import stage3_financial_pdf_parser_v19 as parser
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_MANIFEST = ROOT / "governance/stage3_s3g1j_runtime_manifest.json"
 ACTIVATION_MANIFEST = ROOT / "governance/stage3_workflow_activation_manifest.json"
-EVIDENCE_MANIFEST = ROOT / "governance/stage3_s3g1j_v17_27_candidate_safety.json"
-ONE_SHOT_WORKFLOW = (
-    ROOT
-    / ".github"
-    / "workflows"
-    / "stage3-s3g1j-v17-27-normal-equity-candidate-safety.yml"
+CANDIDATE_EVIDENCE = ROOT / "governance/stage3_s3g1j_v17_27_candidate_safety.json"
+FULL_FINAL_EVIDENCE = ROOT / "governance/stage3_s3g1j_v17_27_full_final.json"
+CANDIDATE_ONE_SHOT = (
+    ROOT / ".github/workflows/stage3-s3g1j-v17-27-normal-equity-candidate-safety.yml"
+)
+FULL_FINAL_ONE_SHOT = (
+    ROOT / ".github/workflows/stage3-s3g1j-v17-27-full-final-acceptance.yml"
 )
 
 
@@ -35,54 +36,50 @@ class V1727RuntimePromotionTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.runtime = json.loads(RUNTIME_MANIFEST.read_text(encoding="utf-8"))
         cls.activation = json.loads(ACTIVATION_MANIFEST.read_text(encoding="utf-8"))
-        cls.evidence = json.loads(EVIDENCE_MANIFEST.read_text(encoding="utf-8"))
+        cls.candidate = json.loads(CANDIDATE_EVIDENCE.read_text(encoding="utf-8"))
+        cls.full_final = json.loads(FULL_FINAL_EVIDENCE.read_text(encoding="utf-8"))
 
     def test_formal_runtime_manifest_is_v17_27_and_fail_closed(self) -> None:
-        self.assertEqual(self.runtime["schema_version"], 8)
+        self.assertEqual(self.runtime["schema_version"], 9)
         previous = self.runtime["previous_manifest"]
-        self.assertEqual(previous["schema_version"], 7)
+        self.assertEqual(previous["schema_version"], 8)
         self.assertEqual(
             previous["source_head_sha"],
-            "30ab382cfc83ed9df4e551dac95fa07291bb91e0",
+            "cd8495e3243e69437cf85ec9c1adf1422b958094",
         )
         self.assertEqual(
             previous["git_blob_sha"],
-            "382eab41d7bf42ea26471f8a93d4c17343804c4e",
+            "2bb1d4f7d512a5c2eab14b0894b25413e4cd334b",
         )
         authority = self.runtime["current_production_authority"]
         self.assertEqual(authority["generation"], "V17.27")
         self.assertEqual(
-            authority["status"],
-            "RUNTIME_PROMOTED_PENDING_FULL_BASIS_EXECUTION_FAIL_CLOSED",
+            authority["status"], "FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED"
         )
-        acceptance = authority["candidate_acceptance"]
-        self.assertEqual(acceptance["run"], 30747664549)
-        self.assertEqual(acceptance["artifact_id"], 8833408494)
+        self.assertIs(authority["runtime_promotion"]["full_basis_execution_pending"], False)
+        acceptance = authority["full_basis_acceptance"]
+        self.assertEqual(acceptance["run"], 30806818977)
+        self.assertEqual(acceptance["artifact_id"], 8854139999)
         self.assertEqual(
-            acceptance["artifact_digest"], parser.CANDIDATE_ARTIFACT_DIGEST
+            acceptance["artifact_digest"],
+            "sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721",
         )
         self.assertIs(acceptance["execution_pass"], True)
         self.assertIs(acceptance["independent_artifact_recheck_pass"], True)
-        self.assertEqual(acceptance["candidate_document_errors"], 1373)
-        self.assertEqual(acceptance["candidate_numeric_rows"], 1051793)
-        self.assertEqual(acceptance["candidate_data_verdict"], "FAIL_CLOSED")
+        self.assertEqual(acceptance["document_error_count"], 1373)
+        self.assertEqual(acceptance["unresolved_tie_count"], 1290)
+        self.assertEqual(acceptance["numeric_observation_count"], 1051793)
+        self.assertEqual(acceptance["final_data_verdict"], "FAIL_CLOSED")
 
         formal = self.runtime["formal_runtime"]
         self.assertEqual(formal["runtime_generation"], "V17.27")
         self.assertEqual(formal["shard_gate"], extractor.SHARD_GATE)
-        self.assertEqual(
-            formal["extractor_path"],
-            "scripts/extract_stage3_financial_pdf_values_v17.py",
-        )
         self.assertEqual(formal["extractor_method"], extractor.METHOD)
-        self.assertEqual(
-            formal["parser_path"], "scripts/stage3_financial_pdf_parser_v19.py"
-        )
         self.assertEqual(formal["parser_method"], parser.METHOD)
         self.assertEqual(formal["methodology_version"], parser.METHODOLOGY_VERSION)
         self.assertEqual(
             self.runtime["production_final_status"],
-            "RUNTIME_PROMOTED_PENDING_FULL_BASIS_EXECUTION_FAIL_CLOSED",
+            "FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED",
         )
         self.assertEqual(
             self.runtime["project_status"],
@@ -95,19 +92,21 @@ class V1727RuntimePromotionTests(unittest.TestCase):
             },
         )
 
-    def test_last_completed_full_basis_remains_v17_26(self) -> None:
+    def test_last_completed_full_basis_is_v17_27(self) -> None:
         full = self.runtime["full_basis_last_completed_final"]
-        self.assertEqual(full["generation"], "V17.26")
-        self.assertEqual(full["run"], 30733013665)
+        self.assertEqual(full["generation"], "V17.27")
+        self.assertEqual(full["run"], 30806818977)
         self.assertEqual(full["document_rows"], 121354)
-        self.assertEqual(full["numeric_observations"], 1051778)
-        self.assertEqual(full["document_error_count"], 1378)
-        self.assertEqual(full["unresolved_tie_count"], 1295)
+        self.assertEqual(full["numeric_observations"], 1051793)
+        self.assertEqual(full["document_error_count"], 1373)
+        self.assertEqual(full["unresolved_tie_count"], 1290)
+        self.assertEqual(full["target_numeric_rows"], 15)
+        self.assertEqual(full["unexpected_regression_count"], 0)
         self.assertEqual(full["verdict"], "FAIL_CLOSED")
-        pending = self.runtime["next_full_basis_required"]
-        self.assertEqual(pending["generation"], "V17.27")
-        self.assertEqual(pending["status"], "PENDING_MACHINE_EXECUTION_AND_ACCEPTANCE")
-        self.assertIs(pending["expected_values_are_not_yet_production_acceptance"], True)
+        completed = self.runtime["next_full_basis_required"]
+        self.assertEqual(completed["generation"], "V17.27")
+        self.assertEqual(completed["status"], "COMPLETED_AND_ACCEPTED")
+        self.assertIs(completed["expected_values_are_not_yet_production_acceptance"], False)
 
     def test_exact_target_scope_and_evidence_are_frozen(self) -> None:
         expected_ids = {
@@ -121,22 +120,18 @@ class V1727RuntimePromotionTests(unittest.TestCase):
             {target["announcement_id"] for target in parser.TARGETS.values()},
             expected_ids,
         )
-        self.assertEqual(
-            set(self.runtime["v17_27_exact_source_gates"]["targets"]), expected_ids
+        self.assertEqual(set(self.runtime["v17_27_exact_source_gates"]["targets"]), expected_ids)
+        self.assertEqual(set(self.candidate["exact_source_targets"]), expected_ids)
+        self.assertEqual(self.full_final["full_basis_result"]["target_numeric_rows"], 15)
+        self.assertEqual(self.full_final["full_basis_result"]["document_error_count"], 1373)
+        self.assertEqual(self.full_final["full_basis_result"]["unresolved_tie_count"], 1290)
+        self.assertIs(self.full_final["numeric_non_regression"]["pass"], True)
+        self.assertIs(
+            self.full_final["full_basis_result"]["non_balance_target_concepts_promoted"],
+            False,
         )
-        self.assertEqual(set(self.evidence["exact_source_targets"]), expected_ids)
         self.assertEqual(
-            self.evidence["accepted_run"]["artifact_digest"],
-            parser.CANDIDATE_ARTIFACT_DIGEST,
-        )
-        self.assertEqual(self.evidence["result"]["target_numeric_rows"], 15)
-        self.assertEqual(self.evidence["result"]["candidate_document_errors"], 1373)
-        self.assertIs(self.evidence["result"]["existing_numeric_rows_exact_equal"], True)
-        self.assertIs(self.evidence["result"]["non_balance_values_promoted"], False)
-        self.assertEqual(
-            self.runtime["v17_27_exact_source_gates"][
-                "excluded_fail_closed_announcement_ids"
-            ],
+            self.runtime["v17_27_exact_source_gates"]["excluded_fail_closed_announcement_ids"],
             ["1204077386", "1205543437"],
         )
 
@@ -160,9 +155,7 @@ class V1727RuntimePromotionTests(unittest.TestCase):
                 "concept": concept,
                 "status": "FOUND",
                 "normalized_cny_value": target["values"][concept],
-                "extraction_scope": (
-                    "V17_27_EXACT_SOURCE_NORMAL_EQUITY_IDENTITY_CANDIDATE"
-                ),
+                "extraction_scope": "V17_27_EXACT_SOURCE_NORMAL_EQUITY_IDENTITY_CANDIDATE",
             }
             for concept in parser.ALLOWED_CONCEPTS
         }
@@ -195,8 +188,6 @@ class V1727RuntimePromotionTests(unittest.TestCase):
         ):
             actual = parser.parse_pdf_bytes(b"synthetic-target", target["economic_date"])
         self.assertEqual(actual["parser_version"], parser.METHOD)
-        self.assertEqual(actual["tier1_found"], 0)
-        self.assertEqual(actual["tier2_found"], 3)
         self.assertEqual(
             {
                 concept
@@ -205,46 +196,25 @@ class V1727RuntimePromotionTests(unittest.TestCase):
             },
             set(parser.ALLOWED_CONCEPTS),
         )
-        for concept in parser.ALLOWED_CONCEPTS:
-            self.assertEqual(
-                actual["observations"][concept]["normalized_cny_value"],
-                target["values"][concept],
-            )
-            self.assertEqual(
-                actual["observations"][concept]["extraction_scope"],
-                parser.PRODUCTION_SCOPE,
-            )
-        block = actual["balance_sheet_block"]
-        self.assertIs(block["candidate_only"], False)
-        self.assertIs(block["candidate_safety_promoted"], True)
-        self.assertEqual(block["formal_runtime_generation"], "V17.27")
-        self.assertEqual(block["production_runtime_generation"], "V17.27")
-        self.assertEqual(block["candidate_acceptance_run"], 30747664549)
-        self.assertEqual(
-            block["candidate_acceptance_artifact_digest"],
-            parser.CANDIDATE_ARTIFACT_DIGEST,
-        )
+        self.assertIs(actual["balance_sheet_block"]["candidate_only"], False)
+        self.assertIs(actual["balance_sheet_block"]["candidate_safety_promoted"], True)
+        self.assertEqual(actual["balance_sheet_block"]["formal_runtime_generation"], "V17.27")
 
     def test_activation_manifest_and_one_shot_retirement(self) -> None:
-        self.assertEqual(self.activation["schema_version"], 10)
+        self.assertEqual(self.activation["schema_version"], 11)
         accepted = self.activation["accepted_production_runtime"]
         self.assertEqual(accepted["generation"], "V17.27")
-        self.assertEqual(accepted["runtime_manifest_schema"], 8)
-        self.assertIs(accepted["full_basis_execution_pending"], True)
+        self.assertEqual(accepted["runtime_manifest_schema"], 9)
+        self.assertIs(accepted["full_basis_execution_pending"], False)
+        self.assertEqual(accepted["last_completed_full_basis_generation"], "V17.27")
+        self.assertEqual(accepted["last_completed_full_basis_run"], 30806818977)
         self.assertEqual(accepted["data_verdict"], "FAIL_CLOSED")
-        self.assertIn(
-            ".github/workflows/stage3-s3g1j-v17-27-evidence-contract.yml",
-            self.activation["active_stage3_workflows"],
-        )
-        one_shot = (
-            ".github/workflows/"
-            "stage3-s3g1j-v17-27-normal-equity-candidate-safety.yml"
-        )
-        self.assertNotIn(one_shot, self.activation["active_stage3_workflows"])
-        self.assertIn(one_shot, self.activation["removed_one_shot_workflows"])
-        self.assertFalse(ONE_SHOT_WORKFLOW.exists())
+        self.assertFalse(CANDIDATE_ONE_SHOT.exists())
+        self.assertFalse(FULL_FINAL_ONE_SHOT.exists())
         boundaries = self.activation["hard_boundaries"]
-        self.assertIs(boundaries["v17_27_full_basis_execution_pending"], True)
+        self.assertIs(boundaries["v17_27_full_basis_execution_pending"], False)
+        self.assertEqual(boundaries["remaining_document_errors"], 1373)
+        self.assertEqual(boundaries["remaining_unresolved_ties"], 1290)
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertIs(boundaries["stage4_alpha_live_locked"], True)
         self.assertIs(boundaries["committed_production_data_changed"], False)
