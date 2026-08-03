@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "authoritative": true,
   "project_phase": "RESEARCH_ONLY",
   "stage2": {
@@ -20,9 +20,23 @@
       "S3G1J_FINANCIAL_RAW_VALUES",
       "S3G4_EARNINGS_SURPRISE"
     ],
+    "s3g1j": {
+      "generation": "V17.27",
+      "status": "FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED",
+      "accepted_run_id": 30806818977,
+      "accepted_artifact_id": 8854139999,
+      "accepted_artifact_digest": "sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721",
+      "document_count": 121354,
+      "numeric_observation_count": 1051793,
+      "document_error_count": 1373,
+      "unresolved_tie_count": 1290,
+      "execution_pass": true,
+      "data_verdict": "FAIL_CLOSED",
+      "final_gate_pass": false
+    },
     "s3g2_semantic_ledger_sha256": "0eb139572865628283f86c981990e59e076d5ef2a978a5967aace90d553e30dd",
     "s3g2_deterministic_replay_count": 2,
-    "reason": "Stage3 does not yet have a final all-gates PASS manifest on main. S3G2 has a deterministic clean-integration final PASS, but S3G1J and S3G4 remain final-gate blockers."
+    "reason": "Stage3 does not yet have a final all-gates PASS manifest on main. S3G1J V17.27 full-basis execution is accepted and reproducible but remains FAIL_CLOSED with 1,373 document errors and 1,290 unresolved ties; S3G4 remains final-gate pending."
   },
   "stage4_unlocked": false,
   "alpha_training_allowed": false,
@@ -32,17 +46,19 @@
     "policy": "config/data_freshness_policy.json",
     "stage2_coverage_end": "2026-07-24",
     "current_master_as_of": "2026-07-24",
-    "assessed_as_of": "2026-07-30",
-    "reason": "The frozen market/lifecycle/corporate-action base is older than the hard calendar-day stale threshold and Stage3 financial coverage is not finalized on main."
+    "assessed_as_of": "2026-08-03",
+    "reason": "The frozen market/lifecycle/corporate-action base is older than the hard calendar-day stale threshold and Stage3 has not reached an all-gates final PASS."
   },
   "reproducibility": {
     "status": "PARTIAL_PASS_PROJECT_STILL_LOCKED",
+    "s3g1j_full_basis_execution_reproducible": true,
+    "s3g1j_full_basis_data_gate_pass": false,
     "s3g2_same_input_same_semantic_sha": true,
     "s3g2_replays": 2,
     "artifact_archive_digest_is_transport_only": true,
     "stage3_final_fingerprint_uses_semantic_gate_evidence": true,
     "overall_pass": false,
-    "reason": "Full project reproducibility cannot pass until S3G1J and S3G4 final datasets exist and the complete Stage3 freeze is rebuilt deterministically."
+    "reason": "S3G1J V17.27 execution and non-regression contracts pass, but its data verdict remains FAIL_CLOSED; S3G4 and the complete Stage3 freeze are not final."
   },
   "unlock_requirements": {
     "stage2_final_pass": true,
@@ -57,6 +73,7 @@
     ]
   },
   "notes": [
+    "S3G1J full-basis execution acceptance is not an S3G1J final data PASS and does not unlock Stage4.",
     "Stage-local fields such as data/stage2_final/manifest.json:alpha_training_allowed mean only that Stage2 no longer blocks downstream work; they are not project-level authorization.",
     "Any missing, stale, contradictory, or unverifiable readiness evidence is fail-closed."
   ]
