@@ -15,7 +15,7 @@ EVIDENCE_MANIFEST = ROOT / "governance/stage3_s3g1j_v17_26_full_final.json"
 
 
 class V1726RuntimePromotionTests(unittest.TestCase):
-    """Retain the completed V17.26 full-basis authority after V17.27 promotion."""
+    """Retain the completed V17.26 authority after V17.27 full-basis acceptance."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -23,43 +23,37 @@ class V1726RuntimePromotionTests(unittest.TestCase):
         cls.activation = json.loads(ACTIVATION_MANIFEST.read_text(encoding="utf-8"))
         cls.evidence = json.loads(EVIDENCE_MANIFEST.read_text(encoding="utf-8"))
 
-    def test_v17_26_manifest_is_frozen_as_previous_authority(self) -> None:
-        self.assertEqual(self.runtime["schema_version"], 8)
+    def test_v17_26_manifest_is_retained_as_historical_authority(self) -> None:
+        self.assertEqual(self.runtime["schema_version"], 9)
         previous = self.runtime["previous_manifest"]
-        self.assertEqual(previous["schema_version"], 7)
+        self.assertEqual(previous["schema_version"], 8)
+        historical = self.runtime["historical_full_basis_final"]
+        self.assertEqual(historical["generation"], "V17.26")
+        self.assertEqual(historical["run"], 30733013665)
         self.assertEqual(
-            previous["source_head_sha"],
-            "30ab382cfc83ed9df4e551dac95fa07291bb91e0",
-        )
-        self.assertEqual(
-            previous["git_blob_sha"],
-            "382eab41d7bf42ea26471f8a93d4c17343804c4e",
-        )
-        self.assertEqual(previous["formal_runtime_generation"], "V17.26")
-        self.assertEqual(previous["accepted_full_basis_run"], 30733013665)
-
-    def test_v17_26_full_basis_remains_last_completed_final(self) -> None:
-        full = self.runtime["full_basis_last_completed_final"]
-        self.assertEqual(full["generation"], "V17.26")
-        self.assertEqual(full["run"], 30733013665)
-        self.assertEqual(
-            full["head_sha"],
+            historical["head_sha"],
             "ed81a8f167c7b158167a8bdafa1799b7047666af",
         )
-        self.assertEqual(full["artifact_id"], 8828600783)
+        self.assertEqual(historical["artifact_id"], 8828600783)
         self.assertEqual(
-            full["artifact_digest"],
+            historical["artifact_digest"],
             "sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b",
         )
-        self.assertEqual(full["canonical_report_version_moments"], 121354)
+        self.assertEqual(historical["document_rows"], 121354)
+        self.assertEqual(historical["numeric_observations"], 1051778)
+        self.assertEqual(historical["document_error_count"], 1378)
+        self.assertEqual(historical["unresolved_tie_count"], 1295)
+        self.assertEqual(historical["verdict"], "FAIL_CLOSED")
+        self.assertIs(historical["retained"], True)
+
+    def test_v17_27_is_now_last_completed_full_basis(self) -> None:
+        full = self.runtime["full_basis_last_completed_final"]
+        self.assertEqual(full["generation"], "V17.27")
+        self.assertEqual(full["run"], 30806818977)
         self.assertEqual(full["document_rows"], 121354)
-        self.assertEqual(full["numeric_observations"], 1051778)
-        self.assertEqual(full["document_error_count"], 1378)
-        self.assertEqual(full["unresolved_tie_count"], 1295)
-        self.assertEqual(
-            full["changed_announcement_ids"], ["1207035181", "1221568845"]
-        )
-        self.assertEqual(full["unexpected_regression_count"], 0)
+        self.assertEqual(full["numeric_observations"], 1051793)
+        self.assertEqual(full["document_error_count"], 1373)
+        self.assertEqual(full["unresolved_tie_count"], 1290)
         self.assertEqual(full["verdict"], "FAIL_CLOSED")
 
     def test_v17_26_parser_and_extractor_contract_remain_importable(self) -> None:
@@ -98,10 +92,10 @@ class V1726RuntimePromotionTests(unittest.TestCase):
         )
 
     def test_activation_manifest_retains_v17_26_full_basis_evidence(self) -> None:
-        self.assertEqual(self.activation["schema_version"], 10)
+        self.assertEqual(self.activation["schema_version"], 11)
         current = self.activation["accepted_production_runtime"]
         self.assertEqual(current["generation"], "V17.27")
-        self.assertIs(current["full_basis_execution_pending"], True)
+        self.assertIs(current["full_basis_execution_pending"], False)
         historical = self.activation["accepted_v17_26_full_basis_evidence"]
         self.assertEqual(historical["run"], 30733013665)
         self.assertEqual(
