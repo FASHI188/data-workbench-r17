@@ -20,7 +20,7 @@ env:
   CANDIDATE_RUN: '30827493788'
   CANDIDATE_ARTIFACT_ID: '8861519922'
   CANDIDATE_ARTIFACT: 'stage3-s3g1j-v17-28-split-equity-candidate-safety'
-  CANDIDATE_DIGEST: 'sha256:d2146e772b676e01f54be4d134931d66ea96a845da59fe3e0c5806bfa3c582d'
+  CANDIDATE_DIGEST: 'sha256:8a87dfed63160374fc04c88c3d02a93eedac6ae239ae559b64aaad93c71d22c1'
   REPORT_SHA256: '42fd39956ea3c2dafba98b4d5c1697c15a797099011b4d8ed531cead264e4b21'
   DOCUMENTS_SHA256: '818f08602792dec73c4f6c84e9dd41e8633e7f4d56edecc2e0336e71d898491c'
   VALUES_SHA256: '960926aa46e01182d30d97a552f674002f09303f73f142645374ba1a6116af65'
@@ -118,5 +118,8 @@ jobs:
           assert {r['concept'] for r in rows}=={'TOTAL_ASSETS','TOTAL_LIABILITIES','TOTAL_EQUITY'}
           print('S3G1J_V17_28_CANDIDATE_ARTIFACT_EVIDENCE_PASS')
           PY
+        env:
+          FULL_SEMANTIC_SHA256: ${{ env.FULL_SEMANTIC_SHA256 }}
+          INHERITED_SEMANTIC_SHA256: ${{ env.INHERITED_SEMANTIC_SHA256 }}
       - name: Verify committed candidate evidence manifest
         run: python -m unittest tests.test_stage3_s3g1j_v17_28_candidate_evidence -v
