@@ -101,13 +101,21 @@ jobs:
           assert audit['unresolved_tie_count']==1288
           assert audit['pass'] is False
           assert execution['execution_pass'] is True
+          assert execution['document_non_regression_pass'] is True
+          assert execution['numeric_non_regression_pass'] is True
           assert execution['final_data_gate_pass'] is False
           assert execution['final_data_verdict']=='FAIL_CLOSED'
           assert compare['pass'] is True and compare['errors']==[]
-          assert compare['actual_changed_announcement_ids']==['1207621057','1209825769']
-          assert compare['non_target_document_exact_equal'] is True
-          assert compare['existing_numeric_exact_equal'] is True
-          assert compare['target_numeric_rows']==6
+          assert compare['changed_announcement_ids']==['1207621057','1209825769']
+          assert compare['non_target_document_equal_count']==121352
+          assert compare['existing_numeric_semantic_sha256_previous']=='bcb154cc4d80a81acd409e64dc35c2902a5aeb37726b313df936717caf400672'
+          assert compare['existing_numeric_semantic_sha256_current']=='bcb154cc4d80a81acd409e64dc35c2902a5aeb37726b313df936717caf400672'
+          assert compare['previous_numeric_count']==1051793
+          assert compare['current_numeric_count']==1051799
+          assert compare['previous_unresolved_ties']==1290
+          assert compare['current_unresolved_ties']==1288
+          assert sum(len(rows) for rows in compare['target_numeric_evidence'].values())==6
+          assert compare['stage4_alpha_locked'] is True
           print('S3G1J_V17_28_FULL_FINAL_DOWNLOADED_EVIDENCE_PASS')
           PY
       - name: Verify registered authority and retained history
@@ -136,6 +144,8 @@ jobs:
           assert runtime['next_full_basis_required']['status']=='NONE_CURRENT_RUNTIME_ACCEPTED'
           assert activation['schema_version']==13
           assert activation['accepted_production_runtime']['full_basis_execution_pending'] is False
+          assert activation['accepted_production_runtime']['execution_verdict']=='PASS'
+          assert activation['accepted_production_runtime']['data_verdict']=='FAIL_CLOSED'
           assert project['stage3']['status']=='NOT_READY'
           assert lock['status']=='NOT_READY'
           assert 'S3G1J_FINANCIAL_RAW_VALUES' in lock['remaining_unlocked_gates']
