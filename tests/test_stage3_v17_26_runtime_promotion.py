@@ -15,7 +15,7 @@ EVIDENCE_MANIFEST = ROOT / "governance/stage3_s3g1j_v17_26_full_final.json"
 
 
 class V1726RuntimePromotionTests(unittest.TestCase):
-    """Retain the completed V17.26 authority after V17.27 full-basis acceptance."""
+    """Retain completed V17.26 evidence after later runtime generations advance."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -24,16 +24,11 @@ class V1726RuntimePromotionTests(unittest.TestCase):
         cls.evidence = json.loads(EVIDENCE_MANIFEST.read_text(encoding="utf-8"))
 
     def test_v17_26_manifest_is_retained_as_historical_authority(self) -> None:
-        self.assertEqual(self.runtime["schema_version"], 9)
-        previous = self.runtime["previous_manifest"]
-        self.assertEqual(previous["schema_version"], 8)
+        self.assertEqual(self.runtime["schema_version"], 10)
         historical = self.runtime["historical_full_basis_final"]
         self.assertEqual(historical["generation"], "V17.26")
         self.assertEqual(historical["run"], 30733013665)
-        self.assertEqual(
-            historical["head_sha"],
-            "ed81a8f167c7b158167a8bdafa1799b7047666af",
-        )
+        self.assertEqual(historical["head_sha"], "ed81a8f167c7b158167a8bdafa1799b7047666af")
         self.assertEqual(historical["artifact_id"], 8828600783)
         self.assertEqual(
             historical["artifact_digest"],
@@ -46,7 +41,8 @@ class V1726RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(historical["verdict"], "FAIL_CLOSED")
         self.assertIs(historical["retained"], True)
 
-    def test_v17_27_is_now_last_completed_full_basis(self) -> None:
+    def test_v17_27_remains_last_completed_full_basis(self) -> None:
+        self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"], "V17.28")
         full = self.runtime["full_basis_last_completed_final"]
         self.assertEqual(full["generation"], "V17.27")
         self.assertEqual(full["run"], 30806818977)
@@ -55,12 +51,14 @@ class V1726RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(full["document_error_count"], 1373)
         self.assertEqual(full["unresolved_tie_count"], 1290)
         self.assertEqual(full["verdict"], "FAIL_CLOSED")
+        next_basis = self.runtime["next_full_basis_required"]
+        self.assertEqual(next_basis["generation"], "V17.28")
+        self.assertEqual(next_basis["status"], "REQUIRED_NOT_STARTED")
+        self.assertIs(next_basis["expected_values_are_not_yet_production_acceptance"], True)
 
     def test_v17_26_parser_and_extractor_contract_remain_importable(self) -> None:
         self.assertEqual(extractor.RUNTIME_GENERATION, "V17.26")
-        self.assertEqual(
-            extractor.SHARD_GATE, "S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_26"
-        )
+        self.assertEqual(extractor.SHARD_GATE, "S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_26")
         self.assertEqual(
             extractor.METHOD,
             "CNINFO_ORIGINAL_PDF_PYMUPDF_V16_V17_26_EXACT_SOURCE_BALANCE_ONLY_PRODUCTION",
@@ -74,39 +72,31 @@ class V1726RuntimePromotionTests(unittest.TestCase):
                 "fa72059d35715f20df620691538528f720fe3ae42581c172c853f26799befb93",
             },
         )
-        self.assertEqual(
-            set(parser.ALLOWED_CONCEPTS),
-            {"TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY"},
-        )
+        self.assertEqual(set(parser.ALLOWED_CONCEPTS), {"TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY"})
 
     def test_v17_26_exact_source_scope_is_retained(self) -> None:
         gates = self.runtime["inherited_v17_26_exact_source_gates"]
-        self.assertEqual(
-            gates["allowed_concepts"],
-            ["TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY"],
-        )
+        self.assertEqual(gates["allowed_concepts"], ["TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY"])
         self.assertIs(gates["non_balance_concepts_fail_closed"], True)
         self.assertEqual(set(gates["targets"]), {"1207035181", "1221568845"})
-        self.assertTrue(
-            all(target["numeric_observations"] == 3 for target in gates["targets"].values())
-        )
+        self.assertTrue(all(target["numeric_observations"] == 3 for target in gates["targets"].values()))
 
     def test_activation_manifest_retains_v17_26_full_basis_evidence(self) -> None:
-        self.assertEqual(self.activation["schema_version"], 11)
+        self.assertEqual(self.activation["schema_version"], 12)
         current = self.activation["accepted_production_runtime"]
-        self.assertEqual(current["generation"], "V17.27")
-        self.assertIs(current["full_basis_execution_pending"], False)
+        self.assertEqual(current["generation"], "V17.28")
+        self.assertIs(current["full_basis_execution_pending"], True)
+        self.assertEqual(current["last_completed_full_basis_generation"], "V17.27")
         historical = self.activation["accepted_v17_26_full_basis_evidence"]
         self.assertEqual(historical["run"], 30733013665)
-        self.assertEqual(
-            historical["artifact_digest"],
-            self.evidence["accepted_run"]["artifact_digest"],
-        )
+        self.assertEqual(historical["artifact_digest"], self.evidence["accepted_run"]["artifact_digest"])
         self.assertEqual(historical["document_count"], 121354)
         self.assertEqual(historical["numeric_observation_count"], 1051778)
         self.assertEqual(historical["document_error_count"], 1378)
+        self.assertEqual(historical["unresolved_tie_count"], 1295)
         self.assertEqual(historical["final_data_verdict"], "FAIL_CLOSED")
         self.assertIs(historical["historical_full_basis_authority_retained"], True)
+        self.assertIs(historical["one_shot_workflow_retired_after_acceptance"], True)
         boundaries = self.activation["hard_boundaries"]
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertIs(boundaries["stage4_alpha_live_locked"], True)

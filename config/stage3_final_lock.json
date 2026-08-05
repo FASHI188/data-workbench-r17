@@ -1,5 +1,5 @@
 {
-  "version": "V3.3.9-stage3-final-lock",
+  "version": "V3.3.10-stage3-final-lock",
   "status": "NOT_READY",
   "stage2": {
     "version": "V3.2.25-stage2-final-freeze",
@@ -17,11 +17,18 @@
       "artifact_digest": "sha256:3883eb629aaa0325cd1db6d3a1eefc96929c9673711bb3c004217ac6254324b9"
     },
     "S3G1J_FINANCIAL_RAW_VALUES": {
+      "formal_runtime_generation": "V17.28",
+      "runtime_promotion_evidence": "governance/stage3_s3g1j_v17_28_runtime_promotion.json",
+      "runtime_wrapper_pr": 94,
+      "runtime_wrapper_run_id": 30978715158,
+      "runtime_wrapper_artifact_id": 8919289427,
+      "runtime_wrapper_artifact_digest": "sha256:f8639b4a2eac2d09b16586365b7932d255457ce66aad2484547bb517d0d185a6",
+      "runtime_contract_pass": true,
+      "last_completed_full_basis_generation": "V17.27",
       "run_id": 30806818977,
       "artifact_id": 8854139999,
       "artifact": "stage3-s3g1j-v17-27-full-final",
       "artifact_digest": "sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721",
-      "generation": "V17.27",
       "execution_pass": true,
       "document_non_regression_pass": true,
       "numeric_non_regression_pass": true,
@@ -31,7 +38,14 @@
       "numeric_observation_count": 1051793,
       "document_error_count": 1373,
       "unresolved_tie_count": 1290,
-      "existing_numeric_semantic_sha256": "05b914b03dbcc23d3f6eca560189afbfe6ea427913f9cf1380fa09cdea6aa8d7"
+      "existing_numeric_semantic_sha256": "05b914b03dbcc23d3f6eca560189afbfe6ea427913f9cf1380fa09cdea6aa8d7",
+      "next_full_basis_generation": "V17.28",
+      "next_full_basis_status": "REQUIRED_NOT_STARTED",
+      "expected_v17_28_document_count": 121354,
+      "expected_v17_28_numeric_observation_count": 1051799,
+      "expected_v17_28_document_error_count": 1371,
+      "expected_v17_28_unresolved_tie_count": 1288,
+      "expected_values_are_not_production_acceptance": true
     },
     "S3G2_ANNOUNCEMENT_LEDGER": {
       "run_id": 30522392946,
@@ -63,10 +77,7 @@
       "artifact_digest": "sha256:1942c9e7baa0823772201cc1f6652e660d8b4b60dd8b0559d94dcefe7da4c9fa"
     }
   },
-  "remaining_unlocked_gates": [
-    "S3G1J_FINANCIAL_RAW_VALUES",
-    "S3G4_EARNINGS_SURPRISE"
-  ],
+  "remaining_unlocked_gates": ["S3G1J_FINANCIAL_RAW_VALUES", "S3G4_EARNINGS_SURPRISE"],
   "merge_allowed_only_when_all_run_ids_locked_and_all_gates_pass": true,
-  "interpretation": "A non-null run_id records immutable execution evidence. A gate remains in remaining_unlocked_gates until its final_gate_pass is true; S3G1J V17.27 is execution-accepted but data-fail-closed."
+  "interpretation": "A non-null run_id records immutable execution evidence. S3G1J formal runtime is V17.28, but V17.27 remains the last completed full-basis authority. Expected V17.28 counts are not production acceptance. S3G1J remains in remaining_unlocked_gates until a fresh V17.28 full basis and final data gate pass."
 }

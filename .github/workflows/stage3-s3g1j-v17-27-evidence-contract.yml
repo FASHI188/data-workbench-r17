@@ -17,7 +17,6 @@ on:
       - 'tests/test_stage3_v17_27_runtime_promotion.py'
       - 'tests/test_stage3_v17_27_full_final_evidence.py'
       - '.github/workflows/stage3-s3g1j-v17-27-evidence-contract.yml'
-      - '.github/workflows/stage3-s3g1j-v17-27-full-final-acceptance.yml'
 
 permissions:
   contents: read
@@ -88,7 +87,7 @@ jobs:
             tests.test_stage3_v17_26_full_final_evidence \
             tests.test_stage3_v17_26_runtime_promotion \
             -v
-      - name: Import formal V17.27 full-basis production closure
+      - name: Import retained V17.27 full-basis closure under V17.28 runtime
         run: |
           python - <<'PY'
           import json
@@ -119,33 +118,41 @@ jobs:
           assert full['full_basis_result']['unexpected_document_regression_count']==0
           assert full['full_basis_result']['final_data_verdict']=='FAIL_CLOSED'
 
-          assert runtime['schema_version']==9
-          assert runtime['current_production_authority']['generation']=='V17.27'
-          assert runtime['current_production_authority']['status']=='FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED'
-          assert runtime['formal_runtime']['parser_method']==parser.METHOD
-          assert runtime['formal_runtime']['extractor_method']==extractor.METHOD
+          assert runtime['schema_version']==10
+          assert runtime['current_production_authority']['generation']=='V17.28'
+          assert runtime['current_production_authority']['status']=='RUNTIME_PROMOTED_FULL_BASIS_PENDING_FAIL_CLOSED'
+          assert runtime['formal_runtime']['runtime_generation']=='V17.28'
           assert runtime['full_basis_last_completed_final']['generation']=='V17.27'
           assert runtime['full_basis_last_completed_final']['run']==30806818977
-          assert runtime['next_full_basis_required']['status']=='COMPLETED_AND_ACCEPTED'
-          assert runtime['production_final_status']=='FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED'
+          assert runtime['full_basis_last_completed_final']['document_error_count']==1373
+          assert runtime['full_basis_last_completed_final']['unresolved_tie_count']==1290
+          assert runtime['next_full_basis_required']['generation']=='V17.28'
+          assert runtime['next_full_basis_required']['status']=='REQUIRED_NOT_STARTED'
+          assert runtime['next_full_basis_required']['expected_values_are_not_yet_production_acceptance'] is True
+          assert runtime['production_final_status']=='RUNTIME_PROMOTED_FULL_BASIS_PENDING_FAIL_CLOSED'
 
-          assert activation['schema_version']==11
+          assert activation['schema_version']==12
           accepted=activation['accepted_production_runtime']
-          assert accepted['generation']=='V17.27'
-          assert accepted['full_basis_execution_pending'] is False
+          assert accepted['generation']=='V17.28'
+          assert accepted['full_basis_execution_pending'] is True
           assert accepted['last_completed_full_basis_generation']=='V17.27'
           assert accepted['last_completed_full_basis_run']==30806818977
-          assert accepted['execution_verdict']=='PASS'
+          assert accepted['execution_verdict']=='PENDING'
           assert accepted['data_verdict']=='FAIL_CLOSED'
+          retained=activation['accepted_v17_27_full_basis_evidence']
+          assert retained['run']==30806818977
+          assert retained['last_completed_full_basis_authority'] is True
 
           assert set(parser.TARGETS)==set(builder.parser_candidate.TARGETS)
           assert callable(parser.parse_pdf_bytes)
           assert callable(extractor.parse_pdf_bytes)
+          assert parser.METHOD=='V17_27_EXACT_SOURCE_NORMAL_EQUITY_IDENTITY_PRODUCTION'
+          assert extractor.RUNTIME_GENERATION=='V17.27'
           candidate_one_shot=Path('.github/workflows/stage3-s3g1j-v17-27-normal-equity-candidate-safety.yml')
           full_one_shot=Path('.github/workflows/stage3-s3g1j-v17-27-full-final-acceptance.yml')
           assert not candidate_one_shot.exists()
           assert not full_one_shot.exists()
-          print('S3G1J_V17_27_FULL_BASIS_EVIDENCE_IMPORT_PASS')
+          print('S3G1J_V17_27_RETAINED_FULL_BASIS_EVIDENCE_IMPORT_PASS')
           PY
       - name: Compile V17.27 production and retained candidate utilities
         run: |

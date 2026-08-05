@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "status": "INTEGRATION_IN_PROGRESS",
   "stage2_dependency": {
     "version": "V3.2.25-stage2-final-freeze",
@@ -22,11 +22,20 @@
       "final_gate": true
     },
     "S3G1J_FINANCIAL_RAW_VALUES": {
+      "runtime_manifest": "governance/stage3_s3g1j_runtime_manifest.json",
+      "formal_runtime_generation": "V17.28",
+      "runtime_promotion_evidence_manifest": "governance/stage3_s3g1j_v17_28_runtime_promotion.json",
+      "runtime_wrapper_pr": 94,
+      "runtime_wrapper_head_sha": "6969c58ee60314e3e897e55b132266612c602777",
+      "runtime_wrapper_merge_commit": "d7c38e71c9155d404df1c08feba9d66fac0a4d7a",
+      "runtime_wrapper_run_id": 30978715158,
+      "runtime_wrapper_artifact_id": 8919289427,
+      "runtime_wrapper_artifact_digest": "sha256:f8639b4a2eac2d09b16586365b7932d255457ce66aad2484547bb517d0d185a6",
+      "runtime_contract_pass": true,
+      "last_completed_full_basis_generation": "V17.27",
+      "full_basis_evidence_manifest": "governance/stage3_s3g1j_v17_27_full_final.json",
       "accepted_execution_pr": 87,
       "governance_closure_pr": 88,
-      "runtime_manifest": "governance/stage3_s3g1j_runtime_manifest.json",
-      "full_basis_evidence_manifest": "governance/stage3_s3g1j_v17_27_full_final.json",
-      "generation": "V17.27",
       "accepted_head_sha": "fa77d30a2ccdd3664beab01fd7ff7b5d16761726",
       "governed_integration_sha": "606cff54e4d44c74a5a086ec2876c2528cb975ea",
       "accepted_run_id": 30806818977,
@@ -37,23 +46,24 @@
       "numeric_observation_count": 1051793,
       "document_error_count": 1373,
       "unresolved_tie_count": 1290,
-      "changed_announcement_ids": [
-        "1200907104",
-        "1201708762",
-        "1202195310",
-        "1202774611",
-        "1203358200"
-      ],
+      "changed_announcement_ids": ["1200907104", "1201708762", "1202195310", "1202774611", "1203358200"],
       "target_numeric_rows": 15,
       "unexpected_document_regression_count": 0,
       "existing_numeric_semantic_sha256": "05b914b03dbcc23d3f6eca560189afbfe6ea427913f9cf1380fa09cdea6aa8d7",
       "execution_pass": true,
       "document_non_regression_pass": true,
       "numeric_non_regression_pass": true,
-      "status": "FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED",
+      "next_full_basis_generation": "V17.28",
+      "next_full_basis_status": "REQUIRED_NOT_STARTED",
+      "expected_v17_28_document_count": 121354,
+      "expected_v17_28_numeric_observation_count": 1051799,
+      "expected_v17_28_document_error_count": 1371,
+      "expected_v17_28_unresolved_tie_count": 1288,
+      "expected_values_are_not_production_acceptance": true,
+      "status": "FORMAL_RUNTIME_V17_28_FULL_BASIS_PENDING_FAIL_CLOSED",
       "data_verdict": "FAIL_CLOSED",
       "final_gate": false,
-      "final_requirement": "Resolve or explicitly retain fail-closed the remaining 1,373 document errors and 1,290 unresolved ties. Full-basis execution acceptance is not a Stage3 final PASS."
+      "final_requirement": "Complete and independently accept a fresh V17.28 64-shard full basis; then resolve or retain fail-closed residual document errors and ties. Runtime promotion and expected counts are not a Stage3 final PASS."
     },
     "S3G2_ANNOUNCEMENT_LEDGER": {
       "repair_source_pr": 40,
@@ -109,15 +119,15 @@
       "final_gate": true
     }
   },
-  "non_merge_evidence_prs": [44, 47, 52, 53, 56, 57, 58, 59, 61, 62, 64],
+  "non_merge_evidence_prs": [44, 47, 52, 53, 56, 57, 58, 59, 61, 62, 64, 90, 92],
   "superseded_s3g1j_production_prs": [42, 43, 45, 46, 48, 49, 50, 51, 54, 55, 60, 63],
   "current_s3g1j_execution_pr": 87,
-  "current_s3g1j_governance_pr": 88,
+  "current_s3g1j_governance_pr": 94,
   "recommended_clean_integration_order": [
     "S3G0/Foundation",
     "S3G2 final",
     "S3G3A/B",
-    "S3G1J V17.27 full-basis fail-closed resolution",
+    "S3G1J V17.28 fresh full-basis fail-closed resolution",
     "S3G4A + S3G4",
     "S3GU",
     "Stage3 final lock/freeze"
@@ -125,6 +135,8 @@
   "policy": {
     "diagnostic_prs_are_evidence_not_merge_units": true,
     "accepted_candidate_does_not_equal_final_pass": true,
+    "runtime_promotion_does_not_equal_full_basis_acceptance": true,
+    "expected_counts_do_not_equal_production_acceptance": true,
     "accepted_full_basis_execution_does_not_equal_final_data_pass": true,
     "artifact_archive_digest_is_transport_not_dataset_identity": true,
     "no_accounting_tolerance_relaxation": true,
