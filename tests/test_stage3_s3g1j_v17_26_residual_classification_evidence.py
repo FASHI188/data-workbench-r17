@@ -21,9 +21,7 @@ class V1726ResidualClassificationEvidenceTests(unittest.TestCase):
     def test_machine_artifact_identity_is_frozen(self) -> None:
         run = self.evidence["accepted_run"]
         self.assertEqual(run["run_id"], 30734063100)
-        self.assertEqual(
-            run["head_sha"], "d9dc3119cc710a46174fb9d5ce9a6f1518ea5c50"
-        )
+        self.assertEqual(run["head_sha"], "d9dc3119cc710a46174fb9d5ce9a6f1518ea5c50")
         self.assertEqual(run["conclusion"], "SUCCESS")
         self.assertEqual(run["artifact_id"], 8828913247)
         self.assertEqual(
@@ -39,12 +37,7 @@ class V1726ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertEqual(sum(current["class_counts"].values()), 1378)
         self.assertEqual(sum(current["priority_counts"].values()), 1378)
         self.assertEqual(current["p0_safe_near_complete_count"], 21)
-        self.assertEqual(
-            current["class_counts"][
-                "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_3"
-            ],
-            21,
-        )
+        self.assertEqual(current["class_counts"]["SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_3"], 21)
 
     def test_migration_is_only_two_recovered_exits(self) -> None:
         migration = self.evidence["migration_from_v17_21_classifier"]
@@ -54,10 +47,7 @@ class V1726ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertEqual(migration["common_residual_reclassification_count"], 0)
         self.assertEqual(migration["new_residual_count"], 0)
         self.assertEqual(migration["recovered_exit_count"], 2)
-        self.assertEqual(
-            migration["recovered_exit_announcement_ids"],
-            ["1207035181", "1221568845"],
-        )
+        self.assertEqual(migration["recovered_exit_announcement_ids"], ["1207035181", "1221568845"])
         self.assertEqual(migration["p0_count_change"], "23_TO_21")
         self.assertIs(migration["all_other_class_counts_unchanged"], True)
 
@@ -77,7 +67,7 @@ class V1726ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertEqual(hashes["gzip_embedded_filename"], "")
 
     def test_activation_retains_diagnostic_without_rewriting_history(self) -> None:
-        self.assertEqual(self.activation["schema_version"], 11)
+        self.assertEqual(self.activation["schema_version"], 12)
         accepted = self.activation["accepted_v17_26_residual_classification"]
         self.assertEqual(accepted["run"], 30734063100)
         self.assertEqual(accepted["artifact_id"], 8828913247)
@@ -95,12 +85,12 @@ class V1726ResidualClassificationEvidenceTests(unittest.TestCase):
             self.activation["removed_one_shot_workflows"],
         )
         runtime = self.activation["accepted_production_runtime"]
-        self.assertEqual(runtime["generation"], "V17.27")
-        self.assertIs(runtime["full_basis_execution_pending"], False)
+        self.assertEqual(runtime["generation"], "V17.28")
+        self.assertIs(runtime["full_basis_execution_pending"], True)
         self.assertEqual(runtime["last_completed_full_basis_generation"], "V17.27")
         self.assertEqual(runtime["last_completed_full_basis_run"], 30806818977)
-        self.assertEqual(runtime["document_error_count"], 1373)
-        self.assertEqual(runtime["unresolved_tie_count"], 1290)
+        self.assertEqual(runtime["last_completed_document_error_count"], 1373)
+        self.assertEqual(runtime["last_completed_unresolved_tie_count"], 1290)
         self.assertEqual(runtime["data_verdict"], "FAIL_CLOSED")
         historical = self.activation["accepted_v17_26_full_basis_evidence"]
         self.assertEqual(historical["run"], 30733013665)
