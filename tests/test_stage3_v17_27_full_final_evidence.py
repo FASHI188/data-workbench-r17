@@ -9,12 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "governance/stage3_s3g1j_v17_27_full_final.json"
 RUNTIME = ROOT / "governance/stage3_s3g1j_runtime_manifest.json"
 ACTIVATION = ROOT / "governance/stage3_workflow_activation_manifest.json"
-RETIRED_WORKFLOW = (
-    ROOT / ".github/workflows/stage3-s3g1j-v17-27-full-final-acceptance.yml"
-)
-EVIDENCE_CONTRACT = (
-    ROOT / ".github/workflows/stage3-s3g1j-v17-27-evidence-contract.yml"
-)
+RETIRED_WORKFLOW = ROOT / ".github/workflows/stage3-s3g1j-v17-27-full-final-acceptance.yml"
+EVIDENCE_CONTRACT = ROOT / ".github/workflows/stage3-s3g1j-v17-27-evidence-contract.yml"
 EVIDENCE_CONTRACT_NAME = ".github/workflows/stage3-s3g1j-v17-27-evidence-contract.yml"
 
 
@@ -28,9 +24,7 @@ class V1727FullFinalEvidenceTests(unittest.TestCase):
     def test_machine_artifact_identity_is_frozen(self) -> None:
         run = self.evidence["accepted_run"]
         self.assertEqual(run["run_id"], 30806818977)
-        self.assertEqual(
-            run["head_sha"], "fa77d30a2ccdd3664beab01fd7ff7b5d16761726"
-        )
+        self.assertEqual(run["head_sha"], "fa77d30a2ccdd3664beab01fd7ff7b5d16761726")
         self.assertEqual(run["conclusion"], "SUCCESS")
         self.assertEqual(run["artifact_id"], 8854139999)
         self.assertEqual(
@@ -61,13 +55,7 @@ class V1727FullFinalEvidenceTests(unittest.TestCase):
     def test_exact_target_population_is_frozen(self) -> None:
         self.assertEqual(
             self.evidence["full_basis_result"]["changed_announcement_ids"],
-            [
-                "1200907104",
-                "1201708762",
-                "1202195310",
-                "1202774611",
-                "1203358200",
-            ],
+            ["1200907104", "1201708762", "1202195310", "1202774611", "1203358200"],
         )
 
     def test_existing_numeric_semantic_hash_is_unchanged(self) -> None:
@@ -83,32 +71,18 @@ class V1727FullFinalEvidenceTests(unittest.TestCase):
 
     def test_output_hashes_are_frozen(self) -> None:
         hashes = self.evidence["output_hashes"]
-        self.assertEqual(
-            hashes["financial_values_gzip_sha256"],
-            "4c518fbca2ece45ed535789d4cf66dd86d2717d6499f872234c5d3ece09280fe",
-        )
-        self.assertEqual(
-            hashes["financial_documents_gzip_sha256"],
-            "c2abe07baaa76efb80a30cfdd4e762ad07814f6aa795a92b9c0504f7944ab99a",
-        )
-        self.assertEqual(
-            hashes["raw_audit_json_sha256"],
-            "80809e9d9b24b365420849430eb5d61e261a15e790b56f29babf39ca2f914092",
-        )
-        self.assertEqual(
-            hashes["full_basis_non_regression_v2_json_sha256"],
-            "13beb1db52f7e36636126cd242dc80a721cae0e04de0fb1351cf64c5897be82f",
-        )
-        self.assertEqual(
-            hashes["execution_json_sha256"],
-            "5582eb95e86aa4e4e35a14fab9f4cf0aea5c6396dc023dbc47e115c99b11a7ec",
-        )
+        self.assertEqual(hashes["financial_values_gzip_sha256"], "4c518fbca2ece45ed535789d4cf66dd86d2717d6499f872234c5d3ece09280fe")
+        self.assertEqual(hashes["financial_documents_gzip_sha256"], "c2abe07baaa76efb80a30cfdd4e762ad07814f6aa795a92b9c0504f7944ab99a")
+        self.assertEqual(hashes["raw_audit_json_sha256"], "80809e9d9b24b365420849430eb5d61e261a15e790b56f29babf39ca2f914092")
+        self.assertEqual(hashes["full_basis_non_regression_v2_json_sha256"], "13beb1db52f7e36636126cd242dc80a721cae0e04de0fb1351cf64c5897be82f")
+        self.assertEqual(hashes["execution_json_sha256"], "5582eb95e86aa4e4e35a14fab9f4cf0aea5c6396dc023dbc47e115c99b11a7ec")
 
-    def test_runtime_and_activation_promote_full_basis_authority(self) -> None:
-        self.assertEqual(self.runtime["schema_version"], 9)
+    def test_v17_27_remains_last_completed_full_basis_after_v17_28_runtime_promotion(self) -> None:
+        self.assertEqual(self.runtime["schema_version"], 10)
+        self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"], "V17.28")
         self.assertEqual(
             self.runtime["current_production_authority"]["status"],
-            "FULL_BASIS_EXECUTION_ACCEPTED_FAIL_CLOSED",
+            "RUNTIME_PROMOTED_FULL_BASIS_PENDING_FAIL_CLOSED",
         )
         full = self.runtime["full_basis_last_completed_final"]
         self.assertEqual(full["generation"], "V17.27")
@@ -117,12 +91,17 @@ class V1727FullFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(full["document_error_count"], 1373)
         self.assertEqual(full["unresolved_tie_count"], 1290)
         self.assertEqual(full["verdict"], "FAIL_CLOSED")
-        self.assertEqual(self.activation["schema_version"], 11)
+        self.assertEqual(self.activation["schema_version"], 12)
+        current = self.activation["accepted_production_runtime"]
+        self.assertEqual(current["generation"], "V17.28")
+        self.assertIs(current["full_basis_execution_pending"], True)
+        self.assertEqual(current["last_completed_full_basis_generation"], "V17.27")
         accepted = self.activation["accepted_v17_27_full_basis_evidence"]
         self.assertEqual(accepted["run"], 30806818977)
         self.assertEqual(accepted["artifact_id"], 8854139999)
         self.assertEqual(accepted["final_data_verdict"], "FAIL_CLOSED")
         self.assertEqual(accepted["stage3_status"], "NOT_READY")
+        self.assertIs(accepted["last_completed_full_basis_authority"], True)
         self.assertIs(accepted["one_shot_workflow_retired_after_acceptance"], True)
         self.assertIs(accepted["evidence_contract_active"], True)
 
@@ -134,8 +113,10 @@ class V1727FullFinalEvidenceTests(unittest.TestCase):
         self.assertTrue(EVIDENCE_CONTRACT.exists())
         boundaries = self.activation["hard_boundaries"]
         self.assertIs(boundaries["v17_27_full_basis_execution_pending"], False)
+        self.assertIs(boundaries["v17_28_full_basis_execution_pending"], True)
         self.assertEqual(boundaries["remaining_document_errors"], 1373)
         self.assertEqual(boundaries["remaining_unresolved_ties"], 1290)
+        self.assertIs(boundaries["expected_values_are_not_production_acceptance"], True)
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertIs(boundaries["stage4_alpha_live_locked"], True)
         self.assertIs(boundaries["committed_production_data_changed"], False)
