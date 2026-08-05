@@ -9,12 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "governance/stage3_s3g1j_v17_26_full_final.json"
 ACTIVATION = ROOT / "governance/stage3_workflow_activation_manifest.json"
 RUNTIME = ROOT / "governance/stage3_s3g1j_runtime_manifest.json"
-RETIRED_WORKFLOW = (
-    ROOT / ".github/workflows/stage3-s3g1j-v17-25-full-final-v2.yml"
-)
-EVIDENCE_CONTRACT = (
-    ROOT / ".github/workflows/stage3-s3g1j-v17-26-evidence-contract.yml"
-)
+RETIRED_WORKFLOW = ROOT / ".github/workflows/stage3-s3g1j-v17-25-full-final-v2.yml"
+EVIDENCE_CONTRACT = ROOT / ".github/workflows/stage3-s3g1j-v17-26-evidence-contract.yml"
 EVIDENCE_CONTRACT_NAME = ".github/workflows/stage3-s3g1j-v17-26-evidence-contract.yml"
 
 
@@ -28,9 +24,7 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
     def test_machine_artifact_identity_is_frozen(self) -> None:
         run = self.evidence["accepted_run"]
         self.assertEqual(run["run_id"], 30733013665)
-        self.assertEqual(
-            run["head_sha"], "ed81a8f167c7b158167a8bdafa1799b7047666af"
-        )
+        self.assertEqual(run["head_sha"], "ed81a8f167c7b158167a8bdafa1799b7047666af")
         self.assertEqual(run["conclusion"], "SUCCESS")
         self.assertEqual(run["artifact_id"], 8828600783)
         self.assertEqual(
@@ -45,9 +39,7 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(result["numeric_observation_count"], 1051778)
         self.assertEqual(result["document_error_count"], 1378)
         self.assertEqual(result["unresolved_tie_count"], 1295)
-        self.assertEqual(
-            result["changed_announcement_ids"], ["1207035181", "1221568845"]
-        )
+        self.assertEqual(result["changed_announcement_ids"], ["1207035181", "1221568845"])
         self.assertEqual(result["unexpected_document_regression_count"], 0)
         self.assertIs(result["final_data_gate_pass"], False)
         self.assertEqual(result["final_data_verdict"], "FAIL_CLOSED")
@@ -57,14 +49,9 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
         self.assertIs(repair["candidate_resolver_reused"], False)
         self.assertIs(repair["selected_source_lock_pass"], True)
         self.assertIs(repair["non_balance_target_concepts_promoted"], False)
-        self.assertEqual(
-            repair["allowed_concepts"],
-            ["TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY"],
-        )
+        self.assertEqual(repair["allowed_concepts"], ["TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY"])
         self.assertEqual(set(repair["targets"]), {"1207035181", "1221568845"})
-        self.assertTrue(
-            all(target["numeric_observations"] == 3 for target in repair["targets"].values())
-        )
+        self.assertTrue(all(target["numeric_observations"] == 3 for target in repair["targets"].values()))
 
     def test_non_target_semantic_hash_is_unchanged(self) -> None:
         numeric = self.evidence["numeric_non_regression"]
@@ -77,7 +64,7 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(numeric["non_target_value_drift"], 0)
 
     def test_activation_manifest_retains_v17_26_as_historical_authority(self) -> None:
-        self.assertEqual(self.activation["schema_version"], 11)
+        self.assertEqual(self.activation["schema_version"], 12)
         accepted = self.activation["accepted_v17_26_full_basis_evidence"]
         self.assertEqual(accepted["run"], 30733013665)
         self.assertEqual(accepted["final_data_verdict"], "FAIL_CLOSED")
@@ -94,8 +81,8 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
         )
         self.assertFalse(RETIRED_WORKFLOW.exists())
         runtime = self.activation["accepted_production_runtime"]
-        self.assertEqual(runtime["generation"], "V17.27")
-        self.assertIs(runtime["full_basis_execution_pending"], False)
+        self.assertEqual(runtime["generation"], "V17.28")
+        self.assertIs(runtime["full_basis_execution_pending"], True)
         self.assertEqual(runtime["last_completed_full_basis_generation"], "V17.27")
         self.assertEqual(runtime["last_completed_full_basis_run"], 30806818977)
         self.assertEqual(runtime["data_verdict"], "FAIL_CLOSED")
