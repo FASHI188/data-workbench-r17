@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "status": "MACHINE_ACCEPTED_CANDIDATE_ONLY",
   "gate": "S3G1J_V17_28_SPLIT_GROUP_EQUITY_CANDIDATE_SAFETY_V3",
   "candidate_evidence_pr": {
@@ -15,8 +15,8 @@
     "conclusion": "SUCCESS",
     "artifact_id": 8861519922,
     "artifact_name": "stage3-s3g1j-v17-28-split-equity-candidate-safety",
-    "artifact_digest": "sha256:d2146e772b676e01f54be4d134931d66ea96a845da59fe3e0c5806bfa3c582d",
-    "artifact_retention_expires_at": "2026-09-02T15:33:36Z"
+    "artifact_digest": "sha256:8a87dfed63160374fc04c88c3d02a93eedac6ae239ae559b64aaad93c71d22c1",
+    "artifact_retention_expires_at": "2026-09-02T15:28:12Z"
   },
   "failed_contract_iterations": [
     {
@@ -31,6 +31,13 @@
       "head_sha": "0b4d68be09693d04b9d573ddccc57c9b78958c46",
       "conclusion": "FAILURE",
       "reason": "V2 compared the complete V17.27 1,051,793-row numeric population against the inherited pre-V17.27 1,051,778-row semantic SHA.",
+      "candidate_parser_or_data_failure": false
+    },
+    {
+      "run_id": 30828439719,
+      "head_sha": "2e1c9cae6ea6d86ec85aabfa4f6d46371549c390",
+      "conclusion": "FAILURE",
+      "reason": "The governance contract recorded a non-authoritative artifact digest. Direct GitHub artifact metadata and the downloaded ZIP both identify sha256:8a87dfed63160374fc04c88c3d02a93eedac6ae239ae559b64aaad93c71d22c1.",
       "candidate_parser_or_data_failure": false
     }
   ],
@@ -151,12 +158,13 @@
     "candidate_documents_gzip_sha256": "818f08602792dec73c4f6c84e9dd41e8633e7f4d56edecc2e0336e71d898491c",
     "candidate_values_gzip_sha256": "960926aa46e01182d30d97a552f674002f09303f73f142645374ba1a6116af65",
     "candidate_report_json_sha256": "42fd39956ea3c2dafba98b4d5c1697c15a797099011b4d8ed531cead264e4b21",
-    "output_sha256_text_sha256": "8719401d664f8b898b4360d837d89114bb582fcc567de278e6b256f624bfea14"
+    "output_sha256_text_sha256": "8719401d664f8b898b4360d837d89114bb582fcc567de278e6b256f624bfea14",
+    "artifact_zip_sha256": "8a87dfed63160374fc04c88c3d02a93eedac6ae239ae559b64aaad93c71d22c1"
   },
   "independent_verification": {
     "artifact_downloaded_and_inspected": true,
-    "downloaded_archive_sha256_observed_transport_only": "23c47d2add401533b72c7494fcb114c475b57c7459599831f87b38c6742b432d",
-    "independent_verification_json_sha256": "ef7281181bc5b0e66a3e46b40b729d2ae66240397844b37da51ee2caa0328919",
+    "downloaded_archive_sha256": "8a87dfed63160374fc04c88c3d02a93eedac6ae239ae559b64aaad93c71d22c1",
+    "github_artifact_digest_matches_downloaded_archive": true,
     "source_rows_missing_from_candidate": 0,
     "candidate_extra_numeric_rows": 6,
     "candidate_extra_rows_sha256": "ad2129107af790a7caa35c3128891a3470c559e881187c651091d06c87a94dde",
