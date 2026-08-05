@@ -11,6 +11,7 @@ on:
       - 'governance/stage3_s3g1j_v17_27_full_final.json'
       - 'governance/stage3_s3g1j_v17_28_candidate_safety.json'
       - 'governance/stage3_s3g1j_v17_28_runtime_promotion.json'
+      - 'governance/stage3_s3g1j_v17_28_full_final.json'
       - 'governance/stage3_workflow_activation_manifest.json'
       - 'config/stage3_s3g1j_v10_diagnostic_samples.json'
       - 'scripts/extract_stage3_financial_pdf_values*.py'
@@ -22,6 +23,7 @@ on:
       - 'scripts/compare_stage3_financial_report_versions_v3.py'
       - 'scripts/compare_stage3_s3g1j_v17_26_*.py'
       - 'scripts/compare_stage3_s3g1j_v17_27_*.py'
+      - 'scripts/compare_stage3_s3g1j_v17_28_*.py'
       - 'scripts/build_stage3_partial_body_ledger_v12.py'
       - 'scripts/build_stage3_s3g1j_v17_26_exact_target_ledger.py'
       - 'scripts/build_stage3_s3g1j_v17_27_candidate_full.py'
@@ -54,17 +56,18 @@ jobs:
           python-version: '3.12.13'
       - name: Install verified Stage3 runtime
         run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf pytest
-      - name: Verify V17.28 runtime and retained V17.27/V17.26 full-basis authority
+      - name: Verify V17.28 runtime, accepted full basis and retained history
         run: |
           python -m unittest \
             tests.test_stage3_v17_28_runtime_promotion \
             tests.test_stage3_v17_28_runtime_wrapper \
+            tests.test_stage3_v17_28_full_final_evidence \
             tests.test_stage3_v17_27_runtime_promotion \
             tests.test_stage3_v17_27_full_final_evidence \
             tests.test_stage3_v17_26_runtime_promotion \
             tests.test_stage3_v17_26_full_final_evidence \
             -v
-      - name: Import current V17.28 runtime and retained V17.27 full-basis closure
+      - name: Import current V17.28 runtime and accepted V17.28 full-basis closure
         run: |
           python - <<'PY'
           import json
@@ -76,26 +79,32 @@ jobs:
           activation=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
           candidate=json.load(open('governance/stage3_s3g1j_v17_28_candidate_safety.json',encoding='utf-8'))
           promotion=json.load(open('governance/stage3_s3g1j_v17_28_runtime_promotion.json',encoding='utf-8'))
-          full=json.load(open('governance/stage3_s3g1j_v17_27_full_final.json',encoding='utf-8'))
+          full=json.load(open('governance/stage3_s3g1j_v17_28_full_final.json',encoding='utf-8'))
+          previous=json.load(open('governance/stage3_s3g1j_v17_27_full_final.json',encoding='utf-8'))
 
-          assert manifest['schema_version']==10
+          assert manifest['schema_version']==11
           assert manifest['integration_branch']=='agent/stage3-clean-integration'
           assert manifest['current_production_authority']['generation']=='V17.28'
-          assert manifest['current_production_authority']['status']=='RUNTIME_PROMOTED_FULL_BASIS_PENDING_FAIL_CLOSED'
-          assert manifest['production_final_status']=='RUNTIME_PROMOTED_FULL_BASIS_PENDING_FAIL_CLOSED'
+          assert manifest['current_production_authority']['status']=='RUNTIME_AND_FULL_BASIS_ACCEPTED_DATA_FAIL_CLOSED'
+          assert manifest['production_final_status']=='RUNTIME_AND_FULL_BASIS_ACCEPTED_DATA_FAIL_CLOSED'
           assert manifest['formal_runtime']['runtime_generation']=='V17.28'
           assert manifest['formal_runtime']['parser_method']==parser.METHOD
           assert manifest['formal_runtime']['extractor_method']==extractor.METHOD
-          assert manifest['full_basis_last_completed_final']['generation']=='V17.27'
-          assert manifest['full_basis_last_completed_final']['run']==30806818977
-          assert manifest['full_basis_last_completed_final']['document_error_count']==1373
-          assert manifest['full_basis_last_completed_final']['unresolved_tie_count']==1290
-          assert manifest['full_basis_last_completed_final']['verdict']=='FAIL_CLOSED'
+          latest=manifest['full_basis_last_completed_final']
+          assert latest['generation']=='V17.28'
+          assert latest['run']==30997260730
+          assert latest['artifact_id']==8927455692
+          assert latest['numeric_observations']==1051799
+          assert latest['document_error_count']==1371
+          assert latest['unresolved_tie_count']==1288
+          assert latest['execution_verdict']=='PASS'
+          assert latest['verdict']=='FAIL_CLOSED'
+          assert manifest['previous_full_basis_final']['generation']=='V17.27'
+          assert manifest['previous_full_basis_final']['run']==30806818977
           assert manifest['historical_full_basis_final']['generation']=='V17.26'
           assert manifest['historical_full_basis_final']['retained'] is True
-          assert manifest['next_full_basis_required']['generation']=='V17.28'
-          assert manifest['next_full_basis_required']['status']=='REQUIRED_NOT_STARTED'
-          assert manifest['next_full_basis_required']['expected_values_are_not_yet_production_acceptance'] is True
+          assert manifest['next_full_basis_required']['generation'] is None
+          assert manifest['next_full_basis_required']['status']=='NONE_CURRENT_RUNTIME_ACCEPTED'
           assert manifest['project_status']=={
               'stage3':'NOT_READY',
               'stage4':'LOCKED',
@@ -124,24 +133,28 @@ jobs:
           assert candidate['full_basis_result']['candidate_unresolved_ties']==1288
           assert promotion['wrapper_implementation']['acceptance_run']==30978715158
           assert promotion['wrapper_implementation']['real_source_promotion_pass'] is True
+          # The promotion manifest is immutable history and still records the pre-execution state.
           assert promotion['next_full_basis']['status']=='REQUIRED_NOT_STARTED'
           assert promotion['next_full_basis']['expected_values_are_not_production_acceptance'] is True
-          assert full['accepted_run']['run_id']==30806818977
-          assert full['accepted_run']['artifact_id']==8854139999
-          assert full['full_basis_result']['numeric_observation_count']==1051793
-          assert full['full_basis_result']['document_error_count']==1373
-          assert full['full_basis_result']['unresolved_tie_count']==1290
+          assert full['accepted_run']['run_id']==30997260730
+          assert full['accepted_run']['artifact_id']==8927455692
+          assert full['full_basis_result']['numeric_observation_count']==1051799
+          assert full['full_basis_result']['document_error_count']==1371
+          assert full['full_basis_result']['unresolved_tie_count']==1288
+          assert full['full_basis_result']['execution_pass'] is True
           assert full['full_basis_result']['final_data_verdict']=='FAIL_CLOSED'
-          assert activation['schema_version']==12
+          assert previous['accepted_run']['run_id']==30806818977
+          assert previous['full_basis_result']['numeric_observation_count']==1051793
+          assert activation['schema_version']==13
           current=activation['accepted_production_runtime']
           assert current['generation']=='V17.28'
-          assert current['full_basis_execution_pending'] is True
-          assert current['last_completed_full_basis_generation']=='V17.27'
-          assert current['last_completed_full_basis_run']==30806818977
-          assert current['execution_verdict']=='PENDING'
+          assert current['full_basis_execution_pending'] is False
+          assert current['last_completed_full_basis_generation']=='V17.28'
+          assert current['last_completed_full_basis_run']==30997260730
+          assert current['execution_verdict']=='PASS'
           assert current['data_verdict']=='FAIL_CLOSED'
           assert callable(finalizer._validate_shard_manifests)
-          print('S3G1J_V17_28_RUNTIME_V17_27_FULL_BASIS_IMPORT_PASS')
+          print('S3G1J_V17_28_RUNTIME_AND_FULL_BASIS_IMPORT_PASS')
           PY
       - name: Run inherited pure fail-closed regression contracts
         run: |
@@ -195,12 +208,14 @@ jobs:
             tests.test_stage3_v17_27_full_final_comparator \
             tests.test_stage3_v17_27_full_final_comparator_v2 \
             -v
-      - name: Run V17.28 candidate and production-wrapper regressions
+      - name: Run V17.28 candidate, production and full-final regressions
         run: |
           python -m unittest \
             tests.test_stage3_s3g1j_v17_28_split_equity_candidate \
             tests.test_stage3_v17_28_runtime_wrapper \
             tests.test_stage3_v17_28_runtime_promotion \
+            tests.test_stage3_v17_28_full_final_comparator \
+            tests.test_stage3_v17_28_full_final_evidence \
             -v
       - name: Run official-PDF coordinate fallback regression
         run: python -m unittest tests.test_stage3_financial_coordinate_fallback_v14_integration -v

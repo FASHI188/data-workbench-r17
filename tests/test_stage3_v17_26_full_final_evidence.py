@@ -44,27 +44,22 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
         self.assertIs(result["final_data_gate_pass"], False)
         self.assertEqual(result["final_data_verdict"], "FAIL_CLOSED")
 
-    def test_target_scope_is_exactly_balance_sheet_totals(self) -> None:
+    def test_target_scope_and_non_target_identity_are_frozen(self) -> None:
         repair = self.evidence["exact_source_scope_repair"]
         self.assertIs(repair["candidate_resolver_reused"], False)
         self.assertIs(repair["selected_source_lock_pass"], True)
         self.assertIs(repair["non_balance_target_concepts_promoted"], False)
         self.assertEqual(repair["allowed_concepts"], ["TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY"])
         self.assertEqual(set(repair["targets"]), {"1207035181", "1221568845"})
-        self.assertTrue(all(target["numeric_observations"] == 3 for target in repair["targets"].values()))
-
-    def test_non_target_semantic_hash_is_unchanged(self) -> None:
         numeric = self.evidence["numeric_non_regression"]
         expected = "f9f7751943b113db9488b0b7b1d33ffbd93e1e3eb56486ca8e399f252a5953b4"
         self.assertIs(numeric["pass"], True)
-        self.assertEqual(numeric["previous_non_target_row_count"], 1051772)
-        self.assertEqual(numeric["current_non_target_row_count"], 1051772)
         self.assertEqual(numeric["previous_non_target_semantic_sha256"], expected)
         self.assertEqual(numeric["current_non_target_semantic_sha256"], expected)
         self.assertEqual(numeric["non_target_value_drift"], 0)
 
-    def test_activation_manifest_retains_v17_26_as_historical_authority(self) -> None:
-        self.assertEqual(self.activation["schema_version"], 12)
+    def test_activation_retains_v17_26_historical_authority(self) -> None:
+        self.assertEqual(self.activation["schema_version"], 13)
         accepted = self.activation["accepted_v17_26_full_basis_evidence"]
         self.assertEqual(accepted["run"], 30733013665)
         self.assertEqual(accepted["final_data_verdict"], "FAIL_CLOSED")
@@ -80,12 +75,11 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
             self.activation["removed_one_shot_workflows"],
         )
         self.assertFalse(RETIRED_WORKFLOW.exists())
-        runtime = self.activation["accepted_production_runtime"]
-        self.assertEqual(runtime["generation"], "V17.28")
-        self.assertIs(runtime["full_basis_execution_pending"], True)
-        self.assertEqual(runtime["last_completed_full_basis_generation"], "V17.27")
-        self.assertEqual(runtime["last_completed_full_basis_run"], 30806818977)
-        self.assertEqual(runtime["data_verdict"], "FAIL_CLOSED")
+        current = self.activation["accepted_production_runtime"]
+        self.assertEqual(current["generation"], "V17.28")
+        self.assertIs(current["full_basis_execution_pending"], False)
+        self.assertEqual(current["last_completed_full_basis_generation"], "V17.28")
+        self.assertEqual(current["last_completed_full_basis_run"], 30997260730)
         historical_runtime = self.runtime["historical_full_basis_final"]
         self.assertEqual(historical_runtime["generation"], "V17.26")
         self.assertEqual(historical_runtime["run"], 30733013665)

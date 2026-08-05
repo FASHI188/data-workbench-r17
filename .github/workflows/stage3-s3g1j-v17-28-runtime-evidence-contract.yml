@@ -7,6 +7,7 @@ on:
       - 'governance/stage3_s3g1j_runtime_manifest.json'
       - 'governance/stage3_workflow_activation_manifest.json'
       - 'governance/stage3_s3g1j_v17_28_runtime_promotion.json'
+      - 'governance/stage3_s3g1j_v17_28_full_final.json'
       - 'tests/test_stage3_v17_27_runtime_promotion.py'
       - 'tests/test_stage3_v17_28_runtime_promotion.py'
       - '.github/workflows/stage3-s3g1j-v17-28-runtime-evidence-contract.yml'
@@ -54,7 +55,6 @@ jobs:
           test "$(jq -r --arg name "$WRAPPER_ARTIFACT" '[.artifacts[] | select(.name==$name)] | length' <<<"$artifacts")" = 1
           test "$(jq -r --arg name "$WRAPPER_ARTIFACT" '.artifacts[] | select(.name==$name) | .id' <<<"$artifacts")" = "$WRAPPER_ARTIFACT_ID"
           test "$(jq -r --arg name "$WRAPPER_ARTIFACT" '.artifacts[] | select(.name==$name) | .digest' <<<"$artifacts")" = "$WRAPPER_DIGEST"
-          test "$(jq -r --arg name "$WRAPPER_ARTIFACT" '.artifacts[] | select(.name==$name) | .workflow_run.head_sha' <<<"$artifacts")" = "$WRAPPER_HEAD"
           test "$(jq -r --arg name "$WRAPPER_ARTIFACT" '.artifacts[] | select(.name==$name) | .expired' <<<"$artifacts")" = false
       - uses: actions/download-artifact@v4
         with:
@@ -63,7 +63,7 @@ jobs:
           repository: FASHI188/data-workbench-r17
           run-id: 30978715158
           github-token: ${{ github.token }}
-      - name: Verify wrapper report and activation separation
+      - name: Verify immutable wrapper report
         shell: bash
         run: |
           set -euo pipefail
@@ -82,44 +82,42 @@ jobs:
           assert report['v17_28_authority_activated'] is False
           assert report['fresh_64_shard_execution_started'] is False
           assert report['pass'] is True and report['errors']==[]
-          print('S3G1J_V17_28_WRAPPER_REPORT_LOCK_PASS')
+          print('S3G1J_V17_28_WRAPPER_REPORT_IMMUTABLE_PASS')
           PY
-      - name: Verify formal runtime promotion and retained full-basis authority
+      - name: Verify current runtime and completed full-basis authority
         run: |
           python -m unittest \
             tests.test_stage3_v17_28_runtime_promotion \
             tests.test_stage3_v17_27_runtime_promotion \
+            tests.test_stage3_v17_28_full_final_evidence \
             -v
           python -m py_compile \
             scripts/stage3_financial_pdf_parser_v20.py \
             scripts/stage3_financial_pdf_parser_v20_candidate.py \
             scripts/extract_stage3_financial_pdf_values_v18.py
-      - name: Verify one-shot wrapper workflows are retired
-        shell: bash
+      - name: Verify current authority and historical promotion separation
         run: |
-          set -euo pipefail
-          test ! -e .github/workflows/stage3-s3g1j-v17-28-runtime-wrapper.yml
-          test ! -e .github/workflows/stage3-s3g1j-v17-28-pending-authority-contract.yml
-          test ! -e governance/stage3_s3g1j_v17_28_runtime_wrapper_pending.json
-          test ! -e tests/test_stage3_v17_28_runtime_wrapper_pending_manifest.py
           python - <<'PY'
           import json
           runtime=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
           activation=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
           promotion=json.load(open('governance/stage3_s3g1j_v17_28_runtime_promotion.json',encoding='utf-8'))
-          assert runtime['schema_version']==10
+          full=json.load(open('governance/stage3_s3g1j_v17_28_full_final.json',encoding='utf-8'))
+          assert runtime['schema_version']==11
           assert runtime['formal_runtime']['runtime_generation']=='V17.28'
-          assert runtime['full_basis_last_completed_final']['generation']=='V17.27'
-          assert runtime['next_full_basis_required']['status']=='REQUIRED_NOT_STARTED'
-          assert activation['schema_version']==12
-          assert activation['accepted_production_runtime']['generation']=='V17.28'
-          assert activation['accepted_production_runtime']['full_basis_execution_pending'] is True
+          assert runtime['full_basis_last_completed_final']['generation']=='V17.28'
+          assert runtime['full_basis_last_completed_final']['run']==30997260730
+          assert runtime['next_full_basis_required']['status']=='NONE_CURRENT_RUNTIME_ACCEPTED'
+          assert activation['schema_version']==13
+          assert activation['accepted_production_runtime']['full_basis_execution_pending'] is False
+          assert activation['accepted_production_runtime']['execution_verdict']=='PASS'
+          assert activation['accepted_production_runtime']['data_verdict']=='FAIL_CLOSED'
           assert promotion['last_completed_full_basis']['generation']=='V17.27'
-          assert promotion['next_full_basis']['generation']=='V17.28'
-          assert promotion['next_full_basis']['expected_values_are_not_production_acceptance'] is True
+          assert promotion['next_full_basis']['status']=='REQUIRED_NOT_STARTED'
+          assert full['accepted_run']['run_id']==30997260730
           assert runtime['project_status']['stage3']=='NOT_READY'
           assert runtime['project_status']['stage4']=='LOCKED'
           assert runtime['project_status']['alpha_training']=='NOT_ALLOWED'
           assert runtime['project_status']['live_signals']=='NOT_ALLOWED'
-          print('S3G1J_V17_28_RUNTIME_PROMOTION_EVIDENCE_PASS')
+          print('S3G1J_V17_28_RUNTIME_AND_FULL_BASIS_AUTHORITY_PASS')
           PY

@@ -67,7 +67,7 @@ class V1726ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertEqual(hashes["gzip_embedded_filename"], "")
 
     def test_activation_retains_diagnostic_without_rewriting_history(self) -> None:
-        self.assertEqual(self.activation["schema_version"], 12)
+        self.assertEqual(self.activation["schema_version"], 13)
         accepted = self.activation["accepted_v17_26_residual_classification"]
         self.assertEqual(accepted["run"], 30734063100)
         self.assertEqual(accepted["artifact_id"], 8828913247)
@@ -86,11 +86,12 @@ class V1726ResidualClassificationEvidenceTests(unittest.TestCase):
         )
         runtime = self.activation["accepted_production_runtime"]
         self.assertEqual(runtime["generation"], "V17.28")
-        self.assertIs(runtime["full_basis_execution_pending"], True)
-        self.assertEqual(runtime["last_completed_full_basis_generation"], "V17.27")
-        self.assertEqual(runtime["last_completed_full_basis_run"], 30806818977)
-        self.assertEqual(runtime["last_completed_document_error_count"], 1373)
-        self.assertEqual(runtime["last_completed_unresolved_tie_count"], 1290)
+        self.assertIs(runtime["full_basis_execution_pending"], False)
+        self.assertEqual(runtime["last_completed_full_basis_generation"], "V17.28")
+        self.assertEqual(runtime["last_completed_full_basis_run"], 30997260730)
+        self.assertEqual(runtime["last_completed_document_error_count"], 1371)
+        self.assertEqual(runtime["last_completed_unresolved_tie_count"], 1288)
+        self.assertEqual(runtime["execution_verdict"], "PASS")
         self.assertEqual(runtime["data_verdict"], "FAIL_CLOSED")
         historical = self.activation["accepted_v17_26_full_basis_evidence"]
         self.assertEqual(historical["run"], 30733013665)
