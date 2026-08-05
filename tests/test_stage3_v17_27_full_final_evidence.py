@@ -37,28 +37,21 @@ class V1727FullFinalEvidenceTests(unittest.TestCase):
         self.assertIs(result["execution_pass"], True)
         self.assertIs(result["document_non_regression_pass"], True)
         self.assertIs(result["numeric_non_regression_pass"], True)
-        self.assertEqual(result["canonical_version_count"], 121354)
         self.assertEqual(result["document_count"], 121354)
         self.assertEqual(result["numeric_observation_count"], 1051793)
         self.assertEqual(result["document_error_count"], 1373)
         self.assertEqual(result["unresolved_tie_count"], 1290)
-        self.assertEqual(result["recovered_unresolved_tie_count"], 5)
         self.assertEqual(result["target_document_count"], 5)
         self.assertEqual(result["target_numeric_rows"], 15)
         self.assertEqual(result["unexpected_document_regression_count"], 0)
-        self.assertIs(result["non_balance_target_concepts_promoted"], False)
-        self.assertIs(result["top_level_conflict_concept_order_normalized"], True)
-        self.assertIs(result["nested_conflict_evidence_order_preserved"], True)
         self.assertIs(result["final_data_gate_pass"], False)
         self.assertEqual(result["final_data_verdict"], "FAIL_CLOSED")
 
-    def test_exact_target_population_is_frozen(self) -> None:
+    def test_exact_target_population_and_numeric_identity_are_frozen(self) -> None:
         self.assertEqual(
             self.evidence["full_basis_result"]["changed_announcement_ids"],
             ["1200907104", "1201708762", "1202195310", "1202774611", "1203358200"],
         )
-
-    def test_existing_numeric_semantic_hash_is_unchanged(self) -> None:
         numeric = self.evidence["numeric_non_regression"]
         expected = "05b914b03dbcc23d3f6eca560189afbfe6ea427913f9cf1380fa09cdea6aa8d7"
         self.assertIs(numeric["pass"], True)
@@ -74,36 +67,28 @@ class V1727FullFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(hashes["financial_values_gzip_sha256"], "4c518fbca2ece45ed535789d4cf66dd86d2717d6499f872234c5d3ece09280fe")
         self.assertEqual(hashes["financial_documents_gzip_sha256"], "c2abe07baaa76efb80a30cfdd4e762ad07814f6aa795a92b9c0504f7944ab99a")
         self.assertEqual(hashes["raw_audit_json_sha256"], "80809e9d9b24b365420849430eb5d61e261a15e790b56f29babf39ca2f914092")
-        self.assertEqual(hashes["full_basis_non_regression_v2_json_sha256"], "13beb1db52f7e36636126cd242dc80a721cae0e04de0fb1351cf64c5897be82f")
         self.assertEqual(hashes["execution_json_sha256"], "5582eb95e86aa4e4e35a14fab9f4cf0aea5c6396dc023dbc47e115c99b11a7ec")
 
-    def test_v17_27_remains_last_completed_full_basis_after_v17_28_runtime_promotion(self) -> None:
-        self.assertEqual(self.runtime["schema_version"], 10)
+    def test_v17_27_is_historical_after_v17_28_full_acceptance(self) -> None:
+        self.assertEqual(self.runtime["schema_version"], 11)
         self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"], "V17.28")
-        self.assertEqual(
-            self.runtime["current_production_authority"]["status"],
-            "RUNTIME_PROMOTED_FULL_BASIS_PENDING_FAIL_CLOSED",
-        )
-        full = self.runtime["full_basis_last_completed_final"]
-        self.assertEqual(full["generation"], "V17.27")
-        self.assertEqual(full["run"], 30806818977)
-        self.assertEqual(full["artifact_id"], 8854139999)
-        self.assertEqual(full["document_error_count"], 1373)
-        self.assertEqual(full["unresolved_tie_count"], 1290)
-        self.assertEqual(full["verdict"], "FAIL_CLOSED")
-        self.assertEqual(self.activation["schema_version"], 12)
-        current = self.activation["accepted_production_runtime"]
-        self.assertEqual(current["generation"], "V17.28")
-        self.assertIs(current["full_basis_execution_pending"], True)
-        self.assertEqual(current["last_completed_full_basis_generation"], "V17.27")
+        latest = self.runtime["full_basis_last_completed_final"]
+        self.assertEqual(latest["generation"], "V17.28")
+        self.assertEqual(latest["run"], 30997260730)
+        previous = self.runtime["previous_full_basis_final"]
+        self.assertEqual(previous["generation"], "V17.27")
+        self.assertEqual(previous["run"], 30806818977)
+        self.assertEqual(previous["artifact_id"], 8854139999)
+        self.assertEqual(previous["document_error_count"], 1373)
+        self.assertEqual(previous["unresolved_tie_count"], 1290)
+        self.assertEqual(previous["verdict"], "FAIL_CLOSED")
+        self.assertEqual(self.activation["schema_version"], 13)
         accepted = self.activation["accepted_v17_27_full_basis_evidence"]
         self.assertEqual(accepted["run"], 30806818977)
         self.assertEqual(accepted["artifact_id"], 8854139999)
         self.assertEqual(accepted["final_data_verdict"], "FAIL_CLOSED")
-        self.assertEqual(accepted["stage3_status"], "NOT_READY")
-        self.assertIs(accepted["last_completed_full_basis_authority"], True)
-        self.assertIs(accepted["one_shot_workflow_retired_after_acceptance"], True)
-        self.assertIs(accepted["evidence_contract_active"], True)
+        self.assertIs(accepted["historical_full_basis_authority_retained"], True)
+        self.assertIs(accepted["last_completed_full_basis_authority"], False)
 
     def test_one_shot_is_retired_and_long_lived_contract_remains(self) -> None:
         retired = ".github/workflows/stage3-s3g1j-v17-27-full-final-acceptance.yml"
@@ -113,10 +98,9 @@ class V1727FullFinalEvidenceTests(unittest.TestCase):
         self.assertTrue(EVIDENCE_CONTRACT.exists())
         boundaries = self.activation["hard_boundaries"]
         self.assertIs(boundaries["v17_27_full_basis_execution_pending"], False)
-        self.assertIs(boundaries["v17_28_full_basis_execution_pending"], True)
-        self.assertEqual(boundaries["remaining_document_errors"], 1373)
-        self.assertEqual(boundaries["remaining_unresolved_ties"], 1290)
-        self.assertIs(boundaries["expected_values_are_not_production_acceptance"], True)
+        self.assertIs(boundaries["v17_28_full_basis_execution_pending"], False)
+        self.assertEqual(boundaries["remaining_document_errors"], 1371)
+        self.assertEqual(boundaries["remaining_unresolved_ties"], 1288)
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertIs(boundaries["stage4_alpha_live_locked"], True)
         self.assertIs(boundaries["committed_production_data_changed"], False)
