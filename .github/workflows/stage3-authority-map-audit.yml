@@ -7,7 +7,7 @@ on:
     paths:
       - 'governance/stage3_authority_map.json'
       - 'governance/stage3_s3g1j_runtime_manifest.json'
-      - 'governance/stage3_s3g1j_v17_27_full_final.json'
+      - 'governance/stage3_s3g1j_v17_28_full_final.json'
       - 'config/stage3_final_lock.json'
       - 'data/project_status.json'
       - 'scripts/audit_stage3_authority_map.py'
@@ -43,28 +43,29 @@ jobs:
             actual=$(gh pr view "$pr" -R "$GITHUB_REPOSITORY" --json headRefOid --jq '.headRefOid')
             test "$actual" = "$expected"
           }
-          verify_pr 87 fa77d30a2ccdd3664beab01fd7ff7b5d16761726
-          verify_pr 88 d864d518791ec26515cb85626e28d4bf0116d5b1
+          verify_pr 94 6969c58ee60314e3e897e55b132266612c602777
+          verify_pr 96 7dd3e14ccdd9574ce7f4a8f716026ececf254541
+          verify_pr 97 611d402c3b61a35644a27fd33d3955b9976dec7c
           verify_pr 40 1ac525aa0b56cd39b233e5c2da9e44d3707c55cb
           verify_pr 35 40dcab6df468bbf2d47dd48ac77ea150190c279b
-      - name: Verify accepted S3G1J V17.27 full-basis evidence
+      - name: Verify accepted S3G1J V17.28 full-basis evidence
         shell: bash
         run: |
           set -euo pipefail
-          run=30806818977
-          expected_head=fa77d30a2ccdd3664beab01fd7ff7b5d16761726
-          artifact=stage3-s3g1j-v17-27-full-final
-          expected_digest=sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721
+          run=30997260730
+          expected_head=611d402c3b61a35644a27fd33d3955b9976dec7c
+          artifact=stage3-s3g1j-v17-28-full-final
+          expected_digest=sha256:82375169faada969ceafd4356ab0a2707aa14592d5db090c5d3910863d571c8b
           payload=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run")
           test "$(jq -r '.conclusion' <<<"$payload")" = success
           test "$(jq -r '.head_sha' <<<"$payload")" = "$expected_head"
           artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts?per_page=100")
-          count=$(jq -r --arg name "$artifact" '[.artifacts[] | select(.name==$name)] | length' <<<"$artifacts")
-          test "$count" = 1
-          test "$(jq -r --arg name "$artifact" '.artifacts[] | select(.name==$name) | .id' <<<"$artifacts")" = 8854139999
+          test "$(jq -r --arg name "$artifact" '[.artifacts[] | select(.name==$name)] | length' <<<"$artifacts")" = 1
+          test "$(jq -r --arg name "$artifact" '.artifacts[] | select(.name==$name) | .id' <<<"$artifacts")" = 8927455692
           test "$(jq -r --arg name "$artifact" '.artifacts[] | select(.name==$name) | .digest' <<<"$artifacts")" = "$expected_digest"
           test "$(jq -r --arg name "$artifact" '.artifacts[] | select(.name==$name) | .workflow_run.head_sha' <<<"$artifacts")" = "$expected_head"
-      - name: Verify retained upstream candidate and final-evidence runs
+          test "$(jq -r --arg name "$artifact" '.artifacts[] | select(.name==$name) | .expired' <<<"$artifacts")" = false
+      - name: Verify retained upstream evidence runs
         shell: bash
         run: |
           set -euo pipefail
@@ -75,6 +76,7 @@ jobs:
             actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq ".artifacts[] | select(.name==\"$artifact\") | .digest")
             test "$actual" = "$digest"
           }
+          verify_run 30806818977 stage3-s3g1j-v17-27-full-final sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721
           verify_run 30331243641 stage3-s3g3b-industry-classification-ledger sha256:f1da814c71fa698f3f10ce5dc7019bb86770f9d4e15ed7d7823a93a085adc872
           verify_run 30326328965 stage3-s3g1i-financial-pdf-population-probe sha256:3883eb629aaa0325cd1db6d3a1eefc96929c9673711bb3c004217ac6254324b9
           verify_run 30326328969 stage3-s3g3a-capco-industry-history-probe sha256:a635409dbab2fdc61852432acfcb294f97b4468831f23a9fa01320abf39ba9af
@@ -97,23 +99,24 @@ jobs:
           grep -Fq "\"ledger_sha256\": \"$expected_ledger\"" /tmp/s3g2-run.log
           grep -Fq '"gzip_header_mtime": 0' /tmp/s3g2-run.log
           grep -Fq '"errors": []' /tmp/s3g2-run.log
-      - name: Assert execution evidence does not unlock fail-closed gates
+      - name: Assert accepted execution does not unlock fail-closed gates
         run: |
           python - <<'PY'
           import json
           lock=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
           authority=json.load(open('governance/stage3_authority_map.json',encoding='utf-8'))
           project=json.load(open('data/project_status.json',encoding='utf-8'))
-          required=lock['required_gates']
-          g1j=required['S3G1J_FINANCIAL_RAW_VALUES']
-          assert g1j['run_id']==30806818977
-          assert g1j['artifact_id']==8854139999
+          g1j=lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']
+          assert g1j['run_id']==30997260730
+          assert g1j['artifact_id']==8927455692
           assert g1j['execution_pass'] is True
+          assert g1j['document_non_regression_pass'] is True
+          assert g1j['numeric_non_regression_pass'] is True
           assert g1j['data_verdict']=='FAIL_CLOSED'
           assert g1j['final_gate_pass'] is False
-          assert g1j['document_error_count']==1373
-          assert g1j['unresolved_tie_count']==1290
-          assert required['S3G4_EARNINGS_SURPRISE']['run_id'] is None
+          assert g1j['document_error_count']==1371
+          assert g1j['unresolved_tie_count']==1288
+          assert lock['required_gates']['S3G4_EARNINGS_SURPRISE']['run_id'] is None
           assert set(lock['remaining_unlocked_gates'])=={
               'S3G1J_FINANCIAL_RAW_VALUES','S3G4_EARNINGS_SURPRISE'
           }
@@ -123,5 +126,5 @@ jobs:
           assert project['stage4_unlocked'] is False
           assert project['alpha_training_allowed'] is False
           assert project['live_signal_allowed'] is False
-          print('STAGE3_LOCKED_WITH_V17_27_EXECUTION_ACCEPTED_DATA_FAIL_CLOSED')
+          print('STAGE3_LOCKED_WITH_V17_28_EXECUTION_ACCEPTED_DATA_FAIL_CLOSED')
           PY
