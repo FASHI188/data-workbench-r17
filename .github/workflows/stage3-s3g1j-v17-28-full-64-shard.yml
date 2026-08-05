@@ -65,11 +65,12 @@ jobs:
         run: |
           set -euo pipefail
           lock_artifact() {
-            local run="$1" head="$2" artifact_id="$3" artifact_name="$4" digest="$5"
+            local run="$1" head="$2" artifact_id="$3" artifact_name="$4" digest="$5" expected_conclusion="$6"
             local run_payload artifact_payload
             run_payload=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run")
             test "$(jq -r '.head_sha' <<<"$run_payload")" = "$head"
-            test "$(jq -r '.conclusion' <<<"$run_payload")" = success
+            test "$(jq -r '.status' <<<"$run_payload")" = completed
+            test "$(jq -r '.conclusion' <<<"$run_payload")" = "$expected_conclusion"
             artifact_payload=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts?per_page=100")
             test "$(jq -r --arg name "$artifact_name" '[.artifacts[] | select(.name==$name)] | length' <<<"$artifact_payload")" = 1
             test "$(jq -r --arg name "$artifact_name" '.artifacts[] | select(.name==$name) | .id' <<<"$artifact_payload")" = "$artifact_id"
@@ -77,10 +78,13 @@ jobs:
             test "$(jq -r --arg name "$artifact_name" '.artifacts[] | select(.name==$name) | .workflow_run.head_sha' <<<"$artifact_payload")" = "$head"
             test "$(jq -r --arg name "$artifact_name" '.artifacts[] | select(.name==$name) | .expired' <<<"$artifact_payload")" = false
           }
-          lock_artifact "$INPUT_RUN" "$INPUT_HEAD" "$INPUT_ARTIFACT_ID" "$INPUT_ARTIFACT" "$INPUT_DIGEST"
-          lock_artifact "$PREVIOUS_RUN" "$PREVIOUS_HEAD" "$PREVIOUS_ARTIFACT_ID" "$PREVIOUS_ARTIFACT" "$PREVIOUS_DIGEST"
-          lock_artifact "$CANDIDATE_RUN" "$CANDIDATE_HEAD" "$CANDIDATE_ARTIFACT_ID" "$CANDIDATE_ARTIFACT" "$CANDIDATE_DIGEST"
-          lock_artifact "$WRAPPER_RUN" "$WRAPPER_HEAD" "$WRAPPER_ARTIFACT_ID" "$WRAPPER_ARTIFACT" "$WRAPPER_DIGEST"
+          # The frozen V17.21 input run is intentionally overall failure because its
+          # historical workflow converted fail-closed shard data status into job failure.
+          # Its lock-input job and exact immutable input artifact remain authoritative.
+          lock_artifact "$INPUT_RUN" "$INPUT_HEAD" "$INPUT_ARTIFACT_ID" "$INPUT_ARTIFACT" "$INPUT_DIGEST" failure
+          lock_artifact "$PREVIOUS_RUN" "$PREVIOUS_HEAD" "$PREVIOUS_ARTIFACT_ID" "$PREVIOUS_ARTIFACT" "$PREVIOUS_DIGEST" success
+          lock_artifact "$CANDIDATE_RUN" "$CANDIDATE_HEAD" "$CANDIDATE_ARTIFACT_ID" "$CANDIDATE_ARTIFACT" "$CANDIDATE_DIGEST" success
+          lock_artifact "$WRAPPER_RUN" "$WRAPPER_HEAD" "$WRAPPER_ARTIFACT_ID" "$WRAPPER_ARTIFACT" "$WRAPPER_DIGEST" success
       - name: Require merged V17.28 activation and retained V17.27 full-basis authority
         shell: bash
         run: |
