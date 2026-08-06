@@ -1,0 +1,151 @@
+name: Stage3 S3G1J V17.28 P0 PDF Root Cause
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/classify_stage3_s3g1j_v17_28_p0_pdf_root_cause.py'
+      - 'tests/test_stage3_v17_28_p0_pdf_root_cause.py'
+      - '.github/workflows/stage3-s3g1j-v17-28-p0-pdf-root-cause.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONPATH: scripts
+      CURRENT_RUN: '31022605702'
+      CURRENT_HEAD: 'b997f7b91cb2a5fcbb5d8473f428effd26ed5bf0'
+      CURRENT_ARTIFACT_ID: '8937238672'
+      CURRENT_ARTIFACT: 'stage3-s3g1j-v17-28-residual-classification-v1'
+      CURRENT_DIGEST: 'sha256:2c54496b329b719c09f299fe0c2d61ece4b05a0c8859b4a39441012abfb248ad'
+      BASE_RUN: '30734944468'
+      BASE_HEAD: '57cca23e3d7b390a93446dbd99438e3fcb7f6a6c'
+      BASE_ARTIFACT_ID: '8829316913'
+      BASE_ARTIFACT: 'stage3-s3g1j-v17-26-current-p0-diagnostic'
+      BASE_DIGEST: 'sha256:08afc1cde3e48243a7914320baa6ef96b64cf41d55b000063091b3805d171046'
+      DETAIL_RUN: '30746041129'
+      DETAIL_HEAD: '49a05c1b02bc6d4b49e8d825c3e23a092187f8db'
+      DETAIL_ARTIFACT_ID: '8832931244'
+      DETAIL_ARTIFACT: 'stage3-s3g1j-v17-26-p0-candidate-detail-v3'
+      DETAIL_DIGEST: 'sha256:2b6a0086b8180c305531309fe76879d950c53169a46715a232802fe7eef26db5'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Lock three accepted diagnostic artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          check_artifact() {
+            local run_id="$1" head="$2" artifact_id="$3" name="$4" digest="$5"
+            run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id")
+            test "$(jq -r '.status' <<<"$run")" = completed
+            test "$(jq -r '.conclusion' <<<"$run")" = success
+            test "$(jq -r '.head_sha' <<<"$run")" = "$head"
+            artifact=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id")
+            test "$(jq -r '.name' <<<"$artifact")" = "$name"
+            test "$(jq -r '.digest' <<<"$artifact")" = "$digest"
+            test "$(jq -r '.expired' <<<"$artifact")" = false
+            test "$(jq -r '.workflow_run.id' <<<"$artifact")" = "$run_id"
+            test "$(jq -r '.workflow_run.head_sha' <<<"$artifact")" = "$head"
+          }
+          check_artifact "$CURRENT_RUN" "$CURRENT_HEAD" "$CURRENT_ARTIFACT_ID" "$CURRENT_ARTIFACT" "$CURRENT_DIGEST"
+          check_artifact "$BASE_RUN" "$BASE_HEAD" "$BASE_ARTIFACT_ID" "$BASE_ARTIFACT" "$BASE_DIGEST"
+          check_artifact "$DETAIL_RUN" "$DETAIL_HEAD" "$DETAIL_ARTIFACT_ID" "$DETAIL_ARTIFACT" "$DETAIL_DIGEST"
+      - name: Run fail-closed root-cause contracts
+        run: python -m unittest tests.test_stage3_v17_28_p0_pdf_root_cause -v
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-28-residual-classification-v1
+          path: input/current
+          repository: FASHI188/data-workbench-r17
+          run-id: 31022605702
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-26-current-p0-diagnostic
+          path: input/base
+          repository: FASHI188/data-workbench-r17
+          run-id: 30734944468
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-26-p0-candidate-detail-v3
+          path: input/detail
+          repository: FASHI188/data-workbench-r17
+          run-id: 30746041129
+          github-token: ${{ github.token }}
+      - name: Build exact-source PDF root-cause ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          current=$(find input/current -name 's3g1j_v17_28_p0_safe_near_complete.csv.gz' -print -quit)
+          base=$(find input/base -name 'stage3_s3g1j_v17_26_p0_diagnostic.json' -print -quit)
+          detail=$(find input/detail -name 'stage3_s3g1j_v17_26_p0_candidate_detail_v3.json' -print -quit)
+          raw=$(find input/detail -name 'stage3_s3g1j_v17_26_p0_candidate_spatial_v2_raw.json' -print -quit)
+          test -n "$current" && test -n "$base" && test -n "$detail" && test -n "$raw"
+          python scripts/classify_stage3_s3g1j_v17_28_p0_pdf_root_cause.py \
+            --current-p0 "$current" \
+            --base-diagnostic "$base" \
+            --candidate-detail "$detail" \
+            --candidate-raw "$raw" \
+            --out-root output
+      - name: Verify exact classification and deterministic identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip, csv, json
+          summary=json.load(open('output/stage3_s3g1j_v17_28_p0_pdf_root_cause_summary.json',encoding='utf-8'))
+          safe=json.load(open('output/stage3_s3g1j_v17_28_safe_exact_source_targets.json',encoding='utf-8'))
+          assert summary['pass'] is True and summary['errors']==[]
+          assert summary['classification_counts']=={
+            'SAFE_EXACT_SOURCE_CANDIDATE':7,
+            'DIAGNOSTIC_ONLY':6,
+            'DO_NOT_PROMOTE':1,
+          }
+          assert summary['safe_current_identity_zero_residual_count']==7
+          assert summary['safe_prior_identity_zero_residual_count']==7
+          assert summary['ledger_gzip_sha256']=='e3ba4e23b81dcb24d24def114cd6a70289c2f7df654b1d81238638675ec1a92c'
+          assert summary['ledger_plaintext_sha256']=='0861076fdf2547d1269df2b6c6000fbf1ea3b5998ad1658ae3c7fa028157ce1a'
+          assert summary['safe_manifest_sha256']=='c3ed36d0bd79c0dacfbc3e5375612619c7cc429a09eb3c4b10fcde77886c8a34'
+          assert summary['pdf_binaries_redownloaded'] is False
+          assert summary['ocr_used'] is False
+          assert summary['equity_inferred_from_assets_minus_liabilities'] is False
+          assert summary['candidate_parser_authorized'] is False
+          assert safe['announcement_ids']==summary['safe_exact_source_announcement_ids']
+          with gzip.open('output/stage3_s3g1j_v17_28_p0_pdf_root_cause.csv.gz','rt',encoding='utf-8',newline='') as f:
+              rows=list(csv.DictReader(f))
+          assert len(rows)==14
+          assert sum(r['classification']=='SAFE_EXACT_SOURCE_CANDIDATE' for r in rows)==7
+          assert all(r['current_identity_residual']=='0.00' and r['prior_identity_residual']=='0.00' for r in rows if r['classification']=='SAFE_EXACT_SOURCE_CANDIDATE')
+          print('S3G1J_V17_28_P0_PDF_ROOT_CAUSE_PASS')
+          PY
+      - name: Assert diagnostic-only boundaries
+        run: |
+          test ! -e data/stage3_financial_documents.csv.gz
+          test ! -e data/stage3_financial_raw_values.csv.gz
+          python - <<'PY'
+          import json
+          summary=json.load(open('output/stage3_s3g1j_v17_28_p0_pdf_root_cause_summary.json',encoding='utf-8'))
+          assert summary['parser_changed'] is False
+          assert summary['runtime_authority_changed'] is False
+          assert summary['production_data_changed'] is False
+          assert summary['stage3_status']=='NOT_READY'
+          assert summary['stage4_alpha_live_locked'] is True
+          assert summary['candidate_parser_authorized'] is False
+          print('S3G1J_V17_28_P0_DIAGNOSTIC_BOUNDARY_PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-28-p0-pdf-root-cause-v1
+          path: output
+          if-no-files-found: error
+          retention-days: 90
