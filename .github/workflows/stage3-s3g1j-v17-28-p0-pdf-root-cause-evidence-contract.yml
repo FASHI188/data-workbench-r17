@@ -92,7 +92,8 @@ jobs:
           assert [row['announcement_id'] for row in rows if row['classification']=='DO_NOT_PROMOTE']==['1219834247']
           assert all(row['source_identity_locked']=='True' for row in rows)
           assert all(row['current_identity_residual']=='0.00' and row['prior_identity_residual']=='0.00' for row in rows if row['classification']=='SAFE_EXACT_SOURCE_CANDIDATE')
-          assert all(row['candidate_authorized']=='False' for row in rows)
+          assert all(row['candidate_authorized']=='True' for row in rows if row['classification']=='SAFE_EXACT_SOURCE_CANDIDATE')
+          assert all(row['candidate_authorized']=='False' for row in rows if row['classification']!='SAFE_EXACT_SOURCE_CANDIDATE')
           assert summary['classification_counts']=={
               'SAFE_EXACT_SOURCE_CANDIDATE':7,
               'DIAGNOSTIC_ONLY':6,
