@@ -1,0 +1,100 @@
+name: Stage3 S3G1J V17.26 Evidence Contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'governance/stage3_s3g1j_v17_26_full_final.json'
+      - 'governance/stage3_s3g1j_v17_26_residual_classification.json'
+      - 'governance/stage3_s3g1j_v17_26_p0_diagnostic.json'
+      - 'governance/stage3_workflow_activation_manifest.json'
+      - 'scripts/build_stage3_s3g1j_v17_26_exact_target_ledger.py'
+      - 'scripts/classify_stage3_s3g1j_v17_26_residuals.py'
+      - 'scripts/compare_stage3_s3g1j_v17_26_full_final_v2.py'
+      - 'scripts/compare_stage3_s3g1j_v17_26_full_values.py'
+      - 'scripts/diagnose_stage3_s3g1j_v17_26_p0.py'
+      - 'scripts/diagnose_stage3_s3g1j_v17_26_p0_candidate_spatial.py'
+      - 'scripts/accept_stage3_s3g1j_v17_26_p0_candidate_detail_v3.py'
+      - 'scripts/extract_stage3_financial_pdf_values_v16.py'
+      - 'scripts/promote_stage3_s3g1j_v17_26_full_shards.py'
+      - 'scripts/promote_stage3_s3g1j_v17_26_full_shards_v3.py'
+      - 'scripts/stage3_financial_pdf_parser_v18.py'
+      - 'tests/test_stage3_s3g1j_v17_26_residual_classifier.py'
+      - 'tests/test_stage3_s3g1j_v17_26_residual_classification_evidence.py'
+      - 'tests/test_stage3_s3g1j_v17_26_p0_diagnostic.py'
+      - 'tests/test_stage3_s3g1j_v17_26_p0_diagnostic_evidence.py'
+      - 'tests/test_stage3_v17_26_balance_only_parser.py'
+      - 'tests/test_stage3_v17_26_full_final_comparator.py'
+      - 'tests/test_stage3_v17_26_full_final_evidence.py'
+      - '.github/workflows/stage3-s3g1j-v17-26-evidence-contract.yml'
+
+permissions:
+  contents: read
+
+env:
+  PYTHONPATH: scripts
+
+jobs:
+  evidence-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified evidence runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - name: Verify accepted V17.26 full-final governance evidence
+        run: python -m unittest tests.test_stage3_v17_26_full_final_evidence -v
+      - name: Verify accepted V17.26 residual classification evidence
+        run: |
+          python -m unittest \
+            tests.test_stage3_s3g1j_v17_26_residual_classifier \
+            tests.test_stage3_s3g1j_v17_26_residual_classification_evidence \
+            -v
+      - name: Verify accepted V17.26 P0 diagnostic evidence
+        run: |
+          python -m unittest \
+            tests.test_stage3_s3g1j_v17_26_p0_diagnostic \
+            tests.test_stage3_s3g1j_v17_26_p0_diagnostic_evidence \
+            -v
+      - name: Verify V17.26 exact-source parser and extractor scope
+        run: python -m unittest tests.test_stage3_v17_26_balance_only_parser -v
+      - name: Verify fail-closed document comparator semantics
+        run: python -m unittest tests.test_stage3_v17_26_full_final_comparator -v
+      - name: Import final, classification and P0 evidence utilities
+        run: |
+          python - <<'PY'
+          import accept_stage3_s3g1j_v17_26_p0_candidate_detail_v3 as p0_accept
+          import build_stage3_s3g1j_v17_26_exact_target_ledger as target
+          import classify_stage3_s3g1j_v17_26_residuals as classifier
+          import compare_stage3_s3g1j_v17_26_full_final_v2 as documents
+          import compare_stage3_s3g1j_v17_26_full_values as values
+          import diagnose_stage3_s3g1j_v17_26_p0 as p0_base
+          import diagnose_stage3_s3g1j_v17_26_p0_candidate_spatial as p0_detail
+          import extract_stage3_financial_pdf_values_v16 as extractor
+          import promote_stage3_s3g1j_v17_26_full_shards_v3 as promotion
+          import stage3_financial_pdf_parser_v18 as parser
+          assert callable(target.main)
+          assert callable(classifier.main)
+          assert sum(classifier.EXPECTED_CLASS_COUNTS.values()) == 1378
+          assert classifier.EXPECTED_CLASS_COUNTS[
+              'SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_3'
+          ] == 21
+          assert classifier.RECOVERED_EXIT_IDS == ('1207035181','1221568845')
+          assert callable(p0_base.main)
+          assert callable(p0_detail.main)
+          assert callable(p0_accept.main)
+          assert p0_accept.EXPECTED_IDENTITY_IDS == (
+              '1200907104','1201708762','1202195310','1202774611','1203358200'
+          )
+          assert p0_accept.EXPECTED_PERIOD_OR_ROLE_IDS == ('1204077386','1205543437')
+          assert callable(documents.main)
+          assert callable(values.main)
+          assert extractor.RUNTIME_GENERATION == 'V17.26'
+          assert extractor.SHARD_GATE == 'S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_26'
+          assert parser.METHOD == 'V17_26_EXACT_SOURCE_BALANCE_ONLY_PRODUCTION'
+          assert callable(promotion.main)
+          print('S3G1J_V17_26_EVIDENCE_IMPORT_PASS')
+          PY

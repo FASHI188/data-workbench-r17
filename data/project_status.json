@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 4,
   "authoritative": true,
   "project_phase": "RESEARCH_ONLY",
   "stage2": {
@@ -13,7 +13,43 @@
     "status": "NOT_READY",
     "authoritative_final_manifest": "data/stage3_final/manifest.json",
     "final_manifest_present_on_main": false,
-    "reason": "Stage3 does not yet have a final all-gates PASS manifest on main. Partial or accepted-candidate PR evidence cannot unlock Stage4 or Alpha training."
+    "completed_final_gates_on_clean_integration": ["S3G2_ANNOUNCEMENT_LEDGER"],
+    "pending_final_gates": ["S3G1J_FINANCIAL_RAW_VALUES", "S3G4_EARNINGS_SURPRISE"],
+    "s3g1j": {
+      "formal_runtime_generation": "V17.28",
+      "runtime_status": "FULL_BASIS_ACCEPTED_DATA_FAIL_CLOSED",
+      "runtime_promotion_evidence": "governance/stage3_s3g1j_v17_28_runtime_promotion.json",
+      "full_basis_evidence": "governance/stage3_s3g1j_v17_28_full_final.json",
+      "runtime_wrapper_pr": 94,
+      "runtime_wrapper_run_id": 30978715158,
+      "runtime_wrapper_artifact_id": 8919289427,
+      "runtime_wrapper_artifact_digest": "sha256:f8639b4a2eac2d09b16586365b7932d255457ce66aad2484547bb517d0d185a6",
+      "last_completed_full_basis_generation": "V17.28",
+      "status": "RUNTIME_V17_28_FULL_BASIS_V17_28_ACCEPTED_FAIL_CLOSED",
+      "source_execution_pr": 96,
+      "source_execution_run_id": 30981127011,
+      "acceptance_pr": 97,
+      "governance_pr": 98,
+      "accepted_run_id": 30997260730,
+      "accepted_head_sha": "611d402c3b61a35644a27fd33d3955b9976dec7c",
+      "accepted_artifact_id": 8927455692,
+      "accepted_artifact_digest": "sha256:82375169faada969ceafd4356ab0a2707aa14592d5db090c5d3910863d571c8b",
+      "document_count": 121354,
+      "numeric_observation_count": 1051799,
+      "document_error_count": 1371,
+      "unresolved_tie_count": 1288,
+      "execution_pass": true,
+      "document_non_regression_pass": true,
+      "numeric_non_regression_pass": true,
+      "independent_artifact_recheck_pass": true,
+      "data_verdict": "FAIL_CLOSED",
+      "next_full_basis_generation": null,
+      "next_full_basis_status": "NONE_CURRENT_RUNTIME_ACCEPTED",
+      "final_gate_pass": false
+    },
+    "s3g2_semantic_ledger_sha256": "0eb139572865628283f86c981990e59e076d5ef2a978a5967aace90d553e30dd",
+    "s3g2_deterministic_replay_count": 2,
+    "reason": "Stage3 does not yet have a final all-gates PASS manifest on main. V17.28 is the formal runtime and its fresh 64-shard full basis is machine accepted and independently verified, but S3G1J remains FAIL_CLOSED with 1,371 document errors and 1,288 unresolved ties. S3G4 remains final-gate pending and freshness is stale."
   },
   "stage4_unlocked": false,
   "alpha_training_allowed": false,
@@ -23,22 +59,33 @@
     "policy": "config/data_freshness_policy.json",
     "stage2_coverage_end": "2026-07-24",
     "current_master_as_of": "2026-07-24",
-    "assessed_as_of": "2026-07-30",
-    "reason": "The frozen market/lifecycle/corporate-action base is older than the hard calendar-day stale threshold and Stage3 announcement/financial coverage is not finalized on main."
+    "assessed_as_of": "2026-08-05",
+    "reason": "The frozen market/lifecycle/corporate-action base is older than the hard calendar-day stale threshold and Stage3 has not reached an all-gates final PASS."
+  },
+  "reproducibility": {
+    "status": "PARTIAL_PASS_PROJECT_STILL_LOCKED",
+    "s3g1j_runtime_wrapper_reproducible": true,
+    "s3g1j_last_completed_full_basis_execution_reproducible": true,
+    "s3g1j_fresh_v17_28_full_basis_execution_reproducible": true,
+    "s3g1j_full_basis_non_regression_pass": true,
+    "s3g1j_full_basis_data_gate_pass": false,
+    "s3g2_same_input_same_semantic_sha": true,
+    "s3g2_replays": 2,
+    "artifact_archive_digest_is_transport_only": true,
+    "stage3_final_fingerprint_uses_semantic_gate_evidence": true,
+    "overall_pass": false,
+    "reason": "The V17.28 runtime and full-basis execution are reproducible and non-regression accepted, but the S3G1J data verdict remains FAIL_CLOSED; S3G4, freshness and the complete Stage3 freeze are not final."
   },
   "unlock_requirements": {
     "stage2_final_pass": true,
     "stage3_final_pass": false,
     "freshness_pass": false,
     "reproducibility_pass": false,
-    "required_for_stage4": [
-      "stage2_final_pass",
-      "stage3_final_pass",
-      "freshness_pass",
-      "reproducibility_pass"
-    ]
+    "required_for_stage4": ["stage2_final_pass", "stage3_final_pass", "freshness_pass", "reproducibility_pass"]
   },
   "notes": [
+    "V17.28 full-basis execution acceptance is not an S3G1J final data PASS and does not unlock Stage4.",
+    "The accepted V17.28 counts are production full-basis facts, but the residual data verdict remains FAIL_CLOSED.",
     "Stage-local fields such as data/stage2_final/manifest.json:alpha_training_allowed mean only that Stage2 no longer blocks downstream work; they are not project-level authorization.",
     "Any missing, stale, contradictory, or unverifiable readiness evidence is fail-closed."
   ]
