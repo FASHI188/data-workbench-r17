@@ -9,6 +9,8 @@ import stage3_financial_pdf_parser_v21_candidate_v2 as candidate
 
 class V1729ExactSourceCandidateV2Tests(unittest.TestCase):
     def test_target_population_and_tolerance_unchanged(self) -> None:
+        self.assertEqual(candidate.METHOD, "V17_29_EXACT_SOURCE_SPLIT_GROUP_EQUITY_CANDIDATE_V2")
+        self.assertEqual(candidate.METHODOLOGY_VERSION, "V3.3.12-V17.29-CANDIDATE-V2")
         self.assertEqual(len(candidate.TARGETS), 7)
         self.assertEqual(candidate.IDENTITY_TOLERANCE, Decimal("0.005"))
         self.assertEqual(candidate.MAX_LABEL_FRAGMENT_ROWS, 3)
