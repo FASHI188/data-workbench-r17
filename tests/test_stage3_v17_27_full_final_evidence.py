@@ -4,7 +4,6 @@ import json
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "governance/stage3_s3g1j_v17_27_full_final.json"
 RUNTIME = ROOT / "governance/stage3_s3g1j_runtime_manifest.json"
@@ -27,10 +26,7 @@ class V1727FullFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(run["head_sha"], "fa77d30a2ccdd3664beab01fd7ff7b5d16761726")
         self.assertEqual(run["conclusion"], "SUCCESS")
         self.assertEqual(run["artifact_id"], 8854139999)
-        self.assertEqual(
-            run["artifact_digest"],
-            "sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721",
-        )
+        self.assertEqual(run["artifact_digest"], "sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721")
 
     def test_full_basis_accounting_and_verdict_are_frozen(self) -> None:
         result = self.evidence["full_basis_result"]
@@ -69,9 +65,9 @@ class V1727FullFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(hashes["raw_audit_json_sha256"], "80809e9d9b24b365420849430eb5d61e261a15e790b56f29babf39ca2f914092")
         self.assertEqual(hashes["execution_json_sha256"], "5582eb95e86aa4e4e35a14fab9f4cf0aea5c6396dc023dbc47e115c99b11a7ec")
 
-    def test_v17_27_is_historical_after_v17_28_full_acceptance(self) -> None:
-        self.assertEqual(self.runtime["schema_version"], 11)
-        self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"], "V17.28")
+    def test_v17_27_is_historical_under_v17_29_runtime(self) -> None:
+        self.assertEqual(self.runtime["schema_version"], 12)
+        self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"], "V17.29")
         latest = self.runtime["full_basis_last_completed_final"]
         self.assertEqual(latest["generation"], "V17.28")
         self.assertEqual(latest["run"], 30997260730)
@@ -82,13 +78,19 @@ class V1727FullFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(previous["document_error_count"], 1373)
         self.assertEqual(previous["unresolved_tie_count"], 1290)
         self.assertEqual(previous["verdict"], "FAIL_CLOSED")
-        self.assertEqual(self.activation["schema_version"], 13)
+
+        self.assertEqual(self.activation["schema_version"], 14)
         accepted = self.activation["accepted_v17_27_full_basis_evidence"]
         self.assertEqual(accepted["run"], 30806818977)
         self.assertEqual(accepted["artifact_id"], 8854139999)
         self.assertEqual(accepted["final_data_verdict"], "FAIL_CLOSED")
         self.assertIs(accepted["historical_full_basis_authority_retained"], True)
         self.assertIs(accepted["last_completed_full_basis_authority"], False)
+        current = self.activation["accepted_production_runtime"]
+        self.assertEqual(current["generation"], "V17.29")
+        self.assertTrue(current["full_basis_execution_pending"])
+        self.assertEqual(current["last_completed_full_basis_generation"], "V17.28")
+        self.assertEqual(current["execution_verdict"], "PENDING")
 
     def test_one_shot_is_retired_and_long_lived_contract_remains(self) -> None:
         retired = ".github/workflows/stage3-s3g1j-v17-27-full-final-acceptance.yml"
@@ -99,8 +101,10 @@ class V1727FullFinalEvidenceTests(unittest.TestCase):
         boundaries = self.activation["hard_boundaries"]
         self.assertIs(boundaries["v17_27_full_basis_execution_pending"], False)
         self.assertIs(boundaries["v17_28_full_basis_execution_pending"], False)
+        self.assertIs(boundaries["v17_29_full_basis_execution_pending"], True)
         self.assertEqual(boundaries["remaining_document_errors"], 1371)
         self.assertEqual(boundaries["remaining_unresolved_ties"], 1288)
+        self.assertTrue(boundaries["expected_values_are_not_production_acceptance"])
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertIs(boundaries["stage4_alpha_live_locked"], True)
         self.assertIs(boundaries["committed_production_data_changed"], False)
