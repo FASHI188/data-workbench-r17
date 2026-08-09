@@ -1,0 +1,140 @@
+name: Stage3 S3G1J V17.29 Seven Exact Source Candidate Safety
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/stage3_financial_pdf_parser_v21_candidate.py'
+      - 'scripts/build_stage3_s3g1j_v17_29_candidate_full.py'
+      - 'tests/test_stage3_s3g1j_v17_29_exact_source_candidate.py'
+      - '.github/workflows/stage3-s3g1j-v17-29-candidate-safety.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  SOURCE_RUN: '30997260730'
+  SOURCE_HEAD: '611d402c3b61a35644a27fd33d3955b9976dec7c'
+  SOURCE_ARTIFACT_ID: '8927455692'
+  SOURCE_ARTIFACT: 'stage3-s3g1j-v17-28-full-final'
+  SOURCE_DIGEST: 'sha256:82375169faada969ceafd4356ab0a2707aa14592d5db090c5d3910863d571c8b'
+  DOCUMENTS_SHA256: '7589750684ec26280c095d4b3a2d21b114c6bb77a882f4633c2ea128de5f38f3'
+  VALUES_SHA256: '2c6e6255be58e86a0b24b889a67e8dccb43835eb9770ca690dde7429b477bbf7'
+  FORMAL_V17_28_BLOB: 'b299accbd9b19c6f909b883738378b0119f855b9'
+
+jobs:
+  candidate-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified candidate runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - name: Lock governed experiment authority and formal V17.28 parser
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/stage3_financial_pdf_parser_v20.py)" = "$FORMAL_V17_28_BLOB"
+          python - <<'PY'
+          import json
+          p=json.load(open('governance/stage3_s3g1j_v17_29_exact_source_safety.json',encoding='utf-8'))
+          assert p['authorization_boundary']['candidate_experiment_eligible'] is True
+          assert p['authorization_boundary']['candidate_parser_promotion_authorized'] is False
+          assert p['authorization_boundary']['parser_implemented'] is False
+          assert p['full_population_routing']['route_counts']=={
+              'DELEGATE_FORMAL_V17_28_UNCHANGED':121347,
+              'V17_29_PRE_CANDIDATE_EXACT_SOURCE_DIAGNOSTIC':7,
+          }
+          assert p['activation_contract']['identity_fields']==['source_sha256','source_bytes','economic_date']
+          assert len(p['targets'])==7 and all(t['candidate_experiment_eligible'] is True for t in p['targets'])
+          print('V17_29_EXPERIMENT_AUTHORITY_LOCK_PASS')
+          PY
+      - name: Lock accepted V17.28 full-basis artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.head_sha' <<<"$run")" = "$SOURCE_HEAD"
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts?per_page=100")
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '[.artifacts[]|select(.name==$name)]|length' <<<"$artifacts")" = 1
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[]|select(.name==$name)|.id' <<<"$artifacts")" = "$SOURCE_ARTIFACT_ID"
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[]|select(.name==$name)|.digest' <<<"$artifacts")" = "$SOURCE_DIGEST"
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[]|select(.name==$name)|.expired' <<<"$artifacts")" = false
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-28-full-final
+          path: accepted
+          repository: FASHI188/data-workbench-r17
+          run-id: 30997260730
+          github-token: ${{ github.token }}
+      - name: Lock accepted source ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          documents=$(find accepted -name stage3_financial_documents.csv.gz -print -quit)
+          values=$(find accepted -name stage3_financial_raw_values.csv.gz -print -quit)
+          test -n "$documents" && test -n "$values"
+          test "$(sha256sum "$documents"|awk '{print $1}')" = "$DOCUMENTS_SHA256"
+          test "$(sha256sum "$values"|awk '{print $1}')" = "$VALUES_SHA256"
+          echo "DOCUMENTS=$documents" >> "$GITHUB_ENV"
+          echo "VALUES=$values" >> "$GITHUB_ENV"
+      - name: Run candidate fail-closed contracts
+        run: |
+          python -m unittest tests.test_stage3_s3g1j_v17_29_exact_source_candidate -v
+          python -m py_compile scripts/stage3_financial_pdf_parser_v21_candidate.py scripts/build_stage3_s3g1j_v17_29_candidate_full.py
+      - name: Build complete V17.29 candidate basis
+        run: |
+          mkdir -p build/candidate
+          python scripts/build_stage3_s3g1j_v17_29_candidate_full.py --documents "$DOCUMENTS" --values "$VALUES" --out build/candidate
+      - name: Enforce exact candidate population and zero-drift boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import csv,gzip,json
+          from collections import Counter
+          from pathlib import Path
+          root=Path('build/candidate')
+          r=json.loads((root/'stage3_s3g1j_v17_29_candidate_safety.json').read_text(encoding='utf-8'))
+          ids=['1215186538','1219426855','1219792633','1219840508','1219879687','1220087244','1221006100']
+          assert r['gate']=='S3G1J_V17_29_SEVEN_EXACT_SOURCE_CANDIDATE_SAFETY_V1'
+          assert r['candidate_only'] is True and r['formal_runtime_generation']=='V17.28' and r['candidate_generation']=='V17.29'
+          assert r['target_announcement_ids']==ids and r['target_count']==7 and r['target_numeric_rows']==21
+          assert r['source_document_rows']==121354 and r['candidate_document_rows']==121354
+          assert r['source_numeric_rows']==1051799 and r['candidate_numeric_rows']==1051820
+          assert r['source_document_errors']==1371 and r['candidate_document_errors']==1364 and r['document_error_reduction']==7
+          assert r['source_unresolved_tie_taxonomy']=={'TIE_SOURCE_INCOMPLETE':1274,'TIE_VALUE_CONFLICT':14}
+          assert r['candidate_unresolved_tie_taxonomy']=={'TIE_SOURCE_INCOMPLETE':1267,'TIE_VALUE_CONFLICT':14}
+          assert r['source_unresolved_ties']==1288 and r['candidate_unresolved_ties']==1281 and r['unresolved_tie_reduction']==7
+          assert r['non_target_document_rows']==121347 and r['non_target_document_exact_equal'] is True
+          assert r['existing_numeric_rows']==1051799 and r['existing_numeric_exact_equal'] is True
+          assert r['source_existing_numeric_semantic_sha256']==r['candidate_existing_numeric_semantic_sha256']
+          assert r['changed_document_ids']==ids and r['target_numeric_distribution']=={aid:3 for aid in ids}
+          assert r['accounting_tolerance']=='0.005'
+          for key in ['non_balance_values_promoted','e_equals_a_minus_l_inference','ocr_enabled','fuzzy_alias_matching_enabled','source_policy_relaxed','point_in_time_policy_relaxed','issuer_gate_relaxed','formal_runtime_changed','production_data_changed','candidate_promotion_authorized','main_changed']:
+              assert r[key] is False,key
+          assert r['final_data_verdict']=='FAIL_CLOSED' and r['stage3_status']=='NOT_READY' and r['stage4_alpha_live_locked'] is True
+          assert r['pass'] is True and r['errors']==[]
+          with gzip.open(root/'stage3_financial_values_v17_29_candidate.csv.gz','rt',encoding='utf-8',newline='') as f:
+              vals=[x for x in csv.DictReader(f) if x['announcement_id'] in ids]
+          assert len(vals)==21 and Counter(x['announcement_id'] for x in vals)==Counter({aid:3 for aid in ids})
+          assert all(x['source_format']=='PDF' and x['extraction_method']=='V17_29_EXACT_SOURCE_SPLIT_GROUP_EQUITY_CANDIDATE' for x in vals)
+          print('S3G1J_V17_29_CANDIDATE_FULL_BASIS_PASS')
+          PY
+      - name: Record candidate output identities
+        run: sha256sum build/candidate/* | sort | tee build/candidate/output_sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-29-seven-exact-source-candidate-safety
+          path: build/candidate
+          retention-days: 30
+          compression-level: 0
