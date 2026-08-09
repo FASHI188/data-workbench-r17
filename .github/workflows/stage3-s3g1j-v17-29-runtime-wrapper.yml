@@ -1,0 +1,249 @@
+name: Stage3 S3G1J V17.29 Runtime Wrapper Contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/stage3_financial_pdf_parser_v21_promotion_safety.py'
+      - 'scripts/stage3_financial_pdf_parser_v21.py'
+      - 'scripts/extract_stage3_financial_pdf_values_v19.py'
+      - 'tests/test_stage3_v17_29_runtime_wrapper.py'
+      - 'tests/test_stage3_v17_29_runtime_wrapper_pending_manifest.py'
+      - 'governance/stage3_s3g1j_v17_29_runtime_wrapper_pending.json'
+      - '.github/workflows/stage3-s3g1j-v17-29-runtime-wrapper.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  PROMOTION_PR: '107'
+  PROMOTION_HEAD: '4ea4ac01bcca3e580d73fc37378c2658df8f4b28'
+  PROMOTION_RUN: '31311296836'
+  PROMOTION_ARTIFACT_ID: '9037500964'
+  PROMOTION_ARTIFACT: 'stage3-s3g1j-v17-29-production-promotion-safety'
+  PROMOTION_DIGEST: 'sha256:967727cf95d9cd5d923e4f59f9cbedfe3e17599ceb31a1df06fa607ab75c4d12'
+  PROMOTION_REPORT_SHA256: 'adcf8ad787957e1d9fba1961218de5919bbd202d33c51120dc811b0ed1de25fe'
+  GOVERNANCE_PR: '108'
+  GOVERNANCE_HEAD: '629abc600cb3e483e082103c6ced4595a032fd7b'
+  GOVERNANCE_MERGE: '5b416a6cfa017593d585b51eff6db1d88296dc4f'
+  FORMAL_V17_28_PARSER_BLOB: 'b299accbd9b19c6f909b883738378b0119f855b9'
+  FORMAL_V17_28_EXTRACTOR_BLOB: '49af6c8ac6330d9ad1a58c3d668f0e96d52fcf22'
+
+jobs:
+  runtime-wrapper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - name: Lock formal V17.28 files and merged promotion-safety governance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/stage3_financial_pdf_parser_v20.py)" = "$FORMAL_V17_28_PARSER_BLOB"
+          test "$(git hash-object scripts/extract_stage3_financial_pdf_values_v18.py)" = "$FORMAL_V17_28_EXTRACTOR_BLOB"
+          gov=$(gh pr view "$GOVERNANCE_PR" -R "$GITHUB_REPOSITORY" --json headRefOid,mergedAt,mergeCommit)
+          test "$(jq -r '.headRefOid' <<<"$gov")" = "$GOVERNANCE_HEAD"
+          test -n "$(jq -r '.mergedAt // ""' <<<"$gov")"
+          test "$(jq -r '.mergeCommit.oid' <<<"$gov")" = "$GOVERNANCE_MERGE"
+          python - <<'PY'
+          import json
+          e=json.load(open('governance/stage3_s3g1j_v17_29_production_promotion_safety.json',encoding='utf-8'))
+          assert e['schema_version']==1
+          assert e['status']=='MACHINE_ACCEPTED_PRODUCTION_PROMOTION_SAFETY_ONLY'
+          assert e['execution']['pr']==107
+          assert e['execution']['head_sha']=='4ea4ac01bcca3e580d73fc37378c2658df8f4b28'
+          assert e['execution']['run_id']==31311296836
+          assert e['execution']['artifact_id']==9037500964
+          assert e['execution']['artifact_digest']=='sha256:967727cf95d9cd5d923e4f59f9cbedfe3e17599ceb31a1df06fa607ab75c4d12'
+          assert e['authorization_boundary']['runtime_promotion_authorized'] is False
+          assert e['authorization_boundary']['formal_runtime_changed'] is False
+          print('V17_29_PROMOTION_GOVERNANCE_LOCK_PASS')
+          PY
+      - name: Lock closed-unmerged promotion execution and artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh pr view "$PROMOTION_PR" -R "$GITHUB_REPOSITORY" --json headRefOid,state,mergedAt)
+          test "$(jq -r '.headRefOid' <<<"$pr")" = "$PROMOTION_HEAD"
+          test "$(jq -r '.state' <<<"$pr")" = CLOSED
+          test "$(jq -r '.mergedAt // ""' <<<"$pr")" = ""
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PROMOTION_RUN")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.head_sha' <<<"$run")" = "$PROMOTION_HEAD"
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PROMOTION_RUN/artifacts?per_page=100")
+          test "$(jq -r --arg name "$PROMOTION_ARTIFACT" '[.artifacts[]|select(.name==$name)]|length' <<<"$artifacts")" = 1
+          test "$(jq -r --arg name "$PROMOTION_ARTIFACT" '.artifacts[]|select(.name==$name)|.id' <<<"$artifacts")" = "$PROMOTION_ARTIFACT_ID"
+          test "$(jq -r --arg name "$PROMOTION_ARTIFACT" '.artifacts[]|select(.name==$name)|.digest' <<<"$artifacts")" = "$PROMOTION_DIGEST"
+          test "$(jq -r --arg name "$PROMOTION_ARTIFACT" '.artifacts[]|select(.name==$name)|.expired' <<<"$artifacts")" = false
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-29-production-promotion-safety
+          path: accepted-promotion
+          repository: FASHI188/data-workbench-r17
+          run-id: 31311296836
+          github-token: ${{ github.token }}
+      - name: Verify accepted promotion report
+        shell: bash
+        run: |
+          set -euo pipefail
+          report=$(find accepted-promotion -name stage3_s3g1j_v17_29_production_promotion_safety.json -print -quit)
+          test -n "$report"
+          test "$(sha256sum "$report"|awk '{print $1}')" = "$PROMOTION_REPORT_SHA256"
+          echo "PROMOTION_REPORT=$report" >> "$GITHUB_ENV"
+          python - "$report" <<'PY'
+          import json,sys
+          r=json.load(open(sys.argv[1],encoding='utf-8'))
+          assert r['pass'] is True and r['errors']==[]
+          assert r['target_announcement_ids']==['1215186538','1219426855','1219792633','1219840508','1219879687','1220087244','1221006100']
+          assert r['promotion_document_rows']==121354
+          assert r['promotion_numeric_rows']==1051820
+          assert r['promotion_document_errors']==1364
+          assert r['promotion_unresolved_ties']==1281
+          assert r['runtime_promotion_authorized'] is False
+          assert r['formal_runtime_changed'] is False
+          print('V17_29_PROMOTION_REPORT_LOCK_PASS')
+          PY
+      - name: Run inactive wrapper and pending-authority contracts
+        run: |
+          python -m unittest \
+            tests.test_stage3_v17_29_runtime_wrapper \
+            tests.test_stage3_v17_29_runtime_wrapper_pending_manifest \
+            -v
+          python -m py_compile \
+            scripts/stage3_financial_pdf_parser_v21_promotion_safety.py \
+            scripts/stage3_financial_pdf_parser_v21.py \
+            scripts/extract_stage3_financial_pdf_values_v19.py
+      - name: Verify seven real sources against accepted promotion evidence
+        run: |
+          mkdir -p build/v17_29_runtime_wrapper
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          import requests
+          import stage3_financial_pdf_parser_v21 as parser
+
+          accepted=json.load(open(os.environ['PROMOTION_REPORT'],encoding='utf-8'))
+          by_id={row['announcement_id']:row for row in accepted['target_reports']}
+          session=requests.Session()
+          session.headers.update({'User-Agent':'data-workbench-r17-v17-29-runtime-wrapper/1.0','Accept':'application/pdf,*/*;q=0.8'})
+          results=[]
+          for digest,target in sorted(parser.TARGETS.items(),key=lambda kv: kv[1]['announcement_id']):
+              aid=target['announcement_id']
+              response=session.get(target['source_url'],timeout=(30,180))
+              response.raise_for_status()
+              raw=response.content
+              assert raw.startswith(b'%PDF')
+              assert hashlib.sha256(raw).hexdigest()==digest
+              assert len(raw)==int(target['source_bytes'])
+              out=parser.parse_pdf_bytes(raw,target['economic_date'])
+              assert out['parser_version']==parser.METHOD
+              assert out['validation_errors']==[]
+              found={
+                  c:item['normalized_cny_value']
+                  for c,item in out['observations'].items()
+                  if isinstance(item,dict) and item.get('status')=='FOUND'
+              }
+              assert found=={c:target['values'][c][0] for c in parser.ALLOWED_CONCEPTS}
+              block=out['balance_sheet_block']
+              gold=by_id[aid]
+              assert block['inactive_runtime_wrapper'] is True
+              assert block['runtime_promotion_authorized'] is False
+              assert block['formal_runtime_generation_before_activation']=='V17.28'
+              assert block['formal_runtime_generation']=='V17.29'
+              assert block['production_runtime_generation']=='V17.29'
+              assert block['promotion_safety_run']==31311296836
+              assert block['promotion_safety_artifact_id']==9037500964
+              assert block['promotion_safety_artifact_digest']==os.environ['PROMOTION_DIGEST']
+              assert block['selected_pages']==gold['selected_pages']
+              assert block['split_equity_pattern']==gold['split_equity_pattern']=='SPLIT_LABEL_1_BEFORE_1_AFTER_AMOUNT'
+              assert block['dual_column_identity']==gold['identity']
+              results.append({
+                  'announcement_id':aid,
+                  'source_sha256':digest,
+                  'source_bytes':len(raw),
+                  'economic_date':target['economic_date'],
+                  'selected_pages':block['selected_pages'],
+                  'values':found,
+                  'split_equity_pattern':block['split_equity_pattern'],
+                  'dual_column_identity':block['dual_column_identity'],
+              })
+
+          runtime=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          activation=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
+          assert runtime['current_production_authority']['generation']=='V17.28'
+          assert runtime['formal_runtime']['runtime_generation']=='V17.28'
+          assert runtime['full_basis_last_completed_final']['generation']=='V17.28'
+          assert runtime['full_basis_last_completed_final']['run']==30997260730
+          assert runtime['full_basis_last_completed_final']['numeric_observations']==1051799
+          assert runtime['full_basis_last_completed_final']['document_error_count']==1371
+          assert runtime['full_basis_last_completed_final']['unresolved_tie_count']==1288
+          assert activation['accepted_production_runtime']['generation']=='V17.28'
+          assert activation['accepted_production_runtime']['full_basis_execution_pending'] is False
+          report={
+              'gate':'S3G1J_V17_29_INACTIVE_RUNTIME_WRAPPER_V1',
+              'implementation_head':os.environ['GITHUB_SHA'],
+              'promotion_safety_pr':107,
+              'promotion_safety_head':os.environ['PROMOTION_HEAD'],
+              'promotion_safety_run':31311296836,
+              'promotion_safety_artifact_id':9037500964,
+              'promotion_safety_artifact_digest':os.environ['PROMOTION_DIGEST'],
+              'target_count':7,
+              'targets':results,
+              'real_source_runtime_wrapper_pass':True,
+              'non_target_delegation_contract_pass':True,
+              'formal_runtime_authority_before_activation':'V17.28',
+              'v17_29_authority_activated':False,
+              'fresh_64_shard_execution_started':False,
+              'expected_full_basis_numeric_rows':1051820,
+              'expected_full_basis_document_errors':1364,
+              'expected_full_basis_unresolved_ties':1281,
+              'expected_values_are_not_production_acceptance':True,
+              'production_data_changed':False,
+              'trained_model_changed':False,
+              'live_configuration_changed':False,
+              'stage3_status':'NOT_READY',
+              'stage4_alpha_live_locked':True,
+              'main_changed':False,
+              'pass':True,
+              'errors':[],
+          }
+          out=Path('build/v17_29_runtime_wrapper/stage3_s3g1j_v17_29_runtime_wrapper.json')
+          out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+      - name: Assert project remains formally V17.28 and locked
+        run: |
+          python - <<'PY'
+          import json
+          project=json.load(open('data/project_status.json',encoding='utf-8'))
+          lock=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
+          assert project['stage3']['status']=='NOT_READY'
+          assert project['stage3']['s3g1j']['formal_runtime_generation']=='V17.28'
+          assert project['stage3']['s3g1j']['document_error_count']==1371
+          assert project['stage3']['s3g1j']['unresolved_tie_count']==1288
+          assert project['stage3']['s3g1j']['data_verdict']=='FAIL_CLOSED'
+          assert project['stage4_unlocked'] is False
+          assert project['alpha_training_allowed'] is False
+          assert project['live_signal_allowed'] is False
+          assert lock['status']=='NOT_READY'
+          print('V17_29_WRAPPER_FORMAL_AUTHORITY_STILL_V17_28_PASS')
+          PY
+      - name: Record wrapper artifact identity
+        run: sha256sum build/v17_29_runtime_wrapper/* | sort | tee build/v17_29_runtime_wrapper/output_sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-29-runtime-wrapper
+          path: build/v17_29_runtime_wrapper
+          retention-days: 60
+          compression-level: 0
