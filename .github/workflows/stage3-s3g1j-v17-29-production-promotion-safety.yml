@@ -1,0 +1,217 @@
+name: Stage3 S3G1J V17.29 Production Promotion Safety
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/stage3_financial_pdf_parser_v21_production_candidate.py'
+      - 'scripts/build_stage3_s3g1j_v17_29_production_promotion_safety.py'
+      - 'tests/test_stage3_s3g1j_v17_29_production_promotion_safety.py'
+      - '.github/workflows/stage3-s3g1j-v17-29-production-promotion-safety.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  SOURCE_RUN: '30997260730'
+  SOURCE_HEAD: '611d402c3b61a35644a27fd33d3955b9976dec7c'
+  SOURCE_ARTIFACT_ID: '8927455692'
+  SOURCE_ARTIFACT: 'stage3-s3g1j-v17-28-full-final'
+  SOURCE_DIGEST: 'sha256:82375169faada969ceafd4356ab0a2707aa14592d5db090c5d3910863d571c8b'
+  SOURCE_DOCUMENTS_SHA256: '7589750684ec26280c095d4b3a2d21b114c6bb77a882f4633c2ea128de5f38f3'
+  SOURCE_VALUES_SHA256: '2c6e6255be58e86a0b24b889a67e8dccb43835eb9770ca690dde7429b477bbf7'
+  CANDIDATE_PR: '105'
+  CANDIDATE_HEAD: '51bd3ccc0013c2c9a6a55bbb54a1d82dcbd2974e'
+  CANDIDATE_RUN: '31310230656'
+  CANDIDATE_ARTIFACT_ID: '9037206225'
+  CANDIDATE_ARTIFACT: 'stage3-s3g1j-v17-29-seven-exact-source-candidate-safety-v2'
+  CANDIDATE_DIGEST: 'sha256:fc8ff09522b67df8e8209f7e5d88a0d768ef68987201dbb8087df2b6424bb99c'
+  CANDIDATE_DOCUMENTS_SHA256: '343ef55dc8bcf0eb53e8eda2d77f58ddfc48c5c6d13011d02a12d00bd836179e'
+  CANDIDATE_VALUES_SHA256: '31479f232fa2708b411730aa0e0513892a0e42359f0a0e80f4325af3f8b9de2a'
+  FORMAL_V17_28_BLOB: 'b299accbd9b19c6f909b883738378b0119f855b9'
+
+jobs:
+  promotion-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 95
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified experiment runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - name: Lock governed candidate acceptance and formal runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/stage3_financial_pdf_parser_v20.py)" = "$FORMAL_V17_28_BLOB"
+          python - <<'PY'
+          import json
+          evidence=json.load(open('governance/stage3_s3g1j_v17_29_candidate_acceptance.json',encoding='utf-8'))
+          assert evidence['status']=='MACHINE_ACCEPTED_CANDIDATE_ONLY'
+          assert evidence['candidate_pr']['number']==105
+          assert evidence['candidate_pr']['head_sha']=='51bd3ccc0013c2c9a6a55bbb54a1d82dcbd2974e'
+          assert evidence['accepted_run']['run_id']==31310230656
+          assert evidence['accepted_run']['artifact_id']==9037206225
+          assert evidence['accepted_run']['artifact_digest']=='sha256:fc8ff09522b67df8e8209f7e5d88a0d768ef68987201dbb8087df2b6424bb99c'
+          assert evidence['output_hashes']['candidate_documents_gzip_sha256']=='343ef55dc8bcf0eb53e8eda2d77f58ddfc48c5c6d13011d02a12d00bd836179e'
+          assert evidence['output_hashes']['candidate_values_gzip_sha256']=='31479f232fa2708b411730aa0e0513892a0e42359f0a0e80f4325af3f8b9de2a'
+          a=evidence['authorization_boundary']
+          assert a['candidate_implementation_machine_accepted'] is True
+          assert a['candidate_full_basis_non_regression_pass'] is True
+          assert a['production_promotion_experiment_eligible_after_governance'] is True
+          assert a['candidate_runtime_promotion_authorized'] is False
+          assert a['formal_runtime_changed'] is False
+          print('V17_29_CANDIDATE_ACCEPTANCE_AUTHORITY_LOCK_PASS')
+          PY
+      - name: Lock closed-unmerged candidate PR and artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh pr view "$CANDIDATE_PR" -R "$GITHUB_REPOSITORY" --json headRefOid,state,mergedAt)
+          test "$(jq -r '.headRefOid' <<<"$pr")" = "$CANDIDATE_HEAD"
+          test "$(jq -r '.state' <<<"$pr")" = CLOSED
+          test "$(jq -r '.mergedAt // ""' <<<"$pr")" = ""
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.head_sha' <<<"$run")" = "$CANDIDATE_HEAD"
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN/artifacts?per_page=100")
+          test "$(jq -r --arg name "$CANDIDATE_ARTIFACT" '[.artifacts[]|select(.name==$name)]|length' <<<"$artifacts")" = 1
+          test "$(jq -r --arg name "$CANDIDATE_ARTIFACT" '.artifacts[]|select(.name==$name)|.id' <<<"$artifacts")" = "$CANDIDATE_ARTIFACT_ID"
+          test "$(jq -r --arg name "$CANDIDATE_ARTIFACT" '.artifacts[]|select(.name==$name)|.digest' <<<"$artifacts")" = "$CANDIDATE_DIGEST"
+          test "$(jq -r --arg name "$CANDIDATE_ARTIFACT" '.artifacts[]|select(.name==$name)|.expired' <<<"$artifacts")" = false
+      - name: Lock accepted V17.28 full-basis artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.head_sha' <<<"$run")" = "$SOURCE_HEAD"
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts?per_page=100")
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '[.artifacts[]|select(.name==$name)]|length' <<<"$artifacts")" = 1
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[]|select(.name==$name)|.id' <<<"$artifacts")" = "$SOURCE_ARTIFACT_ID"
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[]|select(.name==$name)|.digest' <<<"$artifacts")" = "$SOURCE_DIGEST"
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-28-full-final
+          path: accepted-v1728
+          repository: FASHI188/data-workbench-r17
+          run-id: 30997260730
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-29-seven-exact-source-candidate-safety-v2
+          path: accepted-candidate
+          repository: FASHI188/data-workbench-r17
+          run-id: 31310230656
+          github-token: ${{ github.token }}
+      - name: Lock source and candidate full-basis ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_documents=$(find accepted-v1728 -name stage3_financial_documents.csv.gz -print -quit)
+          source_values=$(find accepted-v1728 -name stage3_financial_raw_values.csv.gz -print -quit)
+          candidate_documents=$(find accepted-candidate -name stage3_financial_documents_v17_29_candidate.csv.gz -print -quit)
+          candidate_values=$(find accepted-candidate -name stage3_financial_values_v17_29_candidate.csv.gz -print -quit)
+          test -n "$source_documents" && test -n "$source_values" && test -n "$candidate_documents" && test -n "$candidate_values"
+          test "$(sha256sum "$source_documents"|awk '{print $1}')" = "$SOURCE_DOCUMENTS_SHA256"
+          test "$(sha256sum "$source_values"|awk '{print $1}')" = "$SOURCE_VALUES_SHA256"
+          test "$(sha256sum "$candidate_documents"|awk '{print $1}')" = "$CANDIDATE_DOCUMENTS_SHA256"
+          test "$(sha256sum "$candidate_values"|awk '{print $1}')" = "$CANDIDATE_VALUES_SHA256"
+          echo "SOURCE_DOCUMENTS=$source_documents" >> "$GITHUB_ENV"
+          echo "SOURCE_VALUES=$source_values" >> "$GITHUB_ENV"
+          echo "CANDIDATE_DOCUMENTS=$candidate_documents" >> "$GITHUB_ENV"
+          echo "CANDIDATE_VALUES=$candidate_values" >> "$GITHUB_ENV"
+      - name: Run production-promotion fail-closed contracts
+        run: |
+          python -m unittest tests.test_stage3_s3g1j_v17_29_production_promotion_safety -v
+          python -m py_compile \
+            scripts/stage3_financial_pdf_parser_v21_production_candidate.py \
+            scripts/build_stage3_s3g1j_v17_29_production_promotion_safety.py
+      - name: Build full-basis production-promotion safety artifact
+        run: |
+          mkdir -p build/promotion-safety
+          python scripts/build_stage3_s3g1j_v17_29_production_promotion_safety.py \
+            --source-documents "$SOURCE_DOCUMENTS" \
+            --source-values "$SOURCE_VALUES" \
+            --candidate-documents "$CANDIDATE_DOCUMENTS" \
+            --candidate-values "$CANDIDATE_VALUES" \
+            --out build/promotion-safety
+      - name: Enforce exact full-basis promotion safety result
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import csv,gzip,json
+          from collections import Counter
+          from pathlib import Path
+          root=Path('build/promotion-safety')
+          report=json.loads((root/'stage3_s3g1j_v17_29_production_promotion_safety.json').read_text(encoding='utf-8'))
+          ids=['1215186538','1219426855','1219792633','1219840508','1219879687','1220087244','1221006100']
+          assert report['gate']=='S3G1J_V17_29_PRODUCTION_PROMOTION_SAFETY_V1'
+          assert report['production_promotion_experiment_only'] is True
+          assert report['formal_runtime_generation']=='V17.28' and report['proposed_runtime_generation']=='V17.29'
+          assert report['accepted_candidate_run']==31310230656 and report['accepted_candidate_artifact_id']==9037206225
+          assert report['target_announcement_ids']==ids
+          assert report['source_document_rows']==121354 and report['promotion_document_rows']==121354
+          assert report['source_numeric_rows']==1051799 and report['promotion_numeric_rows']==1051820
+          assert report['source_document_errors']==1371 and report['promotion_document_errors']==1364
+          assert report['source_unresolved_ties']==1288 and report['promotion_unresolved_ties']==1281
+          assert report['source_unresolved_tie_taxonomy']=={'TIE_SOURCE_INCOMPLETE':1274,'TIE_VALUE_CONFLICT':14}
+          assert report['promotion_unresolved_tie_taxonomy']=={'TIE_SOURCE_INCOMPLETE':1267,'TIE_VALUE_CONFLICT':14}
+          assert report['non_target_document_rows']==121347 and report['non_target_document_exact_equal'] is True
+          assert report['existing_numeric_rows']==1051799 and report['existing_numeric_exact_equal'] is True
+          assert report['candidate_target_document_semantic_equal'] is True
+          assert report['candidate_target_numeric_semantic_equal'] is True
+          assert report['candidate_target_document_semantic_sha256']==report['promotion_target_document_semantic_sha256']
+          assert report['candidate_target_numeric_semantic_sha256']==report['promotion_target_numeric_semantic_sha256']
+          assert report['target_numeric_distribution']=={aid:3 for aid in ids}
+          assert all(t['split_equity_pattern']=='SPLIT_LABEL_1_BEFORE_1_AFTER_AMOUNT' for t in report['target_reports'])
+          assert all(all(row['identity_residual_cny']=='0.00' for row in t['identity']['columns']) for t in report['target_reports'])
+          assert report['accounting_tolerance']=='0.005'
+          for key in ['ocr_enabled','e_equals_a_minus_l_inference','fuzzy_alias_matching_enabled','source_policy_relaxed','point_in_time_policy_relaxed','issuer_gate_relaxed','formal_runtime_changed','runtime_authority_changed','production_data_changed','runtime_promotion_authorized','main_changed']:
+              assert report[key] is False,key
+          assert report['stage3_status']=='NOT_READY' and report['final_data_verdict']=='FAIL_CLOSED' and report['stage4_alpha_live_locked'] is True
+          assert report['pass'] is True and report['errors']==[]
+          with gzip.open(root/'stage3_financial_values_v17_29_production_promotion_safety.csv.gz','rt',encoding='utf-8',newline='') as f:
+              values=list(csv.DictReader(f))
+          tail=values[-21:]
+          assert Counter(row['announcement_id'] for row in tail)==Counter({aid:3 for aid in ids})
+          assert Counter(row['concept'] for row in tail)==Counter({'TOTAL_ASSETS':7,'TOTAL_LIABILITIES':7,'TOTAL_EQUITY':7})
+          assert all(row['extraction_method']=='V17_29_EXACT_SOURCE_SPLIT_GROUP_EQUITY_PRODUCTION_PROMOTION_EXPERIMENT' for row in tail)
+          print('S3G1J_V17_29_PRODUCTION_PROMOTION_SAFETY_PASS')
+          PY
+      - name: Assert project remains formally V17.28 and locked
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          project=json.load(open('data/project_status.json',encoding='utf-8'))
+          lock=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
+          assert project['stage3']['status']=='NOT_READY'
+          assert project['stage3']['s3g1j']['formal_runtime_generation']=='V17.28'
+          assert project['stage3']['s3g1j']['document_error_count']==1371
+          assert project['stage3']['s3g1j']['unresolved_tie_count']==1288
+          assert project['stage3']['s3g1j']['data_verdict']=='FAIL_CLOSED'
+          assert project['stage4_unlocked'] is False and project['alpha_training_allowed'] is False and project['live_signal_allowed'] is False
+          assert lock['status']=='NOT_READY'
+          assert 'S3G1J_FINANCIAL_RAW_VALUES' in lock['remaining_unlocked_gates']
+          print('FORMAL_V17_28_AUTHORITY_UNCHANGED_PASS')
+          PY
+      - name: Record promotion safety output identities
+        run: sha256sum build/promotion-safety/* | sort | tee build/promotion-safety/output_sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-29-production-promotion-safety
+          path: build/promotion-safety
+          retention-days: 30
+          compression-level: 0
