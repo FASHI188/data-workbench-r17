@@ -2,6 +2,8 @@
   "schema_version": 1,
   "status": "RUNTIME_PROMOTION_PROPOSED_FULL_BASIS_PENDING",
   "generation": "V17.29",
+  "governance_pr": 110,
+  "governance_state": "DRAFT_UNMERGED_UNTIL_EXACT_HEAD_GATES_PASS",
   "integration_base_before_governance": "a14b07e9790876053a9086180abab298e14ad8d4",
   "wrapper_implementation": {
     "pr": 109,
