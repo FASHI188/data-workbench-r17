@@ -1,0 +1,234 @@
+name: Stage3 S3G1J V17.29 Fresh Full 64 Shard
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/stage3-s3g1j-v17-29-full-64-shard.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  INTEGRATION_BASE: '1056c4cf64cb1dd38b9da71a35c47309fdd2a179'
+  RUNTIME_GOVERNANCE_PR: '110'
+  RUNTIME_GOVERNANCE_HEAD: 'e5426d15a5b45ac50deb0af046bc93c8d4b08b3f'
+  RUNTIME_GOVERNANCE_MERGE: '1056c4cf64cb1dd38b9da71a35c47309fdd2a179'
+  PARSER_BLOB: '37ab001356c479808e3fa5f67f2270649e3130ba'
+  EXTRACTOR_BLOB: '7be4f17357e92144c3f54ddd4951ec57a0878049'
+  SELECTED_RUN: '30270405448'
+  SELECTED_HEAD: 'd48741fc9c22009b5ea9ec577394146517bf2cc9'
+  SELECTED_ARTIFACT: 'stage3-s3g1g-financial-report-versions'
+  SELECTED_ARTIFACT_ID: '8678704272'
+  SELECTED_DIGEST: 'sha256:64e9ae867b293144fd08e1da55d9dc2cb9e8c3939e90a7d61e02e86a2a989c94'
+  SELECTED_SHA: 'e69e929e2b5ea44540429937304bb4be949101c477e8974606891157faee2001'
+  STAGE2_RUN: '30132899894'
+  STAGE2_HEAD: '4b3990fc8ce80bcb4e605031cc5033d421da07d9'
+  STAGE2_ARTIFACT: 'stage2-final-v325'
+  STAGE2_ARTIFACT_ID: '8623873031'
+  STAGE2_DIGEST: 'sha256:a910042216254f9c9524d381e28d8ad9fc21ebbed2d363ed0830c8f37c6e4a1f'
+  COMPLETE_CODE_MAP_SHA: 'a64c1f4a18b7fb12de587706aa3109dfc58525db652f2781327ab9e0dfb9887d'
+  CANONICAL_RUN: '30291137175'
+  CANONICAL_HEAD: 'c305ce96a44b1a4c35bb2ead2e0df39769a1a0c3'
+  CANONICAL_ARTIFACT: 'stage3-canonical-company-events'
+  CANONICAL_ARTIFACT_ID: '8706550761'
+  CANONICAL_DIGEST: 'sha256:740ed8a12be408dc424f8c54b8582361a86f7adc86c82941075fb9e058d7a00a'
+  CANONICAL_EVENTS_SHA: 'e1e9368f7ec2c3b79d5f57e22f73bcac35844a98b63c98a595ae5978c24175a1'
+  EVENT_RUN: '30366278991'
+  EVENT_HEAD: '250d80faedc4e5017adebddc5f2a72541f4b788e'
+  EVENT_ARTIFACT: 'stage3-complete-disclosure-events'
+  EVENT_ARTIFACT_ID: '8731735824'
+  EVENT_DIGEST: 'sha256:ed189219934628220ec5810f1ef3eec1d5328f5584a9bd4b682ed4ee94870974'
+  COMPLETE_EVENTS_SHA: 'caa48cf03704417cbc6bfcbf97e44ac997bf35f3eab0f1fa0c5e149b8244e68a'
+  PREVIOUS_FULL_RUN: '30997260730'
+  PREVIOUS_FULL_ARTIFACT_ID: '8927455692'
+  PREVIOUS_FULL_DIGEST: 'sha256:82375169faada969ceafd4356ab0a2707aa14592d5db090c5d3910863d571c8b'
+
+jobs:
+  lock-inputs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Assert fresh execution branch changes no authority or runtime code
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed=$(git diff --name-only "$INTEGRATION_BASE"...HEAD)
+          printf '%s\n' "$changed"
+          test "$changed" = '.github/workflows/stage3-s3g1j-v17-29-full-64-shard.yml'
+      - name: Lock merged V17.29 runtime governance and code blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh pr view "$RUNTIME_GOVERNANCE_PR" -R "$GITHUB_REPOSITORY" --json headRefOid,mergedAt,mergeCommit)
+          test "$(jq -r '.headRefOid' <<<"$pr")" = "$RUNTIME_GOVERNANCE_HEAD"
+          test -n "$(jq -r '.mergedAt // ""' <<<"$pr")"
+          test "$(jq -r '.mergeCommit.oid' <<<"$pr")" = "$RUNTIME_GOVERNANCE_MERGE"
+          test "$(git hash-object scripts/stage3_financial_pdf_parser_v21.py)" = "$PARSER_BLOB"
+          test "$(git hash-object scripts/extract_stage3_financial_pdf_values_v19.py)" = "$EXTRACTOR_BLOB"
+          python - <<'PY'
+          import json
+          runtime=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          activation=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
+          project=json.load(open('data/project_status.json',encoding='utf-8'))
+          assert runtime['schema_version']==12
+          assert runtime['current_production_authority']['generation']=='V17.29'
+          assert runtime['formal_runtime']['runtime_generation']=='V17.29'
+          assert runtime['formal_runtime']['parser_path']=='scripts/stage3_financial_pdf_parser_v21.py'
+          assert runtime['formal_runtime']['extractor_path']=='scripts/extract_stage3_financial_pdf_values_v19.py'
+          assert runtime['formal_runtime']['shard_gate']=='S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_29'
+          assert runtime['full_basis_last_completed_final']['generation']=='V17.28'
+          assert runtime['full_basis_last_completed_final']['run']==30997260730
+          assert runtime['full_basis_last_completed_final']['artifact_id']==8927455692
+          assert runtime['full_basis_last_completed_final']['numeric_observations']==1051799
+          assert runtime['full_basis_last_completed_final']['document_error_count']==1371
+          assert runtime['full_basis_last_completed_final']['unresolved_tie_count']==1288
+          assert runtime['next_full_basis_required']['generation']=='V17.29'
+          assert runtime['next_full_basis_required']['status']=='REQUIRED_NOT_STARTED'
+          assert runtime['next_full_basis_required']['expected_values_are_not_yet_production_acceptance'] is True
+          assert activation['accepted_production_runtime']['generation']=='V17.29'
+          assert activation['accepted_production_runtime']['full_basis_execution_pending'] is True
+          assert activation['accepted_production_runtime']['execution_verdict']=='PENDING'
+          assert project['stage3']['status']=='NOT_READY'
+          assert project['stage4_unlocked'] is False
+          assert project['alpha_training_allowed'] is False
+          assert project['live_signal_allowed'] is False
+          print('V17_29_FRESH_FULL_RUNTIME_AUTHORITY_LOCK_PASS')
+          PY
+      - name: Lock previous accepted V17.28 full-basis artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PREVIOUS_FULL_RUN")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PREVIOUS_FULL_RUN/artifacts?per_page=100")
+          test "$(jq -r '[.artifacts[]|select(.name=="stage3-s3g1j-v17-28-full-final")]|length' <<<"$artifacts")" = 1
+          test "$(jq -r '.artifacts[]|select(.name=="stage3-s3g1j-v17-28-full-final")|.id' <<<"$artifacts")" = "$PREVIOUS_FULL_ARTIFACT_ID"
+          test "$(jq -r '.artifacts[]|select(.name=="stage3-s3g1j-v17-28-full-final")|.digest' <<<"$artifacts")" = "$PREVIOUS_FULL_DIGEST"
+          test "$(jq -r '.artifacts[]|select(.name=="stage3-s3g1j-v17-28-full-final")|.expired' <<<"$artifacts")" = false
+      - name: Lock four source artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          lock_artifact() {
+            local run="$1" head="$2" artifact="$3" id="$4" digest="$5"
+            local run_payload artifacts
+            run_payload=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run")
+            test "$(jq -r '.head_sha' <<<"$run_payload")" = "$head"
+            test "$(jq -r '.conclusion' <<<"$run_payload")" = success
+            artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts?per_page=100")
+            test "$(jq -r --arg name "$artifact" '[.artifacts[]|select(.name==$name)]|length' <<<"$artifacts")" = 1
+            test "$(jq -r --arg name "$artifact" '.artifacts[]|select(.name==$name)|.id' <<<"$artifacts")" = "$id"
+            test "$(jq -r --arg name "$artifact" '.artifacts[]|select(.name==$name)|.digest' <<<"$artifacts")" = "$digest"
+            test "$(jq -r --arg name "$artifact" '.artifacts[]|select(.name==$name)|.expired' <<<"$artifacts")" = false
+          }
+          lock_artifact "$SELECTED_RUN" "$SELECTED_HEAD" "$SELECTED_ARTIFACT" "$SELECTED_ARTIFACT_ID" "$SELECTED_DIGEST"
+          lock_artifact "$STAGE2_RUN" "$STAGE2_HEAD" "$STAGE2_ARTIFACT" "$STAGE2_ARTIFACT_ID" "$STAGE2_DIGEST"
+          lock_artifact "$CANONICAL_RUN" "$CANONICAL_HEAD" "$CANONICAL_ARTIFACT" "$CANONICAL_ARTIFACT_ID" "$CANONICAL_DIGEST"
+          lock_artifact "$EVENT_RUN" "$EVENT_HEAD" "$EVENT_ARTIFACT" "$EVENT_ARTIFACT_ID" "$EVENT_DIGEST"
+
+  extract:
+    needs: lock-inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified Stage3 runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1g-financial-report-versions
+          path: input/s3g1g
+          repository: FASHI188/data-workbench-r17
+          run-id: 30270405448
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage2-final-v325
+          path: input/stage2
+          repository: FASHI188/data-workbench-r17
+          run-id: 30132899894
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-canonical-company-events
+          path: input/canonical
+          repository: FASHI188/data-workbench-r17
+          run-id: 30291137175
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-complete-disclosure-events
+          path: input/events
+          repository: FASHI188/data-workbench-r17
+          run-id: 30366278991
+          github-token: ${{ github.token }}
+      - name: Resolve and verify exact source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          selected=$(find input/s3g1g -name stage3_financial_report_versions_selected.csv.gz -print -quit)
+          code_map=$(find input/stage2 -name complete_code_map.csv.gz -print -quit)
+          canonical=$(find input/canonical -name stage3_canonical_company_events.csv.gz -print -quit)
+          events=$(find input/events -name stage3_complete_disclosure_events.csv.gz -print -quit)
+          test -n "$selected" && test -n "$code_map" && test -n "$canonical" && test -n "$events"
+          test "$(sha256sum "$selected"|awk '{print $1}')" = "$SELECTED_SHA"
+          test "$(sha256sum "$code_map"|awk '{print $1}')" = "$COMPLETE_CODE_MAP_SHA"
+          test "$(sha256sum "$canonical"|awk '{print $1}')" = "$CANONICAL_EVENTS_SHA"
+          test "$(sha256sum "$events"|awk '{print $1}')" = "$COMPLETE_EVENTS_SHA"
+          echo "SELECTED_FILE=$selected" >> "$GITHUB_ENV"
+          echo "CODE_MAP_FILE=$code_map" >> "$GITHUB_ENV"
+          echo "CANONICAL_FILE=$canonical" >> "$GITHUB_ENV"
+          echo "EVENT_FILE=$events" >> "$GITHUB_ENV"
+      - name: Run fresh V17.29 shard
+        run: |
+          mkdir -p build/v17_29/shard${{ matrix.shard }}
+          python scripts/extract_stage3_financial_pdf_values_v19.py \
+            --selected-version-ledger "$SELECTED_FILE" \
+            --complete-code-map "$CODE_MAP_FILE" \
+            --canonical-company-events "$CANONICAL_FILE" \
+            --event-ledger "$EVENT_FILE" \
+            --out build/v17_29/shard${{ matrix.shard }} \
+            --shard ${{ matrix.shard }} \
+            --shard-count 64
+      - name: Verify shard manifest is pure V17.29
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest=build/v17_29/shard${{ matrix.shard }}/financial_extract_shard$(printf '%02d' ${{ matrix.shard }}).manifest.json
+          test -f "$manifest"
+          MANIFEST="$manifest" EXPECTED_SHARD='${{ matrix.shard }}' python - <<'PY'
+          import json,os
+          m=json.load(open(os.environ['MANIFEST'],encoding='utf-8'))
+          assert m['shard']==int(os.environ['EXPECTED_SHARD'])
+          assert m['shard_count']==64
+          assert m['runtime_generation']=='V17.29'
+          assert m['gate']=='S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_29'
+          assert m['parser_method']=='CNINFO_ORIGINAL_PDF_PYMUPDF_V19_V17_29_EXACT_SOURCE_SPLIT_GROUP_EQUITY_PRODUCTION'
+          assert m['methodology_version']=='V3.3.13-V17.29'
+          print('V17_29_SHARD_MANIFEST_PASS',m['shard'])
+          PY
+      - name: Record deterministic shard file identities
+        run: sha256sum build/v17_29/shard${{ matrix.shard }}/* | sort | tee build/v17_29/shard${{ matrix.shard }}/output_sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-29-shard-${{ matrix.shard }}
+          path: build/v17_29/shard${{ matrix.shard }}
+          retention-days: 60
+          compression-level: 0
