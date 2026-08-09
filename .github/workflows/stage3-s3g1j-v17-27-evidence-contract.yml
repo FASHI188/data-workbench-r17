@@ -72,7 +72,7 @@ jobs:
             scripts/stage3_financial_pdf_parser_v19_candidate.py \
             scripts/stage3_financial_spatial_alias_v17_27_candidate.py \
             scripts/extract_stage3_financial_pdf_values_v17.py
-      - name: Verify historical V17.27 authority under latest V17.28 full basis
+      - name: Verify historical V17.27 authority under current V17.29 runtime
         run: |
           python - <<'PY'
           import json
@@ -85,17 +85,26 @@ jobs:
           assert old['full_basis_result']['document_error_count']==1373
           assert old['full_basis_result']['unresolved_tie_count']==1290
           assert old['full_basis_result']['final_data_verdict']=='FAIL_CLOSED'
-          assert runtime['schema_version']==11
-          assert runtime['formal_runtime']['runtime_generation']=='V17.28'
+          assert runtime['schema_version']==12
+          assert runtime['formal_runtime']['runtime_generation']=='V17.29'
           assert runtime['full_basis_last_completed_final']['generation']=='V17.28'
           assert runtime['full_basis_last_completed_final']['run']==30997260730
           assert runtime['previous_full_basis_final']['generation']=='V17.27'
           assert runtime['previous_full_basis_final']['run']==30806818977
-          assert activation['schema_version']==13
+          assert runtime['next_full_basis_required']['generation']=='V17.29'
+          assert runtime['next_full_basis_required']['status']=='REQUIRED_NOT_STARTED'
+          assert runtime['next_full_basis_required']['expected_values_are_not_yet_production_acceptance'] is True
+          assert activation['schema_version']==14
+          current=activation['accepted_production_runtime']
+          assert current['generation']=='V17.29'
+          assert current['full_basis_execution_pending'] is True
+          assert current['last_completed_full_basis_generation']=='V17.28'
+          assert current['execution_verdict']=='PENDING'
+          assert current['data_verdict']=='FAIL_CLOSED'
           retained=activation['accepted_v17_27_full_basis_evidence']
           assert retained['historical_full_basis_authority_retained'] is True
           assert retained['last_completed_full_basis_authority'] is False
           assert latest['accepted_run']['run_id']==30997260730
           assert latest['hard_boundaries']['stage3_status']=='NOT_READY'
-          print('S3G1J_V17_27_RETAINED_EVIDENCE_UNDER_V17_28_PASS')
+          print('S3G1J_V17_27_RETAINED_EVIDENCE_UNDER_V17_29_PASS')
           PY

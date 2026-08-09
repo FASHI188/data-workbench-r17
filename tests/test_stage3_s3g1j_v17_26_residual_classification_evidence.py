@@ -4,7 +4,6 @@ import json
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "governance/stage3_s3g1j_v17_26_residual_classification.json"
 ACTIVATION = ROOT / "governance/stage3_workflow_activation_manifest.json"
@@ -24,10 +23,7 @@ class V1726ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertEqual(run["head_sha"], "d9dc3119cc710a46174fb9d5ce9a6f1518ea5c50")
         self.assertEqual(run["conclusion"], "SUCCESS")
         self.assertEqual(run["artifact_id"], 8828913247)
-        self.assertEqual(
-            run["artifact_digest"],
-            "sha256:f667e5e494e6ac1456a370b5dab47677b4925d0466beedceec3e47bdeb5f16a5",
-        )
+        self.assertEqual(run["artifact_digest"], "sha256:f667e5e494e6ac1456a370b5dab47677b4925d0466beedceec3e47bdeb5f16a5")
 
     def test_current_accounting_and_p0_population_are_exact(self) -> None:
         current = self.evidence["current_accounting"]
@@ -67,7 +63,7 @@ class V1726ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertEqual(hashes["gzip_embedded_filename"], "")
 
     def test_activation_retains_diagnostic_without_rewriting_history(self) -> None:
-        self.assertEqual(self.activation["schema_version"], 13)
+        self.assertEqual(self.activation["schema_version"], 14)
         accepted = self.activation["accepted_v17_26_residual_classification"]
         self.assertEqual(accepted["run"], 30734063100)
         self.assertEqual(accepted["artifact_id"], 8828913247)
@@ -80,24 +76,26 @@ class V1726ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertIs(accepted["evidence_contract_active"], True)
         self.assertFalse(ONE_SHOT.exists())
         self.assertTrue(LONG_LIVED_CONTRACT.exists())
-        self.assertIn(
-            ".github/workflows/stage3-s3g1j-v17-26-residual-classifier.yml",
-            self.activation["removed_one_shot_workflows"],
-        )
+        self.assertIn(".github/workflows/stage3-s3g1j-v17-26-residual-classifier.yml", self.activation["removed_one_shot_workflows"])
+
         runtime = self.activation["accepted_production_runtime"]
-        self.assertEqual(runtime["generation"], "V17.28")
-        self.assertIs(runtime["full_basis_execution_pending"], False)
+        self.assertEqual(runtime["generation"], "V17.29")
+        self.assertIs(runtime["full_basis_execution_pending"], True)
         self.assertEqual(runtime["last_completed_full_basis_generation"], "V17.28")
         self.assertEqual(runtime["last_completed_full_basis_run"], 30997260730)
         self.assertEqual(runtime["last_completed_document_error_count"], 1371)
         self.assertEqual(runtime["last_completed_unresolved_tie_count"], 1288)
-        self.assertEqual(runtime["execution_verdict"], "PASS")
+        self.assertEqual(runtime["execution_verdict"], "PENDING")
         self.assertEqual(runtime["data_verdict"], "FAIL_CLOSED")
+        self.assertTrue(runtime["expected_values_are_not_production_acceptance"])
+
         historical = self.activation["accepted_v17_26_full_basis_evidence"]
         self.assertEqual(historical["run"], 30733013665)
         self.assertEqual(historical["document_error_count"], 1378)
         self.assertIs(historical["historical_full_basis_authority_retained"], True)
         boundaries = self.activation["hard_boundaries"]
+        self.assertIs(boundaries["v17_29_full_basis_execution_pending"], True)
+        self.assertTrue(boundaries["expected_values_are_not_production_acceptance"])
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertIs(boundaries["stage4_alpha_live_locked"], True)
         self.assertIs(boundaries["committed_production_data_changed"], False)

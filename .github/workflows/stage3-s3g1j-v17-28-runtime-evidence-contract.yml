@@ -84,7 +84,7 @@ jobs:
           assert report['pass'] is True and report['errors']==[]
           print('S3G1J_V17_28_WRAPPER_REPORT_IMMUTABLE_PASS')
           PY
-      - name: Verify current runtime and completed full-basis authority
+      - name: Verify historical V17.28 runtime and completed full-basis evidence
         run: |
           python -m unittest \
             tests.test_stage3_v17_28_runtime_promotion \
@@ -95,7 +95,7 @@ jobs:
             scripts/stage3_financial_pdf_parser_v20.py \
             scripts/stage3_financial_pdf_parser_v20_candidate.py \
             scripts/extract_stage3_financial_pdf_values_v18.py
-      - name: Verify current authority and historical promotion separation
+      - name: Verify V17.28 history under current V17.29 authority
         run: |
           python - <<'PY'
           import json
@@ -103,21 +103,32 @@ jobs:
           activation=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
           promotion=json.load(open('governance/stage3_s3g1j_v17_28_runtime_promotion.json',encoding='utf-8'))
           full=json.load(open('governance/stage3_s3g1j_v17_28_full_final.json',encoding='utf-8'))
-          assert runtime['schema_version']==11
-          assert runtime['formal_runtime']['runtime_generation']=='V17.28'
+          assert runtime['schema_version']==12
+          assert runtime['formal_runtime']['runtime_generation']=='V17.29'
+          assert runtime['current_production_authority']['generation']=='V17.29'
           assert runtime['full_basis_last_completed_final']['generation']=='V17.28'
           assert runtime['full_basis_last_completed_final']['run']==30997260730
-          assert runtime['next_full_basis_required']['status']=='NONE_CURRENT_RUNTIME_ACCEPTED'
-          assert activation['schema_version']==13
-          assert activation['accepted_production_runtime']['full_basis_execution_pending'] is False
-          assert activation['accepted_production_runtime']['execution_verdict']=='PASS'
+          assert runtime['full_basis_last_completed_final']['numeric_observations']==1051799
+          assert runtime['full_basis_last_completed_final']['document_error_count']==1371
+          assert runtime['full_basis_last_completed_final']['unresolved_tie_count']==1288
+          assert runtime['next_full_basis_required']['generation']=='V17.29'
+          assert runtime['next_full_basis_required']['status']=='REQUIRED_NOT_STARTED'
+          assert runtime['next_full_basis_required']['expected_values_are_not_yet_production_acceptance'] is True
+          assert activation['schema_version']==14
+          assert activation['accepted_production_runtime']['generation']=='V17.29'
+          assert activation['accepted_production_runtime']['full_basis_execution_pending'] is True
+          assert activation['accepted_production_runtime']['last_completed_full_basis_generation']=='V17.28'
+          assert activation['accepted_production_runtime']['execution_verdict']=='PENDING'
           assert activation['accepted_production_runtime']['data_verdict']=='FAIL_CLOSED'
           assert promotion['last_completed_full_basis']['generation']=='V17.27'
           assert promotion['next_full_basis']['status']=='REQUIRED_NOT_STARTED'
           assert full['accepted_run']['run_id']==30997260730
+          assert full['full_basis_result']['numeric_observation_count']==1051799
+          assert full['full_basis_result']['document_error_count']==1371
+          assert full['full_basis_result']['unresolved_tie_count']==1288
           assert runtime['project_status']['stage3']=='NOT_READY'
           assert runtime['project_status']['stage4']=='LOCKED'
           assert runtime['project_status']['alpha_training']=='NOT_ALLOWED'
           assert runtime['project_status']['live_signals']=='NOT_ALLOWED'
-          print('S3G1J_V17_28_RUNTIME_AND_FULL_BASIS_AUTHORITY_PASS')
+          print('S3G1J_V17_28_HISTORICAL_RUNTIME_EVIDENCE_PASS')
           PY

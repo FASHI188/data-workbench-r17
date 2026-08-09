@@ -4,7 +4,6 @@ import json
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "governance/stage3_s3g1j_v17_26_full_final.json"
 ACTIVATION = ROOT / "governance/stage3_workflow_activation_manifest.json"
@@ -27,10 +26,7 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(run["head_sha"], "ed81a8f167c7b158167a8bdafa1799b7047666af")
         self.assertEqual(run["conclusion"], "SUCCESS")
         self.assertEqual(run["artifact_id"], 8828600783)
-        self.assertEqual(
-            run["artifact_digest"],
-            "sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b",
-        )
+        self.assertEqual(run["artifact_digest"], "sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b")
 
     def test_full_basis_accounting_and_verdict_are_frozen(self) -> None:
         result = self.evidence["full_basis_result"]
@@ -59,7 +55,7 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(numeric["non_target_value_drift"], 0)
 
     def test_activation_retains_v17_26_historical_authority(self) -> None:
-        self.assertEqual(self.activation["schema_version"], 13)
+        self.assertEqual(self.activation["schema_version"], 14)
         accepted = self.activation["accepted_v17_26_full_basis_evidence"]
         self.assertEqual(accepted["run"], 30733013665)
         self.assertEqual(accepted["final_data_verdict"], "FAIL_CLOSED")
@@ -70,24 +66,31 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(accepted["evidence_contract_workflow"], EVIDENCE_CONTRACT_NAME)
         self.assertIn(EVIDENCE_CONTRACT_NAME, self.activation["active_stage3_workflows"])
         self.assertTrue(EVIDENCE_CONTRACT.exists())
-        self.assertIn(
-            ".github/workflows/stage3-s3g1j-v17-25-full-final-v2.yml",
-            self.activation["removed_one_shot_workflows"],
-        )
+        self.assertIn(".github/workflows/stage3-s3g1j-v17-25-full-final-v2.yml", self.activation["removed_one_shot_workflows"])
         self.assertFalse(RETIRED_WORKFLOW.exists())
+
         current = self.activation["accepted_production_runtime"]
-        self.assertEqual(current["generation"], "V17.28")
-        self.assertIs(current["full_basis_execution_pending"], False)
+        self.assertEqual(current["generation"], "V17.29")
+        self.assertIs(current["full_basis_execution_pending"], True)
         self.assertEqual(current["last_completed_full_basis_generation"], "V17.28")
         self.assertEqual(current["last_completed_full_basis_run"], 30997260730)
+        self.assertEqual(current["execution_verdict"], "PENDING")
+        self.assertTrue(current["expected_values_are_not_production_acceptance"])
+
         historical_runtime = self.runtime["historical_full_basis_final"]
+        self.assertEqual(self.runtime["schema_version"], 12)
+        self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"], "V17.29")
+        self.assertEqual(self.runtime["full_basis_last_completed_final"]["generation"], "V17.28")
         self.assertEqual(historical_runtime["generation"], "V17.26")
         self.assertEqual(historical_runtime["run"], 30733013665)
         self.assertIs(historical_runtime["retained"], True)
+
         classification = self.activation["accepted_v17_26_residual_classification"]
         self.assertIs(classification["diagnostic_only"], True)
         self.assertIs(classification["runtime_authority_changed"], False)
         boundaries = self.activation["hard_boundaries"]
+        self.assertIs(boundaries["v17_29_full_basis_execution_pending"], True)
+        self.assertTrue(boundaries["expected_values_are_not_production_acceptance"])
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertIs(boundaries["stage4_alpha_live_locked"], True)
         self.assertIs(boundaries["committed_production_data_changed"], False)

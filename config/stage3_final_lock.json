@@ -1,5 +1,5 @@
 {
-  "version": "V3.3.11-stage3-final-lock",
+  "version": "V3.3.12-stage3-final-lock",
   "status": "NOT_READY",
   "stage2": {
     "version": "V3.2.25-stage2-final-freeze",
@@ -11,25 +11,22 @@
     "S3G1E_PERIODIC_FILING_LEDGER": {"run_id": 30265340486, "artifact": "stage3-s3g1e-periodic-filing-ledger-final"},
     "S3G1G_REPORT_VERSION_SELECTION": {"run_id": 30270405448, "artifact": "stage3-s3g1g-financial-report-versions"},
     "S3G1H_PDF_PARSER_PROBE": {"run_id": 30269769293, "artifact": "stage3-s3g1h-financial-pdf-parser-probe"},
-    "S3G1I_POPULATION_PDF_PROBE": {
-      "run_id": 30326328965,
-      "artifact": "stage3-s3g1i-financial-pdf-population-probe",
-      "artifact_digest": "sha256:3883eb629aaa0325cd1db6d3a1eefc96929c9673711bb3c004217ac6254324b9"
-    },
+    "S3G1I_POPULATION_PDF_PROBE": {"run_id": 30326328965, "artifact": "stage3-s3g1i-financial-pdf-population-probe", "artifact_digest": "sha256:3883eb629aaa0325cd1db6d3a1eefc96929c9673711bb3c004217ac6254324b9"},
     "S3G1J_FINANCIAL_RAW_VALUES": {
-      "formal_runtime_generation": "V17.28",
-      "runtime_promotion_evidence": "governance/stage3_s3g1j_v17_28_runtime_promotion.json",
-      "full_basis_evidence": "governance/stage3_s3g1j_v17_28_full_final.json",
-      "runtime_wrapper_pr": 94,
-      "runtime_wrapper_run_id": 30978715158,
-      "runtime_wrapper_artifact_id": 8919289427,
-      "runtime_wrapper_artifact_digest": "sha256:f8639b4a2eac2d09b16586365b7932d255457ce66aad2484547bb517d0d185a6",
+      "formal_runtime_generation": "V17.29",
+      "runtime_promotion_evidence": "governance/stage3_s3g1j_v17_29_runtime_promotion.json",
+      "runtime_wrapper_pr": 109,
+      "runtime_wrapper_pr_closed_without_merge": true,
+      "runtime_wrapper_run_id": 31312709490,
+      "runtime_wrapper_artifact_id": 9037869497,
+      "runtime_wrapper_artifact_digest": "sha256:4f9940513c2d0ef5250b8874b32f68655badfe4a695a2fe2c3da0a54d2a01670",
       "runtime_contract_pass": true,
       "last_completed_full_basis_generation": "V17.28",
+      "full_basis_evidence": "governance/stage3_s3g1j_v17_28_full_final.json",
       "source_execution_pr": 96,
       "source_execution_run_id": 30981127011,
       "acceptance_pr": 97,
-      "governance_pr": 98,
+      "previous_governance_pr": 98,
       "run_id": 30997260730,
       "head_sha": "611d402c3b61a35644a27fd33d3955b9976dec7c",
       "artifact_id": 8927455692,
@@ -46,40 +43,21 @@
       "document_error_count": 1371,
       "unresolved_tie_count": 1288,
       "existing_numeric_semantic_sha256": "bcb154cc4d80a81acd409e64dc35c2902a5aeb37726b313df936717caf400672",
-      "next_full_basis_generation": null,
-      "next_full_basis_status": "NONE_CURRENT_RUNTIME_ACCEPTED"
+      "next_full_basis_generation": "V17.29",
+      "next_full_basis_status": "REQUIRED_NOT_STARTED",
+      "expected_next_numeric_observation_count": 1051820,
+      "expected_next_document_error_count": 1364,
+      "expected_next_unresolved_tie_count": 1281,
+      "expected_values_are_not_production_acceptance": true
     },
-    "S3G2_ANNOUNCEMENT_LEDGER": {
-      "run_id": 30522392946,
-      "artifact": "stage3-s3g2-announcement-ledger-final",
-      "ledger_sha256": "0eb139572865628283f86c981990e59e076d5ef2a978a5967aace90d553e30dd",
-      "deterministic_replay_count": 2,
-      "artifact_digest_is_transport_only": true
-    },
-    "S3G3A_INDUSTRY_SOURCE_PROBE": {
-      "run_id": 30326328969,
-      "artifact": "stage3-s3g3a-capco-industry-history-probe",
-      "artifact_digest": "sha256:a635409dbab2fdc61852432acfcb294f97b4468831f23a9fa01320abf39ba9af"
-    },
-    "S3G3B_INDUSTRY_LEDGER": {
-      "run_id": 30331243641,
-      "artifact": "stage3-s3g3b-industry-classification-ledger",
-      "artifact_digest": "sha256:f1da814c71fa698f3f10ce5dc7019bb86770f9d4e15ed7d7823a93a085adc872",
-      "ledger_sha256": "3d91678a111e12d4ba5262d2af4e0c2a643de13ac03076fb4e61e14db9ee9ece"
-    },
-    "S3G4A_FORECAST_PARSER_PROBE": {
-      "run_id": 30326328970,
-      "artifact": "stage3-s3g4a-earnings-forecast-parser-probe",
-      "artifact_digest": "sha256:5384aed1c81782571486d32053b343218bb06a0aa45f1540faa4e619dd7d9ad4"
-    },
+    "S3G2_ANNOUNCEMENT_LEDGER": {"run_id": 30522392946, "artifact": "stage3-s3g2-announcement-ledger-final", "ledger_sha256": "0eb139572865628283f86c981990e59e076d5ef2a978a5967aace90d553e30dd", "deterministic_replay_count": 2, "artifact_digest_is_transport_only": true},
+    "S3G3A_INDUSTRY_SOURCE_PROBE": {"run_id": 30326328969, "artifact": "stage3-s3g3a-capco-industry-history-probe", "artifact_digest": "sha256:a635409dbab2fdc61852432acfcb294f97b4468831f23a9fa01320abf39ba9af"},
+    "S3G3B_INDUSTRY_LEDGER": {"run_id": 30331243641, "artifact": "stage3-s3g3b-industry-classification-ledger", "artifact_digest": "sha256:f1da814c71fa698f3f10ce5dc7019bb86770f9d4e15ed7d7823a93a085adc872", "ledger_sha256": "3d91678a111e12d4ba5262d2af4e0c2a643de13ac03076fb4e61e14db9ee9ece"},
+    "S3G4A_FORECAST_PARSER_PROBE": {"run_id": 30326328970, "artifact": "stage3-s3g4a-earnings-forecast-parser-probe", "artifact_digest": "sha256:5384aed1c81782571486d32053b343218bb06a0aa45f1540faa4e619dd7d9ad4"},
     "S3G4_EARNINGS_SURPRISE": {"run_id": null, "artifact": "stage3-s3g4-earnings-surprise-final", "final_gate_pass": false},
-    "S3GU_TRADING_UNIVERSE_POLICY": {
-      "run_id": 30326328975,
-      "artifact": "stage3-s3gu-trading-universe-policy",
-      "artifact_digest": "sha256:1942c9e7baa0823772201cc1f6652e660d8b4b60dd8b0559d94dcefe7da4c9fa"
-    }
+    "S3GU_TRADING_UNIVERSE_POLICY": {"run_id": 30326328975, "artifact": "stage3-s3gu-trading-universe-policy", "artifact_digest": "sha256:1942c9e7baa0823772201cc1f6652e660d8b4b60dd8b0559d94dcefe7da4c9fa"}
   },
   "remaining_unlocked_gates": ["S3G1J_FINANCIAL_RAW_VALUES", "S3G4_EARNINGS_SURPRISE"],
   "merge_allowed_only_when_all_run_ids_locked_and_all_gates_pass": true,
-  "interpretation": "A non-null run_id records immutable execution evidence. V17.28 is now both the formal runtime and latest completed full-basis authority, with execution/non-regression PASS and data verdict FAIL_CLOSED. S3G1J remains in remaining_unlocked_gates until residual data requirements pass; S3G4, freshness, reproducibility closure and Stage3 final freeze also remain pending."
+  "interpretation": "V17.29 is the formal runtime, but V17.28 remains the last completed full-basis authority. The fresh V17.29 64-shard basis is REQUIRED_NOT_STARTED, so candidate/promotion-safety expected counts are not production facts. S3G1J remains FAIL_CLOSED and Stage3 remains NOT_READY."
 }

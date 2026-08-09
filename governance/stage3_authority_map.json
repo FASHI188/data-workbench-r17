@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "status": "INTEGRATION_IN_PROGRESS",
   "stage2_dependency": {
     "version": "V3.2.25-stage2-final-freeze",
@@ -23,14 +23,15 @@
     },
     "S3G1J_FINANCIAL_RAW_VALUES": {
       "runtime_manifest": "governance/stage3_s3g1j_runtime_manifest.json",
-      "formal_runtime_generation": "V17.28",
-      "runtime_promotion_evidence_manifest": "governance/stage3_s3g1j_v17_28_runtime_promotion.json",
-      "runtime_wrapper_pr": 94,
-      "runtime_wrapper_head_sha": "6969c58ee60314e3e897e55b132266612c602777",
-      "runtime_wrapper_merge_commit": "d7c38e71c9155d404df1c08feba9d66fac0a4d7a",
-      "runtime_wrapper_run_id": 30978715158,
-      "runtime_wrapper_artifact_id": 8919289427,
-      "runtime_wrapper_artifact_digest": "sha256:f8639b4a2eac2d09b16586365b7932d255457ce66aad2484547bb517d0d185a6",
+      "formal_runtime_generation": "V17.29",
+      "runtime_promotion_evidence_manifest": "governance/stage3_s3g1j_v17_29_runtime_promotion.json",
+      "runtime_wrapper_pr": 109,
+      "runtime_wrapper_pr_closed_without_merge": true,
+      "runtime_wrapper_head_sha": "04a014f852bff57aef57542553864fcd3f1df13d",
+      "runtime_wrapper_run_id": 31312709490,
+      "runtime_wrapper_artifact_id": 9037869497,
+      "runtime_wrapper_artifact_digest": "sha256:4f9940513c2d0ef5250b8874b32f68655badfe4a695a2fe2c3da0a54d2a01670",
+      "runtime_wrapper_report_sha256": "29fc2947008e26b8c17ab5c9013a31c5e283c2d89aa37a8f7de2e1da5658a406",
       "runtime_contract_pass": true,
       "last_completed_full_basis_generation": "V17.28",
       "full_basis_evidence_manifest": "governance/stage3_s3g1j_v17_28_full_final.json",
@@ -39,7 +40,7 @@
       "source_execution_run_id": 30981127011,
       "source_execution_head_sha": "7dd3e14ccdd9574ce7f4a8f716026ececf254541",
       "accepted_execution_pr": 97,
-      "governance_closure_pr": 98,
+      "previous_governance_closure_pr": 98,
       "accepted_head_sha": "611d402c3b61a35644a27fd33d3955b9976dec7c",
       "accepted_basis_merge_commit": "28f3dacf8cf31f9d84f50ef1507056e057da5f90",
       "accepted_run_id": 30997260730,
@@ -58,12 +59,17 @@
       "document_non_regression_pass": true,
       "numeric_non_regression_pass": true,
       "independent_artifact_recheck_pass": true,
-      "next_full_basis_generation": null,
-      "next_full_basis_status": "NONE_CURRENT_RUNTIME_ACCEPTED",
-      "status": "FORMAL_RUNTIME_V17_28_FULL_BASIS_ACCEPTED_DATA_FAIL_CLOSED",
+      "next_full_basis_generation": "V17.29",
+      "next_full_basis_status": "REQUIRED_NOT_STARTED",
+      "expected_next_numeric_observation_count": 1051820,
+      "expected_next_document_error_count": 1364,
+      "expected_next_unresolved_tie_count": 1281,
+      "expected_next_target_numeric_rows": 21,
+      "expected_values_are_not_production_acceptance": true,
+      "status": "FORMAL_RUNTIME_V17_29_FULL_BASIS_V17_28_LAST_COMPLETED_PENDING_FAIL_CLOSED",
       "data_verdict": "FAIL_CLOSED",
       "final_gate": false,
-      "final_requirement": "Resolve or formally retain the remaining 1,371 document errors and 1,288 unresolved ties, then complete S3G4, freshness, reproducibility closure and Stage3 final freeze. Accepted execution is not a final data PASS."
+      "final_requirement": "Run and independently accept a fresh V17.29 64-shard full basis. Until then V17.28 remains the last completed full-basis authority. Then resolve or formally retain residual errors/ties and complete S3G4, freshness, reproducibility closure and Stage3 final freeze."
     },
     "S3G2_ANNOUNCEMENT_LEDGER": {
       "repair_source_pr": 40,
@@ -76,58 +82,28 @@
       "deterministic_replay_count": 2,
       "deterministic_replay_same_sha": true,
       "artifact_digest_is_transport_only": true,
-      "transport_artifact_digests_observed": [
-        "sha256:3d3037f1d41c1d99038f99b1be90e5158f2f31a89a5da84a110af535267aa6c1",
-        "sha256:f4cfe5679d5b0c94255b1afdf5c0aeb37ffc6d9d631284718713800895533f83"
-      ],
       "security_identity_count": 3402,
       "g3_trading_days": 2808,
       "unique_announcements": 2138516,
       "status": "FINAL_GATE_PASS_DETERMINISTIC",
       "final_gate": true
     },
-    "S3G3A_INDUSTRY_SOURCE_PROBE": {
-      "source_ref": "stage3-validation-gates-v2",
-      "run_id": 30326328969,
-      "artifact_digest": "sha256:a635409dbab2fdc61852432acfcb294f97b4468831f23a9fa01320abf39ba9af",
-      "status": "ACCEPTED_UPSTREAM_EVIDENCE",
-      "final_gate": true
-    },
-    "S3G3B_INDUSTRY_LEDGER": {
-      "source_pr": 35,
-      "source_ref": "stage3-s3g3b-validation",
-      "head_sha": "40dcab6df468bbf2d47dd48ac77ea150190c279b",
-      "run_id": 30331243641,
-      "artifact_digest": "sha256:f1da814c71fa698f3f10ce5dc7019bb86770f9d4e15ed7d7823a93a085adc872",
-      "ledger_sha256": "3d91678a111e12d4ba5262d2af4e0c2a643de13ac03076fb4e61e14db9ee9ece",
-      "status": "ACCEPTED_UPSTREAM_EVIDENCE",
-      "final_gate": true
-    },
-    "S3G4A_FORECAST_PARSER_PROBE": {
-      "source_ref": "stage3-validation-gates-v2",
-      "run_id": 30326328970,
-      "artifact_digest": "sha256:5384aed1c81782571486d32053b343218bb06a0aa45f1540faa4e619dd7d9ad4",
-      "status": "ACCEPTED_UPSTREAM_EVIDENCE",
-      "final_gate": true
-    },
+    "S3G3A_INDUSTRY_SOURCE_PROBE": {"source_ref": "stage3-validation-gates-v2", "run_id": 30326328969, "artifact_digest": "sha256:a635409dbab2fdc61852432acfcb294f97b4468831f23a9fa01320abf39ba9af", "status": "ACCEPTED_UPSTREAM_EVIDENCE", "final_gate": true},
+    "S3G3B_INDUSTRY_LEDGER": {"source_pr": 35, "source_ref": "stage3-s3g3b-validation", "head_sha": "40dcab6df468bbf2d47dd48ac77ea150190c279b", "run_id": 30331243641, "artifact_digest": "sha256:f1da814c71fa698f3f10ce5dc7019bb86770f9d4e15ed7d7823a93a085adc872", "ledger_sha256": "3d91678a111e12d4ba5262d2af4e0c2a643de13ac03076fb4e61e14db9ee9ece", "status": "ACCEPTED_UPSTREAM_EVIDENCE", "final_gate": true},
+    "S3G4A_FORECAST_PARSER_PROBE": {"source_ref": "stage3-validation-gates-v2", "run_id": 30326328970, "artifact_digest": "sha256:5384aed1c81782571486d32053b343218bb06a0aa45f1540faa4e619dd7d9ad4", "status": "ACCEPTED_UPSTREAM_EVIDENCE", "final_gate": true},
     "S3G4_EARNINGS_SURPRISE": {"source_ref": "stage3-point-in-time-features", "status": "FINAL_GATE_PENDING", "final_gate": false},
-    "S3GU_TRADING_UNIVERSE_POLICY": {
-      "source_ref": "stage3-validation-gates-v2",
-      "run_id": 30326328975,
-      "artifact_digest": "sha256:1942c9e7baa0823772201cc1f6652e660d8b4b60dd8b0559d94dcefe7da4c9fa",
-      "status": "ACCEPTED_UPSTREAM_EVIDENCE",
-      "final_gate": true
-    }
+    "S3GU_TRADING_UNIVERSE_POLICY": {"source_ref": "stage3-validation-gates-v2", "run_id": 30326328975, "artifact_digest": "sha256:1942c9e7baa0823772201cc1f6652e660d8b4b60dd8b0559d94dcefe7da4c9fa", "status": "ACCEPTED_UPSTREAM_EVIDENCE", "final_gate": true}
   },
-  "non_merge_evidence_prs": [44, 47, 52, 53, 56, 57, 58, 59, 61, 62, 64, 90, 92, 96],
+  "non_merge_evidence_prs": [44, 47, 52, 53, 56, 57, 58, 59, 61, 62, 64, 90, 92, 96, 103, 105, 107, 109],
   "superseded_s3g1j_production_prs": [42, 43, 45, 46, 48, 49, 50, 51, 54, 55, 60, 63],
-  "current_s3g1j_execution_pr": 97,
-  "current_s3g1j_governance_pr": 98,
+  "current_s3g1j_execution_pr": 109,
+  "current_s3g1j_governance_pr": 110,
   "recommended_clean_integration_order": [
     "S3G0/Foundation",
     "S3G2 final",
     "S3G3A/B",
-    "S3G1J V17.28 residual fail-closed resolution",
+    "S3G1J V17.29 fresh 64-shard full basis",
+    "S3G1J residual fail-closed resolution",
     "S3G4A + S3G4",
     "S3GU",
     "Stage3 freshness/reproducibility/final lock"

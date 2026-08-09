@@ -127,7 +127,7 @@ jobs:
             tests.test_stage3_v17_26_full_final_evidence \
             -v
           python scripts/audit_stage3_authority_map.py
-      - name: Verify completed one-shot workflows are retired
+      - name: Verify V17.28 artifact remains last completed basis under current V17.29 runtime
         shell: bash
         run: |
           set -euo pipefail
@@ -139,18 +139,31 @@ jobs:
           activation=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
           project=json.load(open('data/project_status.json',encoding='utf-8'))
           lock=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
-          assert runtime['schema_version']==11
+          assert runtime['schema_version']==12
+          assert runtime['current_production_authority']['generation']=='V17.29'
           assert runtime['full_basis_last_completed_final']['generation']=='V17.28'
-          assert runtime['next_full_basis_required']['status']=='NONE_CURRENT_RUNTIME_ACCEPTED'
-          assert activation['schema_version']==13
-          assert activation['accepted_production_runtime']['full_basis_execution_pending'] is False
-          assert activation['accepted_production_runtime']['execution_verdict']=='PASS'
+          assert runtime['full_basis_last_completed_final']['run']==30997260730
+          assert runtime['full_basis_last_completed_final']['numeric_observations']==1051799
+          assert runtime['full_basis_last_completed_final']['document_error_count']==1371
+          assert runtime['full_basis_last_completed_final']['unresolved_tie_count']==1288
+          assert runtime['next_full_basis_required']['generation']=='V17.29'
+          assert runtime['next_full_basis_required']['status']=='REQUIRED_NOT_STARTED'
+          assert runtime['next_full_basis_required']['expected_values_are_not_yet_production_acceptance'] is True
+          assert activation['schema_version']==14
+          assert activation['accepted_production_runtime']['generation']=='V17.29'
+          assert activation['accepted_production_runtime']['full_basis_execution_pending'] is True
+          assert activation['accepted_production_runtime']['last_completed_full_basis_generation']=='V17.28'
+          assert activation['accepted_production_runtime']['execution_verdict']=='PENDING'
           assert activation['accepted_production_runtime']['data_verdict']=='FAIL_CLOSED'
           assert project['stage3']['status']=='NOT_READY'
+          assert project['stage3']['s3g1j']['last_completed_full_basis_generation']=='V17.28'
+          assert project['stage3']['s3g1j']['next_full_basis_status']=='REQUIRED_NOT_STARTED'
           assert lock['status']=='NOT_READY'
+          assert lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']['last_completed_full_basis_generation']=='V17.28'
+          assert lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']['next_full_basis_status']=='REQUIRED_NOT_STARTED'
           assert 'S3G1J_FINANCIAL_RAW_VALUES' in lock['remaining_unlocked_gates']
           assert project['stage4_unlocked'] is False
           assert project['alpha_training_allowed'] is False
           assert project['live_signal_allowed'] is False
-          print('S3G1J_V17_28_FULL_FINAL_GOVERNANCE_BOUNDARY_PASS')
+          print('S3G1J_V17_28_RETAINED_LAST_COMPLETED_BASIS_PASS')
           PY
