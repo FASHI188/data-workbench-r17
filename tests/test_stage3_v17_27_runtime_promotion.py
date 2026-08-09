@@ -8,7 +8,6 @@ from unittest import mock
 
 import stage3_financial_pdf_parser_v19 as parser
 
-
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_MANIFEST = ROOT / "governance/stage3_s3g1j_runtime_manifest.json"
 ACTIVATION_MANIFEST = ROOT / "governance/stage3_workflow_activation_manifest.json"
@@ -33,8 +32,8 @@ class V1727RuntimePromotionTests(unittest.TestCase):
         cls.full_final = json.loads(FULL_FINAL_EVIDENCE.read_text(encoding="utf-8"))
 
     def test_v17_27_is_retained_as_previous_full_basis(self) -> None:
-        self.assertEqual(self.runtime["schema_version"], 11)
-        self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"], "V17.28")
+        self.assertEqual(self.runtime["schema_version"], 12)
+        self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"], "V17.29")
         latest = self.runtime["full_basis_last_completed_final"]
         self.assertEqual(latest["generation"], "V17.28")
         self.assertEqual(latest["run"], 30997260730)
@@ -42,29 +41,19 @@ class V1727RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(previous["generation"], "V17.27")
         self.assertEqual(previous["run"], 30806818977)
         self.assertEqual(previous["artifact_id"], 8854139999)
-        self.assertEqual(
-            previous["artifact_digest"],
-            "sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721",
-        )
+        self.assertEqual(previous["artifact_digest"], "sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721")
         self.assertEqual(previous["document_rows"], 121354)
         self.assertEqual(previous["numeric_observations"], 1051793)
         self.assertEqual(previous["document_error_count"], 1373)
         self.assertEqual(previous["unresolved_tie_count"], 1290)
         self.assertEqual(previous["verdict"], "FAIL_CLOSED")
         self.assertIs(previous["retained"], True)
+        self.assertEqual(self.runtime["next_full_basis_required"]["generation"], "V17.29")
+        self.assertEqual(self.runtime["next_full_basis_required"]["status"], "REQUIRED_NOT_STARTED")
 
     def test_v17_27_full_final_evidence_remains_immutable(self) -> None:
-        expected_ids = {
-            "1200907104",
-            "1201708762",
-            "1202195310",
-            "1202774611",
-            "1203358200",
-        }
-        self.assertEqual(
-            {target["announcement_id"] for target in parser.TARGETS.values()},
-            expected_ids,
-        )
+        expected_ids = {"1200907104", "1201708762", "1202195310", "1202774611", "1203358200"}
+        self.assertEqual({target["announcement_id"] for target in parser.TARGETS.values()}, expected_ids)
         self.assertEqual(set(self.runtime["v17_27_exact_source_gates"]["targets"]), expected_ids)
         self.assertEqual(set(self.candidate["exact_source_targets"]), expected_ids)
         result = self.full_final["full_basis_result"]
@@ -81,9 +70,7 @@ class V1727RuntimePromotionTests(unittest.TestCase):
             "validation_errors": ["kept-fail-closed"],
         }
         expected = copy.deepcopy(inherited)
-        with mock.patch.object(
-            parser.candidate, "parse_pdf_bytes", return_value=copy.deepcopy(inherited)
-        ):
+        with mock.patch.object(parser.candidate, "parse_pdf_bytes", return_value=copy.deepcopy(inherited)):
             actual = parser.parse_pdf_bytes(b"not-an-allowlisted-source", "2020-03-31")
         self.assertEqual(actual, expected)
 
@@ -114,40 +101,40 @@ class V1727RuntimePromotionTests(unittest.TestCase):
                 "damaged_equity_alias_required": False,
             },
         }
-        with mock.patch.object(
-            parser.hashlib, "sha256", return_value=_Digest(digest)
-        ), mock.patch.object(
+        with mock.patch.object(parser.hashlib, "sha256", return_value=_Digest(digest)), mock.patch.object(
             parser.candidate, "parse_pdf_bytes", return_value=copy.deepcopy(accepted)
         ):
             actual = parser.parse_pdf_bytes(b"synthetic-target", target["economic_date"])
         self.assertEqual(actual["parser_version"], parser.METHOD)
-        self.assertEqual(
-            {
-                concept
-                for concept, row in actual["observations"].items()
-                if row.get("status") == "FOUND"
-            },
-            set(parser.ALLOWED_CONCEPTS),
-        )
+        self.assertEqual({concept for concept, row in actual["observations"].items() if row.get("status") == "FOUND"}, set(parser.ALLOWED_CONCEPTS))
         self.assertIs(actual["balance_sheet_block"]["candidate_only"], False)
         self.assertEqual(actual["balance_sheet_block"]["formal_runtime_generation"], "V17.27")
 
     def test_activation_manifest_retains_v17_27_historical_basis(self) -> None:
-        self.assertEqual(self.activation["schema_version"], 13)
+        self.assertEqual(self.activation["schema_version"], 14)
         current = self.activation["accepted_production_runtime"]
-        self.assertEqual(current["generation"], "V17.28")
-        self.assertIs(current["full_basis_execution_pending"], False)
+        self.assertEqual(current["generation"], "V17.29")
+        self.assertIs(current["full_basis_execution_pending"], True)
         self.assertEqual(current["last_completed_full_basis_generation"], "V17.28")
         self.assertEqual(current["last_completed_full_basis_run"], 30997260730)
+        self.assertEqual(current["execution_verdict"], "PENDING")
+        self.assertTrue(current["expected_values_are_not_production_acceptance"])
+
         retained = self.activation["accepted_v17_27_full_basis_evidence"]
         self.assertIs(retained["historical_full_basis_authority_retained"], True)
         self.assertIs(retained["last_completed_full_basis_authority"], False)
         self.assertEqual(retained["run"], 30806818977)
         self.assertEqual(retained["final_data_verdict"], "FAIL_CLOSED")
+        candidate = self.activation["accepted_v17_27_candidate_safety"]
+        self.assertEqual(candidate["run"], 30747664549)
+        self.assertTrue(candidate["historical_runtime_generation_retained"])
+
         boundaries = self.activation["hard_boundaries"]
         self.assertIs(boundaries["v17_28_full_basis_execution_pending"], False)
+        self.assertIs(boundaries["v17_29_full_basis_execution_pending"], True)
         self.assertEqual(boundaries["last_completed_document_errors"], 1371)
         self.assertEqual(boundaries["last_completed_unresolved_ties"], 1288)
+        self.assertTrue(boundaries["expected_values_are_not_production_acceptance"])
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertIs(boundaries["stage4_alpha_live_locked"], True)
         self.assertIs(boundaries["main_changed"], False)
