@@ -78,6 +78,38 @@ def download(session: requests.Session, url: str) -> bytes:
     raise RuntimeError(f'download failed {url}: {last}')
 
 
+def equity_debug(raw: bytes, target: dict) -> list[dict]:
+    """Read-only failure context; never participates in candidate acceptance."""
+    out=[]
+    with candidate.fitz.open(stream=raw,filetype='pdf') as doc:
+        events=candidate.blocks.formal_statement_events(doc)
+        rows_by_page=candidate._rows_by_page(doc)
+        for page,rows in rows_by_page.items():
+            for idx,row in enumerate(rows):
+                pair=candidate._amount_pair(row,target['values']['TOTAL_EQUITY'])
+                if pair is None: continue
+                before=[]
+                for pos in range(max(0,idx-5),idx+1):
+                    r=rows[pos]
+                    event=candidate._bind(events,page,r)
+                    before.append({
+                        'offset':pos-idx,
+                        'text':str(r.get('text') or ''),
+                        'normalized':candidate._normalize(str(r.get('text') or '')),
+                        'y':str(r.get('y')),
+                        'event_role':None if event is None else event.get('role'),
+                        'event_page':None if event is None else event.get('page'),
+                        'event_line':None if event is None else event.get('line'),
+                    })
+                out.append({
+                    'page':page,
+                    'amount_row_text':str(row.get('text') or ''),
+                    'amount_pair':[str(item.get('value')) for item in pair],
+                    'context':before,
+                })
+    return out
+
+
 def candidate_value_row(doc: dict[str,str], target: dict, concept: str, obs: dict) -> dict[str,str]:
     return {
         "exchange":doc["exchange"],"source_code":doc["source_code"],"effective_code":doc["effective_code"],"issuer_org_id":doc["issuer_org_id"],
@@ -112,7 +144,11 @@ def main() -> int:
         if exact[0].get('url')!=target['source_url']: raise ValueError(f'{aid} source URL drift')
         raw=download(session,target['source_url']); digest=hashlib.sha256(raw).hexdigest()
         if digest!=target['source_sha256'] or len(raw)!=int(target['source_bytes']): raise ValueError(f'{aid} downloaded source identity mismatch')
-        parsed=candidate.parse_pdf_bytes(raw,target['economic_date'])
+        try:
+            parsed=candidate.parse_pdf_bytes(raw,target['economic_date'])
+        except Exception as exc:
+            debug=equity_debug(raw,target)
+            raise ValueError(f"{aid} candidate parse failed: {exc}; equity_debug={json.dumps(debug,ensure_ascii=False,separators=(',',':'))}") from exc
         if parsed.get('parser_version')!=candidate.METHOD or parsed.get('validation_errors'): raise ValueError(f'{aid} candidate parse not accepted')
         obs=parsed.get('observations') or {}
         found={c for c in candidate.ALLOWED_CONCEPTS if isinstance(obs.get(c),dict) and obs[c].get('status')=='FOUND'}
