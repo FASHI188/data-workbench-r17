@@ -1,0 +1,147 @@
+name: Stage3 S3G1J V17.29 Production Promotion Evidence Contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'governance/stage3_s3g1j_v17_29_production_promotion_safety.json'
+      - 'tests/test_stage3_s3g1j_v17_29_production_promotion_evidence.py'
+      - '.github/workflows/stage3-s3g1j-v17-29-production-promotion-evidence-contract.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  EXECUTION_PR: '107'
+  EXECUTION_HEAD: '4ea4ac01bcca3e580d73fc37378c2658df8f4b28'
+  ACCEPTED_RUN: '31311296836'
+  ACCEPTED_ARTIFACT_ID: '9037500964'
+  ACCEPTED_ARTIFACT: 'stage3-s3g1j-v17-29-production-promotion-safety'
+  ACCEPTED_DIGEST: 'sha256:967727cf95d9cd5d923e4f59f9cbedfe3e17599ceb31a1df06fa607ab75c4d12'
+
+jobs:
+  promotion-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Lock execution PR identity and accepted artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh pr view "$EXECUTION_PR" -R "$GITHUB_REPOSITORY" --json headRefOid,state,isDraft,mergedAt)
+          test "$(jq -r '.headRefOid' <<<"$pr")" = "$EXECUTION_HEAD"
+          test "$(jq -r '.mergedAt // ""' <<<"$pr")" = ""
+          state=$(jq -r '.state' <<<"$pr")
+          if [ "$state" = OPEN ]; then
+            test "$(jq -r '.isDraft' <<<"$pr")" = true
+          else
+            test "$state" = CLOSED
+          fi
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ACCEPTED_RUN")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.head_sha' <<<"$run")" = "$EXECUTION_HEAD"
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ACCEPTED_RUN/artifacts?per_page=100")
+          test "$(jq -r --arg name "$ACCEPTED_ARTIFACT" '[.artifacts[]|select(.name==$name)]|length' <<<"$artifacts")" = 1
+          test "$(jq -r --arg name "$ACCEPTED_ARTIFACT" '.artifacts[]|select(.name==$name)|.id' <<<"$artifacts")" = "$ACCEPTED_ARTIFACT_ID"
+          test "$(jq -r --arg name "$ACCEPTED_ARTIFACT" '.artifacts[]|select(.name==$name)|.digest' <<<"$artifacts")" = "$ACCEPTED_DIGEST"
+          test "$(jq -r --arg name "$ACCEPTED_ARTIFACT" '.artifacts[]|select(.name==$name)|.workflow_run.head_sha' <<<"$artifacts")" = "$EXECUTION_HEAD"
+          test "$(jq -r --arg name "$ACCEPTED_ARTIFACT" '.artifacts[]|select(.name==$name)|.expired' <<<"$artifacts")" = false
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-29-production-promotion-safety
+          path: accepted
+          repository: FASHI188/data-workbench-r17
+          run-id: 31311296836
+          github-token: ${{ github.token }}
+      - name: Verify downloaded promotion-safety artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import csv,gzip,hashlib,json
+          from collections import Counter
+          from pathlib import Path
+          root=Path('accepted')
+          paths={p.name:p for p in root.rglob('*') if p.is_file()}
+          expected={
+            'stage3_financial_documents_v17_29_production_promotion_safety.csv.gz':'4e5d853ae9ba16dbfd6f0ca11e2310f00539ad18c8dfdc2b654f601ccf876e40',
+            'stage3_financial_values_v17_29_production_promotion_safety.csv.gz':'2bfdd607580f474a5d5b1c1acb80468bd31906ebdc1235c798c58e12afd30fef',
+            'stage3_s3g1j_v17_29_production_promotion_safety.json':'adcf8ad787957e1d9fba1961218de5919bbd202d33c51120dc811b0ed1de25fe',
+            'output_sha256.json':'1e49aa6dc2d540907e6a176932c123c8b4e358e65dea3bc93a73a90cb0290935',
+            'output_sha256.txt':'88ff06f5001521c0c4cb0f44e27d3eda8be692bbbed83c1dbefbbd9aa22b90f0',
+          }
+          for name,digest in expected.items():
+              assert name in paths,name
+              assert hashlib.sha256(paths[name].read_bytes()).hexdigest()==digest,name
+          report=json.loads(paths['stage3_s3g1j_v17_29_production_promotion_safety.json'].read_text(encoding='utf-8'))
+          ids=['1215186538','1219426855','1219792633','1219840508','1219879687','1220087244','1221006100']
+          assert report['gate']=='S3G1J_V17_29_PRODUCTION_PROMOTION_SAFETY_V1'
+          assert report['target_announcement_ids']==ids
+          assert report['source_document_rows']==121354 and report['promotion_document_rows']==121354
+          assert report['source_numeric_rows']==1051799 and report['promotion_numeric_rows']==1051820
+          assert report['source_document_errors']==1371 and report['promotion_document_errors']==1364
+          assert report['source_unresolved_ties']==1288 and report['promotion_unresolved_ties']==1281
+          assert report['non_target_document_rows']==121347 and report['non_target_document_exact_equal'] is True
+          assert report['existing_numeric_rows']==1051799 and report['existing_numeric_exact_equal'] is True
+          assert report['candidate_target_document_semantic_equal'] is True
+          assert report['candidate_target_numeric_semantic_equal'] is True
+          assert report['candidate_target_document_semantic_sha256']==report['promotion_target_document_semantic_sha256']=='8b1bc94ff2e40b0a1778be64f5bdca0839a4e7f35db62ca9e893bd61fce96e31'
+          assert report['candidate_target_numeric_semantic_sha256']==report['promotion_target_numeric_semantic_sha256']=='ee1eb9530b12f7666a65f02df30eafabf22e9c6106e787d4cf0153868aa870df'
+          assert report['target_numeric_distribution']=={aid:3 for aid in ids}
+          assert all(t['split_equity_pattern']=='SPLIT_LABEL_1_BEFORE_1_AFTER_AMOUNT' for t in report['target_reports'])
+          assert all(all(row['identity_residual_cny']=='0.00' for row in t['identity']['columns']) for t in report['target_reports'])
+          assert report['runtime_promotion_authorized'] is False
+          assert report['formal_runtime_changed'] is False and report['runtime_authority_changed'] is False
+          assert report['production_data_changed'] is False and report['main_changed'] is False
+          assert report['stage3_status']=='NOT_READY' and report['final_data_verdict']=='FAIL_CLOSED' and report['stage4_alpha_live_locked'] is True
+          with gzip.open(paths['stage3_financial_values_v17_29_production_promotion_safety.csv.gz'],'rt',encoding='utf-8',newline='') as f:
+              values=list(csv.DictReader(f))
+          tail=values[-21:]
+          assert Counter(row['announcement_id'] for row in tail)==Counter({aid:3 for aid in ids})
+          assert Counter(row['concept'] for row in tail)==Counter({'TOTAL_ASSETS':7,'TOTAL_LIABILITIES':7,'TOTAL_EQUITY':7})
+          print('V17_29_PRODUCTION_PROMOTION_DOWNLOADED_EVIDENCE_PASS')
+          PY
+      - name: Verify committed immutable evidence
+        run: python -m unittest tests.test_stage3_s3g1j_v17_29_production_promotion_evidence -v
+      - name: Assert execution code did not enter evidence branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e scripts/stage3_financial_pdf_parser_v21_production_candidate.py
+          test ! -e scripts/build_stage3_s3g1j_v17_29_production_promotion_safety.py
+          test ! -e tests/test_stage3_s3g1j_v17_29_production_promotion_safety.py
+          test ! -e .github/workflows/stage3-s3g1j-v17-29-production-promotion-safety.yml
+      - name: Assert formal authority remains V17.28 and fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          project=json.load(open('data/project_status.json',encoding='utf-8'))
+          lock=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
+          evidence=json.load(open('governance/stage3_s3g1j_v17_29_production_promotion_safety.json',encoding='utf-8'))
+          assert project['stage3']['status']=='NOT_READY'
+          assert project['stage3']['s3g1j']['formal_runtime_generation']=='V17.28'
+          assert project['stage3']['s3g1j']['document_error_count']==1371
+          assert project['stage3']['s3g1j']['unresolved_tie_count']==1288
+          assert project['stage3']['s3g1j']['data_verdict']=='FAIL_CLOSED'
+          assert project['stage4_unlocked'] is False and project['alpha_training_allowed'] is False and project['live_signal_allowed'] is False
+          assert lock['status']=='NOT_READY'
+          h=evidence['hard_boundaries']
+          assert h['production_promotion_safety_machine_accepted'] is True
+          assert h['runtime_promotion_authorized'] is False
+          assert h['formal_runtime_changed'] is False
+          assert h['runtime_authority_changed'] is False
+          assert h['production_data_changed'] is False
+          assert h['stage4_alpha_live_locked'] is True
+          assert h['merge_to_main_authorized'] is False
+          print('V17_29_PRODUCTION_PROMOTION_GOVERNANCE_BOUNDARY_PASS')
+          PY
