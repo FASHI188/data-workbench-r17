@@ -1,0 +1,170 @@
+name: Stage3 S3G1J V17.29 Residual Classification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/classify_stage3_s3g1j_v17_29_residuals.py'
+      - 'scripts/deterministic_gzip_stored.py'
+      - 'scripts/run_stage3_s3g1j_v17_29_residual_classifier.py'
+      - 'tests/test_stage3_v17_29_residual_classification.py'
+      - '.github/workflows/stage3-s3g1j-v17-29-residual-classifier-repro.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  SOURCE_RUN: '31389854868'
+  SOURCE_HEAD: '22fa37064eeb8a49ad5292dd2be48bd7b674c673'
+  SOURCE_ARTIFACT_ID: '9063271903'
+  SOURCE_ARTIFACT: 'stage3-s3g1j-v17-29-full-final'
+  SOURCE_DIGEST: 'sha256:71a4daa6c8372f3d64080b5fa5b787914292d889da7051de699eb6610189c726'
+  PREVIOUS_RUN: '31022605702'
+  PREVIOUS_HEAD: 'b997f7b91cb2a5fcbb5d8473f428effd26ed5bf0'
+  PREVIOUS_ARTIFACT_ID: '8937238672'
+  PREVIOUS_ARTIFACT: 'stage3-s3g1j-v17-28-residual-classification-v1'
+  PREVIOUS_DIGEST: 'sha256:2c54496b329b719c09f299fe0c2d61ece4b05a0c8859b4a39441012abfb248ad'
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Verify current authority is accepted V17.29 full basis
+        run: |
+          python - <<'PY'
+          import json
+          runtime=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          project=json.load(open('data/project_status.json',encoding='utf-8'))
+          assert runtime['schema_version']==13
+          assert runtime['formal_runtime']['runtime_generation']=='V17.29'
+          latest=runtime['full_basis_last_completed_final']
+          assert latest['generation']=='V17.29'
+          assert latest['run']==31389854868
+          assert latest['artifact_id']==9063271903
+          assert latest['artifact_digest']=='sha256:71a4daa6c8372f3d64080b5fa5b787914292d889da7051de699eb6610189c726'
+          assert latest['document_error_count']==1364
+          assert latest['unresolved_tie_count']==1281
+          assert latest['verdict']=='FAIL_CLOSED'
+          assert project['stage3']['status']=='NOT_READY'
+          assert project['stage4_unlocked'] is False
+          assert project['alpha_training_allowed'] is False
+          assert project['live_signal_allowed'] is False
+          print('V17_29_RESIDUAL_SOURCE_AUTHORITY_PASS')
+          PY
+      - name: Lock accepted V17.29 full basis and V17.28 classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          lock_artifact() {
+            local run="$1" head="$2" artifact_id="$3" name="$4" digest="$5"
+            payload=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run")
+            test "$(jq -r '.status' <<<"$payload")" = completed
+            test "$(jq -r '.conclusion' <<<"$payload")" = success
+            test "$(jq -r '.head_sha' <<<"$payload")" = "$head"
+            artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts?per_page=100")
+            test "$(jq -r --arg name "$name" '[.artifacts[]|select(.name==$name)]|length' <<<"$artifacts")" = 1
+            test "$(jq -r --arg name "$name" '.artifacts[]|select(.name==$name)|.id' <<<"$artifacts")" = "$artifact_id"
+            test "$(jq -r --arg name "$name" '.artifacts[]|select(.name==$name)|.digest' <<<"$artifacts")" = "$digest"
+            test "$(jq -r --arg name "$name" '.artifacts[]|select(.name==$name)|.workflow_run.head_sha' <<<"$artifacts")" = "$head"
+            test "$(jq -r --arg name "$name" '.artifacts[]|select(.name==$name)|.expired' <<<"$artifacts")" = false
+          }
+          lock_artifact "$SOURCE_RUN" "$SOURCE_HEAD" "$SOURCE_ARTIFACT_ID" "$SOURCE_ARTIFACT" "$SOURCE_DIGEST"
+          lock_artifact "$PREVIOUS_RUN" "$PREVIOUS_HEAD" "$PREVIOUS_ARTIFACT_ID" "$PREVIOUS_ARTIFACT" "$PREVIOUS_DIGEST"
+      - name: Run fail-closed classifier and gzip contracts
+        run: |
+          python -m py_compile \
+            scripts/classify_stage3_s3g1j_v17_29_residuals.py \
+            scripts/deterministic_gzip_stored.py \
+            scripts/run_stage3_s3g1j_v17_29_residual_classifier.py
+          python -m unittest tests.test_stage3_v17_29_residual_classification -v
+          python - <<'PY'
+          import gzip,hashlib
+          from deterministic_gzip_stored import gzip_store_bytes
+          for payload in (b'', b'abc', bytes(range(256))*1000):
+              encoded=gzip_store_bytes(payload)
+              assert gzip.decompress(encoded)==payload
+          payload=b'cross-runtime-deterministic-gzip\n'
+          assert hashlib.sha256(gzip_store_bytes(payload)).hexdigest()=='9f5513c54ca1295d032d5e22f4f8fcb7b82e129d3c651c1228350d67f93112dd'
+          print('FIXED_GZIP_STORED_CONTRACT_PASS')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-29-full-final
+          path: source
+          repository: FASHI188/data-workbench-r17
+          run-id: 31389854868
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-28-residual-classification-v1
+          path: previous
+          repository: FASHI188/data-workbench-r17
+          run-id: 31022605702
+          github-token: ${{ github.token }}
+      - name: Build deterministic V17.29 residual and migration ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          documents=$(find source -name stage3_financial_documents.csv.gz -print -quit)
+          previous_ledger=$(find previous -name s3g1j_v17_28_residual_classification.csv.gz -print -quit)
+          test -n "$documents" && test -n "$previous_ledger"
+          python scripts/run_stage3_s3g1j_v17_29_residual_classifier.py \
+            --documents "$documents" \
+            --previous-ledger "$previous_ledger" \
+            --out-root build/classification
+      - name: Verify exact V17.29 population and fixed gzip hashes
+        run: |
+          python - <<'PY'
+          import json
+          s=json.load(open('build/classification/s3g1j_v17_29_residual_classification_summary.json',encoding='utf-8'))
+          assert s['gate']=='S3G1J_V17_29_FULL_BASIS_RESIDUAL_CLASSIFICATION_V1'
+          assert s['input_document_rows']==121354
+          assert s['pass_document_rows']==119990
+          assert s['residual_document_rows']==1364
+          assert s['class_counts']=={
+            'CANONICAL_PDF_ISSUER_MISMATCH':83,
+            'MULTI_CANDIDATE_SOURCE_INCOMPLETE_2_CANDIDATES':85,
+            'MULTI_CANDIDATE_SOURCE_INCOMPLETE_3_CANDIDATES':2,
+            'MULTI_CANDIDATE_VALUE_CONFLICT':14,
+            'SINGLE_CANONICAL_IDENTITY_MISMATCH_TIER2_2':12,
+            'SINGLE_CANONICAL_IDENTITY_MISMATCH_TIER2_3':71,
+            'SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_0':550,
+            'SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_1':421,
+            'SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_2':119,
+            'SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_3':7,
+          }
+          assert s['p0_safe_near_complete_count']==7
+          assert s['p0_announcement_ids']==['1202799494','1204077386','1205543437','1209806910','1219834247','1223347318','1223407043']
+          assert s['tie_taxonomy']=={'TIE_SOURCE_INCOMPLETE':1267,'TIE_VALUE_CONFLICT':14}
+          assert s['migration_counts']=={'RECOVERED_EXITED_RESIDUAL':7,'UNCHANGED':1364}
+          assert s['recovered_exit_announcement_ids']==['1215186538','1219426855','1219792633','1219840508','1219879687','1220087244','1221006100']
+          assert s['new_residual_count']==0
+          assert s['common_residual_reclassification_count']==0
+          assert s['classification_ledger_sha256']=='31be1e40330be6b149e4eb630339131258b4212d1639e13bead207feae50afe5'
+          assert s['classification_ledger_gzip_sha256']=='34483c4096e21d943321bc12961a35a0685393401ee64b226a9a079255433bab'
+          assert s['p0_ledger_sha256']=='6c5866e3fdbf6381bb0b982b8642aa9c4d5ce9833469a97bcceda6dbea1d5633'
+          assert s['p0_ledger_gzip_sha256']=='a64a1ce56761b3c135e68cd89b79cb458f8fc65f6f8b5b8255dfb8b18f45c61b'
+          assert s['migration_ledger_sha256']=='c63b792afc9e3a29c073fa284ba5e7c4059426c16d40c4855bc39c904f29abe4'
+          assert s['migration_ledger_gzip_sha256']=='ca09698316d5c0460e926a1d5d2d33a46f3c78720ca9b1b9c2d32a800a05f784'
+          assert s['production_data_changed'] is False
+          assert s['parser_changed'] is False
+          assert s['runtime_authority_changed'] is False
+          assert s['stage3_status']=='NOT_READY'
+          assert s['stage4_alpha_locked'] is True
+          assert s['pass'] is True and s['errors']==[]
+          print(json.dumps(s,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-29-residual-classification-v1
+          path: build/classification
+          retention-days: 90
+          compression-level: 0
