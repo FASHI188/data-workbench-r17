@@ -9,6 +9,7 @@ on:
       - 'governance/stage3_s3g1j_runtime_manifest.json'
       - 'governance/stage3_s3g1j_v17_28_full_final.json'
       - 'governance/stage3_s3g1j_v17_29_runtime_promotion.json'
+      - 'governance/stage3_s3g1j_v17_29_full_final.json'
       - 'config/stage3_final_lock.json'
       - 'data/project_status.json'
       - 'scripts/audit_stage3_authority_map.py'
@@ -48,6 +49,8 @@ jobs:
           verify_pr 94 6969c58ee60314e3e897e55b132266612c602777
           verify_pr 96 7dd3e14ccdd9574ce7f4a8f716026ececf254541
           verify_pr 97 611d402c3b61a35644a27fd33d3955b9976dec7c
+          verify_pr 112 22fa37064eeb8a49ad5292dd2be48bd7b674c673
+          verify_pr 113 2b48694391e2a6cdbd6972b68844c1253b3c55d9
           verify_pr 40 1ac525aa0b56cd39b233e5c2da9e44d3707c55cb
           verify_pr 35 40dcab6df468bbf2d47dd48ac77ea150190c279b
       - name: Verify accepted V17.29 runtime-wrapper evidence
@@ -69,6 +72,32 @@ jobs:
           test "$(jq -r --arg name "$artifact" '[.artifacts[]|select(.name==$name)]|length' <<<"$artifacts")" = 1
           test "$(jq -r --arg name "$artifact" '.artifacts[]|select(.name==$name)|.id' <<<"$artifacts")" = 9037869497
           test "$(jq -r --arg name "$artifact" '.artifacts[]|select(.name==$name)|.digest' <<<"$artifacts")" = "$expected_digest"
+          test "$(jq -r --arg name "$artifact" '.artifacts[]|select(.name==$name)|.expired' <<<"$artifacts")" = false
+      - name: Verify accepted V17.29 completed full-basis evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh pr view 112 -R "$GITHUB_REPOSITORY" --json headRefOid,mergedAt,mergeCommit)
+          test "$(jq -r '.headRefOid' <<<"$pr")" = 22fa37064eeb8a49ad5292dd2be48bd7b674c673
+          test -n "$(jq -r '.mergedAt // ""' <<<"$pr")"
+          test "$(jq -r '.mergeCommit.oid' <<<"$pr")" = 25207ef50604db48558d02a0beb5cc3453efd458
+          source=$(gh pr view 113 -R "$GITHUB_REPOSITORY" --json state,mergedAt,headRefOid)
+          test "$(jq -r '.state' <<<"$source")" = CLOSED
+          test "$(jq -r '.mergedAt // ""' <<<"$source")" = ""
+          test "$(jq -r '.headRefOid' <<<"$source")" = 2b48694391e2a6cdbd6972b68844c1253b3c55d9
+          run=31389854868
+          expected_head=22fa37064eeb8a49ad5292dd2be48bd7b674c673
+          artifact=stage3-s3g1j-v17-29-full-final
+          expected_digest=sha256:71a4daa6c8372f3d64080b5fa5b787914292d889da7051de699eb6610189c726
+          payload=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run")
+          test "$(jq -r '.status' <<<"$payload")" = completed
+          test "$(jq -r '.conclusion' <<<"$payload")" = success
+          test "$(jq -r '.head_sha' <<<"$payload")" = "$expected_head"
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts?per_page=100")
+          test "$(jq -r --arg name "$artifact" '[.artifacts[]|select(.name==$name)]|length' <<<"$artifacts")" = 1
+          test "$(jq -r --arg name "$artifact" '.artifacts[]|select(.name==$name)|.id' <<<"$artifacts")" = 9063271903
+          test "$(jq -r --arg name "$artifact" '.artifacts[]|select(.name==$name)|.digest' <<<"$artifacts")" = "$expected_digest"
+          test "$(jq -r --arg name "$artifact" '.artifacts[]|select(.name==$name)|.workflow_run.head_sha' <<<"$artifacts")" = "$expected_head"
           test "$(jq -r --arg name "$artifact" '.artifacts[]|select(.name==$name)|.expired' <<<"$artifacts")" = false
       - name: Verify retained V17.28 completed full-basis evidence
         shell: bash
@@ -121,7 +150,7 @@ jobs:
           grep -Fq "\"ledger_sha256\": \"$expected_ledger\"" /tmp/s3g2-run.log
           grep -Fq '"gzip_header_mtime": 0' /tmp/s3g2-run.log
           grep -Fq '"errors": []' /tmp/s3g2-run.log
-      - name: Assert V17.29 runtime does not masquerade as completed full basis
+      - name: Assert V17.29 completed basis is registered but S3G1J remains fail-closed
         run: |
           python - <<'PY'
           import json
@@ -129,29 +158,35 @@ jobs:
           authority=json.load(open('governance/stage3_authority_map.json',encoding='utf-8'))
           project=json.load(open('data/project_status.json',encoding='utf-8'))
           runtime=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          full=json.load(open('governance/stage3_s3g1j_v17_29_full_final.json',encoding='utf-8'))
           g1j=lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']
           assert g1j['formal_runtime_generation']=='V17.29'
           assert g1j['runtime_wrapper_run_id']==31312709490
-          assert g1j['last_completed_full_basis_generation']=='V17.28'
-          assert g1j['run_id']==30997260730
-          assert g1j['artifact_id']==8927455692
+          assert g1j['last_completed_full_basis_generation']=='V17.29'
+          assert g1j['run_id']==31389854868
+          assert g1j['artifact_id']==9063271903
+          assert g1j['artifact_digest']=='sha256:71a4daa6c8372f3d64080b5fa5b787914292d889da7051de699eb6610189c726'
           assert g1j['execution_pass'] is True
           assert g1j['document_non_regression_pass'] is True
           assert g1j['numeric_non_regression_pass'] is True
+          assert g1j['promotion_gold_equality_pass'] is True
           assert g1j['data_verdict']=='FAIL_CLOSED'
           assert g1j['final_gate_pass'] is False
-          assert g1j['document_error_count']==1371
-          assert g1j['unresolved_tie_count']==1288
-          assert g1j['next_full_basis_generation']=='V17.29'
-          assert g1j['next_full_basis_status']=='REQUIRED_NOT_STARTED'
-          assert g1j['expected_next_numeric_observation_count']==1051820
-          assert g1j['expected_next_document_error_count']==1364
-          assert g1j['expected_next_unresolved_tie_count']==1281
-          assert g1j['expected_values_are_not_production_acceptance'] is True
+          assert g1j['document_error_count']==1364
+          assert g1j['unresolved_tie_count']==1281
+          assert g1j['next_full_basis_generation'] is None
+          assert g1j['next_full_basis_status']=='NONE_CURRENT_RUNTIME_ACCEPTED'
+          assert runtime['schema_version']==13
           assert runtime['current_production_authority']['generation']=='V17.29'
-          assert runtime['current_production_authority']['full_basis_evidence_manifest'] is None
-          assert runtime['full_basis_last_completed_final']['generation']=='V17.28'
-          assert runtime['next_full_basis_required']['status']=='REQUIRED_NOT_STARTED'
+          assert runtime['current_production_authority']['full_basis_evidence_manifest']=='governance/stage3_s3g1j_v17_29_full_final.json'
+          assert runtime['full_basis_last_completed_final']['generation']=='V17.29'
+          assert runtime['full_basis_last_completed_final']['run']==31389854868
+          assert runtime['previous_last_completed_full_basis_final']['generation']=='V17.28'
+          assert runtime['next_full_basis_required']['status']=='NONE_CURRENT_RUNTIME_ACCEPTED'
+          assert full['governance_registration']['governance_pr']==114
+          assert full['full_basis_result']['execution_pass'] is True
+          assert full['full_basis_result']['final_data_gate_pass'] is False
+          assert full['full_basis_result']['final_data_verdict']=='FAIL_CLOSED'
           assert lock['required_gates']['S3G4_EARNINGS_SURPRISE']['run_id'] is None
           assert set(lock['remaining_unlocked_gates'])=={'S3G1J_FINANCIAL_RAW_VALUES','S3G4_EARNINGS_SURPRISE'}
           assert authority['authoritative_components']['S3G1J_FINANCIAL_RAW_VALUES']['final_gate'] is False
@@ -160,5 +195,5 @@ jobs:
           assert project['stage4_unlocked'] is False
           assert project['alpha_training_allowed'] is False
           assert project['live_signal_allowed'] is False
-          print('STAGE3_LOCKED_WITH_V17_29_RUNTIME_V17_28_LAST_BASIS_FAIL_CLOSED')
+          print('STAGE3_LOCKED_WITH_V17_29_RUNTIME_AND_ACCEPTED_FULL_BASIS_FAIL_CLOSED')
           PY
