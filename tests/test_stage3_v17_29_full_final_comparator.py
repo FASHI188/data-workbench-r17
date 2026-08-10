@@ -9,6 +9,48 @@ import compare_stage3_s3g1j_v17_29_full_final as comparator
 
 
 class V1729FullComparatorTests(unittest.TestCase):
+    def _blank_doc(self, aid: str) -> dict[str, str]:
+        row = {field: "" for field in comparator.v28.v27.v1.DOC_FIELDS}
+        row["announcement_id"] = aid
+        return row
+
+    def _stable_numeric(self, aid: str, value: str = "1") -> dict[str, str]:
+        row = {
+            field: "" for field in comparator.v28.v27.v1.STABLE_NUMERIC_FIELDS
+        }
+        row.update(
+            {
+                "announcement_id": aid,
+                "concept": "TOTAL_ASSETS",
+                "normalized_cny_value": value,
+                "raw_value": value,
+                "source_sha256": "sha",
+                "source_format": "PDF",
+                "page": "1",
+                "matched_alias": "资产总计",
+                "confidence": "HIGH",
+            }
+        )
+        return row
+
+    def _compare(
+        self,
+        prev_docs=None,
+        cur_docs=None,
+        prev_values=None,
+        cur_values=None,
+        gold_values=None,
+    ) -> dict:
+        return comparator.compare(
+            prev_docs or [],
+            cur_docs or [],
+            prev_values or [],
+            cur_values or [],
+            gold_values or [],
+            {},
+            {},
+        )
+
     def test_top_level_document_error_order_is_semantic(self) -> None:
         left = json.dumps([
             {"concept": "B", "values": [["2", "20"]]},
@@ -86,6 +128,84 @@ class V1729FullComparatorTests(unittest.TestCase):
         self.assertIn("PRODUCTION", comparator.EXPECTED_EXTRACTOR_METHOD)
         self.assertNotIn("CANDIDATE", comparator.EXPECTED_EXTRACTOR_METHOD)
         self.assertNotIn("EXPERIMENT", comparator.EXPECTED_EXTRACTOR_METHOD)
+
+    def test_compare_rejects_non_target_document_drift(self) -> None:
+        old = self._blank_doc("9999999999")
+        new = copy.deepcopy(old)
+        new["canonical_title"] = "unexpected drift"
+        report = self._compare(prev_docs=[old], cur_docs=[new])
+        self.assertEqual(report["changed_announcement_ids"], ["9999999999"])
+        self.assertTrue(any("document delta expected=" in e for e in report["errors"]))
+
+    def test_compare_rejects_existing_numeric_stable_field_drift(self) -> None:
+        old = self._stable_numeric("9999999999", "1")
+        new = self._stable_numeric("9999999999", "2")
+        report = self._compare(
+            prev_values=[old], cur_values=[new], gold_values=[copy.deepcopy(new)]
+        )
+        self.assertIn("existing numeric stable-field multiset drift", report["errors"])
+
+    def test_compare_rejects_promotion_gold_drift(self) -> None:
+        stable = self._stable_numeric("9999999999", "1")
+        gold = self._stable_numeric("9999999999", "2")
+        report = self._compare(
+            prev_values=[copy.deepcopy(stable)],
+            cur_values=[copy.deepcopy(stable)],
+            gold_values=[gold],
+        )
+        self.assertIn(
+            "fresh V17.29 stable-field multiset differs from accepted promotion gold",
+            report["errors"],
+        )
+
+    def test_compare_rejects_target_extraction_method_drift(self) -> None:
+        aid = "1215186538"
+        rows = []
+        for concept in ("TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY"):
+            row = self._stable_numeric(aid, "1")
+            row["concept"] = concept
+            row["extraction_method"] = "BAD_METHOD"
+            row["methodology_version"] = comparator.EXPECTED_METHODOLOGY
+            rows.append(row)
+        report = self._compare(cur_values=rows, gold_values=copy.deepcopy(rows))
+        self.assertTrue(any("extraction_method drift" in e for e in report["errors"]))
+
+    def test_compare_rejects_target_methodology_drift(self) -> None:
+        aid = "1215186538"
+        rows = []
+        for concept in ("TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY"):
+            row = self._stable_numeric(aid, "1")
+            row["concept"] = concept
+            row["extraction_method"] = comparator.EXPECTED_EXTRACTOR_METHOD
+            row["methodology_version"] = "BAD_METHODOLOGY"
+            rows.append(row)
+        report = self._compare(cur_values=rows, gold_values=copy.deepcopy(rows))
+        self.assertTrue(any("methodology drift" in e for e in report["errors"]))
+
+    def test_compare_rejects_wrong_target_source_identity(self) -> None:
+        aid = "1215186538"
+        old = self._blank_doc(aid)
+        old["tie_resolution"] = "TIE_SOURCE_INCOMPLETE"
+        old["document_status"] = "ERROR"
+        new = self._blank_doc(aid)
+        new.update(
+            {
+                "document_status": "PASS",
+                "tie_candidate_count": "1",
+                "tie_resolution": "SINGLE_CANONICAL",
+                "selected_source_sha256": "WRONG",
+                "selected_source_bytes": "2711641",
+                "numeric_observations": "3",
+                "tier1_found": "0",
+                "tier2_found": "3",
+                "economic_date": "2022-06-30",
+                "candidate_evidence_json": "[]",
+            }
+        )
+        report = self._compare(prev_docs=[old], cur_docs=[new])
+        self.assertTrue(
+            any("selected_source_sha256 expected=" in e for e in report["errors"])
+        )
 
 
 if __name__ == "__main__":
