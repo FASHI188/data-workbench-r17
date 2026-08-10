@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - 'governance/stage3_s3g1j_v17_28_full_final.json'
+      - 'governance/stage3_s3g1j_v17_29_full_final.json'
       - 'governance/stage3_s3g1j_runtime_manifest.json'
       - 'governance/stage3_workflow_activation_manifest.json'
       - 'governance/stage3_authority_map.json'
@@ -118,7 +119,7 @@ jobs:
           assert compare['stage4_alpha_locked'] is True
           print('S3G1J_V17_28_FULL_FINAL_DOWNLOADED_EVIDENCE_PASS')
           PY
-      - name: Verify registered authority and retained history
+      - name: Verify immutable V17.28 evidence and retained history
         run: |
           python -m unittest \
             tests.test_stage3_v17_28_full_final_evidence \
@@ -127,7 +128,7 @@ jobs:
             tests.test_stage3_v17_26_full_final_evidence \
             -v
           python scripts/audit_stage3_authority_map.py
-      - name: Verify V17.28 artifact remains last completed basis under current V17.29 runtime
+      - name: Verify V17.28 remains retained historical basis under accepted V17.29 basis
         shell: bash
         run: |
           set -euo pipefail
@@ -139,31 +140,38 @@ jobs:
           activation=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
           project=json.load(open('data/project_status.json',encoding='utf-8'))
           lock=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
-          assert runtime['schema_version']==12
+          assert runtime['schema_version']==13
           assert runtime['current_production_authority']['generation']=='V17.29'
-          assert runtime['full_basis_last_completed_final']['generation']=='V17.28'
-          assert runtime['full_basis_last_completed_final']['run']==30997260730
-          assert runtime['full_basis_last_completed_final']['numeric_observations']==1051799
-          assert runtime['full_basis_last_completed_final']['document_error_count']==1371
-          assert runtime['full_basis_last_completed_final']['unresolved_tie_count']==1288
-          assert runtime['next_full_basis_required']['generation']=='V17.29'
-          assert runtime['next_full_basis_required']['status']=='REQUIRED_NOT_STARTED'
-          assert runtime['next_full_basis_required']['expected_values_are_not_yet_production_acceptance'] is True
-          assert activation['schema_version']==14
-          assert activation['accepted_production_runtime']['generation']=='V17.29'
-          assert activation['accepted_production_runtime']['full_basis_execution_pending'] is True
-          assert activation['accepted_production_runtime']['last_completed_full_basis_generation']=='V17.28'
-          assert activation['accepted_production_runtime']['execution_verdict']=='PENDING'
-          assert activation['accepted_production_runtime']['data_verdict']=='FAIL_CLOSED'
+          assert runtime['full_basis_last_completed_final']['generation']=='V17.29'
+          assert runtime['full_basis_last_completed_final']['run']==31389854868
+          old=runtime['previous_last_completed_full_basis_final']
+          assert old['generation']=='V17.28'
+          assert old['run']==30997260730
+          assert old['numeric_observations']==1051799
+          assert old['document_error_count']==1371
+          assert old['unresolved_tie_count']==1288
+          assert old['retained'] is True
+          assert runtime['next_full_basis_required']['status']=='NONE_CURRENT_RUNTIME_ACCEPTED'
+          assert activation['schema_version']==15
+          current=activation['accepted_production_runtime']
+          assert current['generation']=='V17.29'
+          assert current['full_basis_execution_pending'] is False
+          assert current['last_completed_full_basis_generation']=='V17.29'
+          assert current['execution_verdict']=='PASS'
+          assert current['data_verdict']=='FAIL_CLOSED'
+          historic=activation['accepted_v17_28_full_basis_evidence']
+          assert historic['run']==30997260730
+          assert historic['historical_full_basis_authority_retained'] is True
+          assert historic['last_completed_full_basis_authority'] is False
           assert project['stage3']['status']=='NOT_READY'
-          assert project['stage3']['s3g1j']['last_completed_full_basis_generation']=='V17.28'
-          assert project['stage3']['s3g1j']['next_full_basis_status']=='REQUIRED_NOT_STARTED'
+          assert project['stage3']['s3g1j']['last_completed_full_basis_generation']=='V17.29'
+          assert project['stage3']['s3g1j']['data_verdict']=='FAIL_CLOSED'
           assert lock['status']=='NOT_READY'
-          assert lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']['last_completed_full_basis_generation']=='V17.28'
-          assert lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']['next_full_basis_status']=='REQUIRED_NOT_STARTED'
+          assert lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']['last_completed_full_basis_generation']=='V17.29'
+          assert lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']['final_gate_pass'] is False
           assert 'S3G1J_FINANCIAL_RAW_VALUES' in lock['remaining_unlocked_gates']
           assert project['stage4_unlocked'] is False
           assert project['alpha_training_allowed'] is False
           assert project['live_signal_allowed'] is False
-          print('S3G1J_V17_28_RETAINED_LAST_COMPLETED_BASIS_PASS')
+          print('S3G1J_V17_28_RETAINED_HISTORICAL_BASIS_PASS')
           PY
