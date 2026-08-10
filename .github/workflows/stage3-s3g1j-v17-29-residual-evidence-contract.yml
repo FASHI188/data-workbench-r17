@@ -1,0 +1,122 @@
+name: Stage3 S3G1J V17.29 Residual Classification Evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'governance/stage3_s3g1j_v17_29_residual_classification.json'
+      - 'governance/stage3_s3g1j_v17_28_p0_pdf_root_cause.json'
+      - 'governance/stage3_s3g1j_runtime_manifest.json'
+      - 'data/project_status.json'
+      - 'tests/test_stage3_v17_29_residual_classification_evidence.py'
+      - '.github/workflows/stage3-s3g1j-v17-29-residual-evidence-contract.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  DIAGNOSTIC_PR: '115'
+  DIAGNOSTIC_HEAD: 'fe9ee8ab95bf0b8aac12f0461929c03c7ea5dfbf'
+  DIAGNOSTIC_RUN: '31397106544'
+  DIAGNOSTIC_ARTIFACT_ID: '9066068547'
+  DIAGNOSTIC_ARTIFACT: 'stage3-s3g1j-v17-29-residual-classification-v1'
+  DIAGNOSTIC_DIGEST: 'sha256:7b6f6347367e51c0130e2415dd908f8dc17848851cc6e51814dcd9aaf0173e7e'
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Lock closed-unmerged diagnostic PR and exact artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh pr view "$DIAGNOSTIC_PR" -R "$GITHUB_REPOSITORY" --json headRefOid,state,mergedAt)
+          test "$(jq -r '.headRefOid' <<<"$pr")" = "$DIAGNOSTIC_HEAD"
+          test "$(jq -r '.state' <<<"$pr")" = CLOSED
+          test -z "$(jq -r '.mergedAt // ""' <<<"$pr")"
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$DIAGNOSTIC_RUN")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.head_sha' <<<"$run")" = "$DIAGNOSTIC_HEAD"
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$DIAGNOSTIC_RUN/artifacts?per_page=100")
+          test "$(jq -r --arg name "$DIAGNOSTIC_ARTIFACT" '[.artifacts[]|select(.name==$name)]|length' <<<"$artifacts")" = 1
+          test "$(jq -r --arg name "$DIAGNOSTIC_ARTIFACT" '.artifacts[]|select(.name==$name)|.id' <<<"$artifacts")" = "$DIAGNOSTIC_ARTIFACT_ID"
+          test "$(jq -r --arg name "$DIAGNOSTIC_ARTIFACT" '.artifacts[]|select(.name==$name)|.digest' <<<"$artifacts")" = "$DIAGNOSTIC_DIGEST"
+          test "$(jq -r --arg name "$DIAGNOSTIC_ARTIFACT" '.artifacts[]|select(.name==$name)|.workflow_run.head_sha' <<<"$artifacts")" = "$DIAGNOSTIC_HEAD"
+          test "$(jq -r --arg name "$DIAGNOSTIC_ARTIFACT" '.artifacts[]|select(.name==$name)|.expired' <<<"$artifacts")" = false
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-29-residual-classification-v1
+          path: accepted
+          repository: FASHI188/data-workbench-r17
+          run-id: 31397106544
+          github-token: ${{ github.token }}
+      - name: Verify downloaded classifier outputs exactly
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip,hashlib,json
+          from pathlib import Path
+          root=Path('accepted')
+          expected={
+            's3g1j_v17_29_residual_classification.csv.gz':('34483c4096e21d943321bc12961a35a0685393401ee64b226a9a079255433bab','31be1e40330be6b149e4eb630339131258b4212d1639e13bead207feae50afe5'),
+            's3g1j_v17_29_p0_safe_near_complete.csv.gz':('a64a1ce56761b3c135e68cd89b79cb458f8fc65f6f8b5b8255dfb8b18f45c61b','6c5866e3fdbf6381bb0b982b8642aa9c4d5ce9833469a97bcceda6dbea1d5633'),
+            's3g1j_v17_28_to_v17_29_residual_migration.csv.gz':('ca09698316d5c0460e926a1d5d2d33a46f3c78720ca9b1b9c2d32a800a05f784','c63b792afc9e3a29c073fa284ba5e7c4059426c16d40c4855bc39c904f29abe4'),
+          }
+          for name,(gz_sha,plain_sha) in expected.items():
+              p=next(root.rglob(name))
+              assert hashlib.sha256(p.read_bytes()).hexdigest()==gz_sha,name
+              with gzip.open(p,'rb') as f: plain=f.read()
+              assert hashlib.sha256(plain).hexdigest()==plain_sha,name
+          summary=json.load(open(next(root.rglob('s3g1j_v17_29_residual_classification_summary.json')),encoding='utf-8'))
+          assert summary['input_document_rows']==121354
+          assert summary['pass_document_rows']==119990
+          assert summary['residual_document_rows']==1364
+          assert summary['p0_safe_near_complete_count']==7
+          assert summary['p0_announcement_ids']==['1202799494','1204077386','1205543437','1209806910','1219834247','1223347318','1223407043']
+          assert summary['tie_taxonomy']=={'TIE_SOURCE_INCOMPLETE':1267,'TIE_VALUE_CONFLICT':14}
+          assert summary['migration_counts']=={'RECOVERED_EXITED_RESIDUAL':7,'UNCHANGED':1364}
+          assert summary['new_residual_count']==0
+          assert summary['common_residual_reclassification_count']==0
+          assert summary['parser_changed'] is False
+          assert summary['runtime_authority_changed'] is False
+          assert summary['production_data_changed'] is False
+          assert summary['stage3_status']=='NOT_READY'
+          assert summary['stage4_alpha_locked'] is True
+          assert summary['pass'] is True and summary['errors']==[]
+          print('V17_29_RESIDUAL_DOWNLOADED_EVIDENCE_PASS')
+          PY
+      - name: Verify governance evidence and root-cause boundary
+        run: python -m unittest tests.test_stage3_v17_29_residual_classification_evidence -v
+      - name: Verify current authority is unchanged and no parser authorization exists
+        run: |
+          python - <<'PY'
+          import json
+          e=json.load(open('governance/stage3_s3g1j_v17_29_residual_classification.json',encoding='utf-8'))
+          r=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          p=json.load(open('data/project_status.json',encoding='utf-8'))
+          b=e['surviving_p0_root_cause_boundary']
+          assert e['hard_boundaries']['diagnostic_only'] is True
+          assert e['hard_boundaries']['candidate_parser_authorized'] is False
+          assert b['safe_exact_source_candidate_count']==0
+          assert b['diagnostic_only_count']==6 and b['do_not_promote_count']==1
+          assert r['formal_runtime']['runtime_generation']=='V17.29'
+          assert r['full_basis_last_completed_final']['generation']=='V17.29'
+          assert r['full_basis_last_completed_final']['run']==31389854868
+          assert r['full_basis_last_completed_final']['verdict']=='FAIL_CLOSED'
+          assert p['stage3']['status']=='NOT_READY'
+          assert p['stage4_unlocked'] is False
+          assert p['alpha_training_allowed'] is False
+          assert p['live_signal_allowed'] is False
+          print('V17_29_RESIDUAL_DIAGNOSTIC_BOUNDARY_PASS')
+          PY
