@@ -5,6 +5,11 @@ on:
   pull_request:
     paths:
       - '.github/workflows/stage3-s3g1j-v17-29-full-64-shard.yml'
+  push:
+    branches:
+      - 'agent/stage3-s3g1j-v17-29-full-64-shard'
+    paths:
+      - '.github/workflows/stage3-s3g1j-v17-29-full-64-shard.yml'
 
 permissions:
   contents: read
