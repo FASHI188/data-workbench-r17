@@ -1,0 +1,124 @@
+name: Stage3 S3G1J V17.29 Six Source-Locked Diagnostic
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/diagnose_stage3_s3g1j_v17_29_six_sources.py'
+      - 'tests/test_stage3_v17_29_six_source_diagnostic.py'
+      - '.github/workflows/stage3-s3g1j-v17-29-six-source-diagnostic.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  SOURCE_RUN: '31389854868'
+  SOURCE_HEAD: '22fa37064eeb8a49ad5292dd2be48bd7b674c673'
+  SOURCE_ARTIFACT_ID: '9063271903'
+  SOURCE_ARTIFACT: 'stage3-s3g1j-v17-29-full-final'
+  SOURCE_DIGEST: 'sha256:71a4daa6c8372f3d64080b5fa5b787914292d889da7051de699eb6610189c726'
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified read-only runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - name: Verify diagnostic boundary and current project locks
+        run: |
+          python -m unittest tests.test_stage3_v17_29_six_source_diagnostic -v
+          python - <<'PY'
+          import json
+          e=json.load(open('governance/stage3_s3g1j_v17_29_residual_classification.json',encoding='utf-8'))
+          r=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          p=json.load(open('data/project_status.json',encoding='utf-8'))
+          b=e['surviving_p0_root_cause_boundary']
+          assert b['diagnostic_only_count']==6 and b['do_not_promote_count']==1
+          assert b['safe_exact_source_candidate_count']==0
+          assert r['formal_runtime']['runtime_generation']=='V17.29'
+          assert r['full_basis_last_completed_final']['run']==31389854868
+          assert r['full_basis_last_completed_final']['verdict']=='FAIL_CLOSED'
+          assert p['stage3']['status']=='NOT_READY'
+          assert p['stage4_unlocked'] is False
+          assert p['alpha_training_allowed'] is False
+          assert p['live_signal_allowed'] is False
+          print('SIX_SOURCE_DIAGNOSTIC_BOUNDARY_PASS')
+          PY
+      - name: Lock exact accepted V17.29 full-basis artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.head_sha' <<<"$run")" = "$SOURCE_HEAD"
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts?per_page=100")
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '[.artifacts[]|select(.name==$name)]|length' <<<"$artifacts")" = 1
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[]|select(.name==$name)|.id' <<<"$artifacts")" = "$SOURCE_ARTIFACT_ID"
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[]|select(.name==$name)|.digest' <<<"$artifacts")" = "$SOURCE_DIGEST"
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[]|select(.name==$name)|.workflow_run.head_sha' <<<"$artifacts")" = "$SOURCE_HEAD"
+          test "$(jq -r --arg name "$SOURCE_ARTIFACT" '.artifacts[]|select(.name==$name)|.expired' <<<"$artifacts")" = false
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-29-full-final
+          path: source
+          repository: FASHI188/data-workbench-r17
+          run-id: 31389854868
+          github-token: ${{ github.token }}
+      - name: Fetch six exact official PDFs by ledger URL and diagnose visible evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          documents=$(find source -name stage3_financial_documents.csv.gz -print -quit)
+          test -n "$documents"
+          python scripts/diagnose_stage3_s3g1j_v17_29_six_sources.py \
+            --documents "$documents" \
+            --evidence governance/stage3_s3g1j_v17_29_residual_classification.json \
+            --out build/diagnostic/s3g1j_v17_29_six_source_diagnostic.json
+      - name: Require all six exact SHA locks and fail-closed parser boundary
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open('build/diagnostic/s3g1j_v17_29_six_source_diagnostic.json',encoding='utf-8'))
+          assert r['gate']=='S3G1J_V17_29_SIX_SOURCE_LOCKED_DIAGNOSTIC_V1'
+          assert r['diagnostic_only'] is True
+          assert r['target_count']==6
+          assert r['target_announcement_ids']==['1202799494','1204077386','1205543437','1209806910','1223347318','1223407043']
+          assert r['bank_specific_excluded_announcement_id']=='1219834247'
+          assert r['prior_root_cause_counts']=={
+            'FORMAL_GROUP_A_L_PRESENT_BUT_EXPLICIT_GROUP_EQUITY_PAIR_NOT_PROVEN':2,
+            'GENERIC_GROUP_WITNESS_PRESENT_BUT_ROLE_LOCAL_PERIOD_MISSING':2,
+            'NO_FORMAL_GROUP_STATEMENT_ROLE_BINDING':2,
+          }
+          assert r['all_exact_source_sha_verified'] is True
+          assert r['formal_parser_changed'] is False
+          assert r['runtime_authority_changed'] is False
+          assert r['production_data_changed'] is False
+          assert r['candidate_parser_authorized'] is False
+          assert r['stage3_status']=='NOT_READY'
+          assert r['stage4_alpha_locked'] is True
+          for row in r['targets']:
+              assert row['source_sha256']
+              assert row['source_bytes']>0
+              snap=row['parser_snapshot']
+              assert 'exception' not in snap
+              assert snap['tier2_found']==3
+              assert 'NO_VALIDATED_BALANCE_SHEET_BLOCK' in snap['validation_errors']
+          print(json.dumps([
+              {'announcement_id':x['announcement_id'],**x['family_evidence']} for x in r['targets']
+          ],ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-29-six-source-diagnostic-v1
+          path: build/diagnostic
+          retention-days: 90
+          compression-level: 0
