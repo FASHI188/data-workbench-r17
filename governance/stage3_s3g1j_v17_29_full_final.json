@@ -38,7 +38,7 @@
     "review_count": 0
   },
   "governance_registration": {
-    "governance_pr": null,
+    "governance_pr": 114,
     "target": "agent/stage3-clean-integration",
     "append_only_history_required": true
   },
