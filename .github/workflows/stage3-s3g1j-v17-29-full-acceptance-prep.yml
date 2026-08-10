@@ -7,15 +7,20 @@ on:
       - 'scripts/compare_stage3_s3g1j_v17_29_full_final.py'
       - 'tests/test_stage3_v17_29_full_final_comparator.py'
       - '.github/workflows/stage3-s3g1j-v17-29-full-acceptance-prep.yml'
+      - '.github/workflows/stage3-s3g1j-v17-29-full-final-acceptance.yml'
 
 permissions:
   contents: read
+  actions: read
   pull-requests: read
 
 env:
+  GH_TOKEN: ${{ github.token }}
   PYTHONPATH: scripts
-  EXECUTION_PR: '111'
+  EXECUTION_PR: '113'
+  EXECUTION_RUN: '31365802099'
   EXECUTION_HEAD: '2b48694391e2a6cdbd6972b68844c1253b3c55d9'
+  SHARD_PREFIX: 'stage3-s3g1j-v17-29-full-final-shard-'
 
 jobs:
   prep:
@@ -58,6 +63,35 @@ jobs:
           assert promotion['full_basis_result']['promotion_document_errors']==1364
           assert promotion['full_basis_result']['promotion_unresolved_ties']==1281
           print('V17_29_FULL_ACCEPTANCE_PREP_AUTHORITY_PASS')
+          PY
+      - name: Verify closed clean execution and complete 64-shard artifact set
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$EXECUTION_PR")
+          test "$(jq -r '.state' <<<"$pr")" = closed
+          test "$(jq -r '.merged' <<<"$pr")" = false
+          test "$(jq -r '.head.sha' <<<"$pr")" = "$EXECUTION_HEAD"
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$EXECUTION_RUN")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.head_sha' <<<"$run")" = "$EXECUTION_HEAD"
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$EXECUTION_RUN/artifacts?per_page=100")
+          jq --arg prefix "$SHARD_PREFIX" --arg head "$EXECUTION_HEAD" \
+            '[.artifacts[] | select(.name|startswith($prefix)) | {
+              shard:(.name|sub($prefix;"")|tonumber), id, digest, expired,
+              head_sha:.workflow_run.head_sha
+            }] | sort_by(.shard)' <<<"$artifacts" > shard-artifacts.json
+          python - <<'PY'
+          import json,os
+          rows=json.load(open('shard-artifacts.json',encoding='utf-8'))
+          assert len(rows)==64
+          assert [r['shard'] for r in rows]==list(range(64))
+          assert len({r['id'] for r in rows})==64
+          assert len({r['digest'] for r in rows})==64
+          assert all(r['head_sha']==os.environ['EXECUTION_HEAD'] for r in rows)
+          assert all(r['expired'] is False for r in rows)
+          print('V17_29_FULL_ACCEPTANCE_PREP_SOURCE_64_PASS')
           PY
       - name: Verify comparator strictness and frozen target population
         run: |
