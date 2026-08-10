@@ -8,6 +8,7 @@ on:
       - 'governance/stage3_s3g1j_v17_27_candidate_safety.json'
       - 'governance/stage3_s3g1j_v17_27_full_final.json'
       - 'governance/stage3_s3g1j_v17_28_full_final.json'
+      - 'governance/stage3_s3g1j_v17_29_full_final.json'
       - 'governance/stage3_workflow_activation_manifest.json'
       - 'tests/test_stage3_v17_27_runtime_promotion.py'
       - 'tests/test_stage3_v17_27_full_final_evidence.py'
@@ -72,39 +73,43 @@ jobs:
             scripts/stage3_financial_pdf_parser_v19_candidate.py \
             scripts/stage3_financial_spatial_alias_v17_27_candidate.py \
             scripts/extract_stage3_financial_pdf_values_v17.py
-      - name: Verify historical V17.27 authority under current V17.29 runtime
+      - name: Verify historical V17.27 authority under accepted V17.29 full basis
         run: |
           python - <<'PY'
           import json
           runtime=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
           activation=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
           old=json.load(open('governance/stage3_s3g1j_v17_27_full_final.json',encoding='utf-8'))
-          latest=json.load(open('governance/stage3_s3g1j_v17_28_full_final.json',encoding='utf-8'))
+          prev28=json.load(open('governance/stage3_s3g1j_v17_28_full_final.json',encoding='utf-8'))
+          current29=json.load(open('governance/stage3_s3g1j_v17_29_full_final.json',encoding='utf-8'))
           assert old['accepted_run']['run_id']==30806818977
           assert old['full_basis_result']['numeric_observation_count']==1051793
           assert old['full_basis_result']['document_error_count']==1373
           assert old['full_basis_result']['unresolved_tie_count']==1290
           assert old['full_basis_result']['final_data_verdict']=='FAIL_CLOSED'
-          assert runtime['schema_version']==12
+          assert runtime['schema_version']==13
           assert runtime['formal_runtime']['runtime_generation']=='V17.29'
-          assert runtime['full_basis_last_completed_final']['generation']=='V17.28'
-          assert runtime['full_basis_last_completed_final']['run']==30997260730
+          assert runtime['full_basis_last_completed_final']['generation']=='V17.29'
+          assert runtime['full_basis_last_completed_final']['run']==31389854868
+          assert runtime['previous_last_completed_full_basis_final']['generation']=='V17.28'
+          assert runtime['previous_last_completed_full_basis_final']['run']==30997260730
           assert runtime['previous_full_basis_final']['generation']=='V17.27'
           assert runtime['previous_full_basis_final']['run']==30806818977
-          assert runtime['next_full_basis_required']['generation']=='V17.29'
-          assert runtime['next_full_basis_required']['status']=='REQUIRED_NOT_STARTED'
-          assert runtime['next_full_basis_required']['expected_values_are_not_yet_production_acceptance'] is True
-          assert activation['schema_version']==14
+          assert runtime['next_full_basis_required']['status']=='NONE_CURRENT_RUNTIME_ACCEPTED'
+          assert activation['schema_version']==15
           current=activation['accepted_production_runtime']
           assert current['generation']=='V17.29'
-          assert current['full_basis_execution_pending'] is True
-          assert current['last_completed_full_basis_generation']=='V17.28'
-          assert current['execution_verdict']=='PENDING'
+          assert current['full_basis_execution_pending'] is False
+          assert current['last_completed_full_basis_generation']=='V17.29'
+          assert current['last_completed_full_basis_run']==31389854868
+          assert current['execution_verdict']=='PASS'
           assert current['data_verdict']=='FAIL_CLOSED'
           retained=activation['accepted_v17_27_full_basis_evidence']
           assert retained['historical_full_basis_authority_retained'] is True
           assert retained['last_completed_full_basis_authority'] is False
-          assert latest['accepted_run']['run_id']==30997260730
-          assert latest['hard_boundaries']['stage3_status']=='NOT_READY'
-          print('S3G1J_V17_27_RETAINED_EVIDENCE_UNDER_V17_29_PASS')
+          assert prev28['accepted_run']['run_id']==30997260730
+          assert prev28['hard_boundaries']['stage3_status']=='NOT_READY'
+          assert current29['accepted_run']['run_id']==31389854868
+          assert current29['full_basis_result']['final_data_verdict']=='FAIL_CLOSED'
+          print('S3G1J_V17_27_RETAINED_EVIDENCE_UNDER_ACCEPTED_V17_29_PASS')
           PY
