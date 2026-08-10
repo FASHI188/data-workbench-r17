@@ -24,6 +24,7 @@ class V1729RuntimePromotionTests(unittest.TestCase):
         cls.project = load("data/project_status.json")
         cls.lock = load("config/stage3_final_lock.json")
         cls.v17_28 = load("governance/stage3_s3g1j_v17_28_full_final.json")
+        cls.v17_29 = load("governance/stage3_s3g1j_v17_29_full_final.json")
 
     def test_wrapper_acceptance_identity_is_exact(self) -> None:
         wrapper = self.promotion["wrapper_implementation"]
@@ -36,14 +37,8 @@ class V1729RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(wrapper["runtime_reproducibility_run"], 31312709475)
         self.assertEqual(wrapper["clean_s3g1j_run"], 31312709497)
         self.assertEqual(wrapper["acceptance_artifact_id"], 9037869497)
-        self.assertEqual(
-            wrapper["acceptance_artifact_digest"],
-            "sha256:4f9940513c2d0ef5250b8874b32f68655badfe4a695a2fe2c3da0a54d2a01670",
-        )
-        self.assertEqual(
-            wrapper["acceptance_report_sha256"],
-            "29fc2947008e26b8c17ab5c9013a31c5e283c2d89aa37a8f7de2e1da5658a406",
-        )
+        self.assertEqual(wrapper["acceptance_artifact_digest"], "sha256:4f9940513c2d0ef5250b8874b32f68655badfe4a695a2fe2c3da0a54d2a01670")
+        self.assertEqual(wrapper["acceptance_report_sha256"], "29fc2947008e26b8c17ab5c9013a31c5e283c2d89aa37a8f7de2e1da5658a406")
         self.assertTrue(wrapper["all_required_machine_gates_success"])
         self.assertTrue(wrapper["real_source_runtime_wrapper_pass"])
         self.assertTrue(wrapper["non_target_v17_28_delegation_pass"])
@@ -64,15 +59,12 @@ class V1729RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(extractor.RUNTIME_GENERATION, "V17.29")
         self.assertEqual(extractor.SHARD_GATE, formal["shard_gate"])
 
-    def test_v17_28_remains_last_completed_full_basis(self) -> None:
+    def test_promotion_evidence_preserves_pre_execution_checkpoint(self) -> None:
         previous = self.promotion["last_completed_full_basis"]
         self.assertEqual(previous["generation"], "V17.28")
         self.assertEqual(previous["run"], 30997260730)
         self.assertEqual(previous["artifact_id"], 8927455692)
-        self.assertEqual(
-            previous["artifact_digest"],
-            "sha256:82375169faada969ceafd4356ab0a2707aa14592d5db090c5d3910863d571c8b",
-        )
+        self.assertEqual(previous["artifact_digest"], "sha256:82375169faada969ceafd4356ab0a2707aa14592d5db090c5d3910863d571c8b")
         self.assertEqual(previous["numeric_rows"], 1051799)
         self.assertEqual(previous["document_errors"], 1371)
         self.assertEqual(previous["unresolved_ties"], 1288)
@@ -82,63 +74,71 @@ class V1729RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(accepted["run_id"], previous["run"])
         self.assertEqual(accepted["artifact_id"], previous["artifact_id"])
         self.assertEqual(result["numeric_observation_count"], previous["numeric_rows"])
-        self.assertEqual(result["document_error_count"], previous["document_errors"])
-        self.assertEqual(result["unresolved_tie_count"], previous["unresolved_ties"])
-
-    def test_fresh_v17_29_full_basis_is_required_not_started(self) -> None:
         nxt = self.promotion["next_full_basis"]
         self.assertEqual(nxt["generation"], "V17.29")
         self.assertEqual(nxt["status"], "REQUIRED_NOT_STARTED")
-        self.assertEqual(nxt["expected_document_rows"], 121354)
         self.assertEqual(nxt["expected_numeric_rows"], 1051820)
         self.assertEqual(nxt["expected_document_errors"], 1364)
         self.assertEqual(nxt["expected_unresolved_ties"], 1281)
-        self.assertEqual(nxt["expected_target_numeric_rows"], 21)
         self.assertTrue(nxt["expected_values_are_not_production_acceptance"])
         self.assertTrue(nxt["candidate_or_promotion_safety_results_are_not_full_basis_acceptance"])
 
-    def test_authority_surfaces_agree(self) -> None:
+    def test_current_authority_surfaces_advance_only_after_full_final_acceptance(self) -> None:
         current = self.runtime["current_production_authority"]
-        self.assertEqual(self.runtime["schema_version"], 12)
+        self.assertEqual(self.runtime["schema_version"], 13)
         self.assertEqual(current["generation"], "V17.29")
-        self.assertEqual(current["status"], "RUNTIME_PROMOTED_FULL_BASIS_PENDING_FAIL_CLOSED")
-        self.assertIsNone(current["full_basis_evidence_manifest"])
+        self.assertEqual(current["status"], "RUNTIME_AND_FULL_BASIS_ACCEPTED_DATA_FAIL_CLOSED")
+        self.assertEqual(current["full_basis_evidence_manifest"], "governance/stage3_s3g1j_v17_29_full_final.json")
         self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"], "V17.29")
-        self.assertEqual(self.runtime["full_basis_last_completed_final"]["generation"], "V17.28")
-        self.assertEqual(self.runtime["next_full_basis_required"]["generation"], "V17.29")
-        self.assertEqual(self.runtime["next_full_basis_required"]["status"], "REQUIRED_NOT_STARTED")
+        self.assertEqual(self.runtime["full_basis_last_completed_final"]["generation"], "V17.29")
+        self.assertEqual(self.runtime["full_basis_last_completed_final"]["run"], 31389854868)
+        self.assertEqual(self.runtime["previous_last_completed_full_basis_final"]["generation"], "V17.28")
+        self.assertEqual(self.runtime["next_full_basis_required"]["status"], "NONE_CURRENT_RUNTIME_ACCEPTED")
 
-        self.assertEqual(self.activation["schema_version"], 14)
+        self.assertEqual(self.activation["schema_version"], 15)
         active = self.activation["accepted_production_runtime"]
         self.assertEqual(active["generation"], "V17.29")
-        self.assertTrue(active["full_basis_execution_pending"])
-        self.assertEqual(active["last_completed_full_basis_generation"], "V17.28")
-        self.assertEqual(active["execution_verdict"], "PENDING")
-        self.assertTrue(active["expected_values_are_not_production_acceptance"])
+        self.assertFalse(active["full_basis_execution_pending"])
+        self.assertEqual(active["last_completed_full_basis_generation"], "V17.29")
+        self.assertEqual(active["last_completed_full_basis_run"], 31389854868)
+        self.assertEqual(active["execution_verdict"], "PASS")
+        self.assertEqual(active["data_verdict"], "FAIL_CLOSED")
 
         g1j = self.authority["authoritative_components"]["S3G1J_FINANCIAL_RAW_VALUES"]
-        self.assertEqual(self.authority["schema_version"], 5)
+        self.assertEqual(self.authority["schema_version"], 6)
         self.assertEqual(g1j["formal_runtime_generation"], "V17.29")
-        self.assertEqual(g1j["last_completed_full_basis_generation"], "V17.28")
-        self.assertEqual(g1j["next_full_basis_status"], "REQUIRED_NOT_STARTED")
+        self.assertEqual(g1j["last_completed_full_basis_generation"], "V17.29")
+        self.assertEqual(g1j["accepted_run_id"], 31389854868)
+        self.assertEqual(g1j["next_full_basis_status"], "NONE_CURRENT_RUNTIME_ACCEPTED")
         self.assertFalse(g1j["final_gate"])
 
         project_g1j = self.project["stage3"]["s3g1j"]
-        self.assertEqual(self.project["schema_version"], 5)
+        self.assertEqual(self.project["schema_version"], 6)
         self.assertEqual(project_g1j["formal_runtime_generation"], "V17.29")
-        self.assertEqual(project_g1j["last_completed_full_basis_generation"], "V17.28")
-        self.assertEqual(project_g1j["next_full_basis_status"], "REQUIRED_NOT_STARTED")
+        self.assertEqual(project_g1j["last_completed_full_basis_generation"], "V17.29")
+        self.assertEqual(project_g1j["accepted_run_id"], 31389854868)
+        self.assertEqual(project_g1j["next_full_basis_status"], "NONE_CURRENT_RUNTIME_ACCEPTED")
         self.assertFalse(project_g1j["final_gate_pass"])
 
         lock_g1j = self.lock["required_gates"]["S3G1J_FINANCIAL_RAW_VALUES"]
-        self.assertEqual(self.lock["version"], "V3.3.12-stage3-final-lock")
+        self.assertEqual(self.lock["version"], "V3.3.13-stage3-final-lock")
         self.assertEqual(lock_g1j["formal_runtime_generation"], "V17.29")
-        self.assertEqual(lock_g1j["last_completed_full_basis_generation"], "V17.28")
-        self.assertEqual(lock_g1j["next_full_basis_status"], "REQUIRED_NOT_STARTED")
+        self.assertEqual(lock_g1j["last_completed_full_basis_generation"], "V17.29")
+        self.assertEqual(lock_g1j["run_id"], 31389854868)
+        self.assertEqual(lock_g1j["next_full_basis_status"], "NONE_CURRENT_RUNTIME_ACCEPTED")
         self.assertFalse(lock_g1j["final_gate_pass"])
+
+        accepted29 = self.v17_29["accepted_run"]
+        result29 = self.v17_29["full_basis_result"]
+        self.assertEqual(accepted29["run_id"], 31389854868)
+        self.assertEqual(result29["numeric_observation_count"], 1051820)
+        self.assertEqual(result29["document_error_count"], 1364)
+        self.assertEqual(result29["unresolved_tie_count"], 1281)
+        self.assertEqual(result29["final_data_verdict"], "FAIL_CLOSED")
 
     def test_project_and_policy_stay_fail_closed(self) -> None:
         boundaries = self.promotion["hard_boundaries"]
+        # Historical promotion evidence truth is frozen, including that fresh execution had not yet started at promotion time.
         for key in (
             "source_policy_changed",
             "point_in_time_policy_changed",
@@ -147,7 +147,6 @@ class V1729RuntimePromotionTests(unittest.TestCase):
             "ocr_enabled",
             "fuzzy_alias_matching_enabled",
             "e_equals_a_minus_l_inference",
-            "fresh_64_shard_execution_started",
             "production_data_changed",
             "trained_model_changed",
             "live_configuration_changed",
@@ -155,6 +154,7 @@ class V1729RuntimePromotionTests(unittest.TestCase):
             "merge_to_main_authorized",
         ):
             self.assertFalse(boundaries[key], key)
+        self.assertFalse(boundaries["fresh_64_shard_execution_started"])
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertTrue(boundaries["stage4_alpha_live_locked"])
         self.assertEqual(self.project["stage3"]["status"], "NOT_READY")
