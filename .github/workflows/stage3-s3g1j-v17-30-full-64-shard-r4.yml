@@ -1,0 +1,195 @@
+name: Stage3 S3G1J V17.30 Fresh Full 64 Shard R4
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/stage3-s3g1j-v17-30-full-64-shard-r4.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  PROMOTION_PR: '125'
+  PROMOTION_HEAD: '13cb0801e565dfbc547853ffb34cbb629578ad15'
+  PROMOTION_MERGE: '015a7175e2b14ab54040fdd64d7c6cee9d128041'
+  PARSER_BLOB: 'cc782817e5ee73fcae085d71f4896a0adc004dcd'
+  HELPER_BLOB: '1a4364d5cde7881455902f6fa1dbe5e68f3843a6'
+  EXTRACTOR_BLOB: 'd74a2b1f8f0ec3af8d89ce259e83392d7f8cc20c'
+  INPUT_RUN: '30649251360'
+  INPUT_ARTIFACT_ID: '8800699971'
+  INPUT_ARTIFACT: 'stage3-s3g1j-v17-21-full-final-input'
+  INPUT_DIGEST: 'sha256:54a7e78138e6d4f792bc9de080dc1d0ff200798fb6a7942e59ac813f64934028'
+  SHARDS: '64'
+  SHARD_GATE: 'S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_30'
+  PARSER_METHOD: 'CNINFO_ORIGINAL_PDF_PYMUPDF_V20_V17_30_EXACT_SOURCE_CROSS_PAGE_GROUP_EQUITY_PRODUCTION'
+  METHODOLOGY: 'V3.3.14-V17.30'
+  RUNTIME_GENERATION: 'V17.30'
+
+jobs:
+  lock-inputs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Lock promoted V17.30 authority and exact code blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/stage3_financial_pdf_parser_v22.py)" = "$PARSER_BLOB"
+          test "$(git hash-object scripts/stage3_financial_pdf_parser_v22_promotion_safety.py)" = "$HELPER_BLOB"
+          test "$(git hash-object scripts/extract_stage3_financial_pdf_values_v20.py)" = "$EXTRACTOR_BLOB"
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PROMOTION_PR")
+          test "$(jq -r '.merged' <<<"$pr")" = true
+          test "$(jq -r '.head.sha' <<<"$pr")" = "$PROMOTION_HEAD"
+          test "$(jq -r '.merge_commit_sha' <<<"$pr")" = "$PROMOTION_MERGE"
+          python - <<'PY'
+          import json
+          r=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          a=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
+          p=json.load(open('data/project_status.json',encoding='utf-8'))
+          assert r['schema_version']==14
+          assert r['formal_runtime']['runtime_generation']=='V17.30'
+          assert r['formal_runtime']['parser_git_blob']=='cc782817e5ee73fcae085d71f4896a0adc004dcd'
+          assert r['formal_runtime']['extractor_git_blob']=='d74a2b1f8f0ec3af8d89ce259e83392d7f8cc20c'
+          assert r['formal_runtime']['promotion_safety_parser_git_blob']=='1a4364d5cde7881455902f6fa1dbe5e68f3843a6'
+          assert r['full_basis_last_completed_final']['generation']=='V17.29'
+          assert r['full_basis_last_completed_final']['run']==31389854868
+          assert r['full_basis_last_completed_final']['artifact_id']==9063271903
+          assert r['full_basis_last_completed_final']['verdict']=='FAIL_CLOSED'
+          nxt=r['next_full_basis_required']
+          assert nxt['generation']=='V17.30'
+          assert nxt['status']=='REQUIRED_NOT_STARTED'
+          assert nxt['expected_document_rows']==121354
+          assert nxt['expected_numeric_observations']==1051826
+          assert nxt['expected_document_error_count']==1362
+          assert nxt['expected_unresolved_tie_count']==1279
+          assert nxt['expected_values_are_not_production_acceptance'] is True
+          assert a['accepted_production_runtime']['generation']=='V17.30'
+          assert a['accepted_production_runtime']['full_basis_execution_pending'] is True
+          assert a['accepted_production_runtime']['last_completed_full_basis_generation']=='V17.29'
+          assert p['stage3']['status']=='NOT_READY'
+          assert p['stage4_unlocked'] is False
+          assert p['alpha_training_allowed'] is False
+          assert p['live_signal_allowed'] is False
+          print('V17_30_R4_PREFLIGHT_PASS')
+          PY
+      - name: Lock frozen input artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$INPUT_ARTIFACT_ID")
+          test "$(jq -r '.name' <<<"$artifact")" = "$INPUT_ARTIFACT"
+          test "$(jq -r '.digest' <<<"$artifact")" = "$INPUT_DIGEST"
+          test "$(jq -r '.expired' <<<"$artifact")" = false
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-21-full-final-input
+          path: input
+          repository: FASHI188/data-workbench-r17
+          run-id: 30649251360
+          github-token: ${{ github.token }}
+      - name: Verify frozen population identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f input/stage3_financial_report_versions.csv.gz
+          test -f input/stage3_s3g1j_full_final_input.json
+          test "$(gzip -dc input/stage3_financial_report_versions.csv.gz | awk 'END {print NR-1}')" = 121354
+          python - <<'PY'
+          import json
+          x=json.load(open('input/stage3_s3g1j_full_final_input.json',encoding='utf-8'))
+          assert x['input_version_rows']==121354
+          assert x['input_source_stage']=='FULL_BASIS'
+          assert x['full_basis_requested'] is True
+          assert x['point_in_time_policy_relaxed'] is False
+          assert x['issuer_gate_relaxed'] is False
+          assert x['accounting_tolerance_changed'] is False
+          assert x['stage4_alpha_locked'] is True
+          print('V17_30_R4_FROZEN_INPUT_PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-30-r4-locked-input
+          path: input/
+          if-no-files-found: error
+          retention-days: 90
+
+  shard:
+    needs: lock-inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified Stage3 runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-30-r4-locked-input
+          path: input
+      - name: Run fresh V17.30 shard
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "out/${{ matrix.shard }}"
+          python scripts/extract_stage3_financial_pdf_values_v20.py \
+            --versions input/stage3_financial_report_versions.csv.gz \
+            --out "out/${{ matrix.shard }}" \
+            --shard "${{ matrix.shard }}" \
+            --shards "$SHARDS"
+      - name: Enforce pure V17.30 shard artifact identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          shard=int('${{ matrix.shard }}')
+          root=Path('out')/str(shard)
+          manifests=list(root.glob('financial_extract_shard*.manifest.json'))
+          assert len(manifests)==1,manifests
+          m=json.load(open(manifests[0],encoding='utf-8'))
+          assert int(m['shard'])==shard
+          assert int(m['shards'])==64
+          assert m['gate']==os.environ['SHARD_GATE']
+          assert m['runtime_generation']==os.environ['RUNTIME_GENERATION']
+          assert m['parser_method']==os.environ['PARSER_METHOD']
+          assert m['methodology_version']==os.environ['METHODOLOGY']
+          assert m['source_format']=='PDF'
+          assert m['original_pdf_authority'] is True
+          assert m['current_f10_historical_backfill_used'] is False
+          assert m['stage4_alpha_locked'] is True
+          assert int(m['document_rows'])==int(m['selected_versions'])
+          assert int(m['document_rows'])>0
+          assert int(m['error_count'])==len(m.get('errors') or [])
+          print('PURE_V17_30_R4_SHARD_PASS',shard,m['document_rows'],m['numeric_observations'],m['error_count'])
+          PY
+      - name: Record deterministic shard file identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "out/${{ matrix.shard }}"
+          sha256sum * | sort > output_sha256.txt
+          cat output_sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-30-r4-full-final-shard-${{ matrix.shard }}
+          path: out/${{ matrix.shard }}/
+          if-no-files-found: error
+          retention-days: 90
