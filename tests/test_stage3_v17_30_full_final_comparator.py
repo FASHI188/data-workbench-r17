@@ -55,6 +55,14 @@ def write_gz(path: Path, fields: list[str], rows: list[dict[str, str]]) -> None:
 
 
 class V1730FullFinalComparatorTest(unittest.TestCase):
+    def _load(self, name: str = "cmp_v1730"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(name, SCRIPT)
+        assert spec and spec.loader
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
     def test_constants_lock_exact_targets_and_counts(self) -> None:
         text = SCRIPT.read_text(encoding="utf-8")
         for value in (
@@ -62,16 +70,13 @@ class V1730FullFinalComparatorTest(unittest.TestCase):
             "S3G1J_V17_30_FULL_BASIS_NON_REGRESSION_V1",
             "CNINFO_ORIGINAL_PDF_PYMUPDF_V20_V17_30_EXACT_SOURCE_CROSS_PAGE_GROUP_EQUITY_PRODUCTION",
             "V3.3.14-V17.30",
+            "JSON_LIST_ORDER_INSENSITIVE_CONTENT_STRICT",
         ):
             self.assertIn(value, text)
         self.assertNotIn("OCR", text.upper().replace("NO OCR", ""))
 
     def test_target_fixture_values_are_exact(self) -> None:
-        import importlib.util
-        spec = importlib.util.spec_from_file_location("cmp_v1730", SCRIPT)
-        assert spec and spec.loader
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
+        mod = self._load()
         self.assertEqual(tuple(mod.TARGET_IDS), ("1223347318", "1223407043"))
         self.assertEqual(mod.EXPECTED_DOCUMENT_ROWS, 121354)
         self.assertEqual(mod.EXPECTED_PREVIOUS_NUMERIC_ROWS, 1051820)
@@ -82,11 +87,7 @@ class V1730FullFinalComparatorTest(unittest.TestCase):
         self.assertEqual(mod.TARGETS["1223407043"]["values"]["TOTAL_EQUITY"][0], "1320477812.85")
 
     def test_wrong_target_value_fails_closed_before_acceptance(self) -> None:
-        import importlib.util
-        spec = importlib.util.spec_from_file_location("cmp_v1730_mut", SCRIPT)
-        assert spec and spec.loader
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
+        mod = self._load("cmp_v1730_mut")
         rows = []
         for aid, target in TARGETS.items():
             for concept, (value, page, alias) in target["values"].items():
@@ -113,11 +114,7 @@ class V1730FullFinalComparatorTest(unittest.TestCase):
             mod.assert_target_numeric(rows)
 
     def test_document_target_requires_exact_source_identity(self) -> None:
-        import importlib.util
-        spec = importlib.util.spec_from_file_location("cmp_v1730_docs", SCRIPT)
-        assert spec and spec.loader
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
+        mod = self._load("cmp_v1730_docs")
         rows=[]
         for aid,target in TARGETS.items():
             rows.append({
@@ -137,6 +134,30 @@ class V1730FullFinalComparatorTest(unittest.TestCase):
         rows[0]["selected_source_bytes"]="1"
         with self.assertRaisesRegex(ValueError,"source bytes drift"):
             mod.assert_target_documents(rows)
+
+    def test_document_error_order_is_nonsemantic_but_content_is_strict(self) -> None:
+        mod = self._load("cmp_v1730_document_error")
+        first = {"announcement_id": "x", "document_status": "ERROR", "document_error": json.dumps([
+            {"concept": "TOTAL_ASSETS", "values": [["a", "1"], ["b", "2"]]},
+            {"concept": "TOTAL_EQUITY", "values": [["a", "3"], ["b", "4"]]},
+        ], ensure_ascii=False)}
+        reordered = dict(first)
+        reordered["document_error"] = json.dumps([
+            {"concept": "TOTAL_EQUITY", "values": [["a", "3"], ["b", "4"]]},
+            {"concept": "TOTAL_ASSETS", "values": [["a", "1"], ["b", "2"]]},
+        ], ensure_ascii=False)
+        self.assertTrue(mod.document_rows_equal(first, reordered))
+
+        changed = dict(reordered)
+        changed["document_error"] = json.dumps([
+            {"concept": "TOTAL_EQUITY", "values": [["a", "3"], ["b", "999"]]},
+            {"concept": "TOTAL_ASSETS", "values": [["a", "1"], ["b", "2"]]},
+        ], ensure_ascii=False)
+        self.assertFalse(mod.document_rows_equal(first, changed))
+
+        other_field = dict(reordered)
+        other_field["document_status"] = "PASS"
+        self.assertFalse(mod.document_rows_equal(first, other_field))
 
 
 if __name__ == "__main__":
