@@ -82,6 +82,43 @@ def stable_sha(
     return h.hexdigest()
 
 
+def canonical_document_error(value: str) -> tuple[str, ...] | str:
+    """Canonicalize only unordered JSON diagnostic lists, never their contents.
+
+    VALUE_CONFLICT diagnostics are serialized from concept-set iteration, so list
+    order is not semantic. Any element/field/value change still changes this view.
+    Non-JSON errors and non-list JSON remain byte-for-byte strict.
+    """
+    if not value:
+        return value
+    try:
+        parsed = json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return value
+    if not isinstance(parsed, list):
+        return value
+    return tuple(
+        sorted(
+            json.dumps(item, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            for item in parsed
+        )
+    )
+
+
+def document_rows_equal(previous: dict[str, str], current: dict[str, str]) -> bool:
+    if set(previous) != set(current):
+        return False
+    for field in previous:
+        if field == "document_error":
+            if canonical_document_error(previous.get(field, "")) != canonical_document_error(
+                current.get(field, "")
+            ):
+                return False
+        elif previous.get(field, "") != current.get(field, ""):
+            return False
+    return True
+
+
 def tie_taxonomy(rows: Iterable[dict[str, str]]) -> dict[str, int]:
     c = Counter(row.get("tie_resolution", "") for row in rows)
     return {
@@ -206,6 +243,7 @@ def main() -> int:
         "current_document_count": len(cur_docs),
         "previous_numeric_count": len(prev_values),
         "current_numeric_count": len(cur_values),
+        "document_error_comparison": "JSON_LIST_ORDER_INSENSITIVE_CONTENT_STRICT",
     }
 
     try:
@@ -228,7 +266,7 @@ def main() -> int:
             raise ValueError("document identity population changed")
 
         changed_ids = sorted(
-            aid for aid in prev_by_id if prev_by_id[aid] != cur_by_id[aid]
+            aid for aid in prev_by_id if not document_rows_equal(prev_by_id[aid], cur_by_id[aid])
         )
         if changed_ids != list(TARGET_IDS):
             raise ValueError(
@@ -238,7 +276,7 @@ def main() -> int:
         non_target_equal_count = sum(
             1
             for aid in prev_by_id
-            if aid not in TARGET_SET and prev_by_id[aid] == cur_by_id[aid]
+            if aid not in TARGET_SET and document_rows_equal(prev_by_id[aid], cur_by_id[aid])
         )
         if non_target_equal_count != EXPECTED_DOCUMENT_ROWS - len(TARGET_IDS):
             raise ValueError(f"non-target document equality count drift {non_target_equal_count}")
