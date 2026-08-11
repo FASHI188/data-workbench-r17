@@ -27,6 +27,7 @@ env:
   INPUT_DIGEST: 'sha256:ce9d0a234203696238fa8169517e70831a5cf0ca164381105fe90a8766dc7533'
   PREVIOUS_FULL_RUN: '31389854868'
   PREVIOUS_FULL_ARTIFACT_ID: '9063271903'
+  PREVIOUS_FULL_ARTIFACT: 'stage3-s3g1j-v17-29-full-final'
   PREVIOUS_FULL_DIGEST: 'sha256:71a4daa6c8372f3d64080b5fa5b787914292d889da7051de699eb6610189c726'
   SHARDS: '64'
   SHARD_GATE: 'S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_30'
@@ -97,15 +98,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          input=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$INPUT_ARTIFACT_ID")
-          test "$(jq -r '.name' <<<"$input")" = "$INPUT_ARTIFACT"
-          test "$(jq -r '.digest' <<<"$input")" = "$INPUT_DIGEST"
-          test "$(jq -r '.expired' <<<"$input")" = false
-          test "$(jq -r '.workflow_run.id' <<<"$input")" = "$INPUT_RUN"
-          previous=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$PREVIOUS_FULL_ARTIFACT_ID")
-          test "$(jq -r '.digest' <<<"$previous")" = "$PREVIOUS_FULL_DIGEST"
-          test "$(jq -r '.expired' <<<"$previous")" = false
-          test "$(jq -r '.workflow_run.id' <<<"$previous")" = "$PREVIOUS_FULL_RUN"
+          input_run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$INPUT_RUN")
+          test "$(jq -r '.status' <<<"$input_run")" = completed
+          test "$(jq -r '.conclusion' <<<"$input_run")" = success
+          inputs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$INPUT_RUN/artifacts?per_page=100")
+          test "$(jq -r --argjson id "$INPUT_ARTIFACT_ID" '[.artifacts[]|select(.id==$id)]|length' <<<"$inputs")" = 1
+          test "$(jq -r --argjson id "$INPUT_ARTIFACT_ID" '.artifacts[]|select(.id==$id)|.name' <<<"$inputs")" = "$INPUT_ARTIFACT"
+          test "$(jq -r --argjson id "$INPUT_ARTIFACT_ID" '.artifacts[]|select(.id==$id)|.digest' <<<"$inputs")" = "$INPUT_DIGEST"
+          test "$(jq -r --argjson id "$INPUT_ARTIFACT_ID" '.artifacts[]|select(.id==$id)|.expired' <<<"$inputs")" = false
+          previous_run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PREVIOUS_FULL_RUN")
+          test "$(jq -r '.status' <<<"$previous_run")" = completed
+          test "$(jq -r '.conclusion' <<<"$previous_run")" = success
+          previous=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PREVIOUS_FULL_RUN/artifacts?per_page=100")
+          test "$(jq -r --argjson id "$PREVIOUS_FULL_ARTIFACT_ID" '[.artifacts[]|select(.id==$id)]|length' <<<"$previous")" = 1
+          test "$(jq -r --argjson id "$PREVIOUS_FULL_ARTIFACT_ID" '.artifacts[]|select(.id==$id)|.name' <<<"$previous")" = "$PREVIOUS_FULL_ARTIFACT"
+          test "$(jq -r --argjson id "$PREVIOUS_FULL_ARTIFACT_ID" '.artifacts[]|select(.id==$id)|.digest' <<<"$previous")" = "$PREVIOUS_FULL_DIGEST"
+          test "$(jq -r --argjson id "$PREVIOUS_FULL_ARTIFACT_ID" '.artifacts[]|select(.id==$id)|.expired' <<<"$previous")" = false
       - uses: actions/download-artifact@v4
         with:
           name: stage3-s3g1j-financial-report-versions-full
