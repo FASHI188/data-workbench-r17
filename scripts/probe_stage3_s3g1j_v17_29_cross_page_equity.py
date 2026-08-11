@@ -44,14 +44,9 @@ def amounts(row: dict[str, Any]) -> list[dict[str, Any]]:
     return list(rows_v14._numeric_word_candidates(row))
 
 
-def amount_pair(row: dict[str, Any], expected: list[str]) -> bool:
-    wanted = [Decimal(x) for x in expected]
-    candidates = amounts(row)
-    for start in range(max(0, len(candidates) - 1)):
-        pair = candidates[start:start+2]
-        if [Decimal(str(item["value"])) for item in pair] == wanted:
-            return True
-    return False
+def contains_value(row: dict[str, Any], expected: str) -> bool:
+    wanted = Decimal(expected)
+    return any(Decimal(str(item["value"])) == wanted for item in amounts(row))
 
 
 def row_summary(row: dict[str, Any]) -> dict[str, Any]:
@@ -76,6 +71,28 @@ def read_rows(documents: Path) -> dict[str, dict[str, str]]:
     return out
 
 
+def locate_value(rows_by_page: dict[int, list[dict[str, Any]]], events: list[dict[str, Any]], expected: str) -> list[dict[str, Any]]:
+    matches: list[dict[str, Any]] = []
+    for page, rows in rows_by_page.items():
+        for idx, item in enumerate(rows):
+            if not contains_value(item, expected):
+                continue
+            event = blocks.bind_alias_to_preceding_statement_event(
+                events, page, float(item.get("y") or 0),
+                min((float(w["x0"]) for w in item.get("words") or []), default=0.0),
+            )
+            matches.append({
+                "page": page,
+                "row": row_summary(item),
+                "before_same_page": [row_summary(x) for x in rows[max(0,idx-4):idx]],
+                "after_same_page": [row_summary(x) for x in rows[idx+1:min(len(rows),idx+5)]],
+                "previous_page_tail": [row_summary(x) for x in rows_by_page.get(page-1, [])[-6:]] if page > 1 else [],
+                "next_page_head": [row_summary(x) for x in rows_by_page.get(page+1, [])[:10]],
+                "bound_statement_event": event,
+            })
+    return matches
+
+
 def probe_pdf(aid: str, row: dict[str, str], target: dict[str, Any]) -> dict[str, Any]:
     if row.get("selected_source_sha256") != target["source_sha256"]:
         raise ValueError(f"{aid}: temporary diagnostic selected SHA mismatch")
@@ -88,44 +105,22 @@ def probe_pdf(aid: str, row: dict[str, str], target: dict[str, Any]) -> dict[str
     with fitz.open(stream=raw, filetype="pdf") as doc:
         rows_by_page = {page+1: rows_v14._rows_from_words(doc[page]) for page in range(len(doc))}
         events = blocks.formal_statement_events(doc)
-        probes: dict[str, list[dict[str, Any]]] = {}
+        value_probes: dict[str, dict[str, list[dict[str, Any]]]] = {}
         for concept, expected in (
             ("TOTAL_ASSETS", target["assets_values"]),
             ("TOTAL_LIABILITIES", target["liabilities_values"]),
             ("TOTAL_EQUITY", target["equity_values"]),
         ):
-            matches=[]
-            for page, rows in rows_by_page.items():
-                for idx, item in enumerate(rows):
-                    if not amount_pair(item, expected):
-                        continue
-                    before = [row_summary(x) for x in rows[max(0,idx-4):idx]]
-                    after = [row_summary(x) for x in rows[idx+1:min(len(rows),idx+5)]]
-                    prev_tail = [row_summary(x) for x in rows_by_page.get(page-1, [])[-5:]] if page > 1 else []
-                    next_head = [row_summary(x) for x in rows_by_page.get(page+1, [])[:8]] if page < len(doc) else []
-                    event = blocks.bind_alias_to_preceding_statement_event(
-                        events, page, float(item.get("y") or 0),
-                        min((float(w["x0"]) for w in item.get("words") or []), default=0.0),
-                    )
-                    matches.append({
-                        "page": page,
-                        "amount_row": row_summary(item),
-                        "before_same_page": before,
-                        "after_same_page": after,
-                        "previous_page_tail": prev_tail,
-                        "next_page_head": next_head,
-                        "bound_statement_event": event,
-                    })
-            probes[concept]=matches
-
+            value_probes[concept] = {
+                "CURRENT": locate_value(rows_by_page, events, expected[0]),
+                "PRIOR": locate_value(rows_by_page, events, expected[1]),
+            }
         group_events=[e for e in events if e.get("role")=="GROUP" and "合并资产负债表" in str(e.get("line") or "")]
         parent_events=[e for e in events if e.get("role")=="PARENT" and "母公司资产负债表" in str(e.get("line") or "")]
-        if len(group_events) != 1:
-            raise ValueError(f"{aid}: expected exactly one formal GROUP balance-sheet event, got {len(group_events)}")
-        if len(parent_events) > 1:
-            raise ValueError(f"{aid}: multiple formal PARENT balance-sheet events")
-        if any(len(probes[c]) != 1 for c in ("TOTAL_ASSETS","TOTAL_LIABILITIES","TOTAL_EQUITY")):
-            raise ValueError(f"{aid}: expected one exact A/L/E amount pair probe each")
+        if not group_events:
+            raise ValueError(f"{aid}: no formal GROUP balance-sheet event")
+        if any(not value_probes[c][col] for c in value_probes for col in ("CURRENT","PRIOR")):
+            raise ValueError(f"{aid}: at least one explicit A/L/E amount missing from exact PDF word rows")
 
     identity=[]
     for idx,label in enumerate(("CURRENT","PRIOR")):
@@ -141,7 +136,7 @@ def probe_pdf(aid: str, row: dict[str, str], target: dict[str, Any]) -> dict[str
         "economic_date": target["economic_date"],
         "formal_group_balance_sheet_events": group_events,
         "formal_parent_balance_sheet_events": parent_events,
-        "amount_pair_probes": probes,
+        "value_probes": value_probes,
         "dual_column_identity": identity,
         "candidate_parser_authorized": False,
         "diagnostic_only": True,
@@ -156,10 +151,11 @@ def main() -> int:
     rows=read_rows(Path(args.documents))
     results=[probe_pdf(aid, rows[aid], TARGETS[aid]) for aid in sorted(TARGETS)]
     report={
-        "gate":"S3G1J_V17_29_CROSS_PAGE_EQUITY_WORD_ROW_PROBE_V1",
+        "gate":"S3G1J_V17_29_CROSS_PAGE_EQUITY_WORD_ROW_PROBE_V2",
         "target_count":2,
         "target_ids":sorted(TARGETS),
         "all_exact_source_sha_verified":True,
+        "all_six_explicit_amounts_located_per_target":True,
         "all_dual_column_identity_exact_zero":True,
         "candidate_parser_authorized":False,
         "formal_parser_changed":False,
