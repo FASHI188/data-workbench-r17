@@ -98,7 +98,7 @@ jobs:
           PY
       - name: Verify governance evidence and root-cause boundary
         run: python -m unittest tests.test_stage3_v17_29_residual_classification_evidence -v
-      - name: Verify current authority is unchanged and no parser authorization exists
+      - name: Verify diagnostic remains non-authoritative while current runtime advances
         run: |
           python - <<'PY'
           import json
@@ -108,12 +108,15 @@ jobs:
           b=e['surviving_p0_root_cause_boundary']
           assert e['hard_boundaries']['diagnostic_only'] is True
           assert e['hard_boundaries']['candidate_parser_authorized'] is False
+          assert e['hard_boundaries']['runtime_authority_changed'] is False
           assert b['safe_exact_source_candidate_count']==0
           assert b['diagnostic_only_count']==6 and b['do_not_promote_count']==1
-          assert r['formal_runtime']['runtime_generation']=='V17.29'
+          assert r['formal_runtime']['runtime_generation']=='V17.30'
           assert r['full_basis_last_completed_final']['generation']=='V17.29'
           assert r['full_basis_last_completed_final']['run']==31389854868
           assert r['full_basis_last_completed_final']['verdict']=='FAIL_CLOSED'
+          assert r['next_full_basis_required']['generation']=='V17.30'
+          assert r['next_full_basis_required']['status']=='REQUIRED_NOT_STARTED'
           assert p['stage3']['status']=='NOT_READY'
           assert p['stage4_unlocked'] is False
           assert p['alpha_training_allowed'] is False
