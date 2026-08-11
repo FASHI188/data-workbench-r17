@@ -19,6 +19,8 @@ env:
   GH_TOKEN: ${{ github.token }}
   PYTHONPATH: scripts
   SOURCE_PR: '126'
+  SOURCE_HEAD: '71b19f55648bdef6ded5e40335da9b6f09a8d44c'
+  SOURCE_RUN: '31480775354'
   SOURCE_WORKFLOW: 'Stage3 S3G1J V17.30 Fresh Full 64 Shard R4'
   SHARD_PREFIX: 'stage3-s3g1j-v17-30-r4-full-final-shard-'
   LOCKED_INPUT_ARTIFACT: 'stage3-s3g1j-v17-30-r4-locked-input'
@@ -46,25 +48,26 @@ jobs:
       - name: Install verified runtime
         run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
 
-      - name: Lock unique successful current-head R4 source and all artifacts
+      - name: Lock exact closed-unmerged R4 source and all artifacts
         shell: bash
         run: |
           set -euo pipefail
           pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$SOURCE_PR")
+          test "$(jq -r '.state' <<<"$pr")" = closed
           test "$(jq -r '.merged' <<<"$pr")" = false
-          head=$(jq -r '.head.sha' <<<"$pr")
-          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$head&event=pull_request&per_page=100")
-          count=$(jq -r --arg name "$SOURCE_WORKFLOW" '[.workflow_runs[]|select(.name==$name and .status=="completed" and .conclusion=="success")]|length' <<<"$runs")
-          test "$count" = 1
-          run=$(jq -r --arg name "$SOURCE_WORKFLOW" '.workflow_runs[]|select(.name==$name and .status=="completed" and .conclusion=="success")|.id' <<<"$runs")
-          test -n "$run"
-          test "$(jq -r --arg name "$SOURCE_WORKFLOW" '.workflow_runs[]|select(.name==$name and .status=="completed" and .conclusion=="success")|.head_sha' <<<"$runs")" = "$head"
-          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts?per_page=100")
+          test "$(jq -r '.head.sha' <<<"$pr")" = "$SOURCE_HEAD"
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN")
+          test "$(jq -r '.name' <<<"$run")" = "$SOURCE_WORKFLOW"
+          test "$(jq -r '.head_sha' <<<"$run")" = "$SOURCE_HEAD"
+          test "$(jq -r '.event' <<<"$run")" = pull_request
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts?per_page=100")
           test "$(jq -r --arg prefix "$SHARD_PREFIX" '[.artifacts[]|select(.name|startswith($prefix))]|length' <<<"$artifacts")" = 64
-          test "$(jq -r --arg prefix "$SHARD_PREFIX" '[.artifacts[]|select(.name|startswith($prefix) and .expired==true)]|length' <<<"$artifacts")" = 0
+          test "$(jq -r --arg prefix "$SHARD_PREFIX" '[.artifacts[]|select((.name|startswith($prefix)) and .expired==true)]|length' <<<"$artifacts")" = 0
           test "$(jq -r --arg name "$LOCKED_INPUT_ARTIFACT" '[.artifacts[]|select(.name==$name)]|length' <<<"$artifacts")" = 1
           test "$(jq -r --arg name "$LOCKED_INPUT_ARTIFACT" '.artifacts[]|select(.name==$name)|.expired' <<<"$artifacts")" = false
-          SOURCE_RUN="$run" python - <<'PY'
+          python - <<'PY'
           import json,os,subprocess
           payload=json.loads(subprocess.check_output([
               'gh','api',f"repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['SOURCE_RUN']}/artifacts?per_page=100"
@@ -81,10 +84,8 @@ jobs:
           assert sorted(ids)==list(range(64))
           assert len(set(artifact_ids))==64
           assert len(set(digests))==64
-          print('V17_30_CURRENT_HEAD_SOURCE_ARTIFACT_LOCK_PASS')
+          print('V17_30_EXACT_SOURCE_ARTIFACT_LOCK_PASS')
           PY
-          echo "SOURCE_HEAD=$head" >> "$GITHUB_ENV"
-          echo "SOURCE_RUN=$run" >> "$GITHUB_ENV"
 
       - name: Lock immutable comparison authorities
         shell: bash
