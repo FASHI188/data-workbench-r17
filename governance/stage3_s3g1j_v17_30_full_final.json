@@ -35,10 +35,10 @@
     "review_count": 0
   },
   "governance_registration": {
-    "governance_pr": null,
+    "governance_pr": 128,
     "target": "agent/stage3-clean-integration",
     "append_only_history_required": true,
-    "status": "PENDING_GOVERNANCE_PR"
+    "status": "IN_PROGRESS_EXACT_HEAD_GATED"
   },
   "runtime_identity": {
     "generation": "V17.30",
