@@ -1,0 +1,294 @@
+name: Stage3 S3G1J V17.30 Full Final Preacceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/compare_stage3_s3g1j_v17_30_full_final.py'
+      - 'tests/test_stage3_v17_30_full_final_comparator.py'
+      - '.github/workflows/stage3-s3g1j-v17-30-full-final-preacceptance.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  SOURCE_PR: '126'
+  SOURCE_WORKFLOW: 'Stage3 S3G1J V17.30 Fresh Full 64 Shard R4'
+  SHARD_PREFIX: 'stage3-s3g1j-v17-30-r4-full-final-shard-'
+  SHARD_GATE: 'S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_30'
+  PARSER_METHOD: 'CNINFO_ORIGINAL_PDF_PYMUPDF_V20_V17_30_EXACT_SOURCE_CROSS_PAGE_GROUP_EQUITY_PRODUCTION'
+  METHODOLOGY: 'V3.3.14-V17.30'
+  RUNTIME_GENERATION: 'V17.30'
+  PREVIOUS_RUN: '31389854868'
+  PREVIOUS_ARTIFACT: 'stage3-s3g1j-v17-29-full-final'
+  PREVIOUS_DIGEST: 'sha256:71a4daa6c8372f3d64080b5fa5b787914292d889da7051de699eb6610189c726'
+  GOLD_RUN: '31452374012'
+  GOLD_ARTIFACT: 'stage3-s3g1j-v17-29-cross-page-production-promotion-safety-v1'
+  GOLD_DIGEST: 'sha256:d3bb089c7e0524a39b62016f6b6b41539aec99894b874c2940678bee24edebc4'
+
+jobs:
+  full-final-preacceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - name: Discover unique successful R4 source run and lock 64 artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$SOURCE_PR")
+          test "$(jq -r '.merged' <<<"$pr")" = false
+          head=$(jq -r '.head.sha' <<<"$pr")
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$head&event=pull_request&per_page=100")
+          count=$(jq -r --arg name "$SOURCE_WORKFLOW" '[.workflow_runs[]|select(.name==$name and .status=="completed" and .conclusion=="success")]|length' <<<"$runs")
+          test "$count" = 1
+          run=$(jq -r --arg name "$SOURCE_WORKFLOW" '.workflow_runs[]|select(.name==$name and .status=="completed" and .conclusion=="success")|.id' <<<"$runs")
+          test -n "$run"
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts?per_page=100")
+          test "$(jq -r --arg prefix "$SHARD_PREFIX" '[.artifacts[]|select(.name|startswith($prefix))]|length' <<<"$artifacts")" = 64
+          test "$(jq -r --arg prefix "$SHARD_PREFIX" '[.artifacts[]|select(.name|startswith($prefix) and .expired==true)]|length' <<<"$artifacts")" = 0
+          SOURCE_HEAD="$head" SOURCE_RUN="$run" python - <<'PY'
+          import json,os,subprocess
+          payload=json.loads(subprocess.check_output(['gh','api',f"repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['SOURCE_RUN']}/artifacts?per_page=100"],text=True))
+          prefix=os.environ['SHARD_PREFIX']
+          rows=[]
+          for a in payload['artifacts']:
+              if not a['name'].startswith(prefix):
+                  continue
+              suffix=a['name'][len(prefix):]
+              assert suffix.isdigit(),a['name']
+              rows.append((int(suffix),a['id'],a['digest'],a['expired']))
+          assert [x[0] for x in sorted(rows)]==list(range(64))
+          assert len({x[1] for x in rows})==64
+          assert len({x[2] for x in rows})==64
+          assert all(x[3] is False for x in rows)
+          print('V17_30_SOURCE_64_ARTIFACT_LOCK_PASS',os.environ['SOURCE_RUN'],os.environ['SOURCE_HEAD'])
+          PY
+          echo "SOURCE_HEAD=$head" >> "$GITHUB_ENV"
+          echo "SOURCE_RUN=$run" >> "$GITHUB_ENV"
+      - name: Lock previous accepted basis and promotion-safety gold
+        shell: bash
+        run: |
+          set -euo pipefail
+          previous=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PREVIOUS_RUN/artifacts?per_page=100")
+          test "$(jq -r --arg name "$PREVIOUS_ARTIFACT" '[.artifacts[]|select(.name==$name)]|length' <<<"$previous")" = 1
+          test "$(jq -r --arg name "$PREVIOUS_ARTIFACT" '.artifacts[]|select(.name==$name)|.digest' <<<"$previous")" = "$PREVIOUS_DIGEST"
+          test "$(jq -r --arg name "$PREVIOUS_ARTIFACT" '.artifacts[]|select(.name==$name)|.expired' <<<"$previous")" = false
+          gold=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GOLD_RUN/artifacts?per_page=100")
+          test "$(jq -r --arg name "$GOLD_ARTIFACT" '[.artifacts[]|select(.name==$name)]|length' <<<"$gold")" = 1
+          test "$(jq -r --arg name "$GOLD_ARTIFACT" '.artifacts[]|select(.name==$name)|.digest' <<<"$gold")" = "$GOLD_DIGEST"
+          test "$(jq -r --arg name "$GOLD_ARTIFACT" '.artifacts[]|select(.name==$name)|.expired' <<<"$gold")" = false
+      - name: Download 64 source shards and locked comparison authorities
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p source-shards previous gold
+          gh run download "$SOURCE_RUN" -R "$GITHUB_REPOSITORY" -p "$SHARD_PREFIX*" -D source-shards
+          gh run download "$PREVIOUS_RUN" -R "$GITHUB_REPOSITORY" -n "$PREVIOUS_ARTIFACT" -D previous
+          gh run download "$GOLD_RUN" -R "$GITHUB_REPOSITORY" -n "$GOLD_ARTIFACT" -D gold
+          test "$(find source-shards -name 'financial_extract_shard*.manifest.json' | wc -l | tr -d ' ')" = 64
+      - name: Independently verify all downloaded shard manifests are pure V17.30
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          manifests=sorted(Path('source-shards').rglob('financial_extract_shard*.manifest.json'))
+          assert len(manifests)==64
+          ids=[]
+          total_docs=total_numeric=total_errors=0
+          for path in manifests:
+              m=json.load(open(path,encoding='utf-8'))
+              ids.append(int(m['shard']))
+              assert int(m['shards'])==64
+              assert m['gate']==os.environ['SHARD_GATE']
+              assert m['runtime_generation']==os.environ['RUNTIME_GENERATION']
+              assert m['parser_method']==os.environ['PARSER_METHOD']
+              assert m['methodology_version']==os.environ['METHODOLOGY']
+              assert m['source_format']=='PDF'
+              assert m['original_pdf_authority'] is True
+              assert m['current_f10_historical_backfill_used'] is False
+              assert m['stage4_alpha_locked'] is True
+              assert int(m['document_rows'])==int(m['selected_versions']) and int(m['document_rows'])>0
+              assert int(m['error_count'])==len(m.get('errors') or [])
+              total_docs+=int(m['document_rows'])
+              total_numeric+=int(m['numeric_observations'])
+              total_errors+=int(m['error_count'])
+          assert sorted(ids)==list(range(64))
+          assert total_docs==121354
+          print('V17_30_SHARD_MANIFEST_SUMS',total_docs,total_numeric,total_errors)
+          PY
+      - name: Run formal finalizer with discovered CLI contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/v17_30_final
+          python - <<'PY'
+          import ast,os,subprocess,sys
+          from pathlib import Path
+          script=Path('scripts/finalize_stage3_financial_pdf_values.py')
+          tree=ast.parse(script.read_text(encoding='utf-8'))
+          required=[]
+          all_flags=[]
+          for node in ast.walk(tree):
+              if not isinstance(node,ast.Call) or not isinstance(node.func,ast.Attribute) or node.func.attr!='add_argument':
+                  continue
+              flags=[a.value for a in node.args if isinstance(a,ast.Constant) and isinstance(a.value,str) and a.value.startswith('--')]
+              if not flags:
+                  continue
+              flag=flags[0]
+              all_flags.append(flag)
+              req=False
+              for kw in node.keywords:
+                  if kw.arg=='required' and isinstance(kw.value,ast.Constant):
+                      req=bool(kw.value.value)
+              if req:
+                  required.append(flag)
+          mapping={
+            '--shards-root':'source-shards','--shard-root':'source-shards','--input-root':'source-shards','--source-root':'source-shards','--artifacts-root':'source-shards','--input':'source-shards','--shards':'source-shards',
+            '--out':'build/v17_30_final','--output':'build/v17_30_final','--out-root':'build/v17_30_final','--output-root':'build/v17_30_final',
+            '--expected-shards':'64','--expected-shard-count':'64','--shard-count':'64',
+            '--expected-gate':os.environ['SHARD_GATE'],'--gate':os.environ['SHARD_GATE'],
+            '--expected-parser-method':os.environ['PARSER_METHOD'],'--parser-method':os.environ['PARSER_METHOD'],
+            '--expected-methodology-version':os.environ['METHODOLOGY'],'--methodology-version':os.environ['METHODOLOGY'],'--expected-methodology':os.environ['METHODOLOGY'],'--methodology':os.environ['METHODOLOGY'],
+            '--expected-runtime-generation':os.environ['RUNTIME_GENERATION'],'--runtime-generation':os.environ['RUNTIME_GENERATION'],
+            '--expected-document-rows':'121354','--expected-document-count':'121354',
+            '--expected-numeric-observations':'1051826','--expected-numeric-rows':'1051826',
+            '--expected-document-errors':'1362','--expected-error-count':'1362',
+            '--expected-unresolved-ties':'1279','--expected-tie-count':'1279',
+          }
+          unknown=[f for f in required if f not in mapping]
+          if unknown:
+              raise SystemExit(f'unknown required finalizer flags: {unknown}; all={all_flags}')
+          cmd=[sys.executable,str(script)]
+          for flag in required:
+              cmd.extend([flag,mapping[flag]])
+          for flag in all_flags:
+              if flag in required or flag not in mapping:
+                  continue
+              if flag in {'--expected-gate','--gate','--expected-parser-method','--parser-method','--expected-methodology-version','--methodology-version','--expected-runtime-generation','--runtime-generation','--expected-shards','--expected-shard-count'}:
+                  cmd.extend([flag,mapping[flag]])
+          print('FINALIZER_COMMAND_FLAGS',cmd[2::2])
+          proc=subprocess.run(cmd,text=True,capture_output=True)
+          Path('build/v17_30_final/finalizer.stdout.log').write_text(proc.stdout,encoding='utf-8')
+          Path('build/v17_30_final/finalizer.stderr.log').write_text(proc.stderr,encoding='utf-8')
+          print(proc.stdout)
+          print(proc.stderr,file=sys.stderr)
+          if proc.returncode!=2:
+              raise SystemExit(f'formal finalizer expected FAIL_CLOSED exit=2 actual={proc.returncode}')
+          PY
+      - name: Locate final outputs and run strict V17.30 full-basis comparator
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_docs=$(find build/v17_30_final -name stage3_financial_documents.csv.gz -print -quit)
+          current_vals=$(find build/v17_30_final -name stage3_financial_raw_values.csv.gz -print -quit)
+          audit=$(find build/v17_30_final -name stage3_financial_raw_audit.json -print -quit)
+          previous_docs=$(find previous -name stage3_financial_documents.csv.gz -print -quit)
+          previous_vals=$(find previous -name stage3_financial_raw_values.csv.gz -print -quit)
+          gold_docs=$(find gold -name stage3_financial_documents_v17_29_cross_page_promotion_safety.csv.gz -print -quit)
+          gold_vals=$(find gold -name stage3_financial_values_v17_29_cross_page_promotion_safety.csv.gz -print -quit)
+          test -n "$current_docs" && test -n "$current_vals" && test -n "$audit"
+          test -n "$previous_docs" && test -n "$previous_vals" && test -n "$gold_docs" && test -n "$gold_vals"
+          python scripts/compare_stage3_s3g1j_v17_30_full_final.py \
+            --previous-documents "$previous_docs" \
+            --previous-values "$previous_vals" \
+            --current-documents "$current_docs" \
+            --current-values "$current_vals" \
+            --promotion-documents "$gold_docs" \
+            --promotion-values "$gold_vals" \
+            --report build/v17_30_final/stage3_s3g1j_v17_30_full_basis_non_regression.json
+          python - "$audit" <<'PY'
+          import json,sys
+          a=json.load(open(sys.argv[1],encoding='utf-8'))
+          assert a['document_count']==121354
+          assert a['numeric_observation_count']==1051826
+          assert a['document_error_count']==1362
+          assert a['unresolved_tie_count']==1279
+          assert a['pass'] is False
+          print('V17_30_FINAL_AUDIT_EXPECTED_FAIL_CLOSED_PASS')
+          PY
+      - name: Re-run exact two real sources through formal V17.30 runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,requests
+          from decimal import Decimal
+          import stage3_financial_pdf_parser_v22 as parser
+          targets={
+            '1223347318':('https://static.cninfo.com.cn/finalpage/2025-04-28/1223347318.PDF','d765c94532cd41a496d147da72cbff392bce4ff776b41b88d95dcf3f1fb697c8',492929,'2025-03-31'),
+            '1223407043':('https://static.cninfo.com.cn/finalpage/2025-04-30/1223407043.PDF','7540a56179783625ac256726480ef32faf85a893549057fe9e6546abfd6ee903',1367714,'2024-12-31'),
+          }
+          s=requests.Session(); s.headers.update({'User-Agent':'data-workbench-r17-v17-30-full-final/1.0'})
+          for aid,(url,sha,size,date) in targets.items():
+              r=s.get(url,timeout=(30,180)); r.raise_for_status(); raw=r.content
+              assert raw.startswith(b'%PDF') and len(raw)==size and hashlib.sha256(raw).hexdigest()==sha
+              out=parser.parse_pdf_bytes(raw,date)
+              assert out['parser_version']==parser.METHOD
+              assert out['validation_errors']==[] and out['tier2_found']==3
+              found={c:v for c,v in out['observations'].items() if isinstance(v,dict) and v.get('status')=='FOUND'}
+              assert set(found)=={'TOTAL_ASSETS','TOTAL_LIABILITIES','TOTAL_EQUITY'}
+              identity=out['balance_sheet_block']['dual_column_identity']
+              assert str(identity['tolerance'])=='0.005'
+              assert [x['column'] for x in identity['columns']]==['CURRENT','PRIOR']
+              assert all(Decimal(str(x['identity_residual_cny']))==0 for x in identity['columns'])
+              assert all(Decimal(str(x['identity_relative_error']))==0 for x in identity['columns'])
+              assert out['balance_sheet_block']['ocr_enabled'] is False
+              assert out['balance_sheet_block']['fuzzy_alias_matching_enabled'] is False
+              assert out['balance_sheet_block']['equity_value_inferred_as_assets_minus_liabilities'] is False
+          print('V17_30_TWO_REAL_SOURCE_INDEPENDENT_RECHECK_PASS')
+          PY
+      - name: Record output identities and preacceptance report
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path('build/v17_30_final')
+          files={}
+          for p in sorted(root.rglob('*')):
+              if p.is_file():
+                  files[str(p.relative_to(root))]=hashlib.sha256(p.read_bytes()).hexdigest()
+          report={
+            'gate':'S3G1J_V17_30_FULL_FINAL_PREACCEPTANCE_V1',
+            'source_pr':126,
+            'source_head':os.environ['SOURCE_HEAD'],
+            'source_run':int(os.environ['SOURCE_RUN']),
+            'document_rows':121354,
+            'numeric_rows':1051826,
+            'document_errors':1362,
+            'unresolved_ties':1279,
+            'target_announcement_ids':['1223347318','1223407043'],
+            'target_numeric_rows':6,
+            'execution_pass':True,
+            'non_regression_pass':True,
+            'real_source_recheck_pass':True,
+            'final_data_verdict':'FAIL_CLOSED',
+            'stage3_status':'NOT_READY',
+            'stage4_alpha_live_locked':True,
+            'authority_registration_complete':False,
+            'output_sha256':files,
+            'pass':True,
+            'errors':[],
+          }
+          (root/'stage3_s3g1j_v17_30_preacceptance.json').write_text(json.dumps(report,ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-30-full-final-preacceptance
+          path: build/v17_30_final/
+          if-no-files-found: error
+          retention-days: 90
