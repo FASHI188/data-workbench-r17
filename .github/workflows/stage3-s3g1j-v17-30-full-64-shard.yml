@@ -14,7 +14,6 @@ permissions:
 env:
   GH_TOKEN: ${{ github.token }}
   PYTHONPATH: scripts
-  INTEGRATION_BASE: '015a7175e2b14ab54040fdd64d7c6cee9d128041'
   PROMOTION_PR: '125'
   PROMOTION_HEAD: '13cb0801e565dfbc547853ffb34cbb629578ad15'
   PROMOTION_MERGE: '015a7175e2b14ab54040fdd64d7c6cee9d128041'
@@ -23,12 +22,8 @@ env:
   EXTRACTOR_BLOB: 'd74a2b1f8f0ec3af8d89ce259e83392d7f8cc20c'
   INPUT_RUN: '30649251360'
   INPUT_ARTIFACT_ID: '8800699971'
-  INPUT_ARTIFACT: 'stage3-s3g1j-financial-report-versions-full'
-  INPUT_DIGEST: 'sha256:ce9d0a234203696238fa8169517e70831a5cf0ca164381105fe90a8766dc7533'
-  PREVIOUS_FULL_RUN: '31389854868'
-  PREVIOUS_FULL_ARTIFACT_ID: '9063271903'
-  PREVIOUS_FULL_ARTIFACT: 'stage3-s3g1j-v17-29-full-final'
-  PREVIOUS_FULL_DIGEST: 'sha256:71a4daa6c8372f3d64080b5fa5b787914292d889da7051de699eb6610189c726'
+  INPUT_ARTIFACT: 'stage3-s3g1j-v17-21-full-final-input'
+  INPUT_DIGEST: 'sha256:54a7e78138e6d4f792bc9de080dc1d0ff200798fb6a7942e59ac813f64934028'
   SHARDS: '64'
   SHARD_GATE: 'S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_30'
   PARSER_METHOD: 'CNINFO_ORIGINAL_PDF_PYMUPDF_V20_V17_30_EXACT_SOURCE_CROSS_PAGE_GROUP_EQUITY_PRODUCTION'
@@ -36,23 +31,14 @@ env:
   RUNTIME_GENERATION: 'V17.30'
 
 jobs:
-  shard:
+  lock-inputs:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63]
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12.13'
-      - name: Install verified runtime
-        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
-      - name: Lock promoted V17.30 runtime authority and code identity
+      - name: Lock promoted V17.30 authority and exact code blobs
         shell: bash
         run: |
           set -euo pipefail
@@ -94,33 +80,69 @@ jobs:
           assert p['live_signal_allowed'] is False
           print('V17_30_FRESH_EXECUTION_PREFLIGHT_PASS')
           PY
-      - name: Lock frozen input and previous accepted full basis
+      - name: Lock frozen full-basis input artifact to exact source run
         shell: bash
         run: |
           set -euo pipefail
-          input_run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$INPUT_RUN")
-          test "$(jq -r '.status' <<<"$input_run")" = completed
-          test "$(jq -r '.conclusion' <<<"$input_run")" = success
-          inputs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$INPUT_RUN/artifacts?per_page=100")
-          test "$(jq -r --argjson id "$INPUT_ARTIFACT_ID" '[.artifacts[]|select(.id==$id)]|length' <<<"$inputs")" = 1
-          test "$(jq -r --argjson id "$INPUT_ARTIFACT_ID" '.artifacts[]|select(.id==$id)|.name' <<<"$inputs")" = "$INPUT_ARTIFACT"
-          test "$(jq -r --argjson id "$INPUT_ARTIFACT_ID" '.artifacts[]|select(.id==$id)|.digest' <<<"$inputs")" = "$INPUT_DIGEST"
-          test "$(jq -r --argjson id "$INPUT_ARTIFACT_ID" '.artifacts[]|select(.id==$id)|.expired' <<<"$inputs")" = false
-          previous_run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PREVIOUS_FULL_RUN")
-          test "$(jq -r '.status' <<<"$previous_run")" = completed
-          test "$(jq -r '.conclusion' <<<"$previous_run")" = success
-          previous=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PREVIOUS_FULL_RUN/artifacts?per_page=100")
-          test "$(jq -r --argjson id "$PREVIOUS_FULL_ARTIFACT_ID" '[.artifacts[]|select(.id==$id)]|length' <<<"$previous")" = 1
-          test "$(jq -r --argjson id "$PREVIOUS_FULL_ARTIFACT_ID" '.artifacts[]|select(.id==$id)|.name' <<<"$previous")" = "$PREVIOUS_FULL_ARTIFACT"
-          test "$(jq -r --argjson id "$PREVIOUS_FULL_ARTIFACT_ID" '.artifacts[]|select(.id==$id)|.digest' <<<"$previous")" = "$PREVIOUS_FULL_DIGEST"
-          test "$(jq -r --argjson id "$PREVIOUS_FULL_ARTIFACT_ID" '.artifacts[]|select(.id==$id)|.expired' <<<"$previous")" = false
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$INPUT_RUN/artifacts?per_page=100")
+          test "$(jq -r --argjson id "$INPUT_ARTIFACT_ID" '[.artifacts[]|select(.id==$id)]|length' <<<"$artifacts")" = 1
+          test "$(jq -r --argjson id "$INPUT_ARTIFACT_ID" '.artifacts[]|select(.id==$id)|.name' <<<"$artifacts")" = "$INPUT_ARTIFACT"
+          test "$(jq -r --argjson id "$INPUT_ARTIFACT_ID" '.artifacts[]|select(.id==$id)|.digest' <<<"$artifacts")" = "$INPUT_DIGEST"
+          test "$(jq -r --argjson id "$INPUT_ARTIFACT_ID" '.artifacts[]|select(.id==$id)|.expired' <<<"$artifacts")" = false
       - uses: actions/download-artifact@v4
         with:
-          name: stage3-s3g1j-financial-report-versions-full
+          name: stage3-s3g1j-v17-21-full-final-input
           path: input
           repository: FASHI188/data-workbench-r17
           run-id: 30649251360
           github-token: ${{ github.token }}
+      - name: Verify frozen population identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f input/stage3_financial_report_versions.csv.gz
+          test -f input/stage3_s3g1j_full_final_input.json
+          test "$(gzip -dc input/stage3_financial_report_versions.csv.gz | awk 'END {print NR-1}')" = 121354
+          python - <<'PY'
+          import json
+          x=json.load(open('input/stage3_s3g1j_full_final_input.json',encoding='utf-8'))
+          assert x['input_version_rows']==121354
+          assert x['input_source_stage']=='FULL_BASIS'
+          assert x['full_basis_requested'] is True
+          assert x['point_in_time_policy_relaxed'] is False
+          assert x['issuer_gate_relaxed'] is False
+          assert x['accounting_tolerance_changed'] is False
+          assert x['stage4_alpha_locked'] is True
+          print('V17_30_FROZEN_INPUT_IDENTITY_PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-30-locked-full-final-input
+          path: input/
+          if-no-files-found: error
+          retention-days: 90
+
+  shard:
+    needs: lock-inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified Stage3 runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-30-locked-full-final-input
+          path: input
       - name: Run fresh V17.30 shard
         shell: bash
         run: |
