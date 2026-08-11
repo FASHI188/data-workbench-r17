@@ -5,7 +5,9 @@ on:
   pull_request:
     paths:
       - 'scripts/diagnose_stage3_s3g1j_v17_29_six_sources.py'
+      - 'scripts/prepare_stage3_s3g1j_v17_29_six_source_input.py'
       - 'tests/test_stage3_v17_29_six_source_diagnostic.py'
+      - 'tests/test_stage3_v17_29_six_source_input_adapter.py'
       - '.github/workflows/stage3-s3g1j-v17-29-six-source-diagnostic.yml'
 
 permissions:
@@ -32,9 +34,10 @@ jobs:
           python-version: '3.12.13'
       - name: Install verified read-only runtime
         run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
-      - name: Verify diagnostic boundary and current project locks
+      - name: Verify diagnostic boundary and ERROR-row source adapter
         run: |
           python -m unittest tests.test_stage3_v17_29_six_source_diagnostic -v
+          python -m unittest tests.test_stage3_v17_29_six_source_input_adapter -v
           python - <<'PY'
           import json
           e=json.load(open('governance/stage3_s3g1j_v17_29_residual_classification.json',encoding='utf-8'))
@@ -73,14 +76,34 @@ jobs:
           repository: FASHI188/data-workbench-r17
           run-id: 31389854868
           github-token: ${{ github.token }}
-      - name: Fetch six exact official PDFs by ledger URL and diagnose visible evidence
+      - name: Resolve six residual source identities from single-candidate evidence
         shell: bash
         run: |
           set -euo pipefail
           documents=$(find source -name stage3_financial_documents.csv.gz -print -quit)
           test -n "$documents"
-          python scripts/diagnose_stage3_s3g1j_v17_29_six_sources.py \
+          python scripts/prepare_stage3_s3g1j_v17_29_six_source_input.py \
             --documents "$documents" \
+            --evidence governance/stage3_s3g1j_v17_29_residual_classification.json \
+            --out build/input/six_source_documents.csv.gz \
+            --summary build/input/six_source_input_identity.json
+          python - <<'PY'
+          import json
+          s=json.load(open('build/input/six_source_input_identity.json',encoding='utf-8'))
+          assert s['target_count']==6
+          assert s['target_ids']==['1202799494','1204077386','1205543437','1209806910','1223347318','1223407043']
+          assert s['source_identity_origin']=='SINGLE_CANDIDATE_EVIDENCE_JSON'
+          assert s['accepted_ledger_mutated'] is False
+          assert s['temporary_diagnostic_input_only'] is True
+          assert s['all_candidate_source_identities_match_governance_evidence'] is True
+          print('SIX_SOURCE_ERROR_ROW_SOURCE_IDENTITY_PASS')
+          PY
+      - name: Fetch six exact official PDFs and diagnose visible evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/diagnose_stage3_s3g1j_v17_29_six_sources.py \
+            --documents build/input/six_source_documents.csv.gz \
             --evidence governance/stage3_s3g1j_v17_29_residual_classification.json \
             --out build/diagnostic/s3g1j_v17_29_six_source_diagnostic.json
       - name: Require all six exact SHA locks and fail-closed parser boundary
@@ -119,6 +142,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: stage3-s3g1j-v17-29-six-source-diagnostic-v1
-          path: build/diagnostic
+          path: |
+            build/input/six_source_input_identity.json
+            build/diagnostic/s3g1j_v17_29_six_source_diagnostic.json
           retention-days: 90
           compression-level: 0
