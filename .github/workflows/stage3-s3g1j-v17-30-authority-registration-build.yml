@@ -1,0 +1,58 @@
+name: Stage3 S3G1J V17.30 Authority Registration Build
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/build_stage3_s3g1j_v17_30_authority_registration.py'
+      - '.github/workflows/stage3-s3g1j-v17-30-authority-registration-build.yml'
+      - 'governance/stage3_s3g1j_runtime_manifest.json'
+      - 'governance/stage3_workflow_activation_manifest.json'
+      - 'governance/stage3_authority_map.json'
+      - 'config/stage3_final_lock.json'
+      - 'data/project_status.json'
+      - 'governance/stage3_s3g1j_v17_30_full_final.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-registration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Build append-only V17.30 central authority state
+        run: python scripts/build_stage3_s3g1j_v17_30_authority_registration.py
+      - name: Validate generated JSON and hard locks
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in build/v17_30_authority_registration/*.json; do python -m json.tool "$f" >/dev/null; done
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('build/v17_30_authority_registration')
+          r=json.load(open(p/'stage3_s3g1j_runtime_manifest.json'))
+          a=json.load(open(p/'stage3_workflow_activation_manifest.json'))
+          m=json.load(open(p/'stage3_authority_map.json'))
+          l=json.load(open(p/'stage3_final_lock.json'))
+          s=json.load(open(p/'project_status.json'))
+          assert r['full_basis_last_completed_final']['generation']=='V17.30'
+          assert [r['previous_last_completed_full_basis_final']['generation'],r['previous_full_basis_final']['generation'],r['historical_full_basis_final']['generation'],r['earlier_historical_full_basis_final']['generation']]==['V17.29','V17.28','V17.27','V17.26']
+          assert a['accepted_v17_30_full_basis_evidence']['last_completed_full_basis_authority'] is True
+          assert m['authoritative_components']['S3G1J_FINANCIAL_RAW_VALUES']['accepted_run_id']==31518370789
+          assert l['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']['data_verdict']=='FAIL_CLOSED'
+          assert s['stage3']['status']=='NOT_READY'
+          assert s['stage4_unlocked'] is False and s['alpha_training_allowed'] is False and s['live_signal_allowed'] is False
+          print('V17_30_AUTHORITY_REGISTRATION_BUILD_VALIDATE_PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-30-authority-registration-build
+          path: build/v17_30_authority_registration/
+          if-no-files-found: error
+          retention-days: 30
