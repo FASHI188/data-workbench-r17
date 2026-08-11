@@ -18,6 +18,30 @@ def load_module():
     return mod
 
 
+def write_single_shard(root: Path, mod, *, include_numeric_rows: bool=True, legacy_numeric_observations: bool=False) -> None:
+    shard=root/"artifact-0"
+    shard.mkdir()
+    data=shard/"payload.txt"
+    data.write_text("abc\n",encoding="utf-8")
+    digest=mod.sha256(data)
+    (shard/"output_sha256.txt").write_text(f"{digest}  payload.txt\n",encoding="utf-8")
+    manifest={
+        "shard":0,"shards":1,"gate":mod.EXPECTED_GATE,
+        "runtime_generation":mod.EXPECTED_RUNTIME,
+        "parser_method":mod.EXPECTED_METHOD,
+        "methodology_version":mod.EXPECTED_METHODOLOGY,
+        "source_format":"PDF","original_pdf_authority":True,
+        "current_f10_historical_backfill_used":False,
+        "stage4_alpha_locked":True,"document_rows":2,"selected_versions":2,
+        "error_count":1,"errors":["x"],
+    }
+    if include_numeric_rows:
+        manifest["numeric_rows"]=3
+    if legacy_numeric_observations:
+        manifest["numeric_observations"]=3
+    (shard/"financial_extract_shard00.manifest.json").write_text(json.dumps(manifest),encoding="utf-8")
+
+
 class V1730SourceShardVerifierTest(unittest.TestCase):
     def test_constants_lock_v17_30_identity(self)->None:
         mod=load_module()
@@ -38,27 +62,11 @@ class V1730SourceShardVerifierTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,"duplicate hash-ledger path"):
                 mod.parse_hash_ledger(p)
 
-    def test_synthetic_single_shard_verifies_when_constants_are_patched(self)->None:
+    def test_synthetic_single_shard_verifies_real_numeric_rows_schema(self)->None:
         mod=load_module()
         with tempfile.TemporaryDirectory() as td:
             root=Path(td)
-            shard=root/"artifact-0"
-            shard.mkdir()
-            data=shard/"payload.txt"
-            data.write_text("abc\n",encoding="utf-8")
-            digest=mod.sha256(data)
-            (shard/"output_sha256.txt").write_text(f"{digest}  payload.txt\n",encoding="utf-8")
-            manifest={
-                "shard":0,"shards":1,"gate":mod.EXPECTED_GATE,
-                "runtime_generation":mod.EXPECTED_RUNTIME,
-                "parser_method":mod.EXPECTED_METHOD,
-                "methodology_version":mod.EXPECTED_METHODOLOGY,
-                "source_format":"PDF","original_pdf_authority":True,
-                "current_f10_historical_backfill_used":False,
-                "stage4_alpha_locked":True,"document_rows":2,"selected_versions":2,
-                "numeric_observations":3,"error_count":1,"errors":["x"],
-            }
-            (shard/"financial_extract_shard00.manifest.json").write_text(json.dumps(manifest),encoding="utf-8")
+            write_single_shard(root,mod)
             mod.EXPECTED_SHARDS=1
             mod.EXPECTED_DOCUMENTS=2
             mod.EXPECTED_NUMERIC=3
@@ -67,6 +75,19 @@ class V1730SourceShardVerifierTest(unittest.TestCase):
             self.assertTrue(report["pass"])
             self.assertTrue(report["all_output_sha256_ledgers_recomputed"])
             self.assertEqual(report["shard_count"],1)
+            self.assertEqual(report["numeric_rows"],3)
+
+    def test_legacy_numeric_observations_cannot_substitute_for_numeric_rows(self)->None:
+        mod=load_module()
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            write_single_shard(root,mod,include_numeric_rows=False,legacy_numeric_observations=True)
+            mod.EXPECTED_SHARDS=1
+            mod.EXPECTED_DOCUMENTS=2
+            mod.EXPECTED_NUMERIC=3
+            mod.EXPECTED_ERRORS=1
+            with self.assertRaisesRegex(ValueError,"missing numeric_rows"):
+                mod.verify(root)
 
 
 if __name__=="__main__":
