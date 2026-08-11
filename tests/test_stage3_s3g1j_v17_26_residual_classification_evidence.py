@@ -63,7 +63,7 @@ class V1726ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertEqual(hashes["gzip_embedded_filename"], "")
 
     def test_activation_retains_diagnostic_without_rewriting_history(self) -> None:
-        self.assertEqual(self.activation["schema_version"], 15)
+        self.assertGreaterEqual(self.activation["schema_version"], 16)
         accepted = self.activation["accepted_v17_26_residual_classification"]
         self.assertEqual(accepted["run"], 30734063100)
         self.assertEqual(accepted["artifact_id"], 8828913247)
@@ -79,13 +79,12 @@ class V1726ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertIn(".github/workflows/stage3-s3g1j-v17-26-residual-classifier.yml", self.activation["removed_one_shot_workflows"])
 
         runtime = self.activation["accepted_production_runtime"]
-        self.assertEqual(runtime["generation"], "V17.29")
-        self.assertIs(runtime["full_basis_execution_pending"], False)
+        self.assertEqual(runtime["generation"], "V17.30")
+        self.assertIs(runtime["full_basis_execution_pending"], True)
         self.assertEqual(runtime["last_completed_full_basis_generation"], "V17.29")
         self.assertEqual(runtime["last_completed_full_basis_run"], 31389854868)
         self.assertEqual(runtime["last_completed_document_error_count"], 1364)
         self.assertEqual(runtime["last_completed_unresolved_tie_count"], 1281)
-        self.assertEqual(runtime["execution_verdict"], "PASS")
         self.assertEqual(runtime["data_verdict"], "FAIL_CLOSED")
 
         historical = self.activation["accepted_v17_26_full_basis_evidence"]
@@ -94,8 +93,10 @@ class V1726ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertIs(historical["historical_full_basis_authority_retained"], True)
         boundaries = self.activation["hard_boundaries"]
         self.assertIs(boundaries["v17_29_full_basis_execution_pending"], False)
-        self.assertEqual(boundaries["remaining_document_errors"], 1364)
-        self.assertEqual(boundaries["remaining_unresolved_ties"], 1281)
+        self.assertIs(boundaries["v17_30_full_basis_execution_pending"], True)
+        self.assertIs(boundaries["v17_30_full_basis_execution_started"], False)
+        self.assertEqual(boundaries["remaining_document_errors_last_completed_basis"], 1364)
+        self.assertEqual(boundaries["remaining_unresolved_ties_last_completed_basis"], 1281)
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertIs(boundaries["stage4_alpha_live_locked"], True)
         self.assertIs(boundaries["committed_production_data_changed"], False)
