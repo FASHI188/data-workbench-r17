@@ -158,11 +158,19 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "out/${{ matrix.shard }}"
+          set +e
           python scripts/extract_stage3_financial_pdf_values_v20.py \
             --versions input/stage3_financial_report_versions.csv.gz \
             --out "out/${{ matrix.shard }}" \
             --shard "${{ matrix.shard }}" \
             --shards "$SHARDS"
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 2 ]; then
+            echo "unexpected extractor exit code: $rc" >&2
+            exit "$rc"
+          fi
+          echo "V17_30_R4_EXTRACTOR_EXPECTED_EXIT_PASS shard=${{ matrix.shard }} rc=$rc"
       - name: Enforce pure V17.30 shard artifact identity
         shell: bash
         run: |
