@@ -1,0 +1,165 @@
+name: Stage3 S3G1J V17.29 Cross Page Production Promotion Safety
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/build_stage3_s3g1j_v17_29_cross_page_production_promotion_safety.py'
+      - 'tests/test_stage3_v17_29_cross_page_production_promotion_safety.py'
+      - '.github/workflows/stage3-s3g1j-v17-29-cross-page-production-promotion-safety.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  SOURCE_RUN: '31389854868'
+  SOURCE_HEAD: '22fa37064eeb8a49ad5292dd2be48bd7b674c673'
+  SOURCE_ARTIFACT_ID: '9063271903'
+  SOURCE_ARTIFACT: 'stage3-s3g1j-v17-29-full-final'
+  SOURCE_DIGEST: 'sha256:71a4daa6c8372f3d64080b5fa5b787914292d889da7051de699eb6610189c726'
+  SAFETY_RUN: '31451602128'
+  SAFETY_HEAD: 'ceccffd577d27ac9dad1722a8b77b2e6c891f3a2'
+  SAFETY_ARTIFACT_ID: '9086511255'
+  SAFETY_ARTIFACT: 'stage3-s3g1j-v17-29-cross-page-two-target-safety-v1'
+  SAFETY_DIGEST: 'sha256:09a74424d8fcbbe4fe29523128752fc33b0a2c937d57f0d75dceccfd8261ffe4'
+
+jobs:
+  promotion-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified read-only runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - name: Verify accepted safety evidence and current project locks
+        run: |
+          python - <<'PY'
+          import json
+          e=json.load(open('governance/stage3_s3g1j_v17_29_cross_page_two_target_safety.json',encoding='utf-8'))
+          r=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          p=json.load(open('data/project_status.json',encoding='utf-8'))
+          assert e['accepted_run']['run_id']==31451602128
+          assert e['accepted_run']['artifact_id']==9086511255
+          assert e['authorization']['candidate_safety_pass'] is True
+          assert e['authorization']['production_promotion_safety_experiment_eligible'] is True
+          assert e['authorization']['formal_parser_implementation_authorized'] is False
+          assert e['authorization']['runtime_promotion_authorized'] is False
+          assert r['formal_runtime']['runtime_generation']=='V17.29'
+          assert r['full_basis_last_completed_final']['run']==31389854868
+          assert r['full_basis_last_completed_final']['artifact_id']==9063271903
+          assert r['full_basis_last_completed_final']['verdict']=='FAIL_CLOSED'
+          assert p['stage3']['status']=='NOT_READY'
+          assert p['stage4_unlocked'] is False
+          assert p['alpha_training_allowed'] is False
+          assert p['live_signal_allowed'] is False
+          print('CROSS_PAGE_PROMOTION_SAFETY_BOUNDARY_PASS')
+          PY
+      - name: Lock source full-basis and accepted two-target safety artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          lock_artifact() {
+            local run_id="$1" head="$2" artifact_id="$3" name="$4" digest="$5"
+            run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id")
+            test "$(jq -r '.status' <<<"$run")" = completed
+            test "$(jq -r '.conclusion' <<<"$run")" = success
+            test "$(jq -r '.head_sha' <<<"$run")" = "$head"
+            artifact=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id")
+            test "$(jq -r '.name' <<<"$artifact")" = "$name"
+            test "$(jq -r '.digest' <<<"$artifact")" = "$digest"
+            test "$(jq -r '.expired' <<<"$artifact")" = false
+            test "$(jq -r '.workflow_run.id' <<<"$artifact")" = "$run_id"
+            test "$(jq -r '.workflow_run.head_sha' <<<"$artifact")" = "$head"
+          }
+          lock_artifact "$SOURCE_RUN" "$SOURCE_HEAD" "$SOURCE_ARTIFACT_ID" "$SOURCE_ARTIFACT" "$SOURCE_DIGEST"
+          lock_artifact "$SAFETY_RUN" "$SAFETY_HEAD" "$SAFETY_ARTIFACT_ID" "$SAFETY_ARTIFACT" "$SAFETY_DIGEST"
+      - name: Run fail-closed production-safety unit contracts
+        run: |
+          python -m py_compile scripts/build_stage3_s3g1j_v17_29_cross_page_production_promotion_safety.py
+          python -m unittest tests.test_stage3_v17_29_cross_page_production_promotion_safety -v
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-29-full-final
+          path: source
+          repository: FASHI188/data-workbench-r17
+          run-id: 31389854868
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-29-cross-page-two-target-safety-v1
+          path: safety
+          repository: FASHI188/data-workbench-r17
+          run-id: 31451602128
+          github-token: ${{ github.token }}
+      - name: Build full V17.29 shadow promotion basis from independent cross-page implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          documents=$(find source -name stage3_financial_documents.csv.gz -print -quit)
+          values=$(find source -name stage3_financial_raw_values.csv.gz -print -quit)
+          safety_report=$(find safety -name stage3_s3g1j_v17_29_cross_page_two_target_safety.json -print -quit)
+          test -n "$documents" && test -n "$values" && test -n "$safety_report"
+          python scripts/build_stage3_s3g1j_v17_29_cross_page_production_promotion_safety.py \
+            --documents "$documents" \
+            --values "$values" \
+            --safety-report "$safety_report" \
+            --out build/promotion
+      - name: Verify full-basis semantic isolation and fail-closed downstream state
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open('build/promotion/stage3_s3g1j_v17_29_cross_page_production_promotion_safety.json',encoding='utf-8'))
+          assert r['gate']=='S3G1J_V17_29_CROSS_PAGE_PRODUCTION_PROMOTION_SAFETY_V1'
+          assert r['source_document_rows']==121354
+          assert r['promotion_document_rows']==121354
+          assert r['source_numeric_rows']==1051820
+          assert r['promotion_numeric_rows']==1051826
+          assert r['source_document_errors']==1364
+          assert r['promotion_document_errors']==1362
+          assert r['source_unresolved_ties']==1281
+          assert r['promotion_unresolved_ties']==1279
+          assert r['source_unresolved_tie_taxonomy']=={'TIE_SOURCE_INCOMPLETE':1267,'TIE_VALUE_CONFLICT':14}
+          assert r['promotion_unresolved_tie_taxonomy']=={'TIE_SOURCE_INCOMPLETE':1265,'TIE_VALUE_CONFLICT':14}
+          assert r['non_target_document_rows']==121352
+          assert r['non_target_document_exact_equal'] is True
+          assert r['existing_numeric_rows']==1051820
+          assert r['existing_numeric_exact_equal'] is True
+          assert r['target_numeric_rows_added']==6
+          assert r['target_numeric_distribution']=={'1223347318':3,'1223407043':3}
+          assert len(r['target_reports'])==2
+          assert all(all(col['identity_residual_cny']=='0.00' for col in x['identity']['columns']) for x in r['target_reports'])
+          assert r['observed_identity_residuals_exact_zero'] is True
+          assert r['ocr_enabled'] is False
+          assert r['fuzzy_alias_matching_enabled'] is False
+          assert r['equity_inferred_as_assets_minus_liabilities'] is False
+          assert r['source_policy_relaxed'] is False
+          assert r['point_in_time_policy_relaxed'] is False
+          assert r['issuer_gate_relaxed'] is False
+          assert r['accounting_tolerance_relaxed'] is False
+          assert r['formal_parser_changed'] is False
+          assert r['runtime_authority_changed'] is False
+          assert r['production_data_changed'] is False
+          assert r['runtime_promotion_authorized'] is False
+          assert r['full_basis_execution_authorized'] is False
+          assert r['stage3_status']=='NOT_READY'
+          assert r['final_data_verdict']=='FAIL_CLOSED'
+          assert r['stage4_alpha_live_locked'] is True
+          assert r['main_changed'] is False
+          assert r['pass'] is True and r['errors']==[]
+          print(json.dumps({k:r[k] for k in [
+            'promotion_numeric_rows','promotion_document_errors','promotion_unresolved_ties',
+            'non_target_document_exact_equal','existing_numeric_exact_equal','target_numeric_rows_added','pass'
+          ]},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-29-cross-page-production-promotion-safety-v1
+          path: build/promotion
+          retention-days: 90
+          compression-level: 0
