@@ -1,0 +1,110 @@
+name: Stage3 S3G1J V17.30 Source Lock
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/stage3-s3g1j-v17-30-source-lock.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  SOURCE_PR: '126'
+  SOURCE_WORKFLOW: 'Stage3 S3G1J V17.30 Fresh Full 64 Shard R4'
+  SHARD_PREFIX: 'stage3-s3g1j-v17-30-r4-full-final-shard-'
+  LOCKED_INPUT_ARTIFACT: 'stage3-s3g1j-v17-30-r4-locked-input'
+
+jobs:
+  source-lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Discover exact successful R4 source run for PR126 head
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$SOURCE_PR")
+          test "$(jq -r '.merged' <<<"$pr")" = false
+          head=$(jq -r '.head.sha' <<<"$pr")
+          test -n "$head"
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$head&event=pull_request&per_page=100")
+          count=$(jq -r --arg name "$SOURCE_WORKFLOW" '[.workflow_runs[]|select(.name==$name and .status=="completed" and .conclusion=="success")]|length' <<<"$runs")
+          test "$count" = 1
+          run=$(jq -r --arg name "$SOURCE_WORKFLOW" '.workflow_runs[]|select(.name==$name and .status=="completed" and .conclusion=="success")|.id' <<<"$runs")
+          test -n "$run"
+          run_head=$(jq -r --arg name "$SOURCE_WORKFLOW" '.workflow_runs[]|select(.name==$name and .status=="completed" and .conclusion=="success")|.head_sha' <<<"$runs")
+          test "$run_head" = "$head"
+          echo "SOURCE_HEAD=$head" >> "$GITHUB_ENV"
+          echo "SOURCE_RUN=$run" >> "$GITHUB_ENV"
+          echo "V17_30_R4_SOURCE_RUN=$run HEAD=$head"
+      - name: Require exactly 64 pure shard artifacts plus locked input
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts?per_page=100")
+          shard_count=$(jq -r --arg prefix "$SHARD_PREFIX" '[.artifacts[]|select(.name|startswith($prefix))]|length' <<<"$artifacts")
+          test "$shard_count" = 64
+          input_count=$(jq -r --arg name "$LOCKED_INPUT_ARTIFACT" '[.artifacts[]|select(.name==$name)]|length' <<<"$artifacts")
+          test "$input_count" = 1
+          test "$(jq -r --arg prefix "$SHARD_PREFIX" '[.artifacts[]|select(.name|startswith($prefix) and .expired==true)]|length' <<<"$artifacts")" = 0
+          test "$(jq -r --arg name "$LOCKED_INPUT_ARTIFACT" '[.artifacts[]|select(.name==$name and .expired==true)]|length' <<<"$artifacts")" = 0
+          python - <<'PY'
+          import json,os,subprocess
+          repo=os.environ['GITHUB_REPOSITORY']
+          run=os.environ['SOURCE_RUN']
+          prefix=os.environ['SHARD_PREFIX']
+          raw=subprocess.check_output(['gh','api',f'repos/{repo}/actions/runs/{run}/artifacts?per_page=100'],text=True)
+          payload=json.loads(raw)
+          rows=[]
+          indexes=[]
+          for a in payload['artifacts']:
+              if a['name'].startswith(prefix):
+                  suffix=a['name'][len(prefix):]
+                  if not suffix.isdigit():
+                      raise SystemExit(f'invalid shard artifact name {a["name"]}')
+                  idx=int(suffix)
+                  indexes.append(idx)
+                  rows.append({'shard':idx,'artifact_id':a['id'],'name':a['name'],'digest':a.get('digest'),'expired':a['expired'],'size_in_bytes':a['size_in_bytes']})
+          if sorted(indexes)!=list(range(64)):
+              raise SystemExit(f'shard index set drift {sorted(indexes)}')
+          if len({r['artifact_id'] for r in rows})!=64:
+              raise SystemExit('duplicate shard artifact id')
+          if len({r['digest'] for r in rows})!=64:
+              raise SystemExit('duplicate/missing shard artifact digest')
+          rows.sort(key=lambda r:r['shard'])
+          input_rows=[a for a in payload['artifacts'] if a['name']==os.environ['LOCKED_INPUT_ARTIFACT']]
+          assert len(input_rows)==1
+          report={
+            'gate':'S3G1J_V17_30_R4_SOURCE_LOCK_V1',
+            'source_pr':126,
+            'source_head':os.environ['SOURCE_HEAD'],
+            'source_run':int(run),
+            'source_workflow':os.environ['SOURCE_WORKFLOW'],
+            'shard_count':64,
+            'shards':rows,
+            'locked_input_artifact':{
+              'artifact_id':input_rows[0]['id'],
+              'name':input_rows[0]['name'],
+              'digest':input_rows[0].get('digest'),
+              'expired':input_rows[0]['expired'],
+            },
+            'pass':True,
+            'errors':[],
+          }
+          import pathlib
+          out=pathlib.Path('build/v17_30_source_lock')
+          out.mkdir(parents=True,exist_ok=True)
+          (out/'stage3_s3g1j_v17_30_source_lock.json').write_text(json.dumps(report,ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps({'source_run':report['source_run'],'source_head':report['source_head'],'shard_count':64,'pass':True},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-30-source-lock
+          path: build/v17_30_source_lock/
+          if-no-files-found: error
+          retention-days: 90
