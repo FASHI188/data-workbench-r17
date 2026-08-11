@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   repair:
@@ -27,13 +27,19 @@ jobs:
           import json
           p='build/v17_30_activation_boundary_repair/stage3_workflow_activation_manifest.json'
           x=json.load(open(p,encoding='utf-8'))
-          b=x['hard_boundaries']; c=x['accepted_production_runtime']
+          b=x['hard_boundaries']; c=x['accepted_production_runtime']; r=x['retained_evidence']
           assert c['generation']=='V17.30' and c['last_completed_full_basis_run']==31518370789
           assert c['full_basis_execution_pending'] is False and c['data_verdict']=='FAIL_CLOSED'
           assert b['v17_30_full_basis_execution_pending'] is False
           assert b['v17_30_full_basis_execution_started'] is True
           assert b['remaining_document_errors_last_completed_basis']==1362
           assert b['remaining_unresolved_ties_last_completed_basis']==1279
+          assert not any(k.startswith('expected_v17_30_') for k in b)
+          assert r['v17_29_full_basis_final']['last_completed_full_basis'] is False
+          assert r['v17_30_runtime_wrapper']['full_basis_execution_pending'] is False
+          assert r['v17_30_runtime_wrapper']['full_basis_execution_accepted'] is True
+          assert r['v17_30_full_basis_final']['run']==31518370789
+          assert r['v17_30_full_basis_final']['last_completed_full_basis'] is True
           assert b['stage3_status']=='NOT_READY' and b['stage4_alpha_live_locked'] is True
           assert b['committed_production_data_changed'] is False and b['trained_model_changed'] is False and b['main_changed'] is False
           print('V17_30_ACTIVATION_BOUNDARY_REPAIR_VALIDATE_PASS')
@@ -44,3 +50,20 @@ jobs:
           path: build/v17_30_activation_boundary_repair/
           if-no-files-found: error
           retention-days: 30
+      - name: Write exact generated activation manifest to PR head
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          path='governance/stage3_workflow_activation_manifest.json'
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/contents/$path?ref=$HEAD_REF" --jq .sha)
+          content=$(base64 -w0 build/v17_30_activation_boundary_repair/stage3_workflow_activation_manifest.json)
+          gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/$path" \
+            -f message='Repair V17.30 accepted activation authority boundary' \
+            -f content="$content" \
+            -f sha="$sha" \
+            -f branch="$HEAD_REF"
+          echo 'V17_30_ACTIVATION_EXACT_ARTIFACT_WRITEBACK_PASS'
