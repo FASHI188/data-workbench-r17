@@ -2,7 +2,7 @@
   "schema_version": 1,
   "status": "RUNTIME_PROMOTION_GOVERNANCE_IN_PROGRESS_FULL_BASIS_NOT_STARTED",
   "generation": "V17.30",
-  "governance_pr": null,
+  "governance_pr": 125,
   "governance_state": "DRAFT_UNMERGED_UNTIL_EXACT_HEAD_GATES_PASS",
   "integration_base_before_governance": "d8c27bc9de5802572366de6b38256a47628a637e",
   "wrapper_acceptance": {
