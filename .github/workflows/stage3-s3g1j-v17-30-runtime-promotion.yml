@@ -9,8 +9,14 @@ on:
       - 'scripts/extract_stage3_financial_pdf_values_v20.py'
       - 'tests/test_stage3_v17_30_runtime_wrapper.py'
       - 'tests/test_stage3_v17_30_runtime_promotion.py'
+      - 'tests/test_stage3_v17_30_authority_state.py'
       - 'governance/stage3_s3g1j_v17_30_runtime_promotion.json'
       - 'governance/stage3_s3g1j_v17_30_runtime_wrapper_acceptance.json'
+      - 'governance/stage3_s3g1j_runtime_manifest.json'
+      - 'governance/stage3_workflow_activation_manifest.json'
+      - 'governance/stage3_authority_map.json'
+      - 'config/stage3_final_lock.json'
+      - 'data/project_status.json'
       - '.github/workflows/stage3-s3g1j-v17-30-runtime-promotion.yml'
 
 permissions:
@@ -27,7 +33,6 @@ env:
   WRAPPER_ARTIFACT_ID: '9088925988'
   WRAPPER_ARTIFACT: 'stage3-s3g1j-v17-30-inactive-runtime-wrapper'
   WRAPPER_DIGEST: 'sha256:232b2e4a6c64b271193853d4e8fd32c0fdfd367344ecec720902fe8f090333dc'
-  WRAPPER_REPORT_SHA256: '8e07e885bfdabc009b82ce791f2ce10c48f92111bf8956891af273e6d9221411'
 
 jobs:
   promotion:
@@ -76,23 +81,35 @@ jobs:
           test "$(git hash-object scripts/stage3_financial_pdf_parser_v22.py)" = cc782817e5ee73fcae085d71f4896a0adc004dcd
           test "$(git hash-object scripts/extract_stage3_financial_pdf_values_v20.py)" = d74a2b1f8f0ec3af8d89ce259e83392d7f8cc20c
           test "$(git hash-object tests/test_stage3_v17_30_runtime_wrapper.py)" = c7ddfd881010361485f6d4942831d9655bcb3d2c
-      - name: Run wrapper and promotion governance contracts
+      - name: Run wrapper promotion and atomic authority contracts
         run: |
-          python -m unittest tests.test_stage3_v17_30_runtime_wrapper tests.test_stage3_v17_30_runtime_promotion -v
+          python -m unittest \
+            tests.test_stage3_v17_30_runtime_wrapper \
+            tests.test_stage3_v17_30_runtime_promotion \
+            tests.test_stage3_v17_30_authority_state \
+            -v
           python -m py_compile scripts/stage3_financial_pdf_parser_v22_promotion_safety.py scripts/stage3_financial_pdf_parser_v22.py scripts/extract_stage3_financial_pdf_values_v20.py
-      - name: Assert no fresh full basis has started in promotion manifest
+      - name: Assert no fresh full basis has started anywhere in authority state
         run: |
           python - <<'PY'
           import json
           p=json.load(open('governance/stage3_s3g1j_v17_30_runtime_promotion.json',encoding='utf-8'))
-          assert p['generation']=='V17.30'
+          r=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          a=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
+          s=json.load(open('data/project_status.json',encoding='utf-8'))
+          assert p['generation']=='V17.30' and p['governance_pr']==125
           assert p['last_completed_full_basis']['generation']=='V17.29'
-          assert p['last_completed_full_basis']['run']==31389854868
-          assert p['next_full_basis']['generation']=='V17.30'
-          assert p['next_full_basis']['status']=='REQUIRED_NOT_STARTED'
+          assert p['next_full_basis']['generation']=='V17.30' and p['next_full_basis']['status']=='REQUIRED_NOT_STARTED'
           assert p['next_full_basis']['expected_values_are_not_production_acceptance'] is True
           assert p['hard_boundaries']['fresh_64_shard_execution_started'] is False
-          assert p['hard_boundaries']['stage3_status']=='NOT_READY'
-          assert p['hard_boundaries']['stage4_alpha_live_locked'] is True
-          print('V17_30_PROMOTION_BOUNDARY_PASS')
+          assert r['formal_runtime']['runtime_generation']=='V17.30'
+          assert r['full_basis_last_completed_final']['generation']=='V17.29'
+          assert r['next_full_basis_required']['status']=='REQUIRED_NOT_STARTED'
+          assert a['accepted_production_runtime']['generation']=='V17.30'
+          assert a['accepted_production_runtime']['full_basis_execution_pending'] is True
+          assert a['accepted_production_runtime']['last_completed_full_basis_generation']=='V17.29'
+          assert s['stage3']['s3g1j']['next_full_basis_status']=='REQUIRED_NOT_STARTED'
+          assert s['stage3']['status']=='NOT_READY'
+          assert s['stage4_unlocked'] is False and s['alpha_training_allowed'] is False and s['live_signal_allowed'] is False
+          print('V17_30_PROMOTION_ATOMIC_BOUNDARY_PASS')
           PY
