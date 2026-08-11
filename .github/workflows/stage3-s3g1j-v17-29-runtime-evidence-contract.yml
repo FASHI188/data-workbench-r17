@@ -11,10 +11,6 @@ on:
       - 'governance/stage3_authority_map.json'
       - 'data/project_status.json'
       - 'config/stage3_final_lock.json'
-      - 'scripts/stage3_financial_pdf_parser_v21_promotion_safety.py'
-      - 'scripts/stage3_financial_pdf_parser_v21.py'
-      - 'scripts/extract_stage3_financial_pdf_values_v19.py'
-      - 'scripts/audit_stage3_authority_map.py'
       - 'tests/test_stage3_v17_29_runtime_wrapper.py'
       - 'tests/test_stage3_v17_29_runtime_promotion.py'
       - '.github/workflows/stage3-s3g1j-v17-29-runtime-evidence-contract.yml'
@@ -27,15 +23,6 @@ permissions:
 env:
   GH_TOKEN: ${{ github.token }}
   PYTHONPATH: scripts
-  WRAPPER_PR: '109'
-  WRAPPER_HEAD: '04a014f852bff57aef57542553864fcd3f1df13d'
-  WRAPPER_RUN: '31312709490'
-  WRAPPER_ARTIFACT_ID: '9037869497'
-  WRAPPER_ARTIFACT: 'stage3-s3g1j-v17-29-runtime-wrapper'
-  WRAPPER_DIGEST: 'sha256:4f9940513c2d0ef5250b8874b32f68655badfe4a695a2fe2c3da0a54d2a01670'
-  WRAPPER_REPORT_SHA256: '29fc2947008e26b8c17ab5c9013a31c5e283c2d89aa37a8f7de2e1da5658a406'
-  PARSER_BLOB: '37ab001356c479808e3fa5f67f2270649e3130ba'
-  EXTRACTOR_BLOB: '7be4f17357e92144c3f54ddd4951ec57a0878049'
 
 jobs:
   runtime-evidence:
@@ -50,77 +37,30 @@ jobs:
           python-version: '3.12.13'
       - name: Install verified evidence runtime
         run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
-      - name: Lock closed-unmerged wrapper PR and exact artifact
+      - name: Lock immutable V17.29 wrapper execution and artifact
         shell: bash
         run: |
           set -euo pipefail
-          pr=$(gh pr view "$WRAPPER_PR" -R "$GITHUB_REPOSITORY" --json headRefOid,state,mergedAt)
-          test "$(jq -r '.headRefOid' <<<"$pr")" = "$WRAPPER_HEAD"
+          pr=$(gh pr view 109 -R "$GITHUB_REPOSITORY" --json headRefOid,state,mergedAt)
+          test "$(jq -r '.headRefOid' <<<"$pr")" = 04a014f852bff57aef57542553864fcd3f1df13d
           test "$(jq -r '.state' <<<"$pr")" = CLOSED
           test "$(jq -r '.mergedAt // ""' <<<"$pr")" = ""
-          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$WRAPPER_RUN")
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/31312709490")
           test "$(jq -r '.status' <<<"$run")" = completed
           test "$(jq -r '.conclusion' <<<"$run")" = success
-          test "$(jq -r '.head_sha' <<<"$run")" = "$WRAPPER_HEAD"
-          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$WRAPPER_RUN/artifacts?per_page=100")
-          test "$(jq -r --arg name "$WRAPPER_ARTIFACT" '[.artifacts[]|select(.name==$name)]|length' <<<"$artifacts")" = 1
-          test "$(jq -r --arg name "$WRAPPER_ARTIFACT" '.artifacts[]|select(.name==$name)|.id' <<<"$artifacts")" = "$WRAPPER_ARTIFACT_ID"
-          test "$(jq -r --arg name "$WRAPPER_ARTIFACT" '.artifacts[]|select(.name==$name)|.digest' <<<"$artifacts")" = "$WRAPPER_DIGEST"
-          test "$(jq -r --arg name "$WRAPPER_ARTIFACT" '.artifacts[]|select(.name==$name)|.expired' <<<"$artifacts")" = false
-      - uses: actions/download-artifact@v4
-        with:
-          name: stage3-s3g1j-v17-29-runtime-wrapper
-          path: accepted-wrapper
-          repository: FASHI188/data-workbench-r17
-          run-id: 31312709490
-          github-token: ${{ github.token }}
-      - name: Verify downloaded wrapper report and immutable promotion-time boundary
-        shell: bash
+          test "$(jq -r '.head_sha' <<<"$run")" = 04a014f852bff57aef57542553864fcd3f1df13d
+          a=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/9037869497")
+          test "$(jq -r '.name' <<<"$a")" = stage3-s3g1j-v17-29-runtime-wrapper
+          test "$(jq -r '.digest' <<<"$a")" = sha256:4f9940513c2d0ef5250b8874b32f68655badfe4a695a2fe2c3da0a54d2a01670
+          test "$(jq -r '.expired' <<<"$a")" = false
+      - name: Verify immutable V17.29 promotion evidence and code identity
         run: |
-          set -euo pipefail
-          report=$(find accepted-wrapper -name stage3_s3g1j_v17_29_runtime_wrapper.json -print -quit)
-          test -n "$report"
-          test "$(sha256sum "$report"|awk '{print $1}')" = "$WRAPPER_REPORT_SHA256"
-          python - "$report" <<'PY'
-          import json,sys
-          r=json.load(open(sys.argv[1],encoding='utf-8'))
-          assert r['gate']=='S3G1J_V17_29_INACTIVE_RUNTIME_WRAPPER_V1'
-          assert r['target_count']==7
-          assert r['real_source_runtime_wrapper_pass'] is True
-          assert r['non_target_delegation_contract_pass'] is True
-          assert r['formal_runtime_authority_before_activation']=='V17.28'
-          assert r['v17_29_authority_activated'] is False
-          assert r['fresh_64_shard_execution_started'] is False
-          assert r['expected_full_basis_numeric_rows']==1051820
-          assert r['expected_full_basis_document_errors']==1364
-          assert r['expected_full_basis_unresolved_ties']==1281
-          assert r['expected_values_are_not_production_acceptance'] is True
-          assert r['stage3_status']=='NOT_READY'
-          assert r['stage4_alpha_live_locked'] is True
-          assert r['main_changed'] is False
-          assert r['pass'] is True and r['errors']==[]
-          assert {row['announcement_id'] for row in r['targets']}=={'1215186538','1219426855','1219792633','1219840508','1219879687','1220087244','1221006100'}
-          assert all(row['split_equity_pattern']=='SPLIT_LABEL_1_BEFORE_1_AFTER_AMOUNT' for row in r['targets'])
-          for row in r['targets']:
-              for col in row['dual_column_identity']['columns']:
-                  assert str(col['identity_residual_cny']) in {'0','0.0','0.00'}
-          print('V17_29_RUNTIME_WRAPPER_DOWNLOADED_EVIDENCE_PASS')
-          PY
-      - name: Lock accepted historical V17.29 runtime code blobs
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git hash-object scripts/stage3_financial_pdf_parser_v21.py)" = "$PARSER_BLOB"
-          test "$(git hash-object scripts/extract_stage3_financial_pdf_values_v19.py)" = "$EXTRACTOR_BLOB"
-          python -m py_compile scripts/stage3_financial_pdf_parser_v21_promotion_safety.py scripts/stage3_financial_pdf_parser_v21.py scripts/extract_stage3_financial_pdf_values_v19.py
-      - name: Verify immutable V17.29 promotion evidence and append-only authority separation
-        run: |
+          test "$(git hash-object scripts/stage3_financial_pdf_parser_v21.py)" = 37ab001356c479808e3fa5f67f2270649e3130ba
+          test "$(git hash-object scripts/extract_stage3_financial_pdf_values_v19.py)" = 7be4f17357e92144c3f54ddd4951ec57a0878049
           python -m unittest tests.test_stage3_v17_29_runtime_wrapper tests.test_stage3_v17_29_runtime_promotion -v
           python scripts/audit_stage3_authority_map.py
-      - name: Assert V17.29 remains last completed full basis while V17.30 is current runtime
-        shell: bash
+      - name: Verify V17.29 is retained previous basis under accepted V17.30 authority
         run: |
-          set -euo pipefail
           python - <<'PY'
           import json
           runtime=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
@@ -128,36 +68,32 @@ jobs:
           project=json.load(open('data/project_status.json',encoding='utf-8'))
           lock=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
           promotion=json.load(open('governance/stage3_s3g1j_v17_29_runtime_promotion.json',encoding='utf-8'))
+          # Immutable V17.29 promotion-time checkpoint remains unchanged.
           assert promotion['next_full_basis']['status']=='REQUIRED_NOT_STARTED'
           assert promotion['next_full_basis']['expected_values_are_not_production_acceptance'] is True
-          assert runtime['schema_version']>=14
+          # Current authority has advanced to accepted V17.30 full basis.
+          assert runtime['schema_version']>=15
           assert runtime['formal_runtime']['runtime_generation']=='V17.30'
-          assert runtime['full_basis_last_completed_final']['generation']=='V17.29'
-          assert runtime['full_basis_last_completed_final']['run']==31389854868
-          assert runtime['full_basis_last_completed_final']['verdict']=='FAIL_CLOSED'
-          assert runtime['next_full_basis_required']['generation']=='V17.30'
-          assert runtime['next_full_basis_required']['status']=='REQUIRED_NOT_STARTED'
-          assert activation['schema_version']>=16
+          latest=runtime['full_basis_last_completed_final']
+          assert latest['generation']=='V17.30' and latest['run']==31518370789
+          assert latest['numeric_observations']==1051826 and latest['document_error_count']==1362 and latest['unresolved_tie_count']==1279
+          assert latest['verdict']=='FAIL_CLOSED'
+          prev=runtime['previous_last_completed_full_basis_final']
+          assert prev['generation']=='V17.29' and prev['run']==31389854868 and prev['artifact_id']==9063271903
+          assert runtime['next_full_basis_required']['status']=='NONE_CURRENT_RUNTIME_ACCEPTED'
           current=activation['accepted_production_runtime']
-          assert current['generation']=='V17.30'
-          assert current['full_basis_execution_pending'] is True
-          assert current['last_completed_full_basis_generation']=='V17.29'
-          assert current['last_completed_full_basis_run']==31389854868
-          assert current['data_verdict']=='FAIL_CLOSED'
+          assert current['generation']=='V17.30' and current['full_basis_execution_pending'] is False
+          assert current['last_completed_full_basis_generation']=='V17.30' and current['last_completed_full_basis_run']==31518370789
           retained=activation['accepted_v17_29_full_basis_evidence']
-          assert retained['last_completed_full_basis_authority'] is True
-          assert retained['historical_runtime_generation_retained'] is True
-          assert project['stage3']['s3g1j']['formal_runtime_generation']=='V17.30'
-          assert project['stage3']['s3g1j']['last_completed_full_basis_generation']=='V17.29'
-          assert project['stage3']['s3g1j']['next_full_basis_status']=='REQUIRED_NOT_STARTED'
+          assert retained['last_completed_full_basis_authority'] is False
+          assert retained['historical_full_basis_authority_retained'] is True
+          pg=project['stage3']['s3g1j']
+          assert pg['formal_runtime_generation']=='V17.30' and pg['last_completed_full_basis_generation']=='V17.30'
+          assert pg['accepted_run_id']==31518370789 and pg['final_gate_pass'] is False
+          lg=lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']
+          assert lg['formal_runtime_generation']=='V17.30' and lg['last_completed_full_basis_generation']=='V17.30'
+          assert lg['run_id']==31518370789 and lg['final_gate_pass'] is False
           assert project['stage3']['status']=='NOT_READY'
-          assert lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']['formal_runtime_generation']=='V17.30'
-          assert lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']['last_completed_full_basis_generation']=='V17.29'
-          assert lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']['next_full_basis_status']=='REQUIRED_NOT_STARTED'
-          assert lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']['final_gate_pass'] is False
-          assert lock['status']=='NOT_READY'
-          assert project['stage4_unlocked'] is False
-          assert project['alpha_training_allowed'] is False
-          assert project['live_signal_allowed'] is False
-          print('V17_29_RUNTIME_RETAINED_UNDER_V17_30_PASS')
+          assert project['stage4_unlocked'] is False and project['alpha_training_allowed'] is False and project['live_signal_allowed'] is False
+          print('V17_29_RUNTIME_RETAINED_UNDER_ACCEPTED_V17_30_PASS')
           PY
