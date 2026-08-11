@@ -150,20 +150,21 @@ jobs:
           python - <<'PY'
           import json
           r=json.load(open('build/diagnostic/s3g1j_v17_29_cross_page_equity_word_row_probe.json',encoding='utf-8'))
-          assert r['gate']=='S3G1J_V17_29_CROSS_PAGE_EQUITY_WORD_ROW_PROBE_V1'
+          assert r['gate']=='S3G1J_V17_29_CROSS_PAGE_EQUITY_WORD_ROW_PROBE_V2'
           assert r['target_count']==2
           assert r['target_ids']==['1223347318','1223407043']
           assert r['all_exact_source_sha_verified'] is True
+          assert r['all_six_explicit_amounts_located_per_target'] is True
           assert r['all_dual_column_identity_exact_zero'] is True
           assert r['candidate_parser_authorized'] is False
           assert r['formal_parser_changed'] is False
           assert r['runtime_authority_changed'] is False
           assert r['production_data_changed'] is False
           for target in r['targets']:
-              probes=target['amount_pair_probes']
-              assert len(probes['TOTAL_ASSETS'])==1
-              assert len(probes['TOTAL_LIABILITIES'])==1
-              assert len(probes['TOTAL_EQUITY'])==1
+              probes=target['value_probes']
+              for concept in ('TOTAL_ASSETS','TOTAL_LIABILITIES','TOTAL_EQUITY'):
+                  assert len(probes[concept]['CURRENT'])>=1
+                  assert len(probes[concept]['PRIOR'])>=1
               assert all(x['residual']=='0.00' for x in target['dual_column_identity'])
           print('CROSS_PAGE_EQUITY_WORD_ROW_PROBE_PASS')
           PY
