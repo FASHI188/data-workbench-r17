@@ -179,7 +179,6 @@ def _recover_target(raw: bytes, target: dict[str, Any]) -> dict[str, Any]:
             "equity_suffix": target["equity_suffix"],
             "completed_alias": FULL_EQUITY_ALIAS,
             "next_page_head": found["TOTAL_EQUITY"]["next_page_head"],
-            "next_statement_title": target["next_statement_title"],
         },
     }
 
