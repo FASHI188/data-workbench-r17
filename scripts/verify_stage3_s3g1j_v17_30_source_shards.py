@@ -78,11 +78,15 @@ def verify(root: Path) -> dict:
         if manifest.get("stage4_alpha_locked") is not True:
             raise ValueError(f"shard {shard}: Stage4 lock missing")
         docs=int(manifest.get("document_rows",-1))
-        numeric=int(manifest.get("numeric_observations",-1))
+        if "numeric_rows" not in manifest:
+            raise ValueError(f"shard {shard}: missing numeric_rows")
+        numeric=int(manifest["numeric_rows"])
         errors=int(manifest.get("error_count",-1))
         selected=int(manifest.get("selected_versions",-2))
         if docs<=0 or docs!=selected:
             raise ValueError(f"shard {shard}: document/selected count drift")
+        if numeric<0:
+            raise ValueError(f"shard {shard}: invalid numeric_rows {numeric}")
         if errors!=len(manifest.get("errors") or []):
             raise ValueError(f"shard {shard}: error ledger length drift")
         ledgers=list(artifact_dir.glob("output_sha256.txt"))
@@ -102,7 +106,7 @@ def verify(root: Path) -> dict:
         total_numeric+=numeric
         total_errors+=errors
         shard_rows.append({
-            "shard":shard,"document_rows":docs,"numeric_observations":numeric,
+            "shard":shard,"document_rows":docs,"numeric_rows":numeric,
             "error_count":errors,"hashed_files_verified":checked,
             "manifest_sha256":sha256(manifest_path),"hash_ledger_sha256":sha256(ledgers[0]),
         })
@@ -118,7 +122,7 @@ def verify(root: Path) -> dict:
         "gate":"S3G1J_V17_30_SOURCE_SHARD_INDEPENDENT_VERIFY_V1",
         "shard_count":EXPECTED_SHARDS,
         "document_rows":total_docs,
-        "numeric_observations":total_numeric,
+        "numeric_rows":total_numeric,
         "document_errors":total_errors,
         "shards":sorted(shard_rows,key=lambda x:x["shard"]),
         "all_output_sha256_ledgers_recomputed":True,
