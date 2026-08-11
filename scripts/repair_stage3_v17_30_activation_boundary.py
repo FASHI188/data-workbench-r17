@@ -7,6 +7,13 @@ SRC = ROOT / "governance/stage3_workflow_activation_manifest.json"
 OUT = ROOT / "build/v17_30_activation_boundary_repair/stage3_workflow_activation_manifest.json"
 REPORT = ROOT / "build/v17_30_activation_boundary_repair/repair_report.json"
 
+STALE_EXPECTATION_KEYS = [
+    "expected_v17_30_numeric_observations",
+    "expected_v17_30_document_errors",
+    "expected_v17_30_unresolved_ties",
+    "expected_v17_30_values_are_not_production_acceptance",
+]
+
 
 def main() -> None:
     data = json.loads(SRC.read_text(encoding="utf-8"))
@@ -27,11 +34,14 @@ def main() -> None:
     b["v17_30_full_basis_execution_started"] = True
     b["remaining_document_errors_last_completed_basis"] = 1362
     b["remaining_unresolved_ties_last_completed_basis"] = 1279
+    for key in STALE_EXPECTATION_KEYS:
+        b.pop(key, None)
 
     assert b["v17_30_full_basis_execution_pending"] is False
     assert b["v17_30_full_basis_execution_started"] is True
     assert b["remaining_document_errors_last_completed_basis"] == 1362
     assert b["remaining_unresolved_ties_last_completed_basis"] == 1279
+    assert all(key not in b for key in STALE_EXPECTATION_KEYS)
     assert b["stage3_status"] == "NOT_READY"
     assert b["stage4_alpha_live_locked"] is True
     assert b["committed_production_data_changed"] is False
@@ -50,6 +60,7 @@ def main() -> None:
                 "v17_30_full_basis_execution_started",
                 "remaining_document_errors_last_completed_basis",
                 "remaining_unresolved_ties_last_completed_basis",
+                *STALE_EXPECTATION_KEYS,
             ]
         },
         "stage3_status": b["stage3_status"],
