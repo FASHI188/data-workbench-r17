@@ -1,14 +1,12 @@
 name: Stage3 S3G1J V17.30 Activation Boundary Repair
 
+# One-shot repair verifier. The exact machine-generated activation manifest was
+# written back on the PR branch; this workflow is read-only from this point on.
 on:
-  pull_request:
-    paths:
-      - 'scripts/repair_stage3_v17_30_activation_boundary.py'
-      - '.github/workflows/stage3-s3g1j-v17-30-activation-boundary-repair.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   repair:
@@ -50,20 +48,3 @@ jobs:
           path: build/v17_30_activation_boundary_repair/
           if-no-files-found: error
           retention-days: 30
-      - name: Write exact generated activation manifest to PR head
-        if: github.event_name == 'pull_request'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-        run: |
-          set -euo pipefail
-          path='governance/stage3_workflow_activation_manifest.json'
-          sha=$(gh api "repos/$GITHUB_REPOSITORY/contents/$path?ref=$HEAD_REF" --jq .sha)
-          content=$(base64 -w0 build/v17_30_activation_boundary_repair/stage3_workflow_activation_manifest.json)
-          gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/$path" \
-            -f message='Repair V17.30 accepted activation authority boundary' \
-            -f content="$content" \
-            -f sha="$sha" \
-            -f branch="$HEAD_REF"
-          echo 'V17_30_ACTIVATION_EXACT_ARTIFACT_WRITEBACK_PASS'
