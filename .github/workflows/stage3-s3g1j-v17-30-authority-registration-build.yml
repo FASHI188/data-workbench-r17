@@ -1,16 +1,9 @@
 name: Stage3 S3G1J V17.30 Authority Registration Build
 
+# One-shot migration builder retained for audit/replay only.
+# The V17.30 central authority state has already been generated and written back;
+# do not run this as a long-lived pull_request gate after the migration.
 on:
-  pull_request:
-    paths:
-      - 'scripts/build_stage3_s3g1j_v17_30_authority_registration.py'
-      - '.github/workflows/stage3-s3g1j-v17-30-authority-registration-build.yml'
-      - 'governance/stage3_s3g1j_runtime_manifest.json'
-      - 'governance/stage3_workflow_activation_manifest.json'
-      - 'governance/stage3_authority_map.json'
-      - 'config/stage3_final_lock.json'
-      - 'data/project_status.json'
-      - 'governance/stage3_s3g1j_v17_30_full_final.json'
   workflow_dispatch:
 
 permissions:
