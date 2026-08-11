@@ -36,6 +36,10 @@ def argument_specs() -> list[dict[str, object]]:
 
 def classify(flag: str, type_name: str|None) -> str|None:
     n=flag.lower().replace("_","-")
+    if n=="--versions":
+        return "versions"
+    if n=="--stage2-manifest":
+        return "stage2_manifest"
     if "runtime" in n and "generation" in n:
         return "runtime_generation"
     if "methodology" in n:
@@ -79,6 +83,11 @@ class V1730FinalizerCliContractTest(unittest.TestCase):
         classes=[classify(str(s["flag"]),s["type"] if isinstance(s["type"],str) else None) for s in specs]
         self.assertIn("shard_root",classes)
         self.assertIn("output",classes)
+
+    def test_required_support_inputs_are_explicit(self) -> None:
+        required={str(s["flag"]): classify(str(s["flag"]),s["type"] if isinstance(s["type"],str) else None) for s in argument_specs() if s["required"]}
+        self.assertEqual(required.get("--versions"),"versions")
+        self.assertEqual(required.get("--stage2-manifest"),"stage2_manifest")
 
     def test_no_required_boolean_is_fed_a_string_value(self) -> None:
         specs=argument_specs()
