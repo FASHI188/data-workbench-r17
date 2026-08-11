@@ -54,7 +54,7 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
         self.assertEqual(numeric["non_target_value_drift"],0)
 
     def test_activation_retains_v17_26_historical_authority(self)->None:
-        self.assertGreaterEqual(self.activation["schema_version"],16)
+        self.assertGreaterEqual(self.activation["schema_version"],17)
         accepted=self.activation["accepted_v17_26_full_basis_evidence"]
         self.assertEqual(accepted["run"],30733013665)
         self.assertEqual(accepted["final_data_verdict"],"FAIL_CLOSED")
@@ -70,16 +70,18 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
 
         current=self.activation["accepted_production_runtime"]
         self.assertEqual(current["generation"],"V17.30")
-        self.assertTrue(current["full_basis_execution_pending"])
-        self.assertEqual(current["last_completed_full_basis_generation"],"V17.29")
-        self.assertEqual(current["last_completed_full_basis_run"],31389854868)
+        self.assertFalse(current["full_basis_execution_pending"])
+        self.assertEqual(current["last_completed_full_basis_generation"],"V17.30")
+        self.assertEqual(current["last_completed_full_basis_run"],31518370789)
         self.assertEqual(current["data_verdict"],"FAIL_CLOSED")
 
-        historical_runtime=self.runtime["historical_full_basis_final"]
-        self.assertGreaterEqual(self.runtime["schema_version"],14)
+        historical_runtime=self.runtime["earlier_historical_full_basis_final"]
+        self.assertGreaterEqual(self.runtime["schema_version"],15)
         self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"],"V17.30")
-        self.assertEqual(self.runtime["full_basis_last_completed_final"]["generation"],"V17.29")
-        self.assertEqual(self.runtime["previous_last_completed_full_basis_final"]["generation"],"V17.28")
+        self.assertEqual(self.runtime["full_basis_last_completed_final"]["generation"],"V17.30")
+        self.assertEqual(self.runtime["previous_last_completed_full_basis_final"]["generation"],"V17.29")
+        self.assertEqual(self.runtime["previous_full_basis_final"]["generation"],"V17.28")
+        self.assertEqual(self.runtime["historical_full_basis_final"]["generation"],"V17.27")
         self.assertEqual(historical_runtime["generation"],"V17.26")
         self.assertEqual(historical_runtime["run"],30733013665)
         self.assertTrue(historical_runtime["retained"])
@@ -89,10 +91,9 @@ class V1726FullFinalEvidenceTests(unittest.TestCase):
         self.assertFalse(classification["runtime_authority_changed"])
         boundaries=self.activation["hard_boundaries"]
         self.assertFalse(boundaries["v17_29_full_basis_execution_pending"])
-        self.assertTrue(boundaries["v17_30_full_basis_execution_pending"])
-        self.assertFalse(boundaries["v17_30_full_basis_execution_started"])
-        self.assertEqual(boundaries["remaining_document_errors_last_completed_basis"],1364)
-        self.assertEqual(boundaries["remaining_unresolved_ties_last_completed_basis"],1281)
+        self.assertFalse(boundaries["v17_30_full_basis_execution_pending"])
+        self.assertEqual(boundaries["remaining_document_errors_last_completed_basis"],1362)
+        self.assertEqual(boundaries["remaining_unresolved_ties_last_completed_basis"],1279)
         self.assertEqual(boundaries["stage3_status"],"NOT_READY")
         self.assertTrue(boundaries["stage4_alpha_live_locked"])
         self.assertFalse(boundaries["committed_production_data_changed"])
