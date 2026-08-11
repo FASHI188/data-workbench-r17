@@ -37,11 +37,29 @@ def main() -> None:
     for key in STALE_EXPECTATION_KEYS:
         b.pop(key, None)
 
+    retained = data["retained_evidence"]
+    retained["v17_29_full_basis_final"]["last_completed_full_basis"] = False
+    v30w = retained["v17_30_runtime_wrapper"]
+    v30w["full_basis_execution_pending"] = False
+    v30w.pop("expected_values_are_not_production_acceptance", None)
+    v30w["full_basis_execution_accepted"] = True
+    retained["v17_30_full_basis_final"] = {
+        "run": 31518370789,
+        "artifact_digest": "sha256:706c6dd7252a64fd5c2956df6c594b5c91de29f02ca7d0553fa932017e8867ba",
+        "execution_verdict": "PASS",
+        "data_verdict": "FAIL_CLOSED",
+        "last_completed_full_basis": True,
+    }
+
     assert b["v17_30_full_basis_execution_pending"] is False
     assert b["v17_30_full_basis_execution_started"] is True
     assert b["remaining_document_errors_last_completed_basis"] == 1362
     assert b["remaining_unresolved_ties_last_completed_basis"] == 1279
     assert all(key not in b for key in STALE_EXPECTATION_KEYS)
+    assert retained["v17_29_full_basis_final"]["last_completed_full_basis"] is False
+    assert retained["v17_30_runtime_wrapper"]["full_basis_execution_pending"] is False
+    assert retained["v17_30_runtime_wrapper"]["full_basis_execution_accepted"] is True
+    assert retained["v17_30_full_basis_final"]["last_completed_full_basis"] is True
     assert b["stage3_status"] == "NOT_READY"
     assert b["stage4_alpha_live_locked"] is True
     assert b["committed_production_data_changed"] is False
@@ -63,6 +81,7 @@ def main() -> None:
                 *STALE_EXPECTATION_KEYS,
             ]
         },
+        "retained_latest": "V17.30",
         "stage3_status": b["stage3_status"],
         "stage4_alpha_live_locked": b["stage4_alpha_live_locked"],
     }
