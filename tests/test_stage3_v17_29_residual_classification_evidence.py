@@ -46,10 +46,7 @@ class V1729ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertEqual(r["issuer_mismatch_count"], 83)
         self.assertEqual(r["value_conflict_count"], 14)
         self.assertEqual(r["p0_safe_near_complete_count"], 7)
-        self.assertEqual(r["p0_announcement_ids"], [
-            "1202799494", "1204077386", "1205543437", "1209806910",
-            "1219834247", "1223347318", "1223407043",
-        ])
+        self.assertEqual(r["p0_announcement_ids"], ["1202799494", "1204077386", "1205543437", "1209806910", "1219834247", "1223347318", "1223407043"])
 
     def test_migration_is_exact_seven_recovered_exits(self) -> None:
         m = self.evidence["migration_from_v17_28"]
@@ -61,10 +58,7 @@ class V1729ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertEqual(m["common_residual_reclassification_count"], 0)
         self.assertEqual(m["p0_count_change"], "14_TO_7")
         self.assertTrue(m["all_surviving_classifications_unchanged"])
-        self.assertEqual(m["recovered_exit_announcement_ids"], [
-            "1215186538", "1219426855", "1219792633", "1219840508",
-            "1219879687", "1220087244", "1221006100",
-        ])
+        self.assertEqual(m["recovered_exit_announcement_ids"], ["1215186538", "1219426855", "1219792633", "1219840508", "1219879687", "1220087244", "1221006100"])
 
     def test_surviving_p0_has_no_authorized_ordinary_repair(self) -> None:
         boundary = self.evidence["surviving_p0_root_cause_boundary"]
@@ -73,13 +67,10 @@ class V1729ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertEqual(boundary["safe_exact_source_candidate_count"], 0)
         diagnostic_ids = {row["announcement_id"] for row in boundary["diagnostic_only"]}
         bank_ids = {row["announcement_id"] for row in boundary["do_not_promote"]}
-        self.assertEqual(diagnostic_ids, {
-            "1202799494", "1204077386", "1205543437", "1209806910", "1223347318", "1223407043"
-        })
+        self.assertEqual(diagnostic_ids, {"1202799494", "1204077386", "1205543437", "1209806910", "1223347318", "1223407043"})
         self.assertEqual(bank_ids, {"1219834247"})
         self.assertTrue(all(row["root_cause"] for row in boundary["diagnostic_only"]))
         self.assertEqual(boundary["do_not_promote"][0]["root_cause"], "BANK_SPECIFIC_STATEMENT_WITHOUT_FORMAL_GROUP_ALE_ROLE_BINDING")
-
         old = self.root_cause["classification_result"]
         old_safe = set(old["safe_exact_source_announcement_ids"])
         old_diag = set(old["diagnostic_only_announcement_ids"])
@@ -99,7 +90,7 @@ class V1729ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertEqual(h["migration_ledger_plaintext_sha256"], "c63b792afc9e3a29c073fa284ba5e7c4059426c16d40c4855bc39c904f29abe4")
         self.assertEqual(h["migration_ledger_gzip_sha256"], "ca09698316d5c0460e926a1d5d2d33a46f3c78720ca9b1b9c2d32a800a05f784")
 
-    def test_diagnostic_does_not_change_current_authority_or_unlock_project(self) -> None:
+    def test_diagnostic_remains_non_authoritative_while_later_runtime_advances(self) -> None:
         boundaries = self.evidence["hard_boundaries"]
         self.assertTrue(boundaries["diagnostic_only"])
         self.assertFalse(boundaries["candidate_parser_authorized"])
@@ -109,12 +100,15 @@ class V1729ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertTrue(boundaries["stage4_alpha_live_locked"])
         latest = self.runtime["full_basis_last_completed_final"]
-        self.assertEqual(self.runtime["schema_version"], 13)
-        self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"], "V17.29")
+        self.assertGreaterEqual(self.runtime["schema_version"], 14)
+        self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"], "V17.30")
         self.assertEqual(latest["generation"], "V17.29")
         self.assertEqual(latest["run"], 31389854868)
         self.assertEqual(latest["artifact_id"], 9063271903)
         self.assertEqual(latest["verdict"], "FAIL_CLOSED")
+        next_basis = self.runtime["next_full_basis_required"]
+        self.assertEqual(next_basis["generation"], "V17.30")
+        self.assertEqual(next_basis["status"], "REQUIRED_NOT_STARTED")
         self.assertEqual(self.project["stage3"]["status"], "NOT_READY")
         self.assertFalse(self.project["stage4_unlocked"])
         self.assertFalse(self.project["alpha_training_allowed"])
