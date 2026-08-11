@@ -64,13 +64,15 @@ jobs:
           python - <<'PY'
           import json
           e=json.load(open('governance/stage3_s3g1j_v17_30_runtime_wrapper_acceptance.json',encoding='utf-8'))
-          assert e['execution']['pr']==123
-          assert e['execution']['head_sha']=='d26d7f543c20d717ed8c8a421e28838feecd7a03'
-          assert e['execution']['run']==31458469699
-          assert e['execution']['artifact_id']==9088925988
-          assert e['execution']['artifact_digest']=='sha256:232b2e4a6c64b271193853d4e8fd32c0fdfd367344ecec720902fe8f090333dc'
-          assert e['authorization']['formal_runtime_promotion_governance_eligible'] is True
-          assert e['authorization']['v17_30_authority_activated'] is False
+          assert e['execution_pr']['number']==123
+          assert e['execution_pr']['final_head_sha']=='d26d7f543c20d717ed8c8a421e28838feecd7a03'
+          assert e['execution_pr']['closed_without_merge'] is True
+          assert e['accepted_run']['run_id']==31458469699
+          assert e['accepted_run']['artifact_id']==9088925988
+          assert e['accepted_run']['artifact_digest']=='sha256:232b2e4a6c64b271193853d4e8fd32c0fdfd367344ecec720902fe8f090333dc'
+          assert e['authorization']['formal_v17_30_runtime_promotion_governance_eligible'] is True
+          assert e['authorization']['v17_30_runtime_authority_activated'] is False
+          assert e['authorization']['fresh_v17_30_full_basis_execution_authorized'] is False
           print('V17_30_WRAPPER_ACCEPTANCE_LOCK_PASS')
           PY
       - name: Verify accepted code copied byte-exactly
