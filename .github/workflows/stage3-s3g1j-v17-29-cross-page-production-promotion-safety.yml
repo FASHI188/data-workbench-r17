@@ -162,4 +162,4 @@ jobs:
           name: stage3-s3g1j-v17-29-cross-page-production-promotion-safety-v1
           path: build/promotion
           retention-days: 90
-          compression-level: 0
+          compression-level: 6
