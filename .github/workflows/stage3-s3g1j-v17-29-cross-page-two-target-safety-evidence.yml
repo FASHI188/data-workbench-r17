@@ -1,0 +1,127 @@
+name: Stage3 S3G1J V17.29 Cross Page Two Target Safety Evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'governance/stage3_s3g1j_v17_29_cross_page_two_target_safety.json'
+      - 'tests/test_stage3_v17_29_cross_page_two_target_safety_evidence.py'
+      - '.github/workflows/stage3-s3g1j-v17-29-cross-page-two-target-safety-evidence.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  DIAGNOSTIC_PR: '119'
+  DIAGNOSTIC_HEAD: 'ceccffd577d27ac9dad1722a8b77b2e6c891f3a2'
+  DIAGNOSTIC_RUN: '31451602128'
+  ARTIFACT_ID: '9086511255'
+  ARTIFACT_NAME: 'stage3-s3g1j-v17-29-cross-page-two-target-safety-v1'
+  ARTIFACT_DIGEST: 'sha256:09a74424d8fcbbe4fe29523128752fc33b0a2c937d57f0d75dceccfd8261ffe4'
+  REPORT_SHA: 'cff12bf13793bc20094c8940065de1e4bbc8905d013f6126c1060d34425c4daf'
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Lock closed-unmerged candidate-safety PR and artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$DIAGNOSTIC_PR")
+          test "$(jq -r '.state' <<<"$pr")" = closed
+          test "$(jq -r '.merged' <<<"$pr")" = false
+          test "$(jq -r '.head.sha' <<<"$pr")" = "$DIAGNOSTIC_HEAD"
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$DIAGNOSTIC_RUN")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.head_sha' <<<"$run")" = "$DIAGNOSTIC_HEAD"
+          artifact=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID")
+          test "$(jq -r '.name' <<<"$artifact")" = "$ARTIFACT_NAME"
+          test "$(jq -r '.digest' <<<"$artifact")" = "$ARTIFACT_DIGEST"
+          test "$(jq -r '.expired' <<<"$artifact")" = false
+          test "$(jq -r '.workflow_run.id' <<<"$artifact")" = "$DIAGNOSTIC_RUN"
+          test "$(jq -r '.workflow_run.head_sha' <<<"$artifact")" = "$DIAGNOSTIC_HEAD"
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-29-cross-page-two-target-safety-v1
+          path: accepted
+          repository: FASHI188/data-workbench-r17
+          run-id: 31451602128
+          github-token: ${{ github.token }}
+      - name: Verify exact downloaded candidate-safety report
+        shell: bash
+        run: |
+          set -euo pipefail
+          report=$(find accepted -name stage3_s3g1j_v17_29_cross_page_two_target_safety.json -print -quit)
+          test -n "$report"
+          test "$(sha256sum "$report" | awk '{print $1}')" = "$REPORT_SHA"
+          python - "$report" <<'PY'
+          import json,sys
+          r=json.load(open(sys.argv[1],encoding='utf-8'))
+          assert r['gate']=='S3G1J_V17_29_TWO_TARGET_CROSS_PAGE_CANDIDATE_SAFETY_V1'
+          assert r['routing']['input_document_rows']==121354
+          assert r['routing']['candidate_route_count']==2
+          assert r['routing']['formal_v17_29_delegate_count']==121352
+          assert r['routing']['candidate_route_announcement_ids']==['1223347318','1223407043']
+          assert r['routing']['residual_source_identity_origin']=='SINGLE_CANDIDATE_EVIDENCE_JSON'
+          assert len(r['recoveries'])==2
+          for x in r['recoveries']:
+              assert x['formal_v17_29_snapshot']['tier2_found']==3
+              assert 'NO_VALIDATED_BALANCE_SHEET_BLOCK' in x['formal_v17_29_snapshot']['validation_errors']
+              c=x['candidate_recovery']
+              assert c['candidate_only'] is True
+              assert c['candidate_parser_promotion_authorized'] is False
+              assert c['formal_parser_changed'] is False
+              assert c['runtime_authority_changed'] is False
+              assert c['production_data_changed'] is False
+              assert c['ocr_used'] is False
+              assert c['fuzzy_alias_matching_used'] is False
+              assert c['equity_inferred_as_assets_minus_liabilities'] is False
+              assert c['accounting_tolerance_relaxed'] is False
+              assert c['cross_page_pattern']['equity_amount_page']+1==c['cross_page_pattern']['suffix_page']
+              assert c['cross_page_pattern']['equity_label_prefix']+c['cross_page_pattern']['next_page_exact_suffix']=='所有者权益（或股东权益）合计'
+              assert all(col['identity_residual_cny']=='0.00' for col in c['dual_column_identity']['columns'])
+          assert all(all(x[k] for k in ('wrong_sha_delegates','wrong_bytes_delegates','wrong_date_delegates')) for x in r['mutation_delegation_checks'])
+          assert r['candidate_experiment_pass'] is True
+          assert r['candidate_parser_implementation_authorized'] is False
+          assert r['candidate_parser_promotion_authorized'] is False
+          assert r['formal_parser_changed'] is False
+          assert r['runtime_authority_changed'] is False
+          assert r['production_data_changed'] is False
+          assert r['stage3_status']=='NOT_READY'
+          assert r['stage4_alpha_live_locked'] is True
+          assert r['main_changed'] is False
+          assert r['errors']==[]
+          print('DOWNLOADED_CROSS_PAGE_TWO_TARGET_SAFETY_EVIDENCE_PASS')
+          PY
+      - name: Verify committed evidence and current authority locks
+        run: |
+          python -m unittest tests.test_stage3_v17_29_cross_page_two_target_safety_evidence -v
+          python - <<'PY'
+          import json
+          e=json.load(open('governance/stage3_s3g1j_v17_29_cross_page_two_target_safety.json',encoding='utf-8'))
+          r=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          p=json.load(open('data/project_status.json',encoding='utf-8'))
+          assert e['authorization']['candidate_safety_pass'] is True
+          assert e['authorization']['production_promotion_safety_experiment_eligible'] is True
+          assert e['authorization']['formal_parser_implementation_authorized'] is False
+          assert e['authorization']['runtime_promotion_authorized'] is False
+          assert e['authorization']['full_basis_execution_authorized'] is False
+          assert r['formal_runtime']['runtime_generation']=='V17.29'
+          assert r['full_basis_last_completed_final']['run']==31389854868
+          assert r['full_basis_last_completed_final']['verdict']=='FAIL_CLOSED'
+          assert p['stage3']['status']=='NOT_READY'
+          assert p['stage4_unlocked'] is False
+          assert p['alpha_training_allowed'] is False
+          assert p['live_signal_allowed'] is False
+          print('CROSS_PAGE_TWO_TARGET_SAFETY_GOVERNANCE_PASS')
+          PY
