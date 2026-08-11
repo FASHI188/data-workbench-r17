@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - 'scripts/audit_stage3_s3g1j_cross_page_two_target_safety.py'
+      - 'scripts/run_stage3_s3g1j_cross_page_two_target_safety_r2.py'
       - 'tests/test_stage3_v17_29_cross_page_two_target_safety.py'
       - '.github/workflows/stage3-s3g1j-v17-29-cross-page-two-target-safety.yml'
 
@@ -72,6 +73,7 @@ jobs:
       - name: Run pure fail-closed candidate safety contracts
         run: |
           python -m py_compile scripts/audit_stage3_s3g1j_cross_page_two_target_safety.py
+          python -m py_compile scripts/run_stage3_s3g1j_cross_page_two_target_safety_r2.py
           python -m unittest tests.test_stage3_v17_29_cross_page_two_target_safety -v
       - uses: actions/download-artifact@v4
         with:
@@ -86,7 +88,7 @@ jobs:
           set -euo pipefail
           documents=$(find source -name stage3_financial_documents.csv.gz -print -quit)
           test -n "$documents"
-          python scripts/audit_stage3_s3g1j_cross_page_two_target_safety.py \
+          python scripts/run_stage3_s3g1j_cross_page_two_target_safety_r2.py \
             --documents "$documents" \
             --evidence governance/stage3_s3g1j_v17_29_six_source_diagnostic.json \
             --out build/safety/stage3_s3g1j_v17_29_cross_page_two_target_safety.json
@@ -101,6 +103,9 @@ jobs:
           assert routing['candidate_route_count']==2
           assert routing['formal_v17_29_delegate_count']==121352
           assert routing['candidate_route_announcement_ids']==['1223347318','1223407043']
+          assert routing['residual_source_identity_origin']=='SINGLE_CANDIDATE_EVIDENCE_JSON'
+          assert all(x['candidate_tier2_found']==3 for x in routing['candidate_rows'])
+          assert all('NO_VALIDATED_BALANCE_SHEET_BLOCK' in x['candidate_validation_errors'] for x in routing['candidate_rows'])
           assert len(r['recoveries'])==2
           for row in r['recoveries']:
               formal=row['formal_v17_29_snapshot']
