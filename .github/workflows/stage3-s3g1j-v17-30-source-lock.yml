@@ -50,7 +50,7 @@ jobs:
           test "$shard_count" = 64
           input_count=$(jq -r --arg name "$LOCKED_INPUT_ARTIFACT" '[.artifacts[]|select(.name==$name)]|length' <<<"$artifacts")
           test "$input_count" = 1
-          test "$(jq -r --arg prefix "$SHARD_PREFIX" '[.artifacts[]|select(.name|startswith($prefix) and .expired==true)]|length' <<<"$artifacts")" = 0
+          test "$(jq -r --arg prefix "$SHARD_PREFIX" '[.artifacts[]|select((.name|startswith($prefix)) and .expired==true)]|length' <<<"$artifacts")" = 0
           test "$(jq -r --arg name "$LOCKED_INPUT_ARTIFACT" '[.artifacts[]|select(.name==$name and .expired==true)]|length' <<<"$artifacts")" = 0
           python - <<'PY'
           import json,os,subprocess,pathlib
