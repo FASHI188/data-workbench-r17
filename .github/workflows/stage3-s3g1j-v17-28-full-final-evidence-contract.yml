@@ -128,7 +128,7 @@ jobs:
             tests.test_stage3_v17_26_full_final_evidence \
             -v
           python scripts/audit_stage3_authority_map.py
-      - name: Verify V17.28 remains retained historical basis under V17.30 runtime
+      - name: Verify V17.28 remains retained historical basis under accepted V17.30 authority
         shell: bash
         run: |
           set -euo pipefail
@@ -140,46 +140,34 @@ jobs:
           activation=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
           project=json.load(open('data/project_status.json',encoding='utf-8'))
           lock=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
-          assert runtime['schema_version']>=14
+          assert runtime['schema_version']>=15
           assert runtime['formal_runtime']['runtime_generation']=='V17.30'
-          assert runtime['full_basis_last_completed_final']['generation']=='V17.29'
-          assert runtime['full_basis_last_completed_final']['run']==31389854868
-          old=runtime['previous_last_completed_full_basis_final']
-          assert old['generation']=='V17.28'
-          assert old['run']==30997260730
-          assert old['numeric_observations']==1051799
-          assert old['document_error_count']==1371
-          assert old['unresolved_tie_count']==1288
-          assert old['retained'] is True
-          nxt=runtime['next_full_basis_required']
-          assert nxt['generation']=='V17.30'
-          assert nxt['status']=='REQUIRED_NOT_STARTED'
-          assert nxt['expected_values_are_not_production_acceptance'] is True
-          assert activation['schema_version']>=16
+          latest=runtime['full_basis_last_completed_final']
+          assert latest['generation']=='V17.30' and latest['run']==31518370789
+          assert latest['numeric_observations']==1051826 and latest['document_error_count']==1362 and latest['unresolved_tie_count']==1279
+          assert latest['verdict']=='FAIL_CLOSED'
+          prev=runtime['previous_last_completed_full_basis_final']
+          assert prev['generation']=='V17.29' and prev['run']==31389854868
+          assert runtime['next_full_basis_required']['status']=='NONE_CURRENT_RUNTIME_ACCEPTED'
           current=activation['accepted_production_runtime']
-          assert current['generation']=='V17.30'
-          assert current['full_basis_execution_pending'] is True
-          assert current['last_completed_full_basis_generation']=='V17.29'
-          assert current['last_completed_full_basis_run']==31389854868
+          assert current['generation']=='V17.30' and current['full_basis_execution_pending'] is False
+          assert current['last_completed_full_basis_generation']=='V17.30' and current['last_completed_full_basis_run']==31518370789
           assert current['data_verdict']=='FAIL_CLOSED'
           historic=activation['accepted_v17_28_full_basis_evidence']
           assert historic['run']==30997260730
           assert historic['historical_full_basis_authority_retained'] is True
           assert historic['last_completed_full_basis_authority'] is False
           pg=project['stage3']['s3g1j']
-          assert pg['formal_runtime_generation']=='V17.30'
-          assert pg['last_completed_full_basis_generation']=='V17.29'
-          assert pg['next_full_basis_status']=='REQUIRED_NOT_STARTED'
+          assert pg['formal_runtime_generation']=='V17.30' and pg['last_completed_full_basis_generation']=='V17.30'
+          assert pg['accepted_run_id']==31518370789 and pg['final_gate_pass'] is False
           assert project['stage3']['status']=='NOT_READY'
           assert lock['status']=='NOT_READY'
           lg=lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']
-          assert lg['formal_runtime_generation']=='V17.30'
-          assert lg['last_completed_full_basis_generation']=='V17.29'
-          assert lg['next_full_basis_status']=='REQUIRED_NOT_STARTED'
-          assert lg['final_gate_pass'] is False
+          assert lg['formal_runtime_generation']=='V17.30' and lg['last_completed_full_basis_generation']=='V17.30'
+          assert lg['run_id']==31518370789 and lg['final_gate_pass'] is False
           assert 'S3G1J_FINANCIAL_RAW_VALUES' in lock['remaining_unlocked_gates']
           assert project['stage4_unlocked'] is False
           assert project['alpha_training_allowed'] is False
           assert project['live_signal_allowed'] is False
-          print('S3G1J_V17_28_RETAINED_UNDER_V17_30_PASS')
+          print('S3G1J_V17_28_RETAINED_UNDER_ACCEPTED_V17_30_PASS')
           PY
