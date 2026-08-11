@@ -1,0 +1,117 @@
+name: Stage3 S3G1J V17.30 Runtime Promotion
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/stage3_financial_pdf_parser_v22_promotion_safety.py'
+      - 'scripts/stage3_financial_pdf_parser_v22.py'
+      - 'scripts/extract_stage3_financial_pdf_values_v20.py'
+      - 'tests/test_stage3_v17_30_runtime_wrapper.py'
+      - 'tests/test_stage3_v17_30_runtime_promotion.py'
+      - 'tests/test_stage3_v17_30_authority_state.py'
+      - 'governance/stage3_s3g1j_v17_30_runtime_promotion.json'
+      - 'governance/stage3_s3g1j_v17_30_runtime_wrapper_acceptance.json'
+      - 'governance/stage3_s3g1j_runtime_manifest.json'
+      - 'governance/stage3_workflow_activation_manifest.json'
+      - 'governance/stage3_authority_map.json'
+      - 'config/stage3_final_lock.json'
+      - 'data/project_status.json'
+      - '.github/workflows/stage3-s3g1j-v17-30-runtime-promotion.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  WRAPPER_PR: '123'
+  WRAPPER_HEAD: 'd26d7f543c20d717ed8c8a421e28838feecd7a03'
+  WRAPPER_RUN: '31458469699'
+  WRAPPER_ARTIFACT_ID: '9088925988'
+  WRAPPER_ARTIFACT: 'stage3-s3g1j-v17-30-inactive-runtime-wrapper'
+  WRAPPER_DIGEST: 'sha256:232b2e4a6c64b271193853d4e8fd32c0fdfd367344ecec720902fe8f090333dc'
+
+jobs:
+  promotion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - name: Lock closed-unmerged wrapper execution and registered evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$WRAPPER_PR")
+          test "$(jq -r '.state' <<<"$pr")" = closed
+          test "$(jq -r '.merged' <<<"$pr")" = false
+          test "$(jq -r '.head.sha' <<<"$pr")" = "$WRAPPER_HEAD"
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$WRAPPER_RUN")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.head_sha' <<<"$run")" = "$WRAPPER_HEAD"
+          artifact=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$WRAPPER_ARTIFACT_ID")
+          test "$(jq -r '.name' <<<"$artifact")" = "$WRAPPER_ARTIFACT"
+          test "$(jq -r '.digest' <<<"$artifact")" = "$WRAPPER_DIGEST"
+          test "$(jq -r '.expired' <<<"$artifact")" = false
+          python - <<'PY'
+          import json
+          e=json.load(open('governance/stage3_s3g1j_v17_30_runtime_wrapper_acceptance.json',encoding='utf-8'))
+          assert e['execution_pr']['number']==123
+          assert e['execution_pr']['final_head_sha']=='d26d7f543c20d717ed8c8a421e28838feecd7a03'
+          assert e['execution_pr']['closed_without_merge'] is True
+          assert e['accepted_run']['run_id']==31458469699
+          assert e['accepted_run']['artifact_id']==9088925988
+          assert e['accepted_run']['artifact_digest']=='sha256:232b2e4a6c64b271193853d4e8fd32c0fdfd367344ecec720902fe8f090333dc'
+          assert e['authorization']['formal_v17_30_runtime_promotion_governance_eligible'] is True
+          assert e['authorization']['v17_30_runtime_authority_activated'] is False
+          assert e['authorization']['fresh_v17_30_full_basis_execution_authorized'] is False
+          print('V17_30_WRAPPER_ACCEPTANCE_LOCK_PASS')
+          PY
+      - name: Verify accepted code copied byte-exactly
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/stage3_financial_pdf_parser_v22_promotion_safety.py)" = 1a4364d5cde7881455902f6fa1dbe5e68f3843a6
+          test "$(git hash-object scripts/stage3_financial_pdf_parser_v22.py)" = cc782817e5ee73fcae085d71f4896a0adc004dcd
+          test "$(git hash-object scripts/extract_stage3_financial_pdf_values_v20.py)" = d74a2b1f8f0ec3af8d89ce259e83392d7f8cc20c
+          test "$(git hash-object tests/test_stage3_v17_30_runtime_wrapper.py)" = c7ddfd881010361485f6d4942831d9655bcb3d2c
+      - name: Run wrapper promotion and atomic authority contracts
+        run: |
+          python -m unittest \
+            tests.test_stage3_v17_30_runtime_wrapper \
+            tests.test_stage3_v17_30_runtime_promotion \
+            tests.test_stage3_v17_30_authority_state \
+            -v
+          python -m py_compile scripts/stage3_financial_pdf_parser_v22_promotion_safety.py scripts/stage3_financial_pdf_parser_v22.py scripts/extract_stage3_financial_pdf_values_v20.py
+      - name: Assert no fresh full basis has started anywhere in authority state
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('governance/stage3_s3g1j_v17_30_runtime_promotion.json',encoding='utf-8'))
+          r=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          a=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
+          s=json.load(open('data/project_status.json',encoding='utf-8'))
+          assert p['generation']=='V17.30' and p['governance_pr']==125
+          assert p['last_completed_full_basis']['generation']=='V17.29'
+          assert p['next_full_basis']['generation']=='V17.30' and p['next_full_basis']['status']=='REQUIRED_NOT_STARTED'
+          assert p['next_full_basis']['expected_values_are_not_production_acceptance'] is True
+          assert p['hard_boundaries']['fresh_64_shard_execution_started'] is False
+          assert r['formal_runtime']['runtime_generation']=='V17.30'
+          assert r['full_basis_last_completed_final']['generation']=='V17.29'
+          assert r['next_full_basis_required']['status']=='REQUIRED_NOT_STARTED'
+          assert a['accepted_production_runtime']['generation']=='V17.30'
+          assert a['accepted_production_runtime']['full_basis_execution_pending'] is True
+          assert a['accepted_production_runtime']['last_completed_full_basis_generation']=='V17.29'
+          assert s['stage3']['s3g1j']['next_full_basis_status']=='REQUIRED_NOT_STARTED'
+          assert s['stage3']['status']=='NOT_READY'
+          assert s['stage4_unlocked'] is False and s['alpha_training_allowed'] is False and s['live_signal_allowed'] is False
+          print('V17_30_PROMOTION_ATOMIC_BOUNDARY_PASS')
+          PY

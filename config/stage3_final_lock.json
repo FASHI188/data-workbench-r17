@@ -1,5 +1,5 @@
 {
-  "version": "V3.3.13-stage3-final-lock",
+  "version": "V3.3.14-stage3-final-lock",
   "status": "NOT_READY",
   "stage2": {
     "version": "V3.2.25-stage2-final-freeze",
@@ -13,13 +13,15 @@
     "S3G1H_PDF_PARSER_PROBE": {"run_id": 30269769293, "artifact": "stage3-s3g1h-financial-pdf-parser-probe"},
     "S3G1I_POPULATION_PDF_PROBE": {"run_id": 30326328965, "artifact": "stage3-s3g1i-financial-pdf-population-probe", "artifact_digest": "sha256:3883eb629aaa0325cd1db6d3a1eefc96929c9673711bb3c004217ac6254324b9"},
     "S3G1J_FINANCIAL_RAW_VALUES": {
-      "formal_runtime_generation": "V17.29",
-      "runtime_promotion_evidence": "governance/stage3_s3g1j_v17_29_runtime_promotion.json",
-      "runtime_wrapper_pr": 109,
+      "formal_runtime_generation": "V17.30",
+      "runtime_promotion_evidence": "governance/stage3_s3g1j_v17_30_runtime_promotion.json",
+      "runtime_wrapper_acceptance_evidence": "governance/stage3_s3g1j_v17_30_runtime_wrapper_acceptance.json",
+      "runtime_wrapper_pr": 123,
       "runtime_wrapper_pr_closed_without_merge": true,
-      "runtime_wrapper_run_id": 31312709490,
-      "runtime_wrapper_artifact_id": 9037869497,
-      "runtime_wrapper_artifact_digest": "sha256:4f9940513c2d0ef5250b8874b32f68655badfe4a695a2fe2c3da0a54d2a01670",
+      "runtime_wrapper_run_id": 31458469699,
+      "runtime_wrapper_artifact_id": 9088925988,
+      "runtime_wrapper_artifact_digest": "sha256:232b2e4a6c64b271193853d4e8fd32c0fdfd367344ecec720902fe8f090333dc",
+      "runtime_governance_pr": 125,
       "runtime_contract_pass": true,
       "last_completed_full_basis_generation": "V17.29",
       "full_basis_evidence": "governance/stage3_s3g1j_v17_29_full_final.json",
@@ -29,7 +31,7 @@
       "source_execution_head_sha": "2b48694391e2a6cdbd6972b68844c1253b3c55d9",
       "acceptance_pr": 112,
       "acceptance_merge_commit": "25207ef50604db48558d02a0beb5cc3453efd458",
-      "governance_pr": 114,
+      "full_basis_governance_pr": 114,
       "run_id": 31389854868,
       "head_sha": "22fa37064eeb8a49ad5292dd2be48bd7b674c673",
       "artifact_id": 9063271903,
@@ -48,8 +50,13 @@
       "unresolved_tie_count": 1281,
       "existing_numeric_semantic_sha256": "2fa6a5bf2044a3fd46ed8599d31b07a512f2acb377b76d5cdbcea0e0dbb006ea",
       "fresh_numeric_semantic_sha256": "0457d2c4601e7356c842eebfab5b6b52e851da26f2508f8c38d3833f9ef6fa51",
-      "next_full_basis_generation": null,
-      "next_full_basis_status": "NONE_CURRENT_RUNTIME_ACCEPTED"
+      "next_full_basis_generation": "V17.30",
+      "next_full_basis_status": "REQUIRED_NOT_STARTED",
+      "expected_next_document_count": 121354,
+      "expected_next_numeric_observation_count": 1051826,
+      "expected_next_document_error_count": 1362,
+      "expected_next_unresolved_tie_count": 1279,
+      "expected_values_are_not_production_acceptance": true
     },
     "S3G2_ANNOUNCEMENT_LEDGER": {"run_id": 30522392946, "artifact": "stage3-s3g2-announcement-ledger-final", "ledger_sha256": "0eb139572865628283f86c981990e59e076d5ef2a978a5967aace90d553e30dd", "deterministic_replay_count": 2, "artifact_digest_is_transport_only": true},
     "S3G3A_INDUSTRY_SOURCE_PROBE": {"run_id": 30326328969, "artifact": "stage3-s3g3a-capco-industry-history-probe", "artifact_digest": "sha256:a635409dbab2fdc61852432acfcb294f97b4468831f23a9fa01320abf39ba9af"},
@@ -60,5 +67,5 @@
   },
   "remaining_unlocked_gates": ["S3G1J_FINANCIAL_RAW_VALUES", "S3G4_EARNINGS_SURPRISE"],
   "merge_allowed_only_when_all_run_ids_locked_and_all_gates_pass": true,
-  "interpretation": "V17.29 is both the formal runtime and the latest completed accepted 64-shard full-basis authority. The execution/non-regression gate passed, but 1,364 document errors and 1,281 unresolved ties remain, so S3G1J stays FAIL_CLOSED and Stage3 remains NOT_READY."
+  "interpretation": "V17.30 is the formal runtime only. V17.29 remains the latest completed accepted 64-shard full-basis authority at 1,051,820 numeric observations / 1,364 document errors / 1,281 unresolved ties. A fresh V17.30 64-shard basis is REQUIRED_NOT_STARTED; its expected 1,051,826 / 1,362 / 1,279 counts are non-authoritative until independently accepted. Stage3 remains NOT_READY."
 }
