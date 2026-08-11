@@ -6,6 +6,7 @@ on:
     paths:
       - 'scripts/diagnose_stage3_s3g1j_v17_29_six_sources.py'
       - 'scripts/prepare_stage3_s3g1j_v17_29_six_source_input.py'
+      - 'scripts/probe_stage3_s3g1j_v17_29_cross_page_equity.py'
       - 'tests/test_stage3_v17_29_six_source_diagnostic.py'
       - 'tests/test_stage3_v17_29_six_source_input_adapter.py'
       - '.github/workflows/stage3-s3g1j-v17-29-six-source-diagnostic.yml'
@@ -139,11 +140,39 @@ jobs:
               {'announcement_id':x['announcement_id'],**x['family_evidence']} for x in r['targets']
           ],ensure_ascii=False,indent=2))
           PY
+      - name: Probe exact word rows around two cross-page equity totals
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/probe_stage3_s3g1j_v17_29_cross_page_equity.py \
+            --documents build/input/six_source_documents.csv.gz \
+            --out build/diagnostic/s3g1j_v17_29_cross_page_equity_word_row_probe.json
+          python - <<'PY'
+          import json
+          r=json.load(open('build/diagnostic/s3g1j_v17_29_cross_page_equity_word_row_probe.json',encoding='utf-8'))
+          assert r['gate']=='S3G1J_V17_29_CROSS_PAGE_EQUITY_WORD_ROW_PROBE_V1'
+          assert r['target_count']==2
+          assert r['target_ids']==['1223347318','1223407043']
+          assert r['all_exact_source_sha_verified'] is True
+          assert r['all_dual_column_identity_exact_zero'] is True
+          assert r['candidate_parser_authorized'] is False
+          assert r['formal_parser_changed'] is False
+          assert r['runtime_authority_changed'] is False
+          assert r['production_data_changed'] is False
+          for target in r['targets']:
+              probes=target['amount_pair_probes']
+              assert len(probes['TOTAL_ASSETS'])==1
+              assert len(probes['TOTAL_LIABILITIES'])==1
+              assert len(probes['TOTAL_EQUITY'])==1
+              assert all(x['residual']=='0.00' for x in target['dual_column_identity'])
+          print('CROSS_PAGE_EQUITY_WORD_ROW_PROBE_PASS')
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: stage3-s3g1j-v17-29-six-source-diagnostic-v1
           path: |
             build/input/six_source_input_identity.json
             build/diagnostic/s3g1j_v17_29_six_source_diagnostic.json
+            build/diagnostic/s3g1j_v17_29_cross_page_equity_word_row_probe.json
           retention-days: 90
           compression-level: 0
