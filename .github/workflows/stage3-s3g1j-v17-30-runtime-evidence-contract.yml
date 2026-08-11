@@ -54,11 +54,15 @@ jobs:
           a=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
           l=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
           s=json.load(open('data/project_status.json',encoding='utf-8'))
-          assert w['execution']['pr']==123
-          assert w['execution']['run']==31458469699
-          assert w['execution']['artifact_id']==9088925988
-          assert w['execution']['artifact_digest']=='sha256:232b2e4a6c64b271193853d4e8fd32c0fdfd367344ecec720902fe8f090333dc'
-          assert w['authorization']['formal_runtime_promotion_governance_eligible'] is True
+          assert w['execution_pr']['number']==123
+          assert w['execution_pr']['final_head_sha']=='d26d7f543c20d717ed8c8a421e28838feecd7a03'
+          assert w['execution_pr']['closed_without_merge'] is True
+          assert w['accepted_run']['run_id']==31458469699
+          assert w['accepted_run']['artifact_id']==9088925988
+          assert w['accepted_run']['artifact_digest']=='sha256:232b2e4a6c64b271193853d4e8fd32c0fdfd367344ecec720902fe8f090333dc'
+          assert w['authorization']['formal_v17_30_runtime_promotion_governance_eligible'] is True
+          assert w['authorization']['v17_30_runtime_authority_activated'] is False
+          assert w['authorization']['fresh_v17_30_full_basis_execution_authorized'] is False
           assert p['generation']=='V17.30' and p['governance_pr']==125
           assert p['accepted_code_identity']['production_parser_git_blob']=='cc782817e5ee73fcae085d71f4896a0adc004dcd'
           assert p['accepted_code_identity']['extractor_git_blob']=='d74a2b1f8f0ec3af8d89ce259e83392d7f8cc20c'
