@@ -44,7 +44,7 @@ jobs:
           test "$(jq -r '.name' <<<"$artifact")" = stage3-s3g1j-v17-30-inactive-runtime-wrapper
           test "$(jq -r '.digest' <<<"$artifact")" = sha256:232b2e4a6c64b271193853d4e8fd32c0fdfd367344ecec720902fe8f090333dc
           test "$(jq -r '.expired' <<<"$artifact")" = false
-      - name: Verify registered wrapper evidence and promoted runtime boundary
+      - name: Verify registered wrapper evidence and current accepted authority boundary
         run: |
           python - <<'PY'
           import json
@@ -63,19 +63,26 @@ jobs:
           assert w['authorization']['formal_v17_30_runtime_promotion_governance_eligible'] is True
           assert w['authorization']['v17_30_runtime_authority_activated'] is False
           assert w['authorization']['fresh_v17_30_full_basis_execution_authorized'] is False
+          # The immutable promotion manifest remains the pre-execution checkpoint.
           assert p['generation']=='V17.30' and p['governance_pr']==125
           assert p['accepted_code_identity']['production_parser_git_blob']=='cc782817e5ee73fcae085d71f4896a0adc004dcd'
           assert p['accepted_code_identity']['extractor_git_blob']=='d74a2b1f8f0ec3af8d89ce259e83392d7f8cc20c'
           assert p['next_full_basis']['status']=='REQUIRED_NOT_STARTED'
           assert p['next_full_basis']['expected_values_are_not_production_acceptance'] is True
+          # Current central authority has subsequently accepted the exact V17.30 full basis.
           assert r['formal_runtime']['runtime_generation']=='V17.30'
-          assert r['full_basis_last_completed_final']['generation']=='V17.29'
-          assert r['full_basis_last_completed_final']['run']==31389854868
-          assert r['next_full_basis_required']['generation']=='V17.30'
-          assert r['next_full_basis_required']['status']=='REQUIRED_NOT_STARTED'
-          assert a['accepted_production_runtime']['generation']=='V17.30'
-          assert a['accepted_production_runtime']['last_completed_full_basis_generation']=='V17.29'
+          latest=r['full_basis_last_completed_final']
+          assert latest['generation']=='V17.30' and latest['run']==31518370789 and latest['artifact_id']==9112098872
+          assert latest['numeric_observations']==1051826 and latest['document_error_count']==1362 and latest['unresolved_tie_count']==1279
+          assert latest['verdict']=='FAIL_CLOSED'
+          assert r['previous_last_completed_full_basis_final']['generation']=='V17.29'
+          assert r['next_full_basis_required']['status']=='NONE_CURRENT_RUNTIME_ACCEPTED'
+          current=a['accepted_production_runtime']
+          assert current['generation']=='V17.30' and current['full_basis_execution_pending'] is False
+          assert current['last_completed_full_basis_generation']=='V17.30' and current['last_completed_full_basis_run']==31518370789
+          assert l['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']['run_id']==31518370789
           assert l['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']['final_gate_pass'] is False
+          assert s['stage3']['s3g1j']['accepted_run_id']==31518370789
           assert s['stage3']['status']=='NOT_READY'
           assert s['stage4_unlocked'] is False and s['alpha_training_allowed'] is False and s['live_signal_allowed'] is False
           print('V17_30_RUNTIME_EVIDENCE_PASS')

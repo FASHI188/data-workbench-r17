@@ -68,52 +68,61 @@ class V1729RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(nxt["expected_numeric_rows"], 1051820)
         self.assertTrue(nxt["expected_values_are_not_production_acceptance"])
 
-    def test_v17_29_remains_last_completed_basis_under_v17_30_runtime(self) -> None:
-        self.assertGreaterEqual(self.runtime["schema_version"], 14)
+    def test_v17_29_is_retained_as_previous_basis_under_accepted_v17_30(self) -> None:
+        self.assertGreaterEqual(self.runtime["schema_version"], 15)
         self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"], "V17.30")
         latest = self.runtime["full_basis_last_completed_final"]
-        self.assertEqual(latest["generation"], "V17.29")
-        self.assertEqual(latest["run"], 31389854868)
-        self.assertEqual(latest["artifact_id"], 9063271903)
-        self.assertEqual(latest["numeric_observations"], 1051820)
-        self.assertEqual(latest["document_error_count"], 1364)
-        self.assertEqual(latest["unresolved_tie_count"], 1281)
+        self.assertEqual((latest["generation"], latest["run"]), ("V17.30", 31518370789))
+        self.assertEqual(latest["numeric_observations"], 1051826)
+        self.assertEqual(latest["document_error_count"], 1362)
+        self.assertEqual(latest["unresolved_tie_count"], 1279)
         self.assertEqual(latest["verdict"], "FAIL_CLOSED")
+        previous = self.runtime["previous_last_completed_full_basis_final"]
+        self.assertEqual((previous["generation"], previous["run"]), ("V17.29", 31389854868))
+        self.assertEqual(previous["artifact_id"], 9063271903)
+        self.assertEqual(previous["numeric_observations"], 1051820)
+        self.assertEqual(previous["document_error_count"], 1364)
+        self.assertEqual(previous["unresolved_tie_count"], 1281)
+        self.assertEqual(previous["verdict"], "FAIL_CLOSED")
+        self.assertTrue(previous["retained"])
         next_basis = self.runtime["next_full_basis_required"]
-        self.assertEqual(next_basis["generation"], "V17.30")
-        self.assertEqual(next_basis["status"], "REQUIRED_NOT_STARTED")
-        self.assertTrue(next_basis["expected_values_are_not_production_acceptance"])
+        self.assertIsNone(next_basis["generation"])
+        self.assertEqual(next_basis["status"], "NONE_CURRENT_RUNTIME_ACCEPTED")
 
-        self.assertGreaterEqual(self.activation["schema_version"], 16)
+        self.assertGreaterEqual(self.activation["schema_version"], 17)
         active = self.activation["accepted_production_runtime"]
         self.assertEqual(active["generation"], "V17.30")
-        self.assertTrue(active["full_basis_execution_pending"])
-        self.assertEqual(active["last_completed_full_basis_generation"], "V17.29")
-        self.assertEqual(active["last_completed_full_basis_run"], 31389854868)
+        self.assertFalse(active["full_basis_execution_pending"])
+        self.assertEqual(active["last_completed_full_basis_generation"], "V17.30")
+        self.assertEqual(active["last_completed_full_basis_run"], 31518370789)
         self.assertEqual(active["data_verdict"], "FAIL_CLOSED")
         retained = self.activation["accepted_v17_29_full_basis_evidence"]
-        self.assertTrue(retained["last_completed_full_basis_authority"])
+        self.assertFalse(retained["last_completed_full_basis_authority"])
         self.assertTrue(retained["historical_runtime_generation_retained"])
+        self.assertTrue(retained["historical_full_basis_authority_retained"])
 
         g1j = self.authority["authoritative_components"]["S3G1J_FINANCIAL_RAW_VALUES"]
         self.assertEqual(g1j["formal_runtime_generation"], "V17.30")
-        self.assertEqual(g1j["last_completed_full_basis_generation"], "V17.29")
-        self.assertEqual(g1j["accepted_run_id"], 31389854868)
-        self.assertEqual(g1j["next_full_basis_status"], "REQUIRED_NOT_STARTED")
+        self.assertEqual(g1j["last_completed_full_basis_generation"], "V17.30")
+        self.assertEqual(g1j["accepted_run_id"], 31518370789)
+        self.assertEqual(g1j["previous_full_basis_authority"]["generation"], "V17.29")
+        self.assertEqual(g1j["previous_full_basis_authority"]["run"], 31389854868)
         self.assertFalse(g1j["final_gate"])
 
         project_g1j = self.project["stage3"]["s3g1j"]
         self.assertEqual(project_g1j["formal_runtime_generation"], "V17.30")
-        self.assertEqual(project_g1j["last_completed_full_basis_generation"], "V17.29")
-        self.assertEqual(project_g1j["accepted_run_id"], 31389854868)
-        self.assertEqual(project_g1j["next_full_basis_status"], "REQUIRED_NOT_STARTED")
+        self.assertEqual(project_g1j["last_completed_full_basis_generation"], "V17.30")
+        self.assertEqual(project_g1j["accepted_run_id"], 31518370789)
+        self.assertEqual(project_g1j["previous_full_basis_authority"]["generation"], "V17.29")
+        self.assertEqual(project_g1j["previous_full_basis_authority"]["run"], 31389854868)
         self.assertFalse(project_g1j["final_gate_pass"])
 
         lock_g1j = self.lock["required_gates"]["S3G1J_FINANCIAL_RAW_VALUES"]
         self.assertEqual(lock_g1j["formal_runtime_generation"], "V17.30")
-        self.assertEqual(lock_g1j["last_completed_full_basis_generation"], "V17.29")
-        self.assertEqual(lock_g1j["run_id"], 31389854868)
-        self.assertEqual(lock_g1j["next_full_basis_status"], "REQUIRED_NOT_STARTED")
+        self.assertEqual(lock_g1j["last_completed_full_basis_generation"], "V17.30")
+        self.assertEqual(lock_g1j["run_id"], 31518370789)
+        self.assertEqual(lock_g1j["previous_full_basis_authority"]["generation"], "V17.29")
+        self.assertEqual(lock_g1j["previous_full_basis_authority"]["run"], 31389854868)
         self.assertFalse(lock_g1j["final_gate_pass"])
 
     def test_project_and_historical_evidence_stay_fail_closed(self) -> None:

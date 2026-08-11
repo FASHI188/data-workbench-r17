@@ -29,13 +29,15 @@ class V1727RuntimePromotionTests(unittest.TestCase):
         cls.full_final=json.loads(FULL_FINAL_EVIDENCE.read_text(encoding="utf-8"))
 
     def test_v17_27_is_retained_as_historical_full_basis(self)->None:
-        self.assertGreaterEqual(self.runtime["schema_version"],14)
+        self.assertGreaterEqual(self.runtime["schema_version"],15)
         self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"],"V17.30")
         latest=self.runtime["full_basis_last_completed_final"]
-        self.assertEqual((latest["generation"],latest["run"]),("V17.29",31389854868))
-        previous28=self.runtime["previous_last_completed_full_basis_final"]
+        self.assertEqual((latest["generation"],latest["run"]),("V17.30",31518370789))
+        previous29=self.runtime["previous_last_completed_full_basis_final"]
+        self.assertEqual((previous29["generation"],previous29["run"]),("V17.29",31389854868))
+        previous28=self.runtime["previous_full_basis_final"]
         self.assertEqual((previous28["generation"],previous28["run"]),("V17.28",30997260730))
-        previous=self.runtime["previous_full_basis_final"]
+        previous=self.runtime["historical_full_basis_final"]
         self.assertEqual(previous["generation"],"V17.27")
         self.assertEqual(previous["run"],30806818977)
         self.assertEqual(previous["artifact_id"],8854139999)
@@ -46,8 +48,8 @@ class V1727RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(previous["verdict"],"FAIL_CLOSED")
         self.assertTrue(previous["retained"])
         nxt=self.runtime["next_full_basis_required"]
-        self.assertEqual(nxt["generation"],"V17.30")
-        self.assertEqual(nxt["status"],"REQUIRED_NOT_STARTED")
+        self.assertIsNone(nxt["generation"])
+        self.assertEqual(nxt["status"],"NONE_CURRENT_RUNTIME_ACCEPTED")
 
     def test_v17_27_full_final_evidence_remains_immutable(self)->None:
         expected_ids={"1200907104","1201708762","1202195310","1202774611","1203358200"}
@@ -80,12 +82,12 @@ class V1727RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(actual["balance_sheet_block"]["formal_runtime_generation"],"V17.27")
 
     def test_activation_manifest_retains_v17_27_historical_basis(self)->None:
-        self.assertGreaterEqual(self.activation["schema_version"],16)
+        self.assertGreaterEqual(self.activation["schema_version"],17)
         current=self.activation["accepted_production_runtime"]
         self.assertEqual(current["generation"],"V17.30")
-        self.assertTrue(current["full_basis_execution_pending"])
-        self.assertEqual(current["last_completed_full_basis_generation"],"V17.29")
-        self.assertEqual(current["last_completed_full_basis_run"],31389854868)
+        self.assertFalse(current["full_basis_execution_pending"])
+        self.assertEqual(current["last_completed_full_basis_generation"],"V17.30")
+        self.assertEqual(current["last_completed_full_basis_run"],31518370789)
         self.assertEqual(current["data_verdict"],"FAIL_CLOSED")
         retained=self.activation["accepted_v17_27_full_basis_evidence"]
         self.assertTrue(retained["historical_full_basis_authority_retained"])
@@ -98,10 +100,10 @@ class V1727RuntimePromotionTests(unittest.TestCase):
         boundaries=self.activation["hard_boundaries"]
         self.assertFalse(boundaries["v17_28_full_basis_execution_pending"])
         self.assertFalse(boundaries["v17_29_full_basis_execution_pending"])
-        self.assertTrue(boundaries["v17_30_full_basis_execution_pending"])
-        self.assertFalse(boundaries["v17_30_full_basis_execution_started"])
-        self.assertEqual(boundaries["remaining_document_errors_last_completed_basis"],1364)
-        self.assertEqual(boundaries["remaining_unresolved_ties_last_completed_basis"],1281)
+        self.assertFalse(boundaries["v17_30_full_basis_execution_pending"])
+        self.assertTrue(boundaries["v17_30_full_basis_execution_started"])
+        self.assertEqual(boundaries["remaining_document_errors_last_completed_basis"],1362)
+        self.assertEqual(boundaries["remaining_unresolved_ties_last_completed_basis"],1279)
         self.assertEqual(boundaries["stage3_status"],"NOT_READY")
         self.assertTrue(boundaries["stage4_alpha_live_locked"])
         self.assertFalse(boundaries["main_changed"])
