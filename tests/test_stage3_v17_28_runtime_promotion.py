@@ -36,12 +36,14 @@ class V1728RuntimePromotionTests(unittest.TestCase):
         cls.promotion=json.loads(PROMOTION.read_text(encoding="utf-8"))
         cls.full=json.loads(FULL_FINAL.read_text(encoding="utf-8"))
 
-    def test_v17_28_is_retained_as_previous_completed_full_basis(self) -> None:
-        self.assertGreaterEqual(self.runtime["schema_version"],14)
+    def test_v17_28_is_retained_as_historical_completed_full_basis(self) -> None:
+        self.assertGreaterEqual(self.runtime["schema_version"],15)
         self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"],"V17.30")
         latest=self.runtime["full_basis_last_completed_final"]
-        self.assertEqual((latest["generation"],latest["run"]),("V17.29",31389854868))
-        previous=self.runtime["previous_last_completed_full_basis_final"]
+        self.assertEqual((latest["generation"],latest["run"]),("V17.30",31518370789))
+        previous29=self.runtime["previous_last_completed_full_basis_final"]
+        self.assertEqual((previous29["generation"],previous29["run"]),("V17.29",31389854868))
+        previous=self.runtime["previous_full_basis_final"]
         self.assertEqual(previous["generation"],"V17.28")
         self.assertEqual(previous["run"],30997260730)
         self.assertEqual(previous["artifact_id"],8927455692)
@@ -51,8 +53,8 @@ class V1728RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(previous["verdict"],"FAIL_CLOSED")
         self.assertTrue(previous["retained"])
         nxt=self.runtime["next_full_basis_required"]
-        self.assertEqual(nxt["generation"],"V17.30")
-        self.assertEqual(nxt["status"],"REQUIRED_NOT_STARTED")
+        self.assertIsNone(nxt["generation"])
+        self.assertEqual(nxt["status"],"NONE_CURRENT_RUNTIME_ACCEPTED")
 
     def test_historical_v17_28_runtime_identity_is_exact(self) -> None:
         historical=self.activation["accepted_v17_28_runtime_wrapper"]
@@ -109,13 +111,13 @@ class V1728RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(found,set(parser.ALLOWED_CONCEPTS))
         self.assertEqual(actual["balance_sheet_block"]["formal_runtime_generation"],"V17.28")
 
-    def test_activation_keeps_v17_28_historical_under_v17_30_runtime(self) -> None:
-        self.assertGreaterEqual(self.activation["schema_version"],16)
+    def test_activation_keeps_v17_28_historical_under_v17_30_full_basis(self) -> None:
+        self.assertGreaterEqual(self.activation["schema_version"],17)
         current=self.activation["accepted_production_runtime"]
         self.assertEqual(current["generation"],"V17.30")
-        self.assertTrue(current["full_basis_execution_pending"])
-        self.assertEqual(current["last_completed_full_basis_generation"],"V17.29")
-        self.assertEqual(current["last_completed_full_basis_run"],31389854868)
+        self.assertFalse(current["full_basis_execution_pending"])
+        self.assertEqual(current["last_completed_full_basis_generation"],"V17.30")
+        self.assertEqual(current["last_completed_full_basis_run"],31518370789)
         self.assertEqual(current["data_verdict"],"FAIL_CLOSED")
         historical=self.activation["accepted_v17_28_full_basis_evidence"]
         self.assertTrue(historical["historical_full_basis_authority_retained"])
