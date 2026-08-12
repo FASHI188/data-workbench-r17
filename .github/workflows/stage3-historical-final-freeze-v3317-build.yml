@@ -8,6 +8,7 @@ on:
       - 'config/stage3_final_lock.json'
       - 'data/project_status.json'
       - 'scripts/finalize_stage3_historical_freeze_v3317.py'
+      - 'scripts/finalize_stage3_historical_freeze_v3317_r2.py'
       - '.github/workflows/stage3-historical-final-freeze-v3317-build.yml'
   workflow_dispatch:
 
@@ -63,7 +64,7 @@ jobs:
           set -euo pipefail
           if [ "${{ github.event_name }}" = pull_request ]; then GOV_PR='${{ github.event.pull_request.number }}'; else GOV_PR=133; fi
           rm -rf build/stage3-final-v3317
-          python scripts/finalize_stage3_historical_freeze_v3317.py \
+          python scripts/finalize_stage3_historical_freeze_v3317_r2.py \
             --authority governance/stage3_authority_map.json \
             --lock config/stage3_final_lock.json \
             --project data/project_status.json \
