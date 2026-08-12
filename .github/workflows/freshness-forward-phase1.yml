@@ -20,6 +20,9 @@ on:
 permissions:
   contents: read
 
+env:
+  PYTHONPATH: scripts
+
 concurrency:
   group: freshness-forward-phase1-${{ github.ref }}
   cancel-in-progress: true
@@ -37,14 +40,15 @@ jobs:
           python-version: '3.12.13'
       - name: Install verified dependencies
         run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pytest openpyxl
-      - name: Regression tests
-        run: pytest -q
+      - name: Prepare evidence directory
+        run: mkdir -p build/freshness-phase1
+      - name: Stage2 G1/G2 exact regression tests
+        run: pytest -q tests/test_fetch_exchange_master.py tests/test_fetch_historical_lifecycle.py tests/test_security_code_transitions.py
       - name: Fetch current official exchange master candidate
         id: g1fetch
         shell: bash
         run: |
           set +e
-          mkdir -p build/freshness-phase1
           python scripts/fetch_exchange_master.py --allow-derived-szse-board > build/freshness-phase1/g1_fetch_stdout.log 2> build/freshness-phase1/g1_fetch_stderr.log
           code=$?
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
@@ -101,6 +105,7 @@ jobs:
         if: always()
         shell: bash
         run: |
+          mkdir -p build/freshness-phase1
           python - <<'PY'
           import json
           from pathlib import Path
