@@ -1,0 +1,100 @@
+name: Stage3 Historical Final Freeze V3.3.17 Build
+
+on:
+  pull_request:
+    paths:
+      - 'governance/stage3_s3g4_final.json'
+      - 'governance/stage3_authority_map.json'
+      - 'config/stage3_final_lock.json'
+      - 'data/project_status.json'
+      - 'scripts/finalize_stage3_historical_freeze_v3317.py'
+      - '.github/workflows/stage3-historical-final-freeze-v3317-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  freeze-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Lock exact accepted Stage3 terminal component evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_artifact() {
+            run="$1"; head="$2"; id="$3"; digest="$4"
+            r=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run")
+            test "$(jq -r .status <<<"$r")" = completed
+            test "$(jq -r .conclusion <<<"$r")" = success
+            test "$(jq -r .head_sha <<<"$r")" = "$head"
+            a=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id")
+            test "$(jq -r .expired <<<"$a")" = false
+            test "$(jq -r .workflow_run.id <<<"$a")" = "$run"
+            test "$(jq -r .workflow_run.head_sha <<<"$a")" = "$head"
+            test "$(jq -r .digest <<<"$a")" = "$digest"
+          }
+          verify_artifact 31518370789 a18b81a9f38692533d0427f4a5b50767abf1a7c8 9112098872 sha256:706c6dd7252a64fd5c2956df6c594b5c91de29f02ca7d0553fa932017e8867ba
+          verify_artifact 31555404674 bf32938fea81b6133592f7f3ba2456897e65bd1d 9125809076 sha256:d0921e3069abb695de54de4d3ecec5a5394e831a820757d1b2e2fda02861722a
+          verify_artifact 31557811596 fe722f82f599489f4fcf86cefc47afe1c9235b64 9126607328 sha256:b87e822278f044f8fd6dd5a8cf7bb2e342890b27086951d377d73ed70c7bd4b3
+          src=$(gh api "repos/$GITHUB_REPOSITORY/pulls/131")
+          test "$(jq -r .state <<<"$src")" = closed
+          test "$(jq -r .merged <<<"$src")" = false
+          test "$(jq -r .head.sha <<<"$src")" = 8422f1ce24a19c80560ee9a626b14a7eb9b2a5be
+          acc=$(gh api "repos/$GITHUB_REPOSITORY/pulls/132")
+          test "$(jq -r .state <<<"$acc")" = closed
+          test "$(jq -r .merged <<<"$acc")" = false
+          test "$(jq -r .head.sha <<<"$acc")" = fe722f82f599489f4fcf86cefc47afe1c9235b64
+          main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main")
+          test "$(jq -r .object.sha <<<"$main")" = 2c32635e83ba9145d13b9a16b8a74f5750f02a94
+      - name: Build deterministic Stage3 historical final freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = pull_request ]; then GOV_PR='${{ github.event.pull_request.number }}'; else GOV_PR=133; fi
+          rm -rf build/stage3-final-v3317
+          python scripts/finalize_stage3_historical_freeze_v3317.py \
+            --authority governance/stage3_authority_map.json \
+            --lock config/stage3_final_lock.json \
+            --project data/project_status.json \
+            --stage2-manifest data/stage2_final/manifest.json \
+            --universe-policy config/trading_universe_policy.json \
+            --s3g1j-full governance/stage3_s3g1j_v17_30_full_final.json \
+            --s3g1j-retention governance/stage3_s3g1j_v17_30_residual_retention.json \
+            --s3g4-final governance/stage3_s3g4_final.json \
+            --governance-pr "$GOV_PR" \
+            --out build/stage3-final-v3317
+          python - <<'PY'
+          import json
+          p=json.load(open('build/stage3-final-v3317/manifest.json',encoding='utf-8'))
+          a=json.load(open('build/stage3-final-v3317/stage3_final_audit.json',encoding='utf-8'))
+          assert p['status']=='PASS_FROZEN_HISTORICAL' and a['pass'] is True and a['errors']==[]
+          assert p['stage3_dataset_fingerprint']==a['stage3_dataset_fingerprint']
+          assert p['s3g1j_retained_raw_residuals']['document_error_count']==1362
+          assert p['s3g1j_retained_raw_residuals']['unresolved_tie_count']==1279
+          assert p['s3g1j_retained_raw_residuals']['usable_as_numeric_truth'] is False
+          assert p['s3g4']['surprise_observations']==29139
+          assert p['freshness']['status']=='STALE' and p['freshness']['eligible_for_stage4'] is False
+          assert p['downstream']['stage4_model_training_allowed'] is False
+          assert p['downstream']['stage4_unlocked'] is False
+          assert p['downstream']['alpha_training_allowed'] is False
+          assert p['downstream']['live_signal_allowed'] is False
+          assert p['downstream']['user_hold_before_stage4'] is True
+          print('STAGE3_HISTORICAL_FINAL_FREEZE_V3317_BUILD_PASS',p['stage3_dataset_fingerprint'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-historical-final-freeze-v3317-build
+          path: build/stage3-final-v3317
+          retention-days: 90
+          compression-level: 9
