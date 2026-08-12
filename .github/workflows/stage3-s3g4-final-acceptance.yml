@@ -1,0 +1,181 @@
+name: Stage3 S3G4 Final Acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/finalize_stage3_s3g4_from_accepted_shards.py'
+      - '.github/workflows/stage3-s3g4-final-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  SOURCE_PR: '131'
+  SOURCE_HEAD: '8422f1ce24a19c80560ee9a626b14a7eb9b2a5be'
+  SOURCE_RUN: '31557145693'
+  SOURCE_FROZEN_INPUT_ID: '9126390056'
+  SOURCE_FROZEN_INPUT_DIGEST: 'sha256:ec899a5cb68f7b2e980ac2d780f188a8f6096b0e68d09c47f1759f044bc93bff'
+  FINANCIAL_RUN: '31518370789'
+  FINANCIAL_HEAD: 'a18b81a9f38692533d0427f4a5b50767abf1a7c8'
+  FINANCIAL_ARTIFACT_ID: '9112098872'
+  FINANCIAL_ARTIFACT_DIGEST: 'sha256:706c6dd7252a64fd5c2956df6c594b5c91de29f02ca7d0553fa932017e8867ba'
+  PARSER_BLOB: '4e22de08c5094b64374c03fe646c61d6ca26ad0b'
+
+jobs:
+  accept:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf
+      - name: Lock immutable source PR and prove 64 successful shards
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$SOURCE_PR")
+          test "$(jq -r .head.sha <<<"$pr")" = "$SOURCE_HEAD"
+          test "$(jq -r .merged <<<"$pr")" = false
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN")
+          test "$(jq -r .head_sha <<<"$run")" = "$SOURCE_HEAD"
+          test "$(jq -r .status <<<"$run")" = completed
+          test "$(jq -r .conclusion <<<"$run")" = failure
+          jobs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/jobs?per_page=100")
+          test "$(jq '.total_count' <<<"$jobs")" = 66
+          test "$(jq '[.jobs[] | select(.name=="prepare" and .conclusion=="success")] | length' <<<"$jobs")" = 1
+          test "$(jq '[.jobs[] | select((.name|startswith("shard (")) and .conclusion=="success")] | length' <<<"$jobs")" = 64
+          test "$(jq '[.jobs[] | select((.name|startswith("shard (")) and .conclusion!="success")] | length' <<<"$jobs")" = 0
+          test "$(jq '[.jobs[] | select(.name=="final" and .conclusion=="failure")] | length' <<<"$jobs")" = 1
+          python - <<'PY'
+          import json,os,re,subprocess
+          x=json.loads(subprocess.check_output(['gh','api',f"repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['SOURCE_RUN']}/jobs?per_page=100"]))
+          nums=[]
+          for j in x['jobs']:
+              m=re.fullmatch(r'shard \((\d+)\)',j['name'])
+              if m:
+                  assert j['conclusion']=='success',j
+                  nums.append(int(m.group(1)))
+          assert sorted(nums)==list(range(64)),nums
+          print('SOURCE_64_SHARD_JOB_SET_PASS')
+          PY
+      - name: Lock exact 64 shard artifacts and frozen input
+        shell: bash
+        run: |
+          set -euo pipefail
+          arts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts?per_page=100")
+          test "$(jq '.total_count' <<<"$arts")" = 65
+          test "$(jq '[.artifacts[] | select(.name=="stage3-s3g4-frozen-input")] | length' <<<"$arts")" = 1
+          test "$(jq -r '.artifacts[] | select(.name=="stage3-s3g4-frozen-input") | .id' <<<"$arts")" = "$SOURCE_FROZEN_INPUT_ID"
+          test "$(jq -r '.artifacts[] | select(.name=="stage3-s3g4-frozen-input") | .digest' <<<"$arts")" = "$SOURCE_FROZEN_INPUT_DIGEST"
+          test "$(jq '[.artifacts[] | select(.name|startswith("stage3-s3g4-forecast-shard-"))] | length' <<<"$arts")" = 64
+          test "$(jq '[.artifacts[] | select(.expired==true)] | length' <<<"$arts")" = 0
+          python - <<'PY'
+          import json,os,re,subprocess
+          x=json.loads(subprocess.check_output(['gh','api',f"repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['SOURCE_RUN']}/artifacts?per_page=100"]))
+          shards=[]; ids=[]; digests=[]
+          for a in x['artifacts']:
+              m=re.fullmatch(r'stage3-s3g4-forecast-shard-(\d+)',a['name'])
+              if not m: continue
+              assert a['expired'] is False
+              assert a['workflow_run']['id']==int(os.environ['SOURCE_RUN'])
+              assert a['workflow_run']['head_sha']==os.environ['SOURCE_HEAD']
+              shards.append(int(m.group(1)));ids.append(a['id']);digests.append(a['digest'])
+          assert sorted(shards)==list(range(64)),shards
+          assert len(set(ids))==64 and len(set(digests))==64
+          print('SOURCE_64_SHARD_ARTIFACT_SET_PASS')
+          PY
+      - name: Download and verify frozen input
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_FROZEN_INPUT_ID/zip" > frozen.zip
+          test "sha256:$(sha256sum frozen.zip | awk '{print $1}')" = "$SOURCE_FROZEN_INPUT_DIGEST"
+          mkdir frozen && unzip -q frozen.zip -d frozen
+          python - <<'PY'
+          import json
+          p=json.load(open('frozen/stage3_s3g4_frozen_forecast_input.json',encoding='utf-8'))
+          assert p['pass'] is True and p['forecast_count']==51732 and p['shard_count']==64
+          assert p['announcement_ledger_sha256']=='0eb139572865628283f86c981990e59e076d5ef2a978a5967aace90d553e30dd'
+          assert p['source_policy']=='CNINFO_OFFICIAL_PDF_ONLY' and p['analyst_consensus_used'] is False
+          assert sorted(map(int,p['shard_population'].keys()))==list(range(64))
+          assert sum(p['shard_population'].values())==51732
+          print('FROZEN_S3G4_INPUT_PASS')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g4-forecast-shard-*
+          path: shards
+          merge-multiple: true
+          repository: FASHI188/data-workbench-r17
+          run-id: 31557145693
+          github-token: ${{ github.token }}
+      - name: Download and lock exact V17.30 actual authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          a=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$FINANCIAL_ARTIFACT_ID")
+          test "$(jq -r .expired <<<"$a")" = false
+          test "$(jq -r .workflow_run.id <<<"$a")" = "$FINANCIAL_RUN"
+          test "$(jq -r .workflow_run.head_sha <<<"$a")" = "$FINANCIAL_HEAD"
+          test "$(jq -r .digest <<<"$a")" = "$FINANCIAL_ARTIFACT_DIGEST"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$FINANCIAL_ARTIFACT_ID/zip" > financial.zip
+          test "sha256:$(sha256sum financial.zip | awk '{print $1}')" = "$FINANCIAL_ARTIFACT_DIGEST"
+          mkdir financial && unzip -q financial.zip -d financial
+          test -f financial/stage3_financial_raw_values.csv.gz
+          test -f financial/stage3_financial_documents.csv.gz
+      - name: Finalize S3G4 with exact fail-closed PIT exclusions
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf build/s3g4-final-acceptance
+          python scripts/finalize_stage3_s3g4_from_accepted_shards.py \
+            --shards shards \
+            --financial-values financial/stage3_financial_raw_values.csv.gz \
+            --financial-documents financial/stage3_financial_documents.csv.gz \
+            --out build/s3g4-final-acceptance
+      - name: Enforce exact S3G4 final contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p=json.load(open('build/s3g4-final-acceptance/stage3_earnings_surprise_audit.json',encoding='utf-8'))
+          assert p['pass'] is True and p['errors']==[]
+          assert p['source_shard_run_id']==31557145693
+          assert p['source_shard_head_sha']=='8422f1ce24a19c80560ee9a626b14a7eb9b2a5be'
+          assert p['shard_count']==64 and p['forecast_population']==51732
+          assert p['source_pdf_fetch_completeness']==1.0
+          assert p['financial_parent_net_profit_observations_total']==118505
+          assert p['financial_actuals_excluded_missing_formal_pit_identity']==4
+          assert p['financial_actual_observations_eligible']==118501
+          ids={x['announcement_id'] for x in p['financial_actual_pit_exclusions']}
+          assert ids=={'1207046114','1208263921','1220457006','1221055839'}
+          assert p['surprise_observations']>0
+          assert p['identity_match_mode']=='EXACT_ISSUER_ORG_ID_AND_ECONOMIC_DATE'
+          assert p['expectation_is_strictly_prior'] is True
+          assert p['expectation_source']=='OFFICIAL_COMPANY_EARNINGS_FORECAST_PDF'
+          assert p['actual_source']=='ORIGINAL_PERIODIC_FILING_PDF'
+          assert p['analyst_consensus_used'] is False
+          assert p['missing_actual_pit_policy']=='FAIL_CLOSED_EXCLUDE_FROM_S3G4; DO_NOT_INFER_AVAILABLE_AT_OR_EFFECTIVE_CODE'
+          assert p['stage4_unlocked'] is False and p['alpha_training_allowed'] is False and p['live_signal_allowed'] is False
+          assert len(p['shard_evidence'])==64
+          print('S3G4_FINAL_ACCEPTANCE_PASS')
+          PY
+          cd build/s3g4-final-acceptance
+          sha256sum stage3_earnings_forecast_parse_ledger.csv.gz stage3_earnings_surprise.csv.gz stage3_earnings_surprise_audit.json output_sha256.json | sort > final_output_sha256.txt
+          cat final_output_sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g4-earnings-surprise-final-acceptance
+          path: build/s3g4-final-acceptance
+          retention-days: 90
+          compression-level: 9
+          overwrite: true
