@@ -7,8 +7,8 @@ on:
       - 'governance/stage3_authority_map.json'
       - 'config/stage3_final_lock.json'
       - 'data/project_status.json'
-      - 'scripts/finalize_stage3_historical_freeze_v3317.py'
-      - 'scripts/finalize_stage3_historical_freeze_v3317_r2.py'
+      - 'data/stage3_final/manifest.json'
+      - 'data/stage3_final/stage3_final_audit.json'
       - '.github/workflows/stage3-historical-final-freeze-v3317-build.yml'
   workflow_dispatch:
 
@@ -58,29 +58,32 @@ jobs:
           test "$(jq -r .head.sha <<<"$acc")" = fe722f82f599489f4fcf86cefc47afe1c9235b64
           main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main")
           test "$(jq -r .object.sha <<<"$main")" = 2c32635e83ba9145d13b9a16b8a74f5750f02a94
-      - name: Build deterministic Stage3 historical final freeze
+      - name: Verify committed deterministic Stage3 historical final freeze
         shell: bash
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = pull_request ]; then GOV_PR='${{ github.event.pull_request.number }}'; else GOV_PR=133; fi
-          rm -rf build/stage3-final-v3317
-          python scripts/finalize_stage3_historical_freeze_v3317_r2.py \
-            --authority governance/stage3_authority_map.json \
-            --lock config/stage3_final_lock.json \
-            --project data/project_status.json \
-            --stage2-manifest data/stage2_final/manifest.json \
-            --universe-policy config/trading_universe_policy.json \
-            --s3g1j-full governance/stage3_s3g1j_v17_30_full_final.json \
-            --s3g1j-retention governance/stage3_s3g1j_v17_30_residual_retention.json \
-            --s3g4-final governance/stage3_s3g4_final.json \
-            --governance-pr "$GOV_PR" \
-            --out build/stage3-final-v3317
           python - <<'PY'
-          import json
-          p=json.load(open('build/stage3-final-v3317/manifest.json',encoding='utf-8'))
-          a=json.load(open('build/stage3-final-v3317/stage3_final_audit.json',encoding='utf-8'))
-          assert p['status']=='PASS_FROZEN_HISTORICAL' and a['pass'] is True and a['errors']==[]
-          assert p['stage3_dataset_fingerprint']==a['stage3_dataset_fingerprint']
+          import hashlib,json
+          from pathlib import Path
+          expected_hashes={
+            'data/stage3_final/manifest.json':'bd8bd3f40e6a76a049d660c1601c37b3d0773cf0dccb37c3aa45e84975cdeb26',
+            'data/stage3_final/stage3_final_audit.json':'60876913ed205e3a93e06cc83be5d0759efb56213ff70dc5cb50602ea1a1f441',
+            'governance/stage3_authority_map.json':'6a55c7a0d27a2665953414fae34e1b505c79fa75ee805c614226da69c8165fc7',
+            'config/stage3_final_lock.json':'a367ff7283df96064c68d343bd8ee2515ed1d6cb6fe2cf96b2402159d81c3385',
+            'data/project_status.json':'84a1e13bf0e72b145a2c5806941b15f85767bd0c4b1067eed6bf16d1ba05a582',
+          }
+          for path,want in expected_hashes.items():
+            got=hashlib.sha256(Path(path).read_bytes()).hexdigest()
+            assert got==want,(path,got,want)
+          p=json.load(open('data/stage3_final/manifest.json',encoding='utf-8'))
+          a=json.load(open('data/stage3_final/stage3_final_audit.json',encoding='utf-8'))
+          auth=json.load(open('governance/stage3_authority_map.json',encoding='utf-8'))
+          lock=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
+          project=json.load(open('data/project_status.json',encoding='utf-8'))
+          fp='36bfbe0ae703a923ce2575f111a8c68a64c89177c71eeee2cfd9e1ec47bf535f'
+          assert p['status']=='PASS_FROZEN_HISTORICAL'
+          assert p['stage3_dataset_fingerprint']==fp
+          assert a['pass'] is True and a['errors']==[] and a['stage3_dataset_fingerprint']==fp
           assert p['s3g1j_retained_raw_residuals']['document_error_count']==1362
           assert p['s3g1j_retained_raw_residuals']['unresolved_tie_count']==1279
           assert p['s3g1j_retained_raw_residuals']['usable_as_numeric_truth'] is False
@@ -91,21 +94,17 @@ jobs:
           assert p['downstream']['alpha_training_allowed'] is False
           assert p['downstream']['live_signal_allowed'] is False
           assert p['downstream']['user_hold_before_stage4'] is True
-          print('STAGE3_HISTORICAL_FINAL_FREEZE_V3317_BUILD_PASS',p['stage3_dataset_fingerprint'])
+          assert auth['status']=='STAGE3_HISTORICAL_FINAL_FREEZE_PASS'
+          assert auth['final_freeze']['stage3_dataset_fingerprint']==fp
+          assert lock['status']=='PASS_FROZEN_HISTORICAL'
+          assert lock['remaining_unlocked_gates']==[]
+          assert project['stage3']['status']=='PASS_FROZEN_HISTORICAL'
+          assert project['stage3']['historical_final_freeze']['stage3_dataset_fingerprint']==fp
+          assert project['reproducibility']['overall_pass'] is True
+          assert project['freshness']['status']=='STALE'
+          assert project['stage4_unlocked'] is False
+          assert project['alpha_training_allowed'] is False
+          assert project['live_signal_allowed'] is False
+          assert project['user_hold_before_stage4'] is True
+          print('STAGE3_HISTORICAL_FINAL_FREEZE_V3317_COMMITTED_EVIDENCE_PASS',fp)
           PY
-      - name: Emit deterministic central final-state projection
-        shell: bash
-        run: |
-          set -euo pipefail
-          for f in manifest.json stage3_final_audit.json stage3_authority_map.json stage3_final_lock.json project_status.json; do
-            echo "BEGIN_STAGE3_FINAL_FILE:$f"
-            base64 -w0 "build/stage3-final-v3317/$f"
-            echo
-            echo "END_STAGE3_FINAL_FILE:$f"
-          done
-      - uses: actions/upload-artifact@v4
-        with:
-          name: stage3-historical-final-freeze-v3317-build
-          path: build/stage3-final-v3317
-          retention-days: 90
-          compression-level: 9
