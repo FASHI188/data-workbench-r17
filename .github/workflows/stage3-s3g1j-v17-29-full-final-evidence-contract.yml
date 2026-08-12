@@ -51,14 +51,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pr=$(gh pr view "$ACCEPTANCE_PR" -R "$GITHUB_REPOSITORY" --json headRefOid,mergedAt,mergeCommit)
-          test "$(jq -r '.headRefOid' <<<"$pr")" = "$ACCEPTANCE_HEAD"
-          test -n "$(jq -r '.mergedAt // ""' <<<"$pr")"
-          test "$(jq -r '.mergeCommit.oid' <<<"$pr")" = "$ACCEPTANCE_MERGE"
-          source_pr=$(gh pr view "$SOURCE_PR" -R "$GITHUB_REPOSITORY" --json headRefOid,mergedAt,state)
-          test "$(jq -r '.headRefOid' <<<"$source_pr")" = "$SOURCE_HEAD"
-          test "$(jq -r '.state' <<<"$source_pr")" = CLOSED
-          test -z "$(jq -r '.mergedAt // ""' <<<"$source_pr")"
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$ACCEPTANCE_PR")
+          test "$(jq -r '.state' <<<"$pr")" = closed
+          test "$(jq -r '.merged' <<<"$pr")" = true
+          test "$(jq -r '.head.sha' <<<"$pr")" = "$ACCEPTANCE_HEAD"
+          test "$(jq -r '.merge_commit_sha' <<<"$pr")" = "$ACCEPTANCE_MERGE"
+          source_pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$SOURCE_PR")
+          test "$(jq -r '.state' <<<"$source_pr")" = closed
+          test "$(jq -r '.merged' <<<"$source_pr")" = false
+          test "$(jq -r '.head.sha' <<<"$source_pr")" = "$SOURCE_HEAD"
           run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ACCEPTANCE_RUN")
           test "$(jq -r '.status' <<<"$run")" = completed
           test "$(jq -r '.conclusion' <<<"$run")" = success
@@ -75,6 +76,7 @@ jobs:
           test "$(jq -r '.head_sha' <<<"$source")" = "$SOURCE_HEAD"
           shard_artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts?per_page=100")
           test "$(jq '[.artifacts[] | select(.name|startswith("stage3-s3g1j-v17-29-full-final-shard-"))] | length' <<<"$shard_artifacts")" = 64
+          test "$(jq '[.artifacts[] | select(.name|startswith("stage3-s3g1j-v17-29-full-final-shard-")) | select(.expired==true)] | length' <<<"$shard_artifacts")" = 0
       - uses: actions/download-artifact@v4
         with:
           name: stage3-s3g1j-v17-29-full-final
