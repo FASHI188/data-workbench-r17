@@ -93,6 +93,16 @@ jobs:
           assert p['downstream']['user_hold_before_stage4'] is True
           print('STAGE3_HISTORICAL_FINAL_FREEZE_V3317_BUILD_PASS',p['stage3_dataset_fingerprint'])
           PY
+      - name: Emit deterministic central final-state projection
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in manifest.json stage3_final_audit.json stage3_authority_map.json stage3_final_lock.json project_status.json; do
+            echo "BEGIN_STAGE3_FINAL_FILE:$f"
+            base64 -w0 "build/stage3-final-v3317/$f"
+            echo
+            echo "END_STAGE3_FINAL_FILE:$f"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: stage3-historical-final-freeze-v3317-build
