@@ -151,10 +151,12 @@ class V1729RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(result29["document_error_count"], 1364)
         self.assertEqual(result29["unresolved_tie_count"], 1281)
         self.assertEqual(result29["final_data_verdict"], "FAIL_CLOSED")
-        self.assertEqual(self.project["stage3"]["status"], "NOT_READY")
+        self.assertEqual(self.project["stage3"]["status"], "PASS_FROZEN_HISTORICAL")
+        self.assertEqual(self.project["freshness"]["status"], "STALE")
         self.assertFalse(self.project["stage4_unlocked"])
         self.assertFalse(self.project["alpha_training_allowed"])
         self.assertFalse(self.project["live_signal_allowed"])
+        self.assertTrue(self.project["user_hold_before_stage4"])
 
 
 if __name__ == "__main__":

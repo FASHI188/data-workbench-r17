@@ -6,8 +6,10 @@ on:
   pull_request:
     paths:
       - 'governance/stage3_nonfinancial_runtime_manifest.json'
+      - 'governance/stage3_s3g4_final.json'
       - 'config/stage3_*.json'
       - 'config/trading_universe_policy.json'
+      - 'data/project_status.json'
       - 'scripts/audit_stage3_feature_contract.py'
       - 'scripts/build_stage3_filing_ledger.py'
       - 'scripts/finalize_stage3_filing_ledger*.py'
@@ -54,7 +56,7 @@ jobs:
             -c requirements/constraints-verified.txt \
             requests beautifulsoup4 pymupdf pytest
           python -m pip check
-      - name: Verify nonfinancial runtime provenance and lock state
+      - name: Verify nonfinancial runtime provenance and component-gate-complete lock state
         run: |
           python - <<'PY'
           import json
@@ -63,8 +65,8 @@ jobs:
           project=json.load(open('data/project_status.json',encoding='utf-8'))
           assert m['file_count']==31, m
           assert m['hard_invariants']['stage3_status']=='NOT_READY'
-          assert lock['status']=='NOT_READY'
-          assert set(lock['remaining_unlocked_gates'])=={'S3G4_EARNINGS_SURPRISE'}
+          assert lock['status'] in {'NOT_READY','PASS_FROZEN_HISTORICAL'}
+          assert lock['remaining_unlocked_gates']==[]
           g1j=lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']
           assert g1j['run_id']==31518370789
           assert g1j['document_error_count']==1362 and g1j['unresolved_tie_count']==1279
@@ -80,11 +82,19 @@ jobs:
           assert gm['run_id']==g2['run_id']
           assert gm['ledger_sha256']==g2['ledger_sha256']
           assert gm['deterministic_replay_same_sha'] is True
-          assert project['stage3']['pending_final_gates']==['S3G4_EARNINGS_SURPRISE']
+          g4=lock['required_gates']['S3G4_EARNINGS_SURPRISE']
+          assert g4['run_id']==31557811596 and g4['artifact_id']==9126607328
+          assert g4['forecast_population']==51732 and g4['surprise_observations']==29139
+          assert g4['expectation_is_strictly_prior'] is True and g4['analyst_consensus_used'] is False
+          assert g4['final_gate_pass'] is True
+          assert project['stage3']['pending_final_gates']==[]
+          assert project['stage3']['s3g4']['accepted_run_id']==31557811596
+          assert project['stage3']['s3g4']['final_gate_pass'] is True
+          assert project['freshness']['status']=='STALE'
           assert project['stage4_unlocked'] is False
           assert project['alpha_training_allowed'] is False
           assert project['live_signal_allowed'] is False
-          print('STAGE3_CORE_LOCK_PASS')
+          print('STAGE3_CORE_COMPONENT_GATES_COMPLETE_LOCK_PASS')
           PY
       - name: Import clean Stage3 component closure
         run: |

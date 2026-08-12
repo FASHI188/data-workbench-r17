@@ -9,6 +9,7 @@ on:
       - 'governance/stage3_s3g1j_runtime_manifest.json'
       - 'governance/stage3_workflow_activation_manifest.json'
       - 'governance/stage3_authority_map.json'
+      - 'governance/stage3_s3g4_final.json'
       - 'data/project_status.json'
       - 'config/stage3_final_lock.json'
       - 'scripts/audit_stage3_authority_map.py'
@@ -50,14 +51,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pr=$(gh pr view "$ACCEPTANCE_PR" -R "$GITHUB_REPOSITORY" --json headRefOid,mergedAt,mergeCommit)
-          test "$(jq -r '.headRefOid' <<<"$pr")" = "$ACCEPTANCE_HEAD"
-          test -n "$(jq -r '.mergedAt // ""' <<<"$pr")"
-          test "$(jq -r '.mergeCommit.oid' <<<"$pr")" = "$ACCEPTANCE_MERGE"
-          source_pr=$(gh pr view "$SOURCE_PR" -R "$GITHUB_REPOSITORY" --json headRefOid,mergedAt,state)
-          test "$(jq -r '.headRefOid' <<<"$source_pr")" = "$SOURCE_HEAD"
-          test "$(jq -r '.state' <<<"$source_pr")" = CLOSED
-          test -z "$(jq -r '.mergedAt // ""' <<<"$source_pr")"
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$ACCEPTANCE_PR")
+          test "$(jq -r '.state' <<<"$pr")" = closed
+          test "$(jq -r '.merged' <<<"$pr")" = true
+          test "$(jq -r '.head.sha' <<<"$pr")" = "$ACCEPTANCE_HEAD"
+          test "$(jq -r '.merge_commit_sha' <<<"$pr")" = "$ACCEPTANCE_MERGE"
+          source_pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$SOURCE_PR")
+          test "$(jq -r '.state' <<<"$source_pr")" = closed
+          test "$(jq -r '.merged' <<<"$source_pr")" = false
+          test "$(jq -r '.head.sha' <<<"$source_pr")" = "$SOURCE_HEAD"
           run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ACCEPTANCE_RUN")
           test "$(jq -r '.status' <<<"$run")" = completed
           test "$(jq -r '.conclusion' <<<"$run")" = success
@@ -74,6 +76,7 @@ jobs:
           test "$(jq -r '.head_sha' <<<"$source")" = "$SOURCE_HEAD"
           shard_artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts?per_page=100")
           test "$(jq '[.artifacts[] | select(.name|startswith("stage3-s3g1j-v17-29-full-final-shard-"))] | length' <<<"$shard_artifacts")" = 64
+          test "$(jq '[.artifacts[] | select(.name|startswith("stage3-s3g1j-v17-29-full-final-shard-")) | select(.expired==true)] | length' <<<"$shard_artifacts")" = 0
       - uses: actions/download-artifact@v4
         with:
           name: stage3-s3g1j-v17-29-full-final
@@ -131,7 +134,7 @@ jobs:
             tests.test_stage3_v17_26_full_final_evidence \
             -v
           python scripts/audit_stage3_authority_map.py
-      - name: Verify V17.29 stays historical under V17.30 formal retained-residual closure
+      - name: Verify V17.29 stays historical under S3G4-complete V17.30 authority
         shell: bash
         run: |
           set -euo pipefail
@@ -166,8 +169,12 @@ jobs:
           lg=lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']
           assert lg['run_id']==31518370789 and lg['raw_data_verdict']=='FAIL_CLOSED'
           assert lg['residual_retention_run_id']==31555404674 and lg['final_gate_pass'] is True
-          assert lock['remaining_unlocked_gates']==['S3G4_EARNINGS_SURPRISE']
-          assert project['stage3']['status']=='NOT_READY' and project['stage3']['pending_final_gates']==['S3G4_EARNINGS_SURPRISE']
+          g4=lock['required_gates']['S3G4_EARNINGS_SURPRISE']
+          assert g4['run_id']==31557811596 and g4['artifact_id']==9126607328 and g4['final_gate_pass'] is True
+          assert lock['remaining_unlocked_gates']==[]
+          assert project['stage3']['status'] in {'NOT_READY','PASS_FROZEN_HISTORICAL'} and project['stage3']['pending_final_gates']==[]
+          assert project['stage3']['s3g4']['accepted_run_id']==31557811596 and project['stage3']['s3g4']['final_gate_pass'] is True
+          assert project['freshness']['status']=='STALE'
           assert project['stage4_unlocked'] is False and project['alpha_training_allowed'] is False and project['live_signal_allowed'] is False
-          print('S3G1J_V17_29_HISTORICAL_UNDER_V17_30_FORMAL_RETENTION_PASS')
+          print('S3G1J_V17_29_HISTORICAL_UNDER_S3G4_COMPLETE_V17_30_AUTHORITY_PASS')
           PY

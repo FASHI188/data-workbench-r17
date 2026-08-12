@@ -10,6 +10,7 @@ on:
       - 'governance/stage3_s3g1j_runtime_manifest.json'
       - 'governance/stage3_workflow_activation_manifest.json'
       - 'governance/stage3_authority_map.json'
+      - 'governance/stage3_s3g4_final.json'
       - 'data/project_status.json'
       - 'config/stage3_final_lock.json'
       - 'scripts/audit_stage3_authority_map.py'
@@ -121,7 +122,7 @@ jobs:
             tests.test_stage3_v17_26_full_final_evidence \
             -v
           python scripts/audit_stage3_authority_map.py
-      - name: Verify V17.28 remains historical under V17.30 formal retained-residual closure
+      - name: Verify V17.28 remains historical under S3G4-complete V17.30 authority
         shell: bash
         run: |
           set -euo pipefail
@@ -150,13 +151,17 @@ jobs:
           assert pg['formal_runtime_generation']=='V17.30' and pg['last_completed_full_basis_generation']=='V17.30'
           assert pg['accepted_run_id']==31518370789 and pg['raw_data_verdict']=='FAIL_CLOSED'
           assert pg['residual_retention_run_id']==31555404674 and pg['final_gate_pass'] is True
-          assert project['stage3']['status']=='NOT_READY' and project['stage3']['pending_final_gates']==['S3G4_EARNINGS_SURPRISE']
-          assert lock['status']=='NOT_READY'
+          assert project['stage3']['status'] in {'NOT_READY','PASS_FROZEN_HISTORICAL'} and project['stage3']['pending_final_gates']==[]
+          assert lock['status'] in {'NOT_READY','PASS_FROZEN_HISTORICAL'}
           lg=lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']
           assert lg['formal_runtime_generation']=='V17.30' and lg['last_completed_full_basis_generation']=='V17.30'
           assert lg['run_id']==31518370789 and lg['raw_data_verdict']=='FAIL_CLOSED'
           assert lg['residual_retention_run_id']==31555404674 and lg['final_gate_pass'] is True
-          assert lock['remaining_unlocked_gates']==['S3G4_EARNINGS_SURPRISE']
+          g4=lock['required_gates']['S3G4_EARNINGS_SURPRISE']
+          assert g4['run_id']==31557811596 and g4['artifact_id']==9126607328 and g4['final_gate_pass'] is True
+          assert lock['remaining_unlocked_gates']==[]
+          assert project['stage3']['s3g4']['accepted_run_id']==31557811596 and project['stage3']['s3g4']['final_gate_pass'] is True
+          assert project['freshness']['status']=='STALE'
           assert project['stage4_unlocked'] is False and project['alpha_training_allowed'] is False and project['live_signal_allowed'] is False
-          print('S3G1J_V17_28_RETAINED_UNDER_V17_30_FORMAL_RETENTION_PASS')
+          print('S3G1J_V17_28_RETAINED_UNDER_S3G4_COMPLETE_V17_30_AUTHORITY_PASS')
           PY

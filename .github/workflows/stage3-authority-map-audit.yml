@@ -1,5 +1,5 @@
 name: Stage3 Authority Map Audit
-# Runtime authority, raw full-basis authority, retained residual closure, and immutable history are verified separately.
+# Runtime authority, raw full-basis authority, retained residual closure, S3G4 final evidence, and immutable history are verified separately.
 
 on:
   workflow_dispatch:
@@ -15,6 +15,7 @@ on:
       - 'governance/stage3_s3g1j_v17_29_full_final.json'
       - 'governance/stage3_s3g1j_v17_28_full_final.json'
       - 'governance/stage3_s3g1j_v17_27_full_final.json'
+      - 'governance/stage3_s3g4_final.json'
       - 'config/stage3_final_lock.json'
       - 'data/project_status.json'
       - 'scripts/audit_stage3_authority_map.py'
@@ -37,7 +38,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12.13'
-      - name: Validate split authority and retained-residual state
+      - name: Validate current authority, S3G4 completion and retained-residual state
         run: python scripts/audit_stage3_authority_map.py
       - name: Verify accepted V17.30 wrapper PR and artifact
         shell: bash
@@ -86,6 +87,26 @@ jobs:
           test "$(jq -r '.name' <<<"$artifact")" = stage3-s3g1j-v17-30-residual-retention-closure
           test "$(jq -r '.digest' <<<"$artifact")" = sha256:d0921e3069abb695de54de4d3ecec5a5394e831a820757d1b2e2fda02861722a
           test "$(jq -r '.expired' <<<"$artifact")" = false
+      - name: Verify accepted S3G4 source and acceptance evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=$(gh api "repos/$GITHUB_REPOSITORY/pulls/131")
+          test "$(jq -r '.state' <<<"$src")" = closed
+          test "$(jq -r '.merged' <<<"$src")" = false
+          test "$(jq -r '.head.sha' <<<"$src")" = 8422f1ce24a19c80560ee9a626b14a7eb9b2a5be
+          jobs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/31557145693/jobs?per_page=100")
+          test "$(jq '[.jobs[] | select((.name|startswith("shard (")) and .conclusion=="success")] | length' <<<"$jobs")" = 64
+          acc=$(gh api "repos/$GITHUB_REPOSITORY/pulls/132")
+          test "$(jq -r '.state' <<<"$acc")" = closed
+          test "$(jq -r '.merged' <<<"$acc")" = false
+          test "$(jq -r '.head.sha' <<<"$acc")" = fe722f82f599489f4fcf86cefc47afe1c9235b64
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/31557811596")
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          artifact=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/9126607328")
+          test "$(jq -r '.name' <<<"$artifact")" = stage3-s3g4-earnings-surprise-final-acceptance
+          test "$(jq -r '.digest' <<<"$artifact")" = sha256:b87e822278f044f8fd6dd5a8cf7bb2e342890b27086951d377d73ed70c7bd4b3
+          test "$(jq -r '.expired' <<<"$artifact")" = false
       - name: Verify retained V17.29 V17.28 V17.27 evidence
         shell: bash
         run: |
@@ -102,7 +123,7 @@ jobs:
           verify_artifact 31389854868 9063271903 stage3-s3g1j-v17-29-full-final sha256:71a4daa6c8372f3d64080b5fa5b787914292d889da7051de699eb6610189c726
           verify_artifact 30997260730 8927455692 stage3-s3g1j-v17-28-full-final sha256:82375169faada969ceafd4356ab0a2707aa14592d5db090c5d3910863d571c8b
           verify_artifact 30806818977 8854139999 stage3-s3g1j-v17-27-full-final sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721
-      - name: Assert only S3G4 remains and downstream stays locked
+      - name: Assert all component gates are complete and downstream stays locked
         run: |
           python - <<'PY'
           import json
@@ -112,13 +133,18 @@ jobs:
           latest=runtime['full_basis_last_completed_final']
           assert latest['generation']=='V17.30' and latest['run']==31518370789 and latest['artifact_id']==9112098872
           assert latest['numeric_observations']==1051826 and latest['document_error_count']==1362 and latest['unresolved_tie_count']==1279 and latest['verdict']=='FAIL_CLOSED'
-          assert lock['status']=='NOT_READY'
+          assert lock['status'] in {'NOT_READY','PASS_FROZEN_HISTORICAL'}
           g=lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']
           assert g['raw_data_verdict']=='FAIL_CLOSED' and g['retained_document_error_count']==1362 and g['retained_unresolved_tie_count']==1279
           assert g['residual_retention_gate_pass'] is True and g['final_gate_pass'] is True
-          assert set(lock['remaining_unlocked_gates'])=={'S3G4_EARNINGS_SURPRISE'}
-          assert project['stage3']['status']=='NOT_READY'
-          assert project['stage3']['pending_final_gates']==['S3G4_EARNINGS_SURPRISE']
+          g4=lock['required_gates']['S3G4_EARNINGS_SURPRISE']
+          assert g4['run_id']==31557811596 and g4['artifact_id']==9126607328 and g4['final_gate_pass'] is True
+          assert lock['remaining_unlocked_gates']==[]
+          assert project['stage3']['status'] in {'NOT_READY','PASS_FROZEN_HISTORICAL'}
+          assert project['stage3']['pending_final_gates']==[]
+          assert project['stage3']['s3g4']['accepted_run_id']==31557811596
+          assert project['stage3']['s3g4']['final_gate_pass'] is True
+          assert project['freshness']['status']=='STALE'
           assert project['stage4_unlocked'] is False and project['alpha_training_allowed'] is False and project['live_signal_allowed'] is False
-          print('STAGE3_LOCKED_S3G1J_RETAINED_ONLY_S3G4_PENDING')
+          print('STAGE3_ALL_COMPONENT_GATES_COMPLETE_DOWNSTREAM_LOCKED')
           PY

@@ -65,6 +65,15 @@ class V1730AuthorityStateTest(unittest.TestCase):
         self.assertTrue(g1j["residual_retention_gate_pass"])
         self.assertTrue(g1j["final_gate"])
 
+        g4 = authority["authoritative_components"]["S3G4_EARNINGS_SURPRISE"]
+        self.assertEqual(g4["accepted_run_id"], 31557811596)
+        self.assertEqual(g4["accepted_artifact_id"], 9126607328)
+        self.assertEqual(g4["forecast_population"], 51732)
+        self.assertEqual(g4["surprise_observations"], 29139)
+        self.assertTrue(g4["expectation_is_strictly_prior"])
+        self.assertFalse(g4["analyst_consensus_used"])
+        self.assertTrue(g4["final_gate"])
+
         lock_g1j = lock["required_gates"]["S3G1J_FINANCIAL_RAW_VALUES"]
         self.assertEqual(lock_g1j["run_id"], 31518370789)
         self.assertEqual(lock_g1j["artifact_id"], 9112098872)
@@ -74,7 +83,11 @@ class V1730AuthorityStateTest(unittest.TestCase):
         self.assertEqual(lock_g1j["residual_retention_run_id"], 31555404674)
         self.assertTrue(lock_g1j["residual_retention_gate_pass"])
         self.assertTrue(lock_g1j["final_gate_pass"])
-        self.assertEqual(lock["remaining_unlocked_gates"], ["S3G4_EARNINGS_SURPRISE"])
+        self.assertEqual(lock["remaining_unlocked_gates"], [])
+        lock_g4 = lock["required_gates"]["S3G4_EARNINGS_SURPRISE"]
+        self.assertEqual(lock_g4["run_id"], 31557811596)
+        self.assertEqual(lock_g4["artifact_id"], 9126607328)
+        self.assertTrue(lock_g4["final_gate_pass"])
 
         pg1j = project["stage3"]["s3g1j"]
         self.assertEqual(pg1j["accepted_run_id"], 31518370789)
@@ -85,11 +98,16 @@ class V1730AuthorityStateTest(unittest.TestCase):
         self.assertEqual(pg1j["residual_retention_run_id"], 31555404674)
         self.assertTrue(pg1j["residual_retention_gate_pass"])
         self.assertTrue(pg1j["final_gate_pass"])
-        self.assertEqual(project["stage3"]["status"], "NOT_READY")
-        self.assertEqual(project["stage3"]["pending_final_gates"], ["S3G4_EARNINGS_SURPRISE"])
+        pg4 = project["stage3"]["s3g4"]
+        self.assertEqual(pg4["accepted_run_id"], 31557811596)
+        self.assertEqual(pg4["accepted_artifact_id"], 9126607328)
+        self.assertTrue(pg4["final_gate_pass"])
+        self.assertIn(project["stage3"]["status"], {"NOT_READY", "PASS_FROZEN_HISTORICAL"})
+        self.assertEqual(project["stage3"]["pending_final_gates"], [])
         self.assertFalse(project["stage4_unlocked"])
         self.assertFalse(project["alpha_training_allowed"])
         self.assertFalse(project["live_signal_allowed"])
+        self.assertEqual(project["freshness"]["status"], "STALE")
 
 
 if __name__ == "__main__":

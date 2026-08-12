@@ -98,7 +98,7 @@ jobs:
           PY
       - name: Verify governance evidence and root-cause boundary
         run: python -m unittest tests.test_stage3_v17_29_residual_classification_evidence -v
-      - name: Verify diagnostic remains non-authoritative under accepted V17.30 full-basis authority
+      - name: Verify diagnostic remains historical and non-authoritative after Stage3 freeze
         run: |
           python - <<'PY'
           import json
@@ -120,7 +120,9 @@ jobs:
           assert prev['generation']=='V17.29' and prev['run']==31389854868
           assert prev['numeric_observations']==1051820 and prev['document_error_count']==1364 and prev['unresolved_tie_count']==1281
           assert r['next_full_basis_required']['status']=='NONE_CURRENT_RUNTIME_ACCEPTED'
-          assert p['stage3']['status']=='NOT_READY'
+          assert p['stage3']['status'] in {'NOT_READY','PASS_FROZEN_HISTORICAL'}
+          assert p['stage3']['pending_final_gates']==[]
+          assert p['freshness']['status']=='STALE'
           assert p['stage4_unlocked'] is False
           assert p['alpha_training_allowed'] is False
           assert p['live_signal_allowed'] is False
