@@ -1,0 +1,90 @@
+name: Stage3 S3G1J V17.30 Residual Retention Closure
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/classify_stage3_s3g1j_v17_30_residual_retention.py'
+      - '.github/workflows/stage3-s3g1j-v17-30-residual-retention.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  SOURCE_RUN: '31518370789'
+  SOURCE_HEAD: 'a18b81a9f38692533d0427f4a5b50767abf1a7c8'
+  SOURCE_ARTIFACT_ID: '9112098872'
+  SOURCE_ARTIFACT_NAME: 'stage3-s3g1j-v17-30-full-final-preacceptance'
+  SOURCE_ARTIFACT_DIGEST: 'sha256:706c6dd7252a64fd5c2956df6c594b5c91de29f02ca7d0553fa932017e8867ba'
+
+jobs:
+  classify-retention:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Lock accepted V17.30 source authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN")"
+          test "$(jq -r .head_sha <<<"$run_json")" = "$SOURCE_HEAD"
+          test "$(jq -r .status <<<"$run_json")" = completed
+          test "$(jq -r .conclusion <<<"$run_json")" = success
+          artifact_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_ARTIFACT_ID")"
+          test "$(jq -r .name <<<"$artifact_json")" = "$SOURCE_ARTIFACT_NAME"
+          test "$(jq -r .expired <<<"$artifact_json")" = false
+          test "$(jq -r .workflow_run.id <<<"$artifact_json")" = "$SOURCE_RUN"
+          test "$(jq -r .workflow_run.head_sha <<<"$artifact_json")" = "$SOURCE_HEAD"
+          test "$(jq -r .digest <<<"$artifact_json")" = "$SOURCE_ARTIFACT_DIGEST"
+      - name: Download and hash accepted full-final artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p source
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_ARTIFACT_ID/zip" > source.zip
+          test "sha256:$(sha256sum source.zip | awk '{print $1}')" = "$SOURCE_ARTIFACT_DIGEST"
+          unzip -q source.zip -d source
+          test -f source/stage3_financial_documents.csv.gz
+          test -f source/stage3_financial_raw_values.csv.gz
+          test -f source/stage3_s3g1j_v17_30_preacceptance.json
+      - name: Reclassify every V17.30 residual and enforce formal retention contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf build/v17_30_residual_retention
+          python scripts/classify_stage3_s3g1j_v17_30_residual_retention.py \
+            --documents source/stage3_financial_documents.csv.gz \
+            --out build/v17_30_residual_retention
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('build/v17_30_residual_retention/stage3_s3g1j_v17_30_residual_retention_audit.json')
+          x=json.loads(p.read_text(encoding='utf-8'))
+          assert x['pass'] is True and x['residual_retention_final_gate_pass'] is True
+          assert x['residual_document_count']==1362 and x['unresolved_tie_count']==1279
+          assert x['raw_data_verdict']=='FAIL_CLOSED_WITH_FORMALLY_RETAINED_RESIDUALS'
+          d=x['downstream_contract']
+          assert d['retained_rows_usable_as_numeric_truth'] is False
+          assert d['retained_rows_must_be_excluded_from_numeric_feature_values'] is True
+          assert all(d[k] is False for k in ['E_equals_A_minus_L_inference_allowed','OCR_allowed','fuzzy_alias_allowed','issuer_gate_relaxation_allowed','PIT_relaxation_allowed','accounting_tolerance_relaxation_allowed'])
+          PY
+      - name: Freeze deterministic identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd build/v17_30_residual_retention
+          sha256sum stage3_s3g1j_v17_30_residual_retention.csv.gz stage3_s3g1j_v17_30_residual_retention_audit.json | sort > output_sha256.txt
+          cat output_sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-30-residual-retention-closure
+          path: build/v17_30_residual_retention
+          retention-days: 90
+          compression-level: 9
