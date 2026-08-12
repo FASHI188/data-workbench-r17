@@ -52,9 +52,9 @@ def main() -> int:
     stage2 = json.loads(STAGE2_FINAL.read_text(encoding="utf-8"))
 
     try:
-        coverage_end = date.fromisoformat(str(stage2.get("coverage", {}).get("end") or stage2.get("coverage_end") or ""))
+        coverage_end = date.fromisoformat(str((stage2.get("fingerprint_basis") or {}).get("coverage_end") or ""))
     except Exception:
-        errors.append("invalid frozen Stage2 coverage_end")
+        errors.append("invalid frozen Stage2 fingerprint_basis.coverage_end")
         coverage_end = date.min
     try:
         as_of = date.fromisoformat(str((current_manifest.get("szse") or {}).get("as_of") or ""))
