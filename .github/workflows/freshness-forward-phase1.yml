@@ -1,0 +1,148 @@
+name: Freshness Forward Phase1 - Master Lifecycle
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/freshness-v2-execution-20260812
+    paths:
+      - '.github/workflows/freshness-forward-phase1.yml'
+      - 'scripts/fetch_exchange_master.py'
+      - 'scripts/reconcile_current_master.py'
+      - 'scripts/fetch_historical_lifecycle.py'
+      - 'scripts/build_security_history.py'
+      - 'scripts/audit_security_history.py'
+      - 'scripts/audit_stage2.py'
+      - 'config/stage2_hard_gates.json'
+      - 'requirements/constraints-verified.txt'
+      - '.python-version'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: freshness-forward-phase1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  master-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact execution branch
+        uses: actions/checkout@v4
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified dependencies
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pytest openpyxl
+      - name: Regression tests
+        run: pytest -q
+      - name: Fetch current official exchange master candidate
+        id: g1fetch
+        shell: bash
+        run: |
+          set +e
+          mkdir -p build/freshness-phase1
+          python scripts/fetch_exchange_master.py --allow-derived-szse-board > build/freshness-phase1/g1_fetch_stdout.log 2> build/freshness-phase1/g1_fetch_stderr.log
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Reconcile current master
+        id: g1reconcile
+        if: steps.g1fetch.outputs.exit_code == '0'
+        shell: bash
+        run: |
+          set +e
+          python scripts/reconcile_current_master.py > build/freshness-phase1/g1_reconcile_stdout.log 2> build/freshness-phase1/g1_reconcile_stderr.log
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Audit current master fail-closed
+        id: g1audit
+        shell: bash
+        run: |
+          set +e
+          python scripts/audit_stage2.py > build/freshness-phase1/g1_audit.json 2> build/freshness-phase1/g1_audit_stderr.log
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Fetch official lifecycle history
+        id: g2fetch
+        if: steps.g1fetch.outputs.exit_code == '0' && steps.g1reconcile.outputs.exit_code == '0'
+        shell: bash
+        run: |
+          set +e
+          python scripts/fetch_historical_lifecycle.py > build/freshness-phase1/g2_fetch_stdout.log 2> build/freshness-phase1/g2_fetch_stderr.log
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Build survivorship-free lifecycle intervals
+        id: g2build
+        if: steps.g2fetch.outputs.exit_code == '0'
+        shell: bash
+        run: |
+          set +e
+          python scripts/build_security_history.py > build/freshness-phase1/g2_build_stdout.log 2> build/freshness-phase1/g2_build_stderr.log
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Audit lifecycle fail-closed
+        id: g2audit
+        shell: bash
+        run: |
+          set +e
+          python scripts/audit_security_history.py > build/freshness-phase1/g2_audit.json 2> build/freshness-phase1/g2_audit_stderr.log
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Write phase1 summary
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          def read(path):
+              p=Path(path)
+              if not p.exists(): return None
+              try: return json.loads(p.read_text(encoding='utf-8'))
+              except Exception: return None
+          manifest=read('data/current_master/manifest.json') or {}
+          g2=read('build/freshness-phase1/g2_audit.json') or read('data/security_lifecycle/g2_audit.json') or {}
+          out={
+              'schema_version':1,
+              'execution_head':'${{ github.sha }}',
+              'current_master_as_of':(manifest.get('szse') or {}).get('as_of'),
+              'current_master_fetched_at_utc':manifest.get('fetched_at_utc'),
+              'current_master_hard_gate_status':manifest.get('hard_gate_status'),
+              'g2_status':g2.get('status') or g2.get('pass'),
+              'g1_fetch_exit':'${{ steps.g1fetch.outputs.exit_code }}',
+              'g1_reconcile_exit':'${{ steps.g1reconcile.outputs.exit_code }}',
+              'g1_audit_exit':'${{ steps.g1audit.outputs.exit_code }}',
+              'g2_fetch_exit':'${{ steps.g2fetch.outputs.exit_code }}',
+              'g2_build_exit':'${{ steps.g2build.outputs.exit_code }}',
+              'g2_audit_exit':'${{ steps.g2audit.outputs.exit_code }}',
+              'authoritative':False,
+              'purpose':'freshness candidate evidence only; does not mutate frozen Stage2/Stage3 or unlock Stage4',
+          }
+          Path('build/freshness-phase1/summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Preserve phase1 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freshness-forward-phase1-master-lifecycle
+          path: |
+            build/freshness-phase1
+            data/current_master
+            data/security_lifecycle
+            data/stage2_audit.json
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 90
+      - name: Fail closed after evidence upload
+        if: steps.g1fetch.outputs.exit_code != '0' || steps.g1reconcile.outputs.exit_code != '0' || steps.g1audit.outputs.exit_code != '0' || steps.g2fetch.outputs.exit_code != '0' || steps.g2build.outputs.exit_code != '0' || steps.g2audit.outputs.exit_code != '0'
+        run: exit 1
