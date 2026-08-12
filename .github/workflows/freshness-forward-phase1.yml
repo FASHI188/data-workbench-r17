@@ -9,10 +9,12 @@ on:
       - '.github/workflows/freshness-forward-phase1.yml'
       - 'scripts/fetch_exchange_master.py'
       - 'scripts/reconcile_current_master.py'
+      - 'scripts/audit_forward_current_master.py'
+      - 'scripts/build_forward_lifecycle_seed.py'
       - 'scripts/fetch_historical_lifecycle.py'
       - 'scripts/build_security_history.py'
       - 'scripts/audit_security_history.py'
-      - 'scripts/audit_stage2.py'
+      - 'tests/test_freshness_forward_harness.py'
       - 'config/stage2_hard_gates.json'
       - 'requirements/constraints-verified.txt'
       - '.python-version'
@@ -40,10 +42,12 @@ jobs:
           python-version: '3.12.13'
       - name: Install verified dependencies
         run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pytest openpyxl
-      - name: Prepare evidence directory
-        run: mkdir -p build/freshness-phase1
-      - name: Stage2 G1/G2 exact regression tests
-        run: pytest -q tests/test_fetch_exchange_master.py tests/test_fetch_historical_lifecycle.py tests/test_security_code_transitions.py
+      - name: Prepare evidence directory and preserve frozen seed
+        run: |
+          mkdir -p build/freshness-phase1
+          cp data/security_lifecycle/current_list_seed.csv build/freshness-phase1/frozen_current_list_seed.csv
+      - name: Stage2 G1/G2 and forward-harness exact regression tests
+        run: pytest -q tests/test_fetch_exchange_master.py tests/test_fetch_historical_lifecycle.py tests/test_security_code_transitions.py tests/test_freshness_forward_harness.py
       - name: Fetch current official exchange master candidate
         id: g1fetch
         shell: bash
@@ -53,7 +57,7 @@ jobs:
           code=$?
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit 0
-      - name: Reconcile current master
+      - name: Reconcile current master against independent official controls
         id: g1reconcile
         if: steps.g1fetch.outputs.exit_code == '0'
         shell: bash
@@ -63,18 +67,29 @@ jobs:
           code=$?
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit 0
-      - name: Audit current master fail-closed
+      - name: Audit forward current master fail-closed
         id: g1audit
+        if: steps.g1fetch.outputs.exit_code == '0' && steps.g1reconcile.outputs.exit_code == '0'
         shell: bash
         run: |
           set +e
-          python scripts/audit_stage2.py > build/freshness-phase1/g1_audit.json 2> build/freshness-phase1/g1_audit_stderr.log
+          python scripts/audit_forward_current_master.py > build/freshness-phase1/g1_forward_audit.json 2> build/freshness-phase1/g1_forward_audit_stderr.log
           code=$?
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit 0
-      - name: Fetch official lifecycle history
+      - name: Build disposable forward lifecycle seed from fresh master
+        id: seed
+        if: steps.g1audit.outputs.exit_code == '0'
+        shell: bash
+        run: |
+          set +e
+          python scripts/build_forward_lifecycle_seed.py > build/freshness-phase1/forward_seed_stdout.log 2> build/freshness-phase1/forward_seed_stderr.log
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Fetch official lifecycle history against fresh current identity set
         id: g2fetch
-        if: steps.g1fetch.outputs.exit_code == '0' && steps.g1reconcile.outputs.exit_code == '0'
+        if: steps.seed.outputs.exit_code == '0'
         shell: bash
         run: |
           set +e
@@ -94,6 +109,7 @@ jobs:
           exit 0
       - name: Audit lifecycle fail-closed
         id: g2audit
+        if: steps.g2build.outputs.exit_code == '0'
         shell: bash
         run: |
           set +e
@@ -105,27 +121,37 @@ jobs:
         if: always()
         shell: bash
         run: |
-          mkdir -p build/freshness-phase1
           python - <<'PY'
-          import json
+          import csv, json
           from pathlib import Path
           def read(path):
               p=Path(path)
               if not p.exists(): return None
               try: return json.loads(p.read_text(encoding='utf-8'))
               except Exception: return None
+          def count_seed(path):
+              p=Path(path)
+              if not p.exists(): return None
+              with p.open(encoding='utf-8',newline='') as f: return sum(1 for _ in csv.DictReader(f))
           manifest=read('data/current_master/manifest.json') or {}
-          g2=read('build/freshness-phase1/g2_audit.json') or read('data/security_lifecycle/g2_audit.json') or {}
+          g1=read('build/freshness-phase1/g1_forward_audit.json') or {}
+          g2=read('build/freshness-phase1/g2_audit.json') or {}
+          seed=read('build/freshness-phase1/forward_lifecycle_seed.json') or {}
           out={
-              'schema_version':1,
+              'schema_version':2,
               'execution_head':'${{ github.sha }}',
               'current_master_as_of':(manifest.get('szse') or {}).get('as_of'),
               'current_master_fetched_at_utc':manifest.get('fetched_at_utc'),
               'current_master_hard_gate_status':manifest.get('hard_gate_status'),
-              'g2_status':g2.get('status') or g2.get('pass'),
+              'g1_forward_pass':g1.get('pass'),
+              'frozen_seed_rows':count_seed('build/freshness-phase1/frozen_current_list_seed.csv'),
+              'forward_seed_rows':seed.get('rows'),
+              'forward_seed_sha256':seed.get('seed_sha256'),
+              'g2_pass':g2.get('pass'),
               'g1_fetch_exit':'${{ steps.g1fetch.outputs.exit_code }}',
               'g1_reconcile_exit':'${{ steps.g1reconcile.outputs.exit_code }}',
               'g1_audit_exit':'${{ steps.g1audit.outputs.exit_code }}',
+              'seed_exit':'${{ steps.seed.outputs.exit_code }}',
               'g2_fetch_exit':'${{ steps.g2fetch.outputs.exit_code }}',
               'g2_build_exit':'${{ steps.g2build.outputs.exit_code }}',
               'g2_audit_exit':'${{ steps.g2audit.outputs.exit_code }}',
@@ -144,10 +170,9 @@ jobs:
             build/freshness-phase1
             data/current_master
             data/security_lifecycle
-            data/stage2_audit.json
           if-no-files-found: warn
           compression-level: 0
           retention-days: 90
       - name: Fail closed after evidence upload
-        if: steps.g1fetch.outputs.exit_code != '0' || steps.g1reconcile.outputs.exit_code != '0' || steps.g1audit.outputs.exit_code != '0' || steps.g2fetch.outputs.exit_code != '0' || steps.g2build.outputs.exit_code != '0' || steps.g2audit.outputs.exit_code != '0'
+        if: steps.g1fetch.outputs.exit_code != '0' || steps.g1reconcile.outputs.exit_code != '0' || steps.g1audit.outputs.exit_code != '0' || steps.seed.outputs.exit_code != '0' || steps.g2fetch.outputs.exit_code != '0' || steps.g2build.outputs.exit_code != '0' || steps.g2audit.outputs.exit_code != '0'
         run: exit 1
