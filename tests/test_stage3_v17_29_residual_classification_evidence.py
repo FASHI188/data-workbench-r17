@@ -97,6 +97,7 @@ class V1729ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertFalse(boundaries["formal_parser_changed"])
         self.assertFalse(boundaries["runtime_authority_changed"])
         self.assertFalse(boundaries["production_data_changed"])
+        # This is the immutable historical status recorded when the diagnostic ran.
         self.assertEqual(boundaries["stage3_status"], "NOT_READY")
         self.assertTrue(boundaries["stage4_alpha_live_locked"])
         latest = self.runtime["full_basis_last_completed_final"]
@@ -115,10 +116,14 @@ class V1729ResidualClassificationEvidenceTests(unittest.TestCase):
         self.assertEqual(previous["artifact_id"], 9063271903)
         next_basis = self.runtime["next_full_basis_required"]
         self.assertEqual(next_basis["status"], "NONE_CURRENT_RUNTIME_ACCEPTED")
-        self.assertEqual(self.project["stage3"]["status"], "NOT_READY")
+        # Current project state may advance to the historical final freeze; this
+        # must not retroactively change the diagnostic evidence above.
+        self.assertIn(self.project["stage3"]["status"], {"NOT_READY", "PASS_FROZEN_HISTORICAL"})
+        self.assertEqual(self.project["stage3"]["pending_final_gates"], [])
         self.assertFalse(self.project["stage4_unlocked"])
         self.assertFalse(self.project["alpha_training_allowed"])
         self.assertFalse(self.project["live_signal_allowed"])
+        self.assertEqual(self.project["freshness"]["status"], "STALE")
 
 
 if __name__ == "__main__":
