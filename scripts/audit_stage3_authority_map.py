@@ -1,155 +1,31 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-V30_RUN = 31518370789
-V30_HEAD = "a18b81a9f38692533d0427f4a5b50767abf1a7c8"
-V30_ARTIFACT_ID = 9112098872
-V30_DIGEST = "sha256:706c6dd7252a64fd5c2956df6c594b5c91de29f02ca7d0553fa932017e8867ba"
-V29_RUN = 31389854868
-V29_ARTIFACT_ID = 9063271903
-V29_DIGEST = "sha256:71a4daa6c8372f3d64080b5fa5b787914292d889da7051de699eb6610189c726"
+ROOT=Path(__file__).resolve().parents[1]
+V30_RUN=31518370789;V30_HEAD='a18b81a9f38692533d0427f4a5b50767abf1a7c8';V30_ARTIFACT_ID=9112098872;V30_DIGEST='sha256:706c6dd7252a64fd5c2956df6c594b5c91de29f02ca7d0553fa932017e8867ba'
+RET_RUN=31555404674;RET_HEAD='bf32938fea81b6133592f7f3ba2456897e65bd1d';RET_ARTIFACT_ID=9125809076;RET_DIGEST='sha256:d0921e3069abb695de54de4d3ecec5a5394e831a820757d1b2e2fda02861722a';RET_LEDGER='706b5dd219e94f786674b549859dd4695b42a02bcceb42fae8f91d358eeb83ef'
 
-
-def load(path: str) -> dict:
-    return json.loads((ROOT / path).read_text(encoding="utf-8"))
-
-
-def main() -> int:
-    errors: list[str] = []
-
-    def req(ok: bool, message: str) -> None:
-        if not ok:
-            errors.append(message)
-
-    authority = load("governance/stage3_authority_map.json")
-    runtime = load("governance/stage3_s3g1j_runtime_manifest.json")
-    activation = load("governance/stage3_workflow_activation_manifest.json")
-    lock = load("config/stage3_final_lock.json")
-    project = load("data/project_status.json")
-    promotion = load("governance/stage3_s3g1j_v17_30_runtime_promotion.json")
-    wrapper = load("governance/stage3_s3g1j_v17_30_runtime_wrapper_acceptance.json")
-    v30 = load("governance/stage3_s3g1j_v17_30_full_final.json")
-    v29 = load("governance/stage3_s3g1j_v17_29_full_final.json")
-    v28 = load("governance/stage3_s3g1j_v17_28_full_final.json")
-    v27 = load("governance/stage3_s3g1j_v17_27_full_final.json")
-    v26 = load("governance/stage3_s3g1j_v17_26_full_final.json")
-
-    req(authority.get("schema_version") == 8, "authority schema drift")
-    req(runtime.get("schema_version") == 15, "runtime schema drift")
-    req(activation.get("schema_version") == 17, "activation schema drift")
-    req(lock.get("version") == "V3.3.15-stage3-final-lock", "final-lock version drift")
-    req(project.get("schema_version") == 8, "project schema drift")
-
-    formal = runtime.get("formal_runtime") or {}
-    current = runtime.get("current_production_authority") or {}
-    latest = runtime.get("full_basis_last_completed_final") or {}
-    next_basis = runtime.get("next_full_basis_required") or {}
-    req(current.get("generation") == "V17.30", "current runtime authority must be V17.30")
-    req(formal.get("runtime_generation") == "V17.30", "formal runtime must be V17.30")
-    req(formal.get("parser_git_blob") == "cc782817e5ee73fcae085d71f4896a0adc004dcd", "V17.30 parser blob drift")
-    req(formal.get("extractor_git_blob") == "d74a2b1f8f0ec3af8d89ce259e83392d7f8cc20c", "V17.30 extractor blob drift")
-    req(formal.get("promotion_safety_parser_git_blob") == "1a4364d5cde7881455902f6fa1dbe5e68f3843a6", "V17.30 helper blob drift")
-    req(latest.get("generation") == "V17.30", "latest completed basis must be V17.30")
-    req(latest.get("run") == V30_RUN, "V17.30 latest run drift")
-    req(latest.get("head_sha") == V30_HEAD, "V17.30 latest head drift")
-    req(latest.get("artifact_id") == V30_ARTIFACT_ID, "V17.30 latest artifact drift")
-    req(latest.get("artifact_digest") == V30_DIGEST, "V17.30 latest digest drift")
-    req(latest.get("document_rows") == 121354, "V17.30 document count drift")
-    req(latest.get("numeric_observations") == 1051826, "V17.30 numeric count drift")
-    req(latest.get("document_error_count") == 1362, "V17.30 error count drift")
-    req(latest.get("unresolved_tie_count") == 1279, "V17.30 tie count drift")
-    req(latest.get("verdict") == "FAIL_CLOSED", "V17.30 data verdict drift")
-    req(next_basis.get("generation") is None, "next basis must be empty after current acceptance")
-    req(next_basis.get("status") == "NONE_CURRENT_RUNTIME_ACCEPTED", "next basis status drift")
-
-    # Promotion evidence is immutable history: at promotion time the full basis had not started.
-    promo_next = promotion.get("next_full_basis") or {}
-    promo_hard = promotion.get("hard_boundaries") or {}
-    req(promotion.get("generation") == "V17.30", "promotion generation drift")
-    req(promotion.get("governance_pr") == 125, "promotion PR drift")
-    req(promo_next.get("status") == "REQUIRED_NOT_STARTED", "historical promotion state drift")
-    req(promo_next.get("expected_values_are_not_production_acceptance") is True, "historical promotion expectation boundary drift")
-    req(promo_hard.get("fresh_64_shard_execution_started") is False, "historical promotion execution-state drift")
-
-    wpr = wrapper.get("execution_pr") or {}
-    wrun = wrapper.get("accepted_run") or {}
-    req(wpr.get("number") == 123 and wpr.get("closed_without_merge") is True, "runtime wrapper PR drift")
-    req(wrun.get("run_id") == 31458469699, "runtime wrapper run drift")
-
-    active = activation.get("accepted_production_runtime") or {}
-    req(active.get("generation") == "V17.30", "activation runtime drift")
-    req(active.get("full_basis_execution_pending") is False, "activation incorrectly marks full basis pending")
-    req(active.get("last_completed_full_basis_generation") == "V17.30", "activation latest basis drift")
-    req(active.get("last_completed_full_basis_run") == V30_RUN, "activation latest run drift")
-    req(active.get("last_completed_full_basis_artifact_digest") == V30_DIGEST, "activation latest digest drift")
-    req(active.get("data_verdict") == "FAIL_CLOSED", "activation data verdict drift")
-    v30a = activation.get("accepted_v17_30_full_basis_evidence") or {}
-    v29a = activation.get("accepted_v17_29_full_basis_evidence") or {}
-    req(v30a.get("last_completed_full_basis_authority") is True, "V17.30 activation authority missing")
-    req(v29a.get("last_completed_full_basis_authority") is False, "V17.29 must no longer be latest authority")
-    req(v29a.get("historical_full_basis_authority_retained") is True, "V17.29 history not retained")
-    for key in ("accepted_v17_28_full_basis_evidence", "accepted_v17_27_full_basis_evidence", "accepted_v17_26_full_basis_evidence"):
-        req((activation.get(key) or {}).get("historical_full_basis_authority_retained") is True, f"{key} history not retained")
-
-    g1j = (authority.get("authoritative_components") or {}).get("S3G1J_FINANCIAL_RAW_VALUES") or {}
-    req(g1j.get("formal_runtime_generation") == "V17.30", "authority map runtime drift")
-    req(g1j.get("last_completed_full_basis_generation") == "V17.30", "authority map latest basis drift")
-    req(g1j.get("accepted_run_id") == V30_RUN, "authority map accepted run drift")
-    req(g1j.get("accepted_artifact_id") == V30_ARTIFACT_ID, "authority map artifact drift")
-    req(g1j.get("accepted_artifact_digest") == V30_DIGEST, "authority map digest drift")
-    req(g1j.get("data_verdict") == "FAIL_CLOSED", "authority map data verdict drift")
-    req(g1j.get("final_gate") is False, "authority map incorrectly passes S3G1J")
-    prev = g1j.get("previous_full_basis_authority") or {}
-    req(prev.get("generation") == "V17.29" and prev.get("run") == V29_RUN and prev.get("artifact_id") == V29_ARTIFACT_ID and prev.get("artifact_digest") == V29_DIGEST, "authority map V17.29 history drift")
-
-    lock_g1j = (lock.get("required_gates") or {}).get("S3G1J_FINANCIAL_RAW_VALUES") or {}
-    req(lock.get("status") == "NOT_READY", "Stage3 final lock must remain NOT_READY")
-    req(lock_g1j.get("formal_runtime_generation") == "V17.30", "final lock runtime drift")
-    req(lock_g1j.get("last_completed_full_basis_generation") == "V17.30", "final lock latest basis drift")
-    req(lock_g1j.get("run_id") == V30_RUN and lock_g1j.get("artifact_id") == V30_ARTIFACT_ID, "final lock authority drift")
-    req(lock_g1j.get("data_verdict") == "FAIL_CLOSED", "final lock data verdict drift")
-    req(lock_g1j.get("final_gate_pass") is False, "final lock incorrectly passes S3G1J")
-
-    stage3 = project.get("stage3") or {}
-    pg1j = stage3.get("s3g1j") or {}
-    req(stage3.get("status") == "NOT_READY", "project Stage3 must remain NOT_READY")
-    req(project.get("stage4_unlocked") is False, "Stage4 unexpectedly unlocked")
-    req(project.get("alpha_training_allowed") is False, "Alpha training unexpectedly allowed")
-    req(project.get("live_signal_allowed") is False, "live signals unexpectedly allowed")
-    req(pg1j.get("formal_runtime_generation") == "V17.30", "project runtime drift")
-    req(pg1j.get("last_completed_full_basis_generation") == "V17.30", "project latest basis drift")
-    req(pg1j.get("accepted_run_id") == V30_RUN and pg1j.get("accepted_artifact_id") == V30_ARTIFACT_ID, "project accepted authority drift")
-    req(pg1j.get("data_verdict") == "FAIL_CLOSED", "project data verdict drift")
-    req(pg1j.get("final_gate_pass") is False, "project incorrectly passes S3G1J")
-
-    # Append-only historical evidence: exact values must not be rewritten when latest pointer advances.
-    for name, evidence, run_id, artifact_id, numeric, err_count, ties in (
-        ("V17.30", v30, V30_RUN, V30_ARTIFACT_ID, 1051826, 1362, 1279),
-        ("V17.29", v29, V29_RUN, V29_ARTIFACT_ID, 1051820, 1364, 1281),
-        ("V17.28", v28, 30997260730, 8927455692, 1051799, 1371, 1288),
-        ("V17.27", v27, 30806818977, 8854139999, 1051793, 1373, 1290),
-        ("V17.26", v26, 30733013665, 8828600783, 1051778, 1378, 1295),
-    ):
-        accepted = evidence.get("accepted_run") or {}
-        result = evidence.get("full_basis_result") or {}
-        req(accepted.get("run_id") == run_id, f"{name} historical run drift")
-        req(accepted.get("artifact_id") == artifact_id, f"{name} historical artifact drift")
-        req(result.get("numeric_observation_count") == numeric, f"{name} historical numeric drift")
-        req(result.get("document_error_count") == err_count, f"{name} historical errors drift")
-        req(result.get("unresolved_tie_count") == ties, f"{name} historical ties drift")
-        req(result.get("final_data_verdict") == "FAIL_CLOSED", f"{name} historical verdict drift")
-
-    if errors:
-        for error in errors:
-            print(f"ERROR: {error}")
-        return 1
-    print("STAGE3_AUTHORITY_MAP_V17_30_FULL_BASIS_LATEST_HISTORY_RETAINED_PASS")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+def load(p:str)->dict:return json.loads((ROOT/p).read_text(encoding='utf-8'))
+def main()->int:
+ errors=[]
+ def req(ok,msg):
+  if not ok:errors.append(msg)
+ authority=load('governance/stage3_authority_map.json');runtime=load('governance/stage3_s3g1j_runtime_manifest.json');activation=load('governance/stage3_workflow_activation_manifest.json');lock=load('config/stage3_final_lock.json');project=load('data/project_status.json');promotion=load('governance/stage3_s3g1j_v17_30_runtime_promotion.json');wrapper=load('governance/stage3_s3g1j_v17_30_runtime_wrapper_acceptance.json');ret=load('governance/stage3_s3g1j_v17_30_residual_retention.json')
+ req(authority.get('schema_version')==8,'authority schema drift');req(runtime.get('schema_version')==15,'runtime schema drift');req(activation.get('schema_version')==17,'activation schema drift');req(lock.get('version')=='V3.3.15-stage3-final-lock','lock version drift');req(project.get('schema_version')==8,'project schema drift')
+ formal=runtime.get('formal_runtime') or {};current=runtime.get('current_production_authority') or {};latest=runtime.get('full_basis_last_completed_final') or {};next_basis=runtime.get('next_full_basis_required') or {}
+ req(current.get('generation')=='V17.30','current runtime must V17.30');req(formal.get('runtime_generation')=='V17.30','formal runtime must V17.30');req(formal.get('parser_git_blob')=='cc782817e5ee73fcae085d71f4896a0adc004dcd','parser blob drift');req(formal.get('extractor_git_blob')=='d74a2b1f8f0ec3af8d89ce259e83392d7f8cc20c','extractor blob drift')
+ req(latest.get('generation')=='V17.30' and latest.get('run')==V30_RUN and latest.get('head_sha')==V30_HEAD and latest.get('artifact_id')==V30_ARTIFACT_ID and latest.get('artifact_digest')==V30_DIGEST,'raw latest V17.30 authority drift');req(latest.get('document_rows')==121354 and latest.get('numeric_observations')==1051826 and latest.get('document_error_count')==1362 and latest.get('unresolved_tie_count')==1279 and latest.get('verdict')=='FAIL_CLOSED','raw V17.30 basis facts drift');req(next_basis.get('generation') is None and next_basis.get('status')=='NONE_CURRENT_RUNTIME_ACCEPTED','next basis drift')
+ promo=promotion.get('next_full_basis') or {};req(promo.get('status')=='REQUIRED_NOT_STARTED','historical promotion state drift');req((wrapper.get('execution_pr') or {}).get('closed_without_merge') is True,'wrapper evidence drift')
+ active=activation.get('accepted_production_runtime') or {};req(active.get('generation')=='V17.30' and active.get('last_completed_full_basis_run')==V30_RUN and active.get('data_verdict')=='FAIL_CLOSED','activation raw authority drift')
+ req(ret.get('gate')=='S3G1J_V17_30_RESIDUAL_RETENTION_GOVERNANCE' and ret.get('governance_pr')==130,'retention governance identity drift');rr=ret.get('accepted_run') or {};req(rr.get('run_id')==RET_RUN and rr.get('artifact_id')==RET_ARTIFACT_ID and rr.get('artifact_digest')==RET_DIGEST and rr.get('ledger_sha256')==RET_LEDGER,'retention artifact identity drift');src=ret.get('source_full_basis') or {};req(src.get('document_error_count')==1362 and src.get('unresolved_tie_count')==1279 and src.get('raw_data_verdict')=='FAIL_CLOSED','retention raw source drift');res=ret.get('retention_result') or {};req(res.get('retained_document_count')==1362 and res.get('retained_unresolved_tie_count')==1279 and res.get('raw_errors_removed') is False and res.get('raw_ties_removed') is False,'retention count semantics drift');req(res.get('retained_rows_usable_as_numeric_truth') is False and res.get('retained_rows_must_be_excluded_from_numeric_feature_values') is True,'retention downstream semantics drift');hard=ret.get('hard_boundaries') or {};req(all(hard.get(k) is False for k in ['OCR_allowed','fuzzy_alias_allowed','E_equals_A_minus_L_inference_allowed','issuer_gate_relaxation_allowed','PIT_relaxation_allowed','accounting_tolerance_relaxation_allowed','stage4_unlocked','alpha_training_allowed','live_signal_allowed','main_changed']),'retention hard boundary drift')
+ g1j=(authority.get('authoritative_components') or {}).get('S3G1J_FINANCIAL_RAW_VALUES') or {};req(g1j.get('accepted_run_id')==V30_RUN and g1j.get('accepted_artifact_id')==V30_ARTIFACT_ID,'authority raw basis pointer drift');req(g1j.get('document_error_count')==1362 and g1j.get('unresolved_tie_count')==1279 and g1j.get('raw_data_verdict')=='FAIL_CLOSED','authority raw residual facts drift');req(g1j.get('residual_retention_run_id')==RET_RUN and g1j.get('residual_retention_artifact_id')==RET_ARTIFACT_ID and g1j.get('residual_retention_artifact_digest')==RET_DIGEST and g1j.get('residual_retention_ledger_sha256')==RET_LEDGER,'authority retention pointer drift');req(g1j.get('data_verdict')=='FAIL_CLOSED_WITH_FORMALLY_RETAINED_RESIDUALS' and g1j.get('residual_retention_gate_pass') is True and g1j.get('final_gate') is True,'authority retention gate not closed')
+ lg=(lock.get('required_gates') or {}).get('S3G1J_FINANCIAL_RAW_VALUES') or {};req(lock.get('status')=='NOT_READY','Stage3 lock must remain NOT_READY');req(set(lock.get('remaining_unlocked_gates') or [])=={'S3G4_EARNINGS_SURPRISE'},'remaining gate set drift');req(lg.get('run_id')==V30_RUN and lg.get('artifact_id')==V30_ARTIFACT_ID and lg.get('raw_data_verdict')=='FAIL_CLOSED','lock raw basis drift');req(lg.get('residual_retention_run_id')==RET_RUN and lg.get('residual_retention_gate_pass') is True and lg.get('final_gate_pass') is True,'lock retention gate drift')
+ stage3=project.get('stage3') or {};pg=stage3.get('s3g1j') or {};req(stage3.get('status')=='NOT_READY','project Stage3 must remain NOT_READY');req(stage3.get('pending_final_gates')==['S3G4_EARNINGS_SURPRISE'],'project pending gate drift');req('S3G1J_FINANCIAL_RAW_VALUES' in stage3.get('completed_final_gates_on_clean_integration',[]),'project missing completed S3G1J');req(pg.get('document_error_count')==1362 and pg.get('unresolved_tie_count')==1279 and pg.get('raw_data_verdict')=='FAIL_CLOSED','project raw residual facts drift');req(pg.get('residual_retention_run_id')==RET_RUN and pg.get('residual_retention_gate_pass') is True and pg.get('final_gate_pass') is True,'project retention gate drift');req(project.get('stage4_unlocked') is False and project.get('alpha_training_allowed') is False and project.get('live_signal_allowed') is False,'downstream unexpectedly unlocked')
+ for name,path,run_id,aid,numeric,errs,ties in [('V17.30','governance/stage3_s3g1j_v17_30_full_final.json',31518370789,9112098872,1051826,1362,1279),('V17.29','governance/stage3_s3g1j_v17_29_full_final.json',31389854868,9063271903,1051820,1364,1281),('V17.28','governance/stage3_s3g1j_v17_28_full_final.json',30997260730,8927455692,1051799,1371,1288),('V17.27','governance/stage3_s3g1j_v17_27_full_final.json',30806818977,8854139999,1051793,1373,1290),('V17.26','governance/stage3_s3g1j_v17_26_full_final.json',30733013665,8828600783,1051778,1378,1295)]:
+  e=load(path);a=e.get('accepted_run') or {};r=e.get('full_basis_result') or {};req(a.get('run_id')==run_id and a.get('artifact_id')==aid,f'{name} historical authority drift');req(r.get('numeric_observation_count')==numeric and r.get('document_error_count')==errs and r.get('unresolved_tie_count')==ties and r.get('final_data_verdict')=='FAIL_CLOSED',f'{name} historical result drift')
+ if errors:
+  [print('ERROR:',e) for e in errors];return 1
+ print('STAGE3_AUTHORITY_MAP_V17_30_RESIDUAL_RETENTION_CLOSURE_PASS');return 0
+if __name__=='__main__':raise SystemExit(main())

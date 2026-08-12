@@ -64,9 +64,13 @@ jobs:
           assert m['file_count']==31, m
           assert m['hard_invariants']['stage3_status']=='NOT_READY'
           assert lock['status']=='NOT_READY'
-          assert set(lock['remaining_unlocked_gates'])=={
-              'S3G1J_FINANCIAL_RAW_VALUES','S3G4_EARNINGS_SURPRISE'
-          }
+          assert set(lock['remaining_unlocked_gates'])=={'S3G4_EARNINGS_SURPRISE'}
+          g1j=lock['required_gates']['S3G1J_FINANCIAL_RAW_VALUES']
+          assert g1j['run_id']==31518370789
+          assert g1j['document_error_count']==1362 and g1j['unresolved_tie_count']==1279
+          assert g1j['raw_data_verdict']=='FAIL_CLOSED'
+          assert g1j['residual_retention_run_id']==31555404674
+          assert g1j['residual_retention_gate_pass'] is True and g1j['final_gate_pass'] is True
           g2=lock['required_gates']['S3G2_ANNOUNCEMENT_LEDGER']
           assert g2['run_id']==30522392946
           assert g2['ledger_sha256']=='0eb139572865628283f86c981990e59e076d5ef2a978a5967aace90d553e30dd'
@@ -76,6 +80,7 @@ jobs:
           assert gm['run_id']==g2['run_id']
           assert gm['ledger_sha256']==g2['ledger_sha256']
           assert gm['deterministic_replay_same_sha'] is True
+          assert project['stage3']['pending_final_gates']==['S3G4_EARNINGS_SURPRISE']
           assert project['stage4_unlocked'] is False
           assert project['alpha_training_allowed'] is False
           assert project['live_signal_allowed'] is False

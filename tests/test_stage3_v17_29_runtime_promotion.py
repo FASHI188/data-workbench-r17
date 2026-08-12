@@ -23,6 +23,7 @@ class V1729RuntimePromotionTests(unittest.TestCase):
         cls.authority = load("governance/stage3_authority_map.json")
         cls.project = load("data/project_status.json")
         cls.lock = load("config/stage3_final_lock.json")
+        cls.retention = load("governance/stage3_s3g1j_v17_30_residual_retention.json")
         cls.v17_28 = load("governance/stage3_s3g1j_v17_28_full_final.json")
         cls.v17_29 = load("governance/stage3_s3g1j_v17_29_full_final.json")
 
@@ -68,7 +69,7 @@ class V1729RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(nxt["expected_numeric_rows"], 1051820)
         self.assertTrue(nxt["expected_values_are_not_production_acceptance"])
 
-    def test_v17_29_is_retained_as_previous_basis_under_accepted_v17_30(self) -> None:
+    def test_v17_29_is_retained_as_previous_basis_under_v17_30_formal_retention(self) -> None:
         self.assertGreaterEqual(self.runtime["schema_version"], 15)
         self.assertEqual(self.runtime["formal_runtime"]["runtime_generation"], "V17.30")
         latest = self.runtime["full_basis_last_completed_final"]
@@ -89,17 +90,20 @@ class V1729RuntimePromotionTests(unittest.TestCase):
         self.assertIsNone(next_basis["generation"])
         self.assertEqual(next_basis["status"], "NONE_CURRENT_RUNTIME_ACCEPTED")
 
-        self.assertGreaterEqual(self.activation["schema_version"], 17)
         active = self.activation["accepted_production_runtime"]
         self.assertEqual(active["generation"], "V17.30")
         self.assertFalse(active["full_basis_execution_pending"])
         self.assertEqual(active["last_completed_full_basis_generation"], "V17.30")
         self.assertEqual(active["last_completed_full_basis_run"], 31518370789)
         self.assertEqual(active["data_verdict"], "FAIL_CLOSED")
-        retained = self.activation["accepted_v17_29_full_basis_evidence"]
-        self.assertFalse(retained["last_completed_full_basis_authority"])
-        self.assertTrue(retained["historical_runtime_generation_retained"])
-        self.assertTrue(retained["historical_full_basis_authority_retained"])
+        retained29 = self.activation["accepted_v17_29_full_basis_evidence"]
+        self.assertFalse(retained29["last_completed_full_basis_authority"])
+        self.assertTrue(retained29["historical_runtime_generation_retained"])
+        self.assertTrue(retained29["historical_full_basis_authority_retained"])
+
+        self.assertEqual(self.retention["accepted_run"]["run_id"], 31555404674)
+        self.assertFalse(self.retention["retention_result"]["raw_errors_removed"])
+        self.assertFalse(self.retention["retention_result"]["retained_rows_usable_as_numeric_truth"])
 
         g1j = self.authority["authoritative_components"]["S3G1J_FINANCIAL_RAW_VALUES"]
         self.assertEqual(g1j["formal_runtime_generation"], "V17.30")
@@ -107,7 +111,10 @@ class V1729RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(g1j["accepted_run_id"], 31518370789)
         self.assertEqual(g1j["previous_full_basis_authority"]["generation"], "V17.29")
         self.assertEqual(g1j["previous_full_basis_authority"]["run"], 31389854868)
-        self.assertFalse(g1j["final_gate"])
+        self.assertEqual(g1j["raw_data_verdict"], "FAIL_CLOSED")
+        self.assertEqual(g1j["residual_retention_run_id"], 31555404674)
+        self.assertTrue(g1j["residual_retention_gate_pass"])
+        self.assertTrue(g1j["final_gate"])
 
         project_g1j = self.project["stage3"]["s3g1j"]
         self.assertEqual(project_g1j["formal_runtime_generation"], "V17.30")
@@ -115,7 +122,9 @@ class V1729RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(project_g1j["accepted_run_id"], 31518370789)
         self.assertEqual(project_g1j["previous_full_basis_authority"]["generation"], "V17.29")
         self.assertEqual(project_g1j["previous_full_basis_authority"]["run"], 31389854868)
-        self.assertFalse(project_g1j["final_gate_pass"])
+        self.assertEqual(project_g1j["raw_data_verdict"], "FAIL_CLOSED")
+        self.assertEqual(project_g1j["residual_retention_run_id"], 31555404674)
+        self.assertTrue(project_g1j["final_gate_pass"])
 
         lock_g1j = self.lock["required_gates"]["S3G1J_FINANCIAL_RAW_VALUES"]
         self.assertEqual(lock_g1j["formal_runtime_generation"], "V17.30")
@@ -123,7 +132,9 @@ class V1729RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(lock_g1j["run_id"], 31518370789)
         self.assertEqual(lock_g1j["previous_full_basis_authority"]["generation"], "V17.29")
         self.assertEqual(lock_g1j["previous_full_basis_authority"]["run"], 31389854868)
-        self.assertFalse(lock_g1j["final_gate_pass"])
+        self.assertEqual(lock_g1j["raw_data_verdict"], "FAIL_CLOSED")
+        self.assertEqual(lock_g1j["residual_retention_run_id"], 31555404674)
+        self.assertTrue(lock_g1j["final_gate_pass"])
 
     def test_project_and_historical_evidence_stay_fail_closed(self) -> None:
         boundaries = self.promotion["hard_boundaries"]
@@ -140,6 +151,10 @@ class V1729RuntimePromotionTests(unittest.TestCase):
         self.assertEqual(result29["document_error_count"], 1364)
         self.assertEqual(result29["unresolved_tie_count"], 1281)
         self.assertEqual(result29["final_data_verdict"], "FAIL_CLOSED")
+        self.assertEqual(self.project["stage3"]["status"], "NOT_READY")
+        self.assertFalse(self.project["stage4_unlocked"])
+        self.assertFalse(self.project["alpha_training_allowed"])
+        self.assertFalse(self.project["live_signal_allowed"])
 
 
 if __name__ == "__main__":

@@ -1,0 +1,77 @@
+name: Stage3 S3G1J V17.30 Residual Retention Governance Build
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/build_stage3_s3g1j_v17_30_residual_retention_governance.py'
+      - '.github/workflows/stage3-s3g1j-v17-30-residual-retention-governance-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  EXECUTION_PR: '129'
+  EXECUTION_HEAD: 'bf32938fea81b6133592f7f3ba2456897e65bd1d'
+  RUN_ID: '31555404674'
+  ARTIFACT_ID: '9125809076'
+  ARTIFACT_DIGEST: 'sha256:d0921e3069abb695de54de4d3ecec5a5394e831a820757d1b2e2fda02861722a'
+  AUDIT_SHA: '9eac8264d20e44ac7c1e972935064797b7ee778d9bce8bed6b198da715381ca9'
+  LEDGER_SHA: '706b5dd219e94f786674b549859dd4695b42a02bcceb42fae8f91d358eeb83ef'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Lock execution PR and accepted retention artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$EXECUTION_PR")"
+          test "$(jq -r .head.sha <<<"$pr")" = "$EXECUTION_HEAD"
+          test "$(jq -r .merged <<<"$pr")" = false
+          test "$(jq -r .draft <<<"$pr")" = true
+          run="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID")"
+          test "$(jq -r .head_sha <<<"$run")" = "$EXECUTION_HEAD"
+          test "$(jq -r .conclusion <<<"$run")" = success
+          art="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID")"
+          test "$(jq -r .workflow_run.id <<<"$art")" = "$RUN_ID"
+          test "$(jq -r .digest <<<"$art")" = "$ARTIFACT_DIGEST"
+          test "$(jq -r .expired <<<"$art")" = false
+      - name: Download and independently verify retention artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" > retention.zip
+          test "sha256:$(sha256sum retention.zip | awk '{print $1}')" = "$ARTIFACT_DIGEST"
+          mkdir retention && unzip -q retention.zip -d retention
+          test "$(sha256sum retention/stage3_s3g1j_v17_30_residual_retention_audit.json | awk '{print $1}')" = "$AUDIT_SHA"
+          test "$(sha256sum retention/stage3_s3g1j_v17_30_residual_retention.csv.gz | awk '{print $1}')" = "$LEDGER_SHA"
+      - name: Build append-only governance state
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = pull_request ]; then GOV_PR='${{ github.event.pull_request.number }}'; else GOV_PR=0; fi
+          python scripts/build_stage3_s3g1j_v17_30_residual_retention_governance.py \
+            --authority governance/stage3_authority_map.json \
+            --lock config/stage3_final_lock.json \
+            --project data/project_status.json \
+            --retention-audit retention/stage3_s3g1j_v17_30_residual_retention_audit.json \
+            --governance-pr "$GOV_PR" \
+            --out build/retention-governance
+          cat build/retention-governance/output_sha256.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-30-residual-retention-governance-build
+          path: build/retention-governance
+          retention-days: 30
+          compression-level: 9
