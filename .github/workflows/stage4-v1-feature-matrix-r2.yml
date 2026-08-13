@@ -1,4 +1,4 @@
-name: Stage4 V1.1 Feature Matrix R2 - Strict Projection and Audit
+name: Stage4 V1.1 Feature Matrix R3 - Strict Projection and Exact Alias Compatibility
 
 on:
   workflow_dispatch:
@@ -10,6 +10,7 @@ on:
       - 'governance/stage4_v1_feature_set_contract.json'
       - 'scripts/project_stage4_financial_matrix_input.py'
       - 'scripts/build_stage4_v1_feature_matrix.py'
+      - 'scripts/run_stage4_v1_feature_matrix_r3.py'
       - 'scripts/audit_stage4_v1_feature_matrix.py'
       - 'tests/test_stage4_financial_matrix_input_projection.py'
       - 'tests/test_stage4_v1_feature_matrix_contract.py'
@@ -19,7 +20,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: stage4-v1-feature-matrix-r2-${{ github.ref }}
+  group: stage4-v1-feature-matrix-r3-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -58,6 +59,15 @@ jobs:
             tests/test_stage4_financial_matrix_input_projection.py \
             tests/test_stage4_v1_feature_matrix_contract.py \
             tests/test_stage4_v1_feature_set_contract.py
+      - name: Verify exact-source alias compatibility target
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from scripts.run_stage4_v1_feature_matrix_r3 import git_blob_sha1, EXPECTED_SOURCE_GIT_BLOB_SHA1, OLD
+          raw=Path('scripts/build_stage4_v1_feature_matrix.py').read_bytes()
+          assert git_blob_sha1(raw)==EXPECTED_SOURCE_GIT_BLOB_SHA1
+          assert raw.decode('utf-8').count(OLD)==1
+          PY
 
   materialize-audit:
     needs: contract-tests
@@ -133,9 +143,9 @@ jobs:
           assert p['live_signal_allowed'] is False
           PY
 
-      - name: Materialize V1.1 matrix from strict projection
+      - name: Materialize V1.1 matrix with exact-source alias compatibility
         run: |
-          python scripts/build_stage4_v1_feature_matrix.py \
+          python scripts/run_stage4_v1_feature_matrix_r3.py \
             --historical-ohlcv-root build/g3/frozen-g3/build/g3 \
             --forward-ohlcv-root build/fwd-ohlcv \
             --historical-g5 build/g5/g5_adjustment_chain.csv.gz \
@@ -163,11 +173,12 @@ jobs:
             --trading-universe-audit build/universe/stage3_trading_universe_audit.json \
             --out build/stage4-v1-matrix/independent_audit.json
 
-      - name: Lock exact-head R2 execution manifest
+      - name: Lock exact-head R3 execution manifest
         run: |
           python - <<'PY'
           import hashlib,json
           from pathlib import Path
+          from scripts.run_stage4_v1_feature_matrix_r3 import EXPECTED_SOURCE_GIT_BLOB_SHA1
           root=Path('build/stage4-v1-matrix')
           m=json.loads((root/'manifest.json').read_text(encoding='utf-8'))
           a=json.loads((root/'independent_audit.json').read_text(encoding='utf-8'))
@@ -175,8 +186,10 @@ jobs:
           assert a['pass'] is True and p['pass'] is True
           out={
             'schema_version':1,
-            'gate':'STAGE4_V1_FEATURE_MATRIX_R2_EXACT_HEAD_EVIDENCE',
+            'gate':'STAGE4_V1_FEATURE_MATRIX_R3_EXACT_HEAD_EVIDENCE',
             'execution_head':'${{ github.sha }}',
+            'builder_source_git_blob_sha1':EXPECTED_SOURCE_GIT_BLOB_SHA1,
+            'compatibility_change':'SQL_ALIAS_ONLY_count_rows_TO_count_AS_row_count',
             'feature_set_version':'V1.1',
             'feature_set_fingerprint':m['feature_set_fingerprint'],
             'matrix_rows':m['row_count'],
@@ -200,7 +213,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: stage4-v1-feature-matrix-v1-1-r2
+          name: stage4-v1-feature-matrix-v1-1-r3
           path: |
             build/stage4-v1-matrix
             build/financial-matrix-input/projection_audit.json
