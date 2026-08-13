@@ -1,0 +1,208 @@
+name: Stage4 V1.1 Feature Matrix R2 - Strict Projection and Audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/stage4-v1-feature-set]
+    paths:
+      - '.github/workflows/stage4-v1-feature-matrix-r2.yml'
+      - 'config/stage4_v1_feature_matrix_contract.json'
+      - 'governance/stage4_v1_feature_set_contract.json'
+      - 'scripts/project_stage4_financial_matrix_input.py'
+      - 'scripts/build_stage4_v1_feature_matrix.py'
+      - 'scripts/audit_stage4_v1_feature_matrix.py'
+      - 'tests/test_stage4_financial_matrix_input_projection.py'
+      - 'tests/test_stage4_v1_feature_matrix_contract.py'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: stage4-v1-feature-matrix-r2-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HIST_G3_AID: '8651700277'
+  HIST_G3_DIGEST: 'bf977d4f379d421bd198865b90df90caef7ba6cfb5d6d1af96e5487300c1a2f8'
+  HIST_G5_AID: '8651976824'
+  HIST_G5_DIGEST: 'acbeaaca9fc849acbef213dbd9b50df034f28e36acd352e625acb44e536cbe22'
+  FWD_OHLCV_AID: '9150060738'
+  FWD_OHLCV_DIGEST: '1eaa0c0e588c95f835a9e576659616bb8e68d0c19c9712b9821ea88c90451ba9'
+  FWD_G5_AID: '9168063389'
+  FWD_G5_DIGEST: 'fa95e9bed319bfcfde70225ac5a61c2e0bb08810d52091d198f54bd396b33cae'
+  HIST_FIN_AID: '9112098872'
+  HIST_FIN_DIGEST: '706c6dd7252a64fd5c2956df6c594b5c91de29f02ca7d0553fa932017e8867ba'
+  FWD_FIN_AID: '9166040064'
+  FWD_FIN_DIGEST: '89c3bc8a25db8801c1a8ed89dfc76d8ae25a0ac01b416cd71f2b72109e4b8b0b'
+  SURPRISE_AID: '9126607328'
+  SURPRISE_DIGEST: 'b87e822278f044f8fd6dd5a8cf7bb2e342890b27086951d377d73ed70c7bd4b3'
+  REGIME_AID: '9166323143'
+  REGIME_DIGEST: '83e7c803f500b6ba4c3989826f08b47fe61ccc8f1a0974c8abd3b3fd588baf51'
+  UNIVERSE_AID: '8675790808'
+  UNIVERSE_DIGEST: '1942c9e7baa0823772201cc1f6652e660d8b4b60dd8b0559d94dcefe7da4c9fa'
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check pytest
+      - name: Run strict projection and matrix contracts
+        run: |
+          pytest -q \
+            tests/test_stage4_financial_matrix_input_projection.py \
+            tests/test_stage4_v1_feature_matrix_contract.py \
+            tests/test_stage4_v1_feature_set_contract.py
+
+  materialize-audit:
+    needs: contract-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check duckdb==1.3.2
+
+      - name: Download and verify pinned artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for spec in \
+            "g3:${HIST_G3_AID}:${HIST_G3_DIGEST}" \
+            "g5:${HIST_G5_AID}:${HIST_G5_DIGEST}" \
+            "fwd-ohlcv:${FWD_OHLCV_AID}:${FWD_OHLCV_DIGEST}" \
+            "fwd-g5:${FWD_G5_AID}:${FWD_G5_DIGEST}" \
+            "hist-fin:${HIST_FIN_AID}:${HIST_FIN_DIGEST}" \
+            "fwd-fin:${FWD_FIN_AID}:${FWD_FIN_DIGEST}" \
+            "surprise:${SURPRISE_AID}:${SURPRISE_DIGEST}" \
+            "regime:${REGIME_AID}:${REGIME_DIGEST}" \
+            "universe:${UNIVERSE_AID}:${UNIVERSE_DIGEST}"; do
+            IFS=: read -r name aid digest <<< "$spec"
+            mkdir -p "build/${name}"
+            curl --fail --location --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${aid}/zip" \
+              -o "build/${name}.zip"
+            echo "${digest}  build/${name}.zip" | sha256sum -c -
+            unzip -q "build/${name}.zip" -d "build/${name}"
+          done
+          test -d build/g3/frozen-g3/build/g3
+          test -f build/g5/g5_adjustment_chain.csv.gz
+          test -f build/fwd-g5/forward_g5_adjustment_chain.csv.gz
+          test -f build/hist-fin/stage3_financial_raw_values.csv.gz
+          test -d build/fwd-fin/extract
+          test -f build/surprise/stage3_earnings_surprise.csv.gz
+          test -f build/regime/market_regime_v1.csv.gz
+          test -f build/universe/stage3_trading_universe_audit.json
+
+      - name: Strictly project financial inputs without filtering or value transformation
+        run: |
+          python scripts/project_stage4_financial_matrix_input.py \
+            --historical build/hist-fin/stage3_financial_raw_values.csv.gz \
+            --forward-root build/fwd-fin/extract \
+            --out build/financial-matrix-input \
+            --expected-historical-rows 1051826 \
+            --expected-forward-rows 1363 \
+            --expected-forward-shards 8
+
+      - name: Verify projection row identity boundary
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('build/financial-matrix-input/projection_audit.json',encoding='utf-8'))
+          assert p['pass'] is True
+          assert p['parser']=='PYTHON_STDLIB_CSV_RFC4180'
+          assert p['row_filtering'] is False
+          assert p['row_reordering'] is False
+          assert p['value_transformation'] is False
+          assert p['historical']['rows']==1051826
+          assert p['forward']['rows']==1363
+          assert p['forward']['shards']==8
+          assert p['alpha_training_allowed'] is False
+          assert p['live_signal_allowed'] is False
+          PY
+
+      - name: Materialize V1.1 matrix from strict projection
+        run: |
+          python scripts/build_stage4_v1_feature_matrix.py \
+            --historical-ohlcv-root build/g3/frozen-g3/build/g3 \
+            --forward-ohlcv-root build/fwd-ohlcv \
+            --historical-g5 build/g5/g5_adjustment_chain.csv.gz \
+            --forward-g5 build/fwd-g5/forward_g5_adjustment_chain.csv.gz \
+            --historical-financial build/financial-matrix-input/historical/stage3_financial_raw_values.csv.gz \
+            --forward-financial-root build/financial-matrix-input/forward \
+            --earnings-surprise build/surprise/stage3_earnings_surprise.csv.gz \
+            --market-regime build/regime/market_regime_v1.csv.gz \
+            --feature-set-contract governance/stage4_v1_feature_set_contract.json \
+            --matrix-contract config/stage4_v1_feature_matrix_contract.json \
+            --out build/stage4-v1-matrix
+
+      - name: Independent PIT coverage missingness non-leakage audit
+        run: |
+          python scripts/audit_stage4_v1_feature_matrix.py \
+            --matrix build/stage4-v1-matrix/stage4_v1_feature_matrix.parquet \
+            --coverage build/stage4-v1-matrix/feature_coverage.json \
+            --build-audit build/stage4-v1-matrix/feature_matrix_build_audit.json \
+            --manifest build/stage4-v1-matrix/manifest.json \
+            --contract config/stage4_v1_feature_matrix_contract.json \
+            --feature-set-contract governance/stage4_v1_feature_set_contract.json \
+            --historical-ohlcv-root build/g3/frozen-g3/build/g3 \
+            --forward-ohlcv-root build/fwd-ohlcv \
+            --market-regime build/regime/market_regime_v1.csv.gz \
+            --trading-universe-audit build/universe/stage3_trading_universe_audit.json \
+            --out build/stage4-v1-matrix/independent_audit.json
+
+      - name: Lock exact-head R2 execution manifest
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('build/stage4-v1-matrix')
+          m=json.loads((root/'manifest.json').read_text(encoding='utf-8'))
+          a=json.loads((root/'independent_audit.json').read_text(encoding='utf-8'))
+          p=json.loads(Path('build/financial-matrix-input/projection_audit.json').read_text(encoding='utf-8'))
+          assert a['pass'] is True and p['pass'] is True
+          out={
+            'schema_version':1,
+            'gate':'STAGE4_V1_FEATURE_MATRIX_R2_EXACT_HEAD_EVIDENCE',
+            'execution_head':'${{ github.sha }}',
+            'feature_set_version':'V1.1',
+            'feature_set_fingerprint':m['feature_set_fingerprint'],
+            'matrix_rows':m['row_count'],
+            'matrix_sha256':m['matrix_sha256'],
+            'coverage_sha256':m['coverage_sha256'],
+            'projection_audit_sha256':hashlib.sha256(Path('build/financial-matrix-input/projection_audit.json').read_bytes()).hexdigest(),
+            'projection_historical_rows':p['historical']['rows'],
+            'projection_forward_rows':p['forward']['rows'],
+            'independent_audit_sha256':hashlib.sha256((root/'independent_audit.json').read_bytes()).hexdigest(),
+            'independent_audit_pass':True,
+            'industry_identity_in_matrix':False,
+            'alpha_labels_present':False,
+            'alpha_training_allowed':False,
+            'live_signal_allowed':False,
+            'authoritative_model_output':False,
+            'next_gate':'SEPARATE_STAGE4_ALPHA_V1_TRAINING_PREREGISTRATION_AND_OOS_DESIGN'
+          }
+          (root/'execution_manifest.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage4-v1-feature-matrix-v1-1-r2
+          path: |
+            build/stage4-v1-matrix
+            build/financial-matrix-input/projection_audit.json
+          compression-level: 0
+          retention-days: 90
