@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "status": "RESEARCH_ONLY",
+  "integration_ref": "agent/stage3-clean-integration",
+  "accepted_integration_sha": "c70161e6bd17df7f6ec5dd2e9b921174b117c42b",
+  "main_sha": "2c32635e83ba9145d13b9a16b8a74f5750f02a94",
+  "accepted_progress": {
+    "stage2": "PASS_FROZEN",
+    "stage3": "PASS_FROZEN_HISTORICAL",
+    "freshness_v2": "PASS_THROUGH_2026_08_12",
+    "market_regime_v1": "ACCEPTED_DISABLED",
+    "stage4_feature_set": "V1_2_COMPLETE",
+    "stage4_feature_matrix": "V1_2_COMPLETE",
+    "alpha_prereg_v1_0": "MERGED",
+    "alpha_prereg_v1_1": "PENDING_PR_137"
+  },
+  "active_business_pr": {
+    "number": 137,
+    "head_sha": "8da916ec8247fb469e92e260e13107a5f2471e27",
+    "state": "OPEN",
+    "mergeable_last_verified": true,
+    "meaning": "V1.1 supersession seals 20-session labels before development/OOS/lockbox boundaries; no labels or model fit in the PR"
+  },
+  "next_business_gate": "Merge PR 137 into integration, verify new integration SHA, then development-only label materialization plus split seal with no model fit",
+  "permissions": {
+    "development_label_materialization": false,
+    "oos_label_access": false,
+    "lockbox_label_access": false,
+    "alpha_model_fit": false,
+    "live_signal": false,
+    "main_merge": false
+  },
+  "historical_authority_note": "Stage2 and Stage3 frozen manifests remain immutable evidence for their own historical data scope. This file is the moving repository-accepted progression surface and must not rewrite those historical manifests.",
+  "continuation_note": "For in-progress conversational execution, Airtable RUNNING/BLOCKED checkpoints take precedence after live GitHub verification."
+}
