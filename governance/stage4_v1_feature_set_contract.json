@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "feature_set_id": "STAGE4_ALPHA_V1_FEATURE_SET",
-  "feature_set_version": "V1.1",
+  "feature_set_version": "V1.2",
   "status": "FROZEN_PRETRAINING_CONTRACT",
-  "supersedes_feature_set_version": "V1.0",
-  "supersession_ref": "governance/stage4_v1_feature_set_v1_0_supersession.json",
+  "supersedes_feature_set_version": "V1.1",
+  "supersession_ref": "governance/stage4_v1_feature_set_v1_1_supersession.json",
   "frozen_scope": "STAGE4_ALPHA_V1_INPUTS_ONLY",
   "feature_set_fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
-  "feature_set_fingerprint": "757d384cd090620cb8a351b8bcf6d93884577c74dd4fb874bb2f7880e0c939a3",
+  "feature_set_fingerprint": "d319ea1c236d580d0d032a055e4cdc07bf45e586ecbef664c6f4b3a8be98f9ff",
   "fingerprint_basis": {
     "feature_set_id": "STAGE4_ALPHA_V1_FEATURE_SET",
-    "feature_set_version": "V1.1",
+    "feature_set_version": "V1.2",
     "stage2": {
       "version": "V3.2.25-stage2-final-freeze",
       "fingerprint": "f17f7ab63f4532dda635eb7366e7df7bf5497a5ce814410105312bccb53125bb"
@@ -72,6 +72,7 @@
         "disposition": "IN",
         "authorities": ["stage3:S3G4"],
         "model_visible": true,
+        "activation": "SURPRISE_ECONOMIC_DATE_EQUALS_CURRENT_LATEST_FINANCIAL_ECONOMIC_DATE",
         "features": [
           "official_guidance_surprise",
           "official_guidance_surprise_missing",
@@ -121,6 +122,7 @@
       "date_only_disclosure_uses_next_session": true,
       "financial_values_require_available_at_before_effective_session": true,
       "surprise_expectation_strictly_prior": true,
+      "earnings_surprise_requires_current_financial_economic_date_match": true,
       "market_regime_thresholds_use_only_t_minus_1_history": true,
       "future_backfill_forbidden": true
     },
@@ -130,7 +132,8 @@
       "missing_indicators_allowed": true,
       "coverage_and_missingness_report_required_per_feature": true,
       "unknown_identity_or_time_semantics_fail_closed": true,
-      "industry_missingness_cannot_be_repaired_by_unvalidated_forward_fill": true
+      "industry_missingness_cannot_be_repaired_by_unvalidated_forward_fill": true,
+      "surprise_from_noncurrent_financial_economic_period_treated_missing": true
     },
     "permissions": {
       "feature_set_frozen": true,
@@ -161,6 +164,17 @@
       "csrc_2012_normalized_primary_code_rows": 1,
       "capco_2023_rows": 19047,
       "capco_2023_normalized_primary_code_rows": 19047
+    },
+    "surprise_semantic_diagnostics": {
+      "v1_1_matrix_artifact_id": 9168438550,
+      "v1_1_matrix_sha256": "1818f9cdaf86c965e45c07cd1d261ece0eb782a6aa0aa6846d18701bd8699feb",
+      "r1_artifact_id": 9168512355,
+      "r2_artifact_id": 9168558250,
+      "all_asof_surprise_rows": 5733019,
+      "current_report_match_rows": 1756064,
+      "prior_period_stale_rows": 3976955,
+      "current_report_match_age_p50_sessions": 41,
+      "current_report_match_age_gt_252_rows": 2064
     }
   },
   "invariants": {
@@ -171,11 +185,12 @@
     "financial_retained_residuals_not_numeric_truth": true,
     "unvalidated_industry_forward_fill_forbidden": true,
     "industry_identity_model_input_disabled_until_separate_normalization_plugin_is_tested_and_accepted": true,
+    "surprise_from_prior_financial_economic_period_is_missing": true,
     "market_regime_current_lifecycle_expected": "ACCEPTED",
     "market_regime_acceptance_is_separate_gate": true,
     "market_regime_acceptance_satisfied": true,
     "no_alpha_training_in_this_contract": true,
     "no_live_signal_in_this_contract": true
   },
-  "next_gate": "MATERIALIZE_STAGE4_V1_FEATURE_MATRIX_WITH_PIT_COVERAGE_MISSINGNESS_AND_NON_LEAKAGE_AUDIT"
+  "next_gate": "MATERIALIZE_STAGE4_V1_2_FEATURE_MATRIX_WITH_PIT_COVERAGE_MISSINGNESS_NON_LEAKAGE_AND_SURPRISE_SEMANTIC_AUDIT"
 }
