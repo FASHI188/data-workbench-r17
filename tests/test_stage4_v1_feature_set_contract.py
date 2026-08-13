@@ -15,7 +15,9 @@ def test_feature_set_fingerprint_is_exact_and_deterministic() -> None:
     contract = _load("governance/stage4_v1_feature_set_contract.json")
     canonical = json.dumps(contract["fingerprint_basis"], sort_keys=True, separators=(",", ":")).encode()
     assert hashlib.sha256(canonical).hexdigest() == contract["feature_set_fingerprint"]
-    assert contract["feature_set_fingerprint"] == "dab3ffc74a518fd0a75a3a63b0717354162820d1f5ab0cb5d75448cc9a4e9937"
+    assert contract["feature_set_version"] == "V1.1"
+    assert contract["supersedes_feature_set_version"] == "V1.0"
+    assert contract["feature_set_fingerprint"] == "757d384cd090620cb8a351b8bcf6d93884577c74dd4fb874bb2f7880e0c939a3"
 
 
 def test_feature_set_locks_frozen_stage2_and_stage3_authority() -> None:
@@ -38,6 +40,7 @@ def test_feature_set_is_dual_track_and_excludes_non_pit_runtime_information() ->
     assert "ETF_PRIMARY_FLOW_WITHOUT_STRICT_PIT" in out
     assert "GENERIC_ANNOUNCEMENT_TITLE_SENTIMENT_OR_SCALAR_INFERENCE" in out
     assert "CURRENT_INDUSTRY_BACKFILL" in out
+    assert "INDUSTRY_IDENTITY_UNTIL_NORMALIZED_PIT_PLUGIN" in out
     assert "TURNOVER_RATE_WITHOUT_PIT_SHARE_DENOMINATOR" in out
     assert "VALUATION_WITHOUT_PIT_DENOMINATOR" in out
     assert "INDUSTRY_RELATIVE_STRENGTH_OR_DIFFUSION_UNTIL_SEPARATE_TESTED_PLUGIN" in out
@@ -56,6 +59,26 @@ def test_feature_set_has_exact_pit_and_missingness_boundaries() -> None:
     assert missing["zero_fill_for_missing_forbidden"] is True
     assert missing["coverage_and_missingness_report_required_per_feature"] is True
     assert missing["unknown_identity_or_time_semantics_fail_closed"] is True
+    assert missing["industry_missingness_cannot_be_repaired_by_unvalidated_forward_fill"] is True
+
+
+def test_industry_is_explicitly_removed_from_v1_model_inputs_on_frozen_artifact_evidence() -> None:
+    contract = _load("governance/stage4_v1_feature_set_contract.json")
+    families = {row["family_id"]: row for row in contract["fingerprint_basis"]["feature_families"]}
+    industry = families["INDUSTRY_IDENTITY_PIT"]
+    assert industry["disposition"] == "OUT_PENDING_NORMALIZATION_PLUGIN"
+    assert industry["model_visible"] is False
+    evidence = contract["source_facts"]["industry_artifact"]
+    assert evidence["ledger_rows"] == 94171
+    assert evidence["normalized_primary_code_rows"] == 19048
+    assert evidence["csrc_2012_rows"] == 75124
+    assert evidence["csrc_2012_normalized_primary_code_rows"] == 1
+    assert evidence["capco_2023_rows"] == 19047
+    assert evidence["capco_2023_normalized_primary_code_rows"] == 19047
+    supersession = _load("governance/stage4_v1_feature_set_v1_0_supersession.json")
+    assert supersession["superseded_fingerprint"] == "dab3ffc74a518fd0a75a3a63b0717354162820d1f5ab0cb5d75448cc9a4e9937"
+    assert supersession["replacement"]["version"] == "V1.1"
+    assert supersession["hard_boundary"]["no_industry_forward_fill"] is True
 
 
 def test_feature_families_are_explicit_and_market_regime_acceptance_is_exact() -> None:
