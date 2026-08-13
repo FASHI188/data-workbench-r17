@@ -3,7 +3,7 @@
   "module_version": "V1",
   "contract_version": "V1",
   "kind": "FEATURE_PLUGIN",
-  "lifecycle": "SHADOW",
+  "lifecycle": "TESTED",
   "enabled": false,
   "input_schema": "schemas/stage4_market_regime_v1_input.schema.json",
   "output_schema": "schemas/stage4_market_regime_v1_output.schema.json",
