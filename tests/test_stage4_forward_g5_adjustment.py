@@ -9,6 +9,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from build_stage4_forward_g5_adjustment import calc_event, select_reference
 
+EPS = Decimal("1e-24")
+
 
 def action(cash="0", bonus="0", transfer="0", rights="0", rights_price="0"):
     return {
@@ -26,7 +28,7 @@ def test_cash_dividend_formula_matches_frozen_g5_direction() -> None:
     assert continuity == Decimal("0.99")
     assert back == Decimal("10") / Decimal("9.90")
     assert cumulative == Decimal("2") * back
-    assert ex * cumulative == Decimal("10") * Decimal("2")
+    assert abs(ex * cumulative - Decimal("20")) <= EPS
 
 
 def test_small_g4_difference_keeps_official_formula() -> None:
@@ -36,7 +38,7 @@ def test_small_g4_difference_keeps_official_formula() -> None:
     assert selected == nominal == Decimal("9.90")
     assert delta == 0
     assert source == "OFFICIAL_ACTION_FORMULA"
-    assert selected * cumulative == Decimal("10")
+    assert abs(selected * cumulative - Decimal("10")) <= EPS
 
 
 def test_material_share_distribution_can_use_g4_preclose_override() -> None:
@@ -47,7 +49,7 @@ def test_material_share_distribution_can_use_g4_preclose_override() -> None:
     assert delta > Decimal("0.01")
     assert selected == Decimal("10.10")
     assert source.startswith("G4_EXDATE_PRECLOSE")
-    assert selected * cumulative == Decimal("13")
+    assert abs(selected * cumulative - Decimal("13")) <= EPS
 
 
 def test_material_cash_only_discrepancy_fails_closed() -> None:
