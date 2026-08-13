@@ -1,8 +1,9 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "status": "RESEARCH_ONLY",
   "integration_ref": "agent/stage3-clean-integration",
-  "accepted_integration_sha": "c80ae3b86e78bbffeede047d58efa1c1f4425d54",
+  "live_integration_sha_source": "READ_GITHUB_REF_AT_RUNTIME",
+  "last_business_progress_sha": "c70161e6bd17df7f6ec5dd2e9b921174b117c42b",
   "main_sha": "2c32635e83ba9145d13b9a16b8a74f5750f02a94",
   "accepted_progress": {
     "stage2": "PASS_FROZEN",
@@ -15,22 +16,12 @@
     "alpha_prereg_v1_1": "PENDING_PR_137",
     "continuity_control_plane_v3": "COMPLETE"
   },
+  "continuity_governance_evidence": ["PR139", "PR140"],
   "active_business_pr": {
     "number": 137,
     "head_sha": "8da916ec8247fb469e92e260e13107a5f2471e27",
-    "state": "OPEN",
-    "mergeable_last_verified": true,
-    "meaning": "V1.1 supersession seals 20-session labels before development/OOS/lockbox boundaries; no labels or model fit in the PR"
+    "state": "OPEN"
   },
-  "next_business_gate": "Merge PR 137 into integration, verify new integration SHA, then development-only label materialization plus split seal with no model fit",
-  "permissions": {
-    "development_label_materialization": false,
-    "oos_label_access": false,
-    "lockbox_label_access": false,
-    "alpha_model_fit": false,
-    "live_signal": false,
-    "main_merge": false
-  },
-  "historical_authority_note": "Stage2 and Stage3 frozen manifests remain immutable evidence for their own historical data scope. This file is the moving repository-accepted progression surface and must not rewrite those historical manifests.",
-  "continuation_note": "For in-progress conversational execution, Airtable RUNNING/BLOCKED checkpoints take precedence after live GitHub verification."
+  "next_business_gate": "Merge PR137, verify live integration SHA, then create the separate development-label and split-seal gate",
+  "authority_note": "Live integration SHA must be read from GitHub at runtime. This file must not self-reference the SHA produced by merging its own update."
 }
