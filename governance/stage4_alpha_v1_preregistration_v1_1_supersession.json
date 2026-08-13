@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_NO_LABEL_ACCESS_NO_TRAINING",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "e17875e4936ee957f30b7fa61282a107d41bc8ae9e52d4a7d8a17b61e0969853",
+  "fingerprint_basis": {
+    "supersession_id": "STAGE4_ALPHA_V1_PREREGISTRATION_BOUNDARY_SEAL",
+    "version": "V1.1",
+    "supersedes": {
+      "version": "V1.0",
+      "fingerprint": "9cac700cd1043ee153bbc224de67725be3ce357dd9d25d6da02978c98a088589"
+    },
+    "authority": {
+      "integration_base_sha": "c70161e6bd17df7f6ec5dd2e9b921174b117c42b",
+      "feature_matrix_artifact_id": 9168728086,
+      "feature_matrix_sha256": "c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c",
+      "market_calendar_sources": {
+        "historical_ohlcv_artifact_id": 8651700277,
+        "historical_ohlcv_digest": "sha256:bf977d4f379d421bd198865b90df90caef7ba6cfb5d6d1af96e5487300c1a2f8",
+        "forward_ohlcv_artifact_id": 9150060738,
+        "forward_ohlcv_digest": "sha256:1eaa0c0e588c95f835a9e576659616bb8e68d0c19c9712b9821ea88c90451ba9"
+      }
+    },
+    "boundary_semantics": {
+      "partition_identity_is_decision_date": true,
+      "label_horizon_must_not_cross_into_next_sealed_partition": true,
+      "primary_horizon_sessions": 20,
+      "entry_is_next_market_session": true,
+      "exit_is_20th_market_session_counting_entry_as_1": true,
+      "development": {
+        "nominal_decision_start": "2015-01-05",
+        "nominal_decision_end": "2022-12-30",
+        "latest_labelable_decision": "2022-12-02",
+        "corresponding_entry": "2022-12-05",
+        "corresponding_20d_exit": "2022-12-30",
+        "purged_boundary_start": "2022-12-05",
+        "purged_boundary_end": "2022-12-30",
+        "next_sealed_partition_start": "2023-01-03"
+      },
+      "oos_validation": {
+        "nominal_decision_start": "2023-01-03",
+        "nominal_decision_end": "2024-12-31",
+        "latest_labelable_decision": "2024-12-03",
+        "corresponding_entry": "2024-12-04",
+        "corresponding_20d_exit": "2024-12-31",
+        "purged_boundary_start": "2024-12-04",
+        "purged_boundary_end": "2024-12-31",
+        "next_sealed_partition_start": "2025-01-02"
+      },
+      "final_lockbox_as_of_current_data": {
+        "nominal_decision_start": "2025-01-02",
+        "nominal_decision_end": "2026-08-12",
+        "data_cutoff": "2026-08-12",
+        "latest_fully_labelable_decision": "2026-07-15",
+        "corresponding_entry": "2026-07-16",
+        "corresponding_20d_exit": "2026-08-12",
+        "later_decisions_status": "UNSCORABLE_AS_OF_DATA_CUTOFF_NOT_FAILURE"
+      }
+    },
+    "hard_boundaries": {
+      "development_label_builder_must_not_read_market_rows_on_or_after_2023_01_03": true,
+      "oos_label_builder_must_not_read_market_rows_on_or_after_2025_01_02": true,
+      "development_boundary_rows_have_no_labels_and_are_excluded_from_fit_or_selection": true,
+      "oos_boundary_rows_have_no_labels_and_are_excluded_from_validation_metrics": true,
+      "final_lockbox_rows_without_full_20d_horizon_have_no_labels": true,
+      "no_training_in_this_supersession": true,
+      "no_oos_label_access_in_this_supersession": true,
+      "no_lockbox_label_access_in_this_supersession": true,
+      "main_unchanged": true
+    }
+  },
+  "next_gate": "SEPARATE_ALPHA_V1_DEVELOPMENT_LABEL_MATERIALIZATION_AND_SPLIT_SEAL_WITHOUT_MODEL_FIT"
+}
