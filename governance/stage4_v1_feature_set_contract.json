@@ -5,7 +5,7 @@
   "status": "FROZEN_PRETRAINING_CONTRACT",
   "frozen_scope": "STAGE4_ALPHA_V1_INPUTS_ONLY",
   "feature_set_fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
-  "feature_set_fingerprint": "06838625fa8afc3df87f7e8df22007c4e780e93dcbbe7605e7ec99fe1713c738",
+  "feature_set_fingerprint": "dab3ffc74a518fd0a75a3a63b0717354162820d1f5ab0cb5d75448cc9a4e9937",
   "fingerprint_basis": {
     "feature_set_id": "STAGE4_ALPHA_V1_FEATURE_SET",
     "feature_set_version": "V1.0",
@@ -85,7 +85,7 @@
       },
       {
         "family_id": "MARKET_REGIME_V1",
-        "disposition": "IN_PENDING_MODULE_ACCEPTANCE",
+        "disposition": "IN",
         "authorities": ["extension:market_regime_v1"],
         "model_visible": true,
         "features": [
@@ -133,6 +133,7 @@
       "feature_set_frozen": true,
       "stage4_feature_materialization_allowed": true,
       "market_regime_requires_ACCEPTED_before_materialization": true,
+      "market_regime_acceptance_satisfied": true,
       "alpha_training_allowed": false,
       "live_signal_allowed": false,
       "authoritative_model_output": false
@@ -143,6 +144,7 @@
     "stage3_manifest": "data/stage3_final/manifest.json",
     "market_regime_manifest": "governance/market_regime_v1_module_manifest.json",
     "market_regime_tested_promotion": "governance/stage4_market_regime_v1_tested_promotion.json",
+    "market_regime_accepted_promotion": "governance/stage4_market_regime_v1_accepted_promotion.json",
     "freshness_hard_gate_artifact": "GitHub Actions artifact 9166063671",
     "freshness_hard_gate_gate_sha256": "8571bc1896cc1d770178c19556cd0385b162e47bd5510701f13764016dcdd769"
   },
@@ -152,10 +154,11 @@
     "freshness_forward_evidence_does_not_promote_frozen_stage2_or_stage3": true,
     "generic_announcement_text_not_used_as_numeric_signal": true,
     "financial_retained_residuals_not_numeric_truth": true,
-    "market_regime_current_lifecycle_expected": "TESTED",
+    "market_regime_current_lifecycle_expected": "ACCEPTED",
     "market_regime_acceptance_is_separate_gate": true,
+    "market_regime_acceptance_satisfied": true,
     "no_alpha_training_in_this_contract": true,
     "no_live_signal_in_this_contract": true
   },
-  "next_gate": "PROMOTE_MARKET_REGIME_V1_TESTED_TO_ACCEPTED_WITHOUT_ENABLING_TRAINING_OR_LIVE_THEN_MATERIALIZE_FEATURE_MATRIX"
+  "next_gate": "MATERIALIZE_STAGE4_V1_FEATURE_MATRIX_WITH_PIT_COVERAGE_MISSINGNESS_AND_NON_LEAKAGE_AUDIT"
 }
