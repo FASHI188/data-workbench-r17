@@ -99,7 +99,7 @@ jobs:
           unzip -q build/p1.zip -d build/p1
           python - <<'PY'
           import csv
-          from datetime import datetime
+          from datetime import date, datetime
           from pathlib import Path
           master=Path('build/p1/data/current_master/cn_main_a.csv'); intervals=Path('data/security_lifecycle/security_intervals.csv')
           with intervals.open(encoding='utf-8',newline='') as f: rows=list(csv.DictReader(f)); fields=list(rows[0])
@@ -108,7 +108,8 @@ jobs:
               for r in csv.DictReader(f):
                   k=(r['exchange'],r['code'])
                   if k in known: continue
-                  d=datetime.strptime(r['listing_date'],'%Y%m%d').date().isoformat()
+                  s=str(r['listing_date']).strip()
+                  d=(date.fromisoformat(s) if '-' in s else datetime.strptime(s,'%Y%m%d').date()).isoformat()
                   rows.append({'exchange':r['exchange'],'code':r['code'],'name':r['name'],'listed_from':d,'listed_to_exclusive':'','list_evidence_class':'FORWARD_OFFICIAL_CURRENT_MASTER','delist_evidence_class':''})
           with intervals.open('w',encoding='utf-8',newline='') as f: w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
           print('runtime identities',len(rows))
