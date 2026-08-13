@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "supersession_id": "STAGE4_V1_FEATURE_SET_V1_1_TO_V1_2",
+  "feature_set_id": "STAGE4_ALPHA_V1_FEATURE_SET",
+  "superseded_version": "V1.1",
+  "superseded_fingerprint": "757d384cd090620cb8a351b8bcf6d93884577c74dd4fb874bb2f7880e0c939a3",
+  "superseded_matrix_evidence": {
+    "run_id": 31667326936,
+    "head_sha": "d7fa740a6e25d31401f0f9af1477f4ba4b4823d5",
+    "artifact_id": 9168438550,
+    "artifact_digest": "sha256:813ae234c149fb30f725895cd67bcfbe404b1050cba9f915c9c4c0f5a1392a42",
+    "matrix_rows": 7924181,
+    "matrix_sha256": "1818f9cdaf86c965e45c07cd1d261ece0eb782a6aa0aa6846d18701bd8699feb",
+    "independent_audit_pass": true,
+    "temporal_violations": 0
+  },
+  "reason": "V1.1 passed all PIT/non-leakage hard gates, but a pre-training semantic diagnostic showed that a raw S3G4 Surprise value was carried forward by ASOF even after the latest financial economic period advanced. This is not future leakage, but it creates economically stale event-state semantics. V1.2 binds Surprise to the current latest financial economic_date and treats prior-period Surprise as missing.",
+  "diagnostic_evidence": {
+    "r1": {
+      "run_id": 31667619078,
+      "head_sha": "40d30a38917e26e0d96070c8e3badf8d69ed46ab",
+      "artifact_id": 9168512355,
+      "artifact_digest": "sha256:a0825531fc89203c567a89e7f098077f328983dc7a6a14dc2dd24a6c5e44562b",
+      "asof_surprise_rows": 5733019,
+      "age_p50_sessions": 133,
+      "age_gt_252_rows": 1743440,
+      "age_gt_504_rows": 875517,
+      "age_max_sessions": 2764
+    },
+    "r2_current_report_binding": {
+      "run_id": 31667745897,
+      "head_sha": "492fea24b91a7f6bfb54c5a1acbaa69b1b9b8a43",
+      "artifact_id": 9168558250,
+      "artifact_digest": "sha256:d67d0f3978c23547a6d33a59f7f419f1bf5265c5cc0b68cb48ba241ad239a179",
+      "current_report_match_rows": 1756064,
+      "prior_period_stale_rows": 3976955,
+      "current_report_match_age_p50_sessions": 41,
+      "current_report_match_age_gt_252_rows": 2064,
+      "current_report_match_age_gt_504_rows": 153
+    }
+  },
+  "replacement": {
+    "version": "V1.2",
+    "change": "S3G4 Surprise remains an input only when surprise_economic_date equals the current latest financial_economic_date known at the same effective session. Prior-period Surprise becomes missing; no fixed-day expiry is invented.",
+    "alpha_training_allowed": false,
+    "live_signal_allowed": false
+  },
+  "hard_boundary": {
+    "no_fixed_horizon_chosen_without_validation": true,
+    "no_prior_period_surprise_carry": true,
+    "no_stage2_mutation": true,
+    "no_stage3_mutation": true,
+    "no_alpha_training": true,
+    "no_live_signal": true
+  }
+}

@@ -7,6 +7,7 @@ on:
     paths:
       - 'extensions/**'
       - 'governance/extension_module_registry.json'
+      - 'governance/*accepted*promotion*.json'
       - 'schemas/external_data_envelope_v1.schema.json'
       - 'schemas/extension_module_manifest_v1.schema.json'
       - 'docs/EXTENSION_FOUNDATION_CONTRACT_V1.md'
@@ -47,21 +48,62 @@ jobs:
             governance/stage3_authority_map.json \
             config/stage3_final_lock.json)"
           if [ -n "$changed" ]; then
-            echo "Extension-foundation PR modified frozen/current authority paths:" >&2
+            echo "Extension PR modified frozen/current authority paths:" >&2
             echo "$changed" >&2
             exit 1
           fi
 
-      - name: Prove no concrete extension module is registered or activated
+      - name: Prove registered modules remain accepted-evidence-bound and default-off
         run: |
           python - <<'PY'
+          import hashlib
           import json
           from pathlib import Path
 
           registry = json.loads(Path('governance/extension_module_registry.json').read_text())
-          assert registry['modules'] == []
           assert registry['default_enabled'] is False
-          assert registry['policies']['training_default_allowed'] is False
-          assert registry['policies']['live_default_allowed'] is False
-          print('extension foundation only: no concrete module registered or activated')
+          policies = registry['policies']
+          assert policies['extensions_default_disabled'] is True
+          assert policies['training_default_allowed'] is False
+          assert policies['live_default_allowed'] is False
+          assert policies['separate_acceptance_required'] is True
+          assert policies['rollback_required'] is True
+          assert policies['failure_policy'] == 'ISOLATE_FAIL_CLOSED'
+          assert policies['fallback_behavior'] == 'BASELINE_UNCHANGED'
+
+          modules = registry.get('modules', [])
+          expected_fp = hashlib.sha256(
+              json.dumps(modules, sort_keys=True, separators=(',', ':')).encode()
+          ).hexdigest()
+          assert registry['module_set_fingerprint'] == expected_fp
+
+          allowed = {'REGISTERED','SHADOW','TESTED','ACCEPTED','ENABLED','DISABLED','QUARANTINED','ROLLED_BACK'}
+          for module in modules:
+              assert module['lifecycle'] in allowed
+              # Integration of a module contract must not implicitly activate training/live.
+              assert module['enabled'] is False
+              assert module['training_allowed'] is False
+              assert module['live_allowed'] is False
+              assert module['failure_policy'] == 'ISOLATE_FAIL_CLOSED'
+              assert module['fallback_behavior'] == 'BASELINE_UNCHANGED'
+              assert module.get('rollback_target_module_version')
+              assert module.get('rollback_target_module_set_fingerprint')
+              if module['lifecycle'] in {'ACCEPTED','ENABLED'}:
+                  ref = module.get('acceptance_ref')
+                  assert ref
+                  p = Path(ref)
+                  assert p.is_file(), f'missing acceptance evidence: {ref}'
+                  evidence = json.loads(p.read_text())
+                  assert evidence.get('module_id') == module['module_id']
+                  assert evidence.get('module_version') == module['module_version']
+                  permissions = evidence.get('permissions', {})
+                  assert permissions.get('alpha_training_allowed') is False
+                  assert permissions.get('live_signal_allowed') is False
+                  assert permissions.get('authoritative_model_output') is False
+
+          anchor = registry['accepted_baseline_anchor']
+          assert anchor['stage4_unlocked'] is False
+          assert anchor['alpha_training_allowed'] is False
+          assert anchor['live_signal_allowed'] is False
+          print(f"extension contract PASS: {len(modules)} registered module(s), all default-off and evidence-bound")
           PY

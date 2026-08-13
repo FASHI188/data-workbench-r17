@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "contract_version": "V1",
-  "status": "EXTENSION_FOUNDATION_ONLY",
+  "status": "EXTENSION_FOUNDATION_WITH_ACCEPTED_MODULES",
   "default_enabled": false,
   "default_lifecycle": "REGISTERED",
   "accepted_baseline_anchor": {
@@ -14,7 +14,7 @@
     "live_signal_allowed": false
   },
   "module_set_fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT",
-  "module_set_fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "module_set_fingerprint": "9d4bc3da00b8c1a7dca712b5b429d1b6491ce52ade7b1935664ffbdbc4235cb8",
   "policies": {
     "no_speculative_business_logic": true,
     "extensions_default_disabled": true,
@@ -39,53 +39,31 @@
     "timeout_and_retry_budget_required": true,
     "run_task_trace_correlation_required": true
   },
-  "required_extension_kinds": [
-    "SOURCE_ADAPTER",
-    "FEATURE_PLUGIN",
-    "MODEL_ADAPTER",
-    "TASK_SCHEDULER",
-    "EVENT_LOG",
-    "OUTPUT_ADAPTER"
-  ],
-  "additional_foundation_kinds": [
-    "ENTITY_RESOLVER"
-  ],
-  "external_data_required_fields": [
-    "event_id",
-    "idempotency_key",
-    "event_time",
-    "source",
-    "source_ref",
-    "published_at",
-    "available_at",
-    "collected_at",
-    "source_sha256",
-    "schema_version",
-    "adapter_version",
-    "parser_version",
-    "transform_version",
-    "run_id",
-    "upstream_fingerprint",
-    "revision",
-    "data_status"
-  ],
-  "lifecycle": [
-    "REGISTERED",
-    "SHADOW",
-    "TESTED",
-    "ACCEPTED",
-    "ENABLED",
-    "DISABLED",
-    "QUARANTINED",
-    "ROLLED_BACK"
-  ],
-  "data_statuses": [
-    "AVAILABLE",
-    "NOT_AVAILABLE",
-    "NOT_APPLICABLE",
-    "STALE",
-    "INVALID",
-    "ERROR_FAIL_CLOSED"
-  ],
-  "modules": []
+  "required_extension_kinds": ["SOURCE_ADAPTER", "FEATURE_PLUGIN", "MODEL_ADAPTER", "TASK_SCHEDULER", "EVENT_LOG", "OUTPUT_ADAPTER"],
+  "additional_foundation_kinds": ["ENTITY_RESOLVER"],
+  "external_data_required_fields": ["event_id", "idempotency_key", "event_time", "source", "source_ref", "published_at", "available_at", "collected_at", "source_sha256", "schema_version", "adapter_version", "parser_version", "transform_version", "run_id", "upstream_fingerprint", "revision", "data_status"],
+  "lifecycle": ["REGISTERED", "SHADOW", "TESTED", "ACCEPTED", "ENABLED", "DISABLED", "QUARANTINED", "ROLLED_BACK"],
+  "data_statuses": ["AVAILABLE", "NOT_AVAILABLE", "NOT_APPLICABLE", "STALE", "INVALID", "ERROR_FAIL_CLOSED"],
+  "modules": [
+    {
+      "module_id": "market_regime_v1",
+      "module_version": "V1",
+      "contract_version": "V1",
+      "kind": "FEATURE_PLUGIN",
+      "lifecycle": "ACCEPTED",
+      "enabled": false,
+      "input_schema": "schemas/stage4_market_regime_v1_input.schema.json",
+      "output_schema": "schemas/stage4_market_regime_v1_output.schema.json",
+      "dependencies": ["stage2_g3_frozen_ohlcv", "freshness_v2_forward_ohlcv"],
+      "training_allowed": false,
+      "live_allowed": false,
+      "failure_policy": "ISOLATE_FAIL_CLOSED",
+      "fallback_behavior": "BASELINE_UNCHANGED",
+      "timeout_seconds": 1800,
+      "max_retries": 0,
+      "acceptance_ref": "governance/stage4_market_regime_v1_accepted_promotion.json",
+      "rollback_target_module_version": "V1",
+      "rollback_target_module_set_fingerprint": "19568c012959f821a8efe94df5999f6066b612aecb4eba5412a38d4ba35695b2"
+    }
+  ]
 }
