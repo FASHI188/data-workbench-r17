@@ -15,7 +15,7 @@ def test_feature_set_fingerprint_is_exact_and_deterministic() -> None:
     contract = _load("governance/stage4_v1_feature_set_contract.json")
     canonical = json.dumps(contract["fingerprint_basis"], sort_keys=True, separators=(",", ":")).encode()
     assert hashlib.sha256(canonical).hexdigest() == contract["feature_set_fingerprint"]
-    assert contract["feature_set_fingerprint"] == "06838625fa8afc3df87f7e8df22007c4e780e93dcbbe7605e7ec99fe1713c738"
+    assert contract["feature_set_fingerprint"] == "dab3ffc74a518fd0a75a3a63b0717354162820d1f5ab0cb5d75448cc9a4e9937"
 
 
 def test_feature_set_locks_frozen_stage2_and_stage3_authority() -> None:
@@ -33,8 +33,7 @@ def test_feature_set_locks_frozen_stage2_and_stage3_authority() -> None:
 
 def test_feature_set_is_dual_track_and_excludes_non_pit_runtime_information() -> None:
     contract = _load("governance/stage4_v1_feature_set_contract.json")
-    basis = contract["fingerprint_basis"]
-    out = set(basis["explicit_out"])
+    out = set(contract["fingerprint_basis"]["explicit_out"])
     assert {"GENERAL_WEB_NEWS", "SOCIAL_MEDIA", "RUMOR_OR_UNVERIFIED_SUPPLY_CHAIN"} <= out
     assert "ETF_PRIMARY_FLOW_WITHOUT_STRICT_PIT" in out
     assert "GENERIC_ANNOUNCEMENT_TITLE_SENTIMENT_OR_SCALAR_INFERENCE" in out
@@ -59,7 +58,7 @@ def test_feature_set_has_exact_pit_and_missingness_boundaries() -> None:
     assert missing["unknown_identity_or_time_semantics_fail_closed"] is True
 
 
-def test_feature_families_are_explicit_and_market_regime_is_not_sneak_accepted() -> None:
+def test_feature_families_are_explicit_and_market_regime_acceptance_is_exact() -> None:
     contract = _load("governance/stage4_v1_feature_set_contract.json")
     families = {row["family_id"]: row for row in contract["fingerprint_basis"]["feature_families"]}
     assert set(families) == {
@@ -73,14 +72,33 @@ def test_feature_families_are_explicit_and_market_regime_is_not_sneak_accepted()
     }
     assert families["UNIVERSE_ELIGIBILITY_PIT"]["model_visible"] is False
     assert families["CORPORATE_ACTION_ADJUSTMENT_PIT"]["model_visible"] is False
-    assert families["MARKET_REGIME_V1"]["disposition"] == "IN_PENDING_MODULE_ACCEPTANCE"
+    assert families["MARKET_REGIME_V1"]["disposition"] == "IN"
     market = _load("governance/market_regime_v1_module_manifest.json")
-    tested = _load("governance/stage4_market_regime_v1_tested_promotion.json")
-    assert market["lifecycle"] == "TESTED"
+    accepted = _load("governance/stage4_market_regime_v1_accepted_promotion.json")
+    assert market["lifecycle"] == "ACCEPTED"
+    assert market["acceptance_ref"] == "governance/stage4_market_regime_v1_accepted_promotion.json"
     assert market["enabled"] is False
     assert market["training_allowed"] is False
     assert market["live_allowed"] is False
-    assert tested["permissions"]["stage4_feature_use_allowed"] is False
+    assert accepted["permissions"]["stage4_feature_use_allowed"] is True
+    assert accepted["permissions"]["alpha_training_allowed"] is False
+    assert accepted["permissions"]["live_signal_allowed"] is False
+    assert accepted["permissions"]["authoritative_model_output"] is False
+
+
+def test_registry_accepts_market_regime_without_changing_baseline_permissions() -> None:
+    registry = _load("governance/extension_module_registry.json")
+    module = registry["modules"][0]
+    assert module["module_id"] == "market_regime_v1"
+    assert module["lifecycle"] == "ACCEPTED"
+    assert module["enabled"] is False
+    assert module["training_allowed"] is False
+    assert module["live_allowed"] is False
+    assert module["rollback_target_module_set_fingerprint"] == "19568c012959f821a8efe94df5999f6066b612aecb4eba5412a38d4ba35695b2"
+    anchor = registry["accepted_baseline_anchor"]
+    assert anchor["stage4_unlocked"] is False
+    assert anchor["alpha_training_allowed"] is False
+    assert anchor["live_signal_allowed"] is False
 
 
 def test_freeze_does_not_authorize_alpha_training_or_live_signals() -> None:
@@ -90,6 +108,7 @@ def test_freeze_does_not_authorize_alpha_training_or_live_signals() -> None:
     assert permissions["feature_set_frozen"] is True
     assert permissions["stage4_feature_materialization_allowed"] is True
     assert permissions["market_regime_requires_ACCEPTED_before_materialization"] is True
+    assert permissions["market_regime_acceptance_satisfied"] is True
     assert permissions["alpha_training_allowed"] is False
     assert permissions["live_signal_allowed"] is False
     assert permissions["authoritative_model_output"] is False
