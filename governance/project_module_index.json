@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "index_version": "V1",
+  "modules": [
+    {"id":"STAGE2_PIT","aliases":["Stage2","历史PIT"],"status":"COMPLETE_FROZEN","depends_on":[],"evidence":["data/stage2_final/manifest.json"]},
+    {"id":"STAGE3_PIT","aliases":["Stage3","财务PIT","S3G1J","S3G4"],"status":"COMPLETE_FROZEN_HISTORICAL","depends_on":["STAGE2_PIT"],"evidence":["data/stage3_final/manifest.json"]},
+    {"id":"FRESHNESS_V2","aliases":["freshness","数据刷新"],"status":"COMPLETE_PASS_2026_08_12","depends_on":["STAGE2_PIT","STAGE3_PIT"],"evidence":["PR135"]},
+    {"id":"MARKET_REGIME_V1","aliases":["Market Regime","市场状态"],"status":"ACCEPTED_DISABLED","depends_on":["FRESHNESS_V2"],"evidence":["governance/extension_module_registry.json"]},
+    {"id":"STAGE4_FEATURE_SET_V1_2","aliases":["Feature Set V1.2","Stage4特征"],"status":"COMPLETE","depends_on":["STAGE3_PIT","MARKET_REGIME_V1"],"evidence":["PR135"]},
+    {"id":"STAGE4_FEATURE_MATRIX_V1_2","aliases":["Feature Matrix","PIT矩阵"],"status":"COMPLETE","depends_on":["STAGE4_FEATURE_SET_V1_2"],"evidence":["PR135"]},
+    {"id":"ALPHA_PREREG_V1_0","aliases":["Alpha预注册","OOS设计"],"status":"MERGED_SUPERSEDED_BOUNDARY","depends_on":["STAGE4_FEATURE_MATRIX_V1_2"],"evidence":["PR136"]},
+    {"id":"ALPHA_PREREG_V1_1","aliases":["prereg V1.1","PR137","标签跨分区修复"],"status":"IN_PROGRESS_PR_137_OPEN","depends_on":["ALPHA_PREREG_V1_0"],"evidence":["PR137"],"next":"merge PR137 and verify integration SHA"},
+    {"id":"DEV_LABELS_V1","aliases":["development labels","开发标签","split seal"],"status":"BLOCKED_NOT_STARTED","depends_on":["ALPHA_PREREG_V1_1"],"next":"development-only label materialization and split seal"},
+    {"id":"ALPHA_TRAIN_V1","aliases":["Alpha训练","Stage4模型"],"status":"NOT_STARTED","depends_on":["DEV_LABELS_V1"]},
+    {"id":"OOS_VALIDATION_V1","aliases":["OOS","封存验证"],"status":"SEALED","depends_on":["ALPHA_TRAIN_V1"]},
+    {"id":"FINAL_LOCKBOX_V1","aliases":["lockbox","最终锁箱"],"status":"SEALED","depends_on":["OOS_VALIDATION_V1"]},
+    {"id":"CALIBRATION_ABSTENTION_V1","aliases":["Stage5","概率校准","弃权"],"status":"PLANNED","depends_on":["OOS_VALIDATION_V1"]},
+    {"id":"FORWARD_CATALYST_V1","aliases":["新闻模块","催化","Forward Collector","实时情报外挂"],"status":"PLANNED_NON_BLOCKING","depends_on":[],"decision":"STAGE4_DUAL_TRACK_V1"},
+    {"id":"RUNTIME_VETO_V1","aliases":["Veto Engine","风险否决","反证"],"status":"PLANNED_NON_BLOCKING","depends_on":[],"decision":"STAGE4_DUAL_TRACK_V1"},
+    {"id":"PROFIT_MAPPING_V1","aliases":["产业利润桥","事件到利润"],"status":"PLANNED_NON_BLOCKING","depends_on":[],"decision":"STAGE4_DUAL_TRACK_V1"},
+    {"id":"DECISION_FUSION_V1","aliases":["Decision Fusion","决策融合"],"status":"PLANNED","depends_on":["CALIBRATION_ABSTENTION_V1","FORWARD_CATALYST_V1","RUNTIME_VETO_V1","PROFIT_MAPPING_V1"]},
+    {"id":"PORTFOLIO_RISK_STAGE6","aliases":["Stage6","组合风险","仓位"],"status":"PLANNED","depends_on":["DECISION_FUSION_V1"]},
+    {"id":"SIMULATION_STAGE7","aliases":["Stage7","模拟交易"],"status":"PLANNED","depends_on":["PORTFOLIO_RISK_STAGE6"]},
+    {"id":"INVESTMENT_CONSOLE","aliases":["最终软件","控制台","Dashboard","Output Adapter"],"status":"PLANNED","depends_on":["DECISION_FUSION_V1"],"decision":"INVESTMENT_CONSOLE_ROADMAP_V1"},
+    {"id":"CONTINUITY_CONTROL_PLANE_V3","aliases":["接续治理","checkpoint","Module Index","START HERE"],"status":"IN_PROGRESS","depends_on":[],"decision":"CROSS_CHAT_CONTINUITY_CORE_V1","next":"finish continuity governance and restore PR137 as business next step"}
+  ]
+}
