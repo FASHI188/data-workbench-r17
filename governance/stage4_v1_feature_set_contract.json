@@ -1,14 +1,16 @@
 {
   "schema_version": 1,
   "feature_set_id": "STAGE4_ALPHA_V1_FEATURE_SET",
-  "feature_set_version": "V1.0",
+  "feature_set_version": "V1.1",
   "status": "FROZEN_PRETRAINING_CONTRACT",
+  "supersedes_feature_set_version": "V1.0",
+  "supersession_ref": "governance/stage4_v1_feature_set_v1_0_supersession.json",
   "frozen_scope": "STAGE4_ALPHA_V1_INPUTS_ONLY",
   "feature_set_fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
-  "feature_set_fingerprint": "dab3ffc74a518fd0a75a3a63b0717354162820d1f5ab0cb5d75448cc9a4e9937",
+  "feature_set_fingerprint": "757d384cd090620cb8a351b8bcf6d93884577c74dd4fb874bb2f7880e0c939a3",
   "fingerprint_basis": {
     "feature_set_id": "STAGE4_ALPHA_V1_FEATURE_SET",
-    "feature_set_version": "V1.0",
+    "feature_set_version": "V1.1",
     "stage2": {
       "version": "V3.2.25-stage2-final-freeze",
       "fingerprint": "f17f7ab63f4532dda635eb7366e7df7bf5497a5ce814410105312bccb53125bb"
@@ -78,10 +80,9 @@
       },
       {
         "family_id": "INDUSTRY_IDENTITY_PIT",
-        "disposition": "IN",
+        "disposition": "OUT_PENDING_NORMALIZATION_PLUGIN",
         "authorities": ["stage3:S3G3B"],
-        "model_visible": true,
-        "features": ["pit_industry_id"]
+        "model_visible": false
       },
       {
         "family_id": "MARKET_REGIME_V1",
@@ -108,6 +109,7 @@
       "ETF_PRIMARY_FLOW_WITHOUT_STRICT_PIT",
       "GENERIC_ANNOUNCEMENT_TITLE_SENTIMENT_OR_SCALAR_INFERENCE",
       "CURRENT_INDUSTRY_BACKFILL",
+      "INDUSTRY_IDENTITY_UNTIL_NORMALIZED_PIT_PLUGIN",
       "TURNOVER_RATE_WITHOUT_PIT_SHARE_DENOMINATOR",
       "VALUATION_WITHOUT_PIT_DENOMINATOR",
       "INDUSTRY_RELATIVE_STRENGTH_OR_DIFFUSION_UNTIL_SEPARATE_TESTED_PLUGIN",
@@ -127,7 +129,8 @@
       "zero_fill_for_missing_forbidden": true,
       "missing_indicators_allowed": true,
       "coverage_and_missingness_report_required_per_feature": true,
-      "unknown_identity_or_time_semantics_fail_closed": true
+      "unknown_identity_or_time_semantics_fail_closed": true,
+      "industry_missingness_cannot_be_repaired_by_unvalidated_forward_fill": true
     },
     "permissions": {
       "feature_set_frozen": true,
@@ -146,7 +149,19 @@
     "market_regime_tested_promotion": "governance/stage4_market_regime_v1_tested_promotion.json",
     "market_regime_accepted_promotion": "governance/stage4_market_regime_v1_accepted_promotion.json",
     "freshness_hard_gate_artifact": "GitHub Actions artifact 9166063671",
-    "freshness_hard_gate_gate_sha256": "8571bc1896cc1d770178c19556cd0385b162e47bd5510701f13764016dcdd769"
+    "freshness_hard_gate_gate_sha256": "8571bc1896cc1d770178c19556cd0385b162e47bd5510701f13764016dcdd769",
+    "industry_artifact": {
+      "run_id": 30331243641,
+      "head_sha": "40dcab6df468bbf2d47dd48ac77ea150190c279b",
+      "artifact_id": 8678162835,
+      "artifact_digest": "sha256:f1da814c71fa698f3f10ce5dc7019bb86770f9d4e15ed7d7823a93a085adc872",
+      "ledger_rows": 94171,
+      "normalized_primary_code_rows": 19048,
+      "csrc_2012_rows": 75124,
+      "csrc_2012_normalized_primary_code_rows": 1,
+      "capco_2023_rows": 19047,
+      "capco_2023_normalized_primary_code_rows": 19047
+    }
   },
   "invariants": {
     "stage2_frozen_history_unchanged": true,
@@ -154,6 +169,8 @@
     "freshness_forward_evidence_does_not_promote_frozen_stage2_or_stage3": true,
     "generic_announcement_text_not_used_as_numeric_signal": true,
     "financial_retained_residuals_not_numeric_truth": true,
+    "unvalidated_industry_forward_fill_forbidden": true,
+    "industry_identity_model_input_disabled_until_separate_normalization_plugin_is_tested_and_accepted": true,
     "market_regime_current_lifecycle_expected": "ACCEPTED",
     "market_regime_acceptance_is_separate_gate": true,
     "market_regime_acceptance_satisfied": true,
