@@ -2,7 +2,7 @@
   "schema_version": 1,
   "status": "RESEARCH_ONLY",
   "integration_ref": "agent/stage3-clean-integration",
-  "accepted_integration_sha": "c70161e6bd17df7f6ec5dd2e9b921174b117c42b",
+  "accepted_integration_sha": "c80ae3b86e78bbffeede047d58efa1c1f4425d54",
   "main_sha": "2c32635e83ba9145d13b9a16b8a74f5750f02a94",
   "accepted_progress": {
     "stage2": "PASS_FROZEN",
@@ -12,7 +12,8 @@
     "stage4_feature_set": "V1_2_COMPLETE",
     "stage4_feature_matrix": "V1_2_COMPLETE",
     "alpha_prereg_v1_0": "MERGED",
-    "alpha_prereg_v1_1": "PENDING_PR_137"
+    "alpha_prereg_v1_1": "PENDING_PR_137",
+    "continuity_control_plane_v3": "COMPLETE"
   },
   "active_business_pr": {
     "number": 137,
