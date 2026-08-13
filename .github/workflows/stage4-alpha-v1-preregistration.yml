@@ -1,0 +1,57 @@
+name: Stage4 Alpha V1 Preregistration Contract
+
+on:
+  push:
+    branches:
+      - agent/stage4-alpha-v1-prereg
+    paths:
+      - 'governance/stage4_alpha_v1_preregistration.json'
+      - 'scripts/audit_stage4_alpha_v1_preregistration.py'
+      - '.github/workflows/stage4-alpha-v1-preregistration.yml'
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - 'governance/stage4_alpha_v1_preregistration.json'
+      - 'scripts/audit_stage4_alpha_v1_preregistration.py'
+      - '.github/workflows/stage4-alpha-v1-preregistration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preregistration-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Audit frozen preregistration
+        run: python scripts/audit_stage4_alpha_v1_preregistration.py
+      - name: Prove this gate contains no labels, model weights, or training execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e data/stage4_alpha_labels
+          test ! -e models/stage4_alpha_v1
+          test ! -e artifacts/stage4_alpha_v1_training
+          ! grep -R --line-number -E 'fit\(|fit_predict\(|partial_fit\(' \
+            scripts/audit_stage4_alpha_v1_preregistration.py \
+            governance/stage4_alpha_v1_preregistration.json
+      - name: Prove frozen Stage2/Stage3 and accepted feature matrix authority are not modified
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only "$BASE_SHA" HEAD -- data/stage2_final data/stage3_final config/stage3_final_lock.json data/project_status.json)"
+          if [ -n "$changed" ]; then
+            echo 'Preregistration PR modified frozen authority paths:' >&2
+            echo "$changed" >&2
+            exit 1
+          fi
