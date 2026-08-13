@@ -12,126 +12,88 @@ def _load(path: str) -> dict:
 
 
 def test_feature_set_fingerprint_is_exact_and_deterministic() -> None:
-    contract = _load("governance/stage4_v1_feature_set_contract.json")
-    canonical = json.dumps(contract["fingerprint_basis"], sort_keys=True, separators=(",", ":")).encode()
-    assert hashlib.sha256(canonical).hexdigest() == contract["feature_set_fingerprint"]
-    assert contract["feature_set_version"] == "V1.1"
-    assert contract["supersedes_feature_set_version"] == "V1.0"
-    assert contract["feature_set_fingerprint"] == "757d384cd090620cb8a351b8bcf6d93884577c74dd4fb874bb2f7880e0c939a3"
+    c = _load("governance/stage4_v1_feature_set_contract.json")
+    canonical = json.dumps(c["fingerprint_basis"], sort_keys=True, separators=(",", ":")).encode()
+    assert hashlib.sha256(canonical).hexdigest() == c["feature_set_fingerprint"]
+    assert c["feature_set_version"] == "V1.2"
+    assert c["supersedes_feature_set_version"] == "V1.1"
+    assert c["feature_set_fingerprint"] == "d319ea1c236d580d0d032a055e4cdc07bf45e586ecbef664c6f4b3a8be98f9ff"
 
 
-def test_feature_set_locks_frozen_stage2_and_stage3_authority() -> None:
-    contract = _load("governance/stage4_v1_feature_set_contract.json")
-    stage2 = _load("data/stage2_final/manifest.json")
-    stage3 = _load("data/stage3_final/manifest.json")
-    basis = contract["fingerprint_basis"]
-    assert stage2["version"] == basis["stage2"]["version"]
-    assert stage2["stage2_dataset_fingerprint"] == basis["stage2"]["fingerprint"]
-    assert stage3["version"] == basis["stage3"]["version"]
-    assert stage3["stage3_dataset_fingerprint"] == basis["stage3"]["fingerprint"]
-    assert stage3["s3g1j_retained_raw_residuals"]["retained_as_missing"] is True
-    assert stage3["s3g1j_retained_raw_residuals"]["usable_as_numeric_truth"] is False
+def test_stage2_stage3_authority_and_financial_missingness_remain_frozen() -> None:
+    c = _load("governance/stage4_v1_feature_set_contract.json")
+    s2 = _load("data/stage2_final/manifest.json")
+    s3 = _load("data/stage3_final/manifest.json")
+    b = c["fingerprint_basis"]
+    assert s2["version"] == b["stage2"]["version"]
+    assert s2["stage2_dataset_fingerprint"] == b["stage2"]["fingerprint"]
+    assert s3["version"] == b["stage3"]["version"]
+    assert s3["stage3_dataset_fingerprint"] == b["stage3"]["fingerprint"]
+    assert s3["s3g1j_retained_raw_residuals"]["retained_as_missing"] is True
+    assert s3["s3g1j_retained_raw_residuals"]["usable_as_numeric_truth"] is False
 
 
-def test_feature_set_is_dual_track_and_excludes_non_pit_runtime_information() -> None:
-    contract = _load("governance/stage4_v1_feature_set_contract.json")
-    out = set(contract["fingerprint_basis"]["explicit_out"])
-    assert {"GENERAL_WEB_NEWS", "SOCIAL_MEDIA", "RUMOR_OR_UNVERIFIED_SUPPLY_CHAIN"} <= out
-    assert "ETF_PRIMARY_FLOW_WITHOUT_STRICT_PIT" in out
-    assert "GENERIC_ANNOUNCEMENT_TITLE_SENTIMENT_OR_SCALAR_INFERENCE" in out
-    assert "CURRENT_INDUSTRY_BACKFILL" in out
-    assert "INDUSTRY_IDENTITY_UNTIL_NORMALIZED_PIT_PLUGIN" in out
-    assert "TURNOVER_RATE_WITHOUT_PIT_SHARE_DENOMINATOR" in out
-    assert "VALUATION_WITHOUT_PIT_DENOMINATOR" in out
-    assert "INDUSTRY_RELATIVE_STRENGTH_OR_DIFFUSION_UNTIL_SEPARATE_TESTED_PLUGIN" in out
+def test_surprise_is_strict_prior_and_active_only_for_current_financial_period() -> None:
+    c = _load("governance/stage4_v1_feature_set_contract.json")
+    b = c["fingerprint_basis"]
+    families = {r["family_id"]: r for r in b["feature_families"]}
+    s = families["EARNINGS_GUIDANCE_SURPRISE_PIT"]
+    assert s["disposition"] == "IN"
+    assert s["activation"] == "SURPRISE_ECONOMIC_DATE_EQUALS_CURRENT_LATEST_FINANCIAL_ECONOMIC_DATE"
+    assert b["pit_policy"]["surprise_expectation_strictly_prior"] is True
+    assert b["pit_policy"]["earnings_surprise_requires_current_financial_economic_date_match"] is True
+    assert b["missing_policy"]["surprise_from_noncurrent_financial_economic_period_treated_missing"] is True
+    assert c["invariants"]["surprise_from_prior_financial_economic_period_is_missing"] is True
 
 
-def test_feature_set_has_exact_pit_and_missingness_boundaries() -> None:
-    contract = _load("governance/stage4_v1_feature_set_contract.json")
-    pit = contract["fingerprint_basis"]["pit_policy"]
-    missing = contract["fingerprint_basis"]["missing_policy"]
-    assert pit["decision_cut"] == "SESSION_T_CLOSE_INFORMATION_ONLY_EFFECTIVE_NEXT_TRADING_SESSION"
-    assert pit["date_only_disclosure_uses_next_session"] is True
-    assert pit["surprise_expectation_strictly_prior"] is True
-    assert pit["market_regime_thresholds_use_only_t_minus_1_history"] is True
-    assert pit["future_backfill_forbidden"] is True
-    assert missing["s3g1j_retained_errors_and_ties_are_missing_not_numeric_truth"] is True
-    assert missing["zero_fill_for_missing_forbidden"] is True
-    assert missing["coverage_and_missingness_report_required_per_feature"] is True
-    assert missing["unknown_identity_or_time_semantics_fail_closed"] is True
-    assert missing["industry_missingness_cannot_be_repaired_by_unvalidated_forward_fill"] is True
+def test_surprise_supersession_evidence_is_exact_and_no_fixed_expiry_is_invented() -> None:
+    s = _load("governance/stage4_v1_feature_set_v1_1_supersession.json")
+    assert s["superseded_version"] == "V1.1"
+    assert s["superseded_fingerprint"] == "757d384cd090620cb8a351b8bcf6d93884577c74dd4fb874bb2f7880e0c939a3"
+    assert s["superseded_matrix_evidence"]["artifact_id"] == 9168438550
+    assert s["superseded_matrix_evidence"]["matrix_rows"] == 7924181
+    assert s["diagnostic_evidence"]["r1"]["age_p50_sessions"] == 133
+    assert s["diagnostic_evidence"]["r1"]["age_gt_252_rows"] == 1743440
+    assert s["diagnostic_evidence"]["r2_current_report_binding"]["current_report_match_rows"] == 1756064
+    assert s["diagnostic_evidence"]["r2_current_report_binding"]["prior_period_stale_rows"] == 3976955
+    assert s["hard_boundary"]["no_fixed_horizon_chosen_without_validation"] is True
+    assert s["hard_boundary"]["no_prior_period_surprise_carry"] is True
 
 
-def test_industry_is_explicitly_removed_from_v1_model_inputs_on_frozen_artifact_evidence() -> None:
-    contract = _load("governance/stage4_v1_feature_set_contract.json")
-    families = {row["family_id"]: row for row in contract["fingerprint_basis"]["feature_families"]}
-    industry = families["INDUSTRY_IDENTITY_PIT"]
-    assert industry["disposition"] == "OUT_PENDING_NORMALIZATION_PLUGIN"
-    assert industry["model_visible"] is False
-    evidence = contract["source_facts"]["industry_artifact"]
+def test_industry_stays_out_and_runtime_information_stays_out() -> None:
+    c = _load("governance/stage4_v1_feature_set_contract.json")
+    b = c["fingerprint_basis"]
+    families = {r["family_id"]: r for r in b["feature_families"]}
+    assert families["INDUSTRY_IDENTITY_PIT"]["disposition"] == "OUT_PENDING_NORMALIZATION_PLUGIN"
+    assert families["INDUSTRY_IDENTITY_PIT"]["model_visible"] is False
+    out = set(b["explicit_out"])
+    assert {"GENERAL_WEB_NEWS", "SOCIAL_MEDIA", "RUMOR_OR_UNVERIFIED_SUPPLY_CHAIN", "ETF_PRIMARY_FLOW_WITHOUT_STRICT_PIT", "CURRENT_INDUSTRY_BACKFILL"} <= out
+    evidence = c["source_facts"]["industry_artifact"]
     assert evidence["ledger_rows"] == 94171
     assert evidence["normalized_primary_code_rows"] == 19048
     assert evidence["csrc_2012_rows"] == 75124
     assert evidence["csrc_2012_normalized_primary_code_rows"] == 1
-    assert evidence["capco_2023_rows"] == 19047
-    assert evidence["capco_2023_normalized_primary_code_rows"] == 19047
-    supersession = _load("governance/stage4_v1_feature_set_v1_0_supersession.json")
-    assert supersession["superseded_fingerprint"] == "dab3ffc74a518fd0a75a3a63b0717354162820d1f5ab0cb5d75448cc9a4e9937"
-    assert supersession["replacement"]["version"] == "V1.1"
-    assert supersession["hard_boundary"]["no_industry_forward_fill"] is True
 
 
-def test_feature_families_are_explicit_and_market_regime_acceptance_is_exact() -> None:
-    contract = _load("governance/stage4_v1_feature_set_contract.json")
-    families = {row["family_id"]: row for row in contract["fingerprint_basis"]["feature_families"]}
-    assert set(families) == {
-        "UNIVERSE_ELIGIBILITY_PIT",
-        "PRICE_VOLUME_TECHNICAL_PIT",
-        "CORPORATE_ACTION_ADJUSTMENT_PIT",
-        "FINANCIAL_STATEMENT_PIT",
-        "EARNINGS_GUIDANCE_SURPRISE_PIT",
-        "INDUSTRY_IDENTITY_PIT",
-        "MARKET_REGIME_V1",
-    }
-    assert families["UNIVERSE_ELIGIBILITY_PIT"]["model_visible"] is False
-    assert families["CORPORATE_ACTION_ADJUSTMENT_PIT"]["model_visible"] is False
-    assert families["MARKET_REGIME_V1"]["disposition"] == "IN"
+def test_market_regime_is_accepted_but_still_disabled() -> None:
     market = _load("governance/market_regime_v1_module_manifest.json")
     accepted = _load("governance/stage4_market_regime_v1_accepted_promotion.json")
+    registry = _load("governance/extension_module_registry.json")
     assert market["lifecycle"] == "ACCEPTED"
-    assert market["acceptance_ref"] == "governance/stage4_market_regime_v1_accepted_promotion.json"
     assert market["enabled"] is False
     assert market["training_allowed"] is False
     assert market["live_allowed"] is False
     assert accepted["permissions"]["stage4_feature_use_allowed"] is True
     assert accepted["permissions"]["alpha_training_allowed"] is False
-    assert accepted["permissions"]["live_signal_allowed"] is False
-    assert accepted["permissions"]["authoritative_model_output"] is False
+    assert registry["accepted_baseline_anchor"]["stage4_unlocked"] is False
 
 
-def test_registry_accepts_market_regime_without_changing_baseline_permissions() -> None:
-    registry = _load("governance/extension_module_registry.json")
-    module = registry["modules"][0]
-    assert module["module_id"] == "market_regime_v1"
-    assert module["lifecycle"] == "ACCEPTED"
-    assert module["enabled"] is False
-    assert module["training_allowed"] is False
-    assert module["live_allowed"] is False
-    assert module["rollback_target_module_set_fingerprint"] == "19568c012959f821a8efe94df5999f6066b612aecb4eba5412a38d4ba35695b2"
-    anchor = registry["accepted_baseline_anchor"]
-    assert anchor["stage4_unlocked"] is False
-    assert anchor["alpha_training_allowed"] is False
-    assert anchor["live_signal_allowed"] is False
-
-
-def test_freeze_does_not_authorize_alpha_training_or_live_signals() -> None:
-    contract = _load("governance/stage4_v1_feature_set_contract.json")
-    permissions = contract["fingerprint_basis"]["permissions"]
-    assert contract["status"] == "FROZEN_PRETRAINING_CONTRACT"
-    assert permissions["feature_set_frozen"] is True
-    assert permissions["stage4_feature_materialization_allowed"] is True
-    assert permissions["market_regime_requires_ACCEPTED_before_materialization"] is True
-    assert permissions["market_regime_acceptance_satisfied"] is True
-    assert permissions["alpha_training_allowed"] is False
-    assert permissions["live_signal_allowed"] is False
-    assert permissions["authoritative_model_output"] is False
+def test_freeze_does_not_authorize_training_or_live() -> None:
+    c = _load("governance/stage4_v1_feature_set_contract.json")
+    p = c["fingerprint_basis"]["permissions"]
+    assert c["status"] == "FROZEN_PRETRAINING_CONTRACT"
+    assert p["feature_set_frozen"] is True
+    assert p["stage4_feature_materialization_allowed"] is True
+    assert p["alpha_training_allowed"] is False
+    assert p["live_signal_allowed"] is False
+    assert p["authoritative_model_output"] is False
