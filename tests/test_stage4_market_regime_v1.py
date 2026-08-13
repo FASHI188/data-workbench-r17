@@ -47,9 +47,9 @@ def test_thresholds_are_prior_only_and_appear_only_after_warmup() -> None:
     rows = m.build_rows(_daily(30), _contract(min_prior=3)); classified = [r for r in rows if r["regime_state"] != "WARMUP"]; assert classified; first = classified[0]; assert int(first["prior_threshold_observations"]) >= 3 and first["q33_ret20_prior"]; prior_index = rows.index(first) - 1; assert rows[prior_index]["prior_threshold_observations"] == str(int(first["prior_threshold_observations"]) - 1)
 
 
-def test_tested_module_manifest_remains_disabled_and_cannot_train_or_live() -> None:
+def test_accepted_module_manifest_remains_disabled_and_cannot_train_or_live() -> None:
     raw = json.loads((ROOT / "governance" / "market_regime_v1_module_manifest.json").read_text()); manifest = ExtensionManifest(module_id=raw["module_id"], module_version=raw["module_version"], contract_version=raw["contract_version"], kind=ExtensionKind(raw["kind"]), lifecycle=ExtensionLifecycle(raw["lifecycle"]), enabled=raw["enabled"], input_schema=raw["input_schema"], output_schema=raw["output_schema"], dependencies=tuple(raw["dependencies"]), training_allowed=raw["training_allowed"], live_allowed=raw["live_allowed"], failure_policy=raw["failure_policy"], fallback_behavior=raw["fallback_behavior"], timeout_seconds=raw["timeout_seconds"], max_retries=raw["max_retries"], acceptance_ref=raw["acceptance_ref"], rollback_target_module_version=raw["rollback_target_module_version"], rollback_target_module_set_fingerprint=raw["rollback_target_module_set_fingerprint"])
-    validate_extension_manifest(manifest); assert manifest.lifecycle == ExtensionLifecycle.TESTED and manifest.enabled is False; assert manifest.training_allowed is False and manifest.live_allowed is False
+    validate_extension_manifest(manifest); assert manifest.lifecycle == ExtensionLifecycle.ACCEPTED and manifest.enabled is False; assert manifest.training_allowed is False and manifest.live_allowed is False; assert manifest.acceptance_ref == "governance/stage4_market_regime_v1_accepted_promotion.json"
 
 
 def test_contract_excludes_non_ohlcv_v1_inputs() -> None:
