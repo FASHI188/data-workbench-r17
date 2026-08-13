@@ -22,6 +22,6 @@
     {"id":"PORTFOLIO_RISK_STAGE6","aliases":["Stage6","组合风险","仓位"],"status":"PLANNED","depends_on":["DECISION_FUSION_V1"]},
     {"id":"SIMULATION_STAGE7","aliases":["Stage7","模拟交易"],"status":"PLANNED","depends_on":["PORTFOLIO_RISK_STAGE6"]},
     {"id":"INVESTMENT_CONSOLE","aliases":["最终软件","控制台","Dashboard","Output Adapter"],"status":"PLANNED","depends_on":["DECISION_FUSION_V1"],"decision":"INVESTMENT_CONSOLE_ROADMAP_V1"},
-    {"id":"CONTINUITY_CONTROL_PLANE_V3","aliases":["接续治理","checkpoint","Module Index","START HERE"],"status":"IN_PROGRESS","depends_on":[],"decision":"CROSS_CHAT_CONTINUITY_CORE_V1","next":"finish continuity governance and restore PR137 as business next step"}
+    {"id":"CONTINUITY_CONTROL_PLANE_V3","aliases":["接续治理","checkpoint","Module Index","START HERE"],"status":"COMPLETE","depends_on":[],"decision":"CONTINUITY_CONTROL_PLANE_V3","evidence":["PR139"],"next":"use RUNNING/BLOCKED checkpoints for all subsequent long tasks"}
   ]
 }
