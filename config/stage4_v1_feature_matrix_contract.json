@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "matrix_id": "STAGE4_V1_FEATURE_MATRIX",
+  "matrix_version": "V1.1",
+  "feature_set_id": "STAGE4_ALPHA_V1_FEATURE_SET",
+  "feature_set_version": "V1.1",
+  "feature_set_fingerprint": "757d384cd090620cb8a351b8bcf6d93884577c74dd4fb874bb2f7880e0c939a3",
+  "engine": {
+    "name": "duckdb",
+    "version": "1.3.2",
+    "threads": 4,
+    "memory_limit": "5GB"
+  },
+  "pinned_artifacts": {
+    "historical_ohlcv": {"artifact_id": 8651700277, "digest": "sha256:bf977d4f379d421bd198865b90df90caef7ba6cfb5d6d1af96e5487300c1a2f8"},
+    "historical_g5": {"artifact_id": 8651976824, "digest": "sha256:acbeaaca9fc849acbef213dbd9b50df034f28e36acd352e625acb44e536cbe22"},
+    "forward_ohlcv": {"artifact_id": 9150060738, "digest": "sha256:1eaa0c0e588c95f835a9e576659616bb8e68d0c19c9712b9821ea88c90451ba9"},
+    "forward_g5": {"artifact_id": 9168063389, "digest": "sha256:fa95e9bed319bfcfde70225ac5a61c2e0bb08810d52091d198f54bd396b33cae", "data_sha256": "64c77590bc42585e61f77e8023b59388f507ffd9153f0cfc4cc656a2de0bd453"},
+    "historical_financial_v17_30": {"artifact_id": 9112098872, "digest": "sha256:706c6dd7252a64fd5c2956df6c594b5c91de29f02ca7d0553fa932017e8867ba"},
+    "forward_financial_v17_30": {"artifact_id": 9166040064, "digest": "sha256:89c3bc8a25db8801c1a8ed89dfc76d8ae25a0ac01b416cd71f2b72109e4b8b0b"},
+    "earnings_surprise_s3g4": {"artifact_id": 9126607328, "digest": "sha256:b87e822278f044f8fd6dd5a8cf7bb2e342890b27086951d377d73ed70c7bd4b3"},
+    "market_regime_v1": {"artifact_id": 9166323143, "digest": "sha256:83e7c803f500b6ba4c3989826f08b47fe61ccc8f1a0974c8abd3b3fd588baf51"},
+    "trading_universe_policy": {"artifact_id": 8675790808, "digest": "sha256:1942c9e7baa0823772201cc1f6652e660d8b4b60dd8b0559d94dcefe7da4c9fa"}
+  },
+  "expected_inputs": {
+    "historical_ohlcv_files": 108,
+    "forward_ohlcv_files": 9,
+    "historical_ohlcv_rows": 8038444,
+    "forward_ohlcv_rows": 41487,
+    "combined_ohlcv_rows": 8079931,
+    "historical_financial_rows": 1051826,
+    "forward_financial_rows": 1363,
+    "forward_financial_value_shards": 8,
+    "earnings_surprise_rows": 29139,
+    "market_regime_rows": 2821,
+    "forward_g5_rows": 101
+  },
+  "expected_outputs": {
+    "trade_date_max": "2026-08-12",
+    "effective_session_max": "2026-08-13",
+    "candidate_price_rule": "0 < raw_unadjusted_close < 70 CNY",
+    "exact_70_excluded": true,
+    "industry_identity_present": false
+  },
+  "time_semantics": {
+    "row_information_time": "SESSION_T_CLOSE",
+    "row_effective_time": "NEXT_TRADING_SESSION_AFTER_T",
+    "financial_join": "LATEST_MAXIMUM_ECONOMIC_DATE_REPORT_KNOWN_BY_EFFECTIVE_SESSION",
+    "financial_late_revision_older_period": "DOES_NOT_REPLACE_CURRENT_REPORT_STATE",
+    "financial_missing": "LATEST_REPORT_MISSING_STAYS_MISSING_NO_PRIOR_REPORT_CARRY",
+    "earnings_surprise_join": "LATEST_ACCEPTED_S3G4_SURPRISE_EVENT_KNOWN_BY_EFFECTIVE_SESSION",
+    "market_regime_join": "EXACT_TRADE_DATE_TO_ACCEPTED_NEXT_SESSION_REGIME",
+    "future_backfill": "FORBIDDEN"
+  },
+  "technical_semantics": {
+    "adjusted_close": "raw_close * latest_cumulative_back_adjust_multiplier_as_of_trade_date",
+    "return_windows": "security_observation_windows_including_trade_date_T",
+    "realized_volatility_20d": "population_stddev_of_last_20_total_return_1d_observations",
+    "amount_ratio_5d_20d": "mean_last_5_amount / mean_last_20_amount_requires_20_observations",
+    "volume_ratio_5d_20d": "mean_last_5_volume / mean_last_20_volume_requires_20_observations",
+    "relative_strength_vs_market_20d": "stock_total_return_20d - market_equal_weight_return_20d"
+  },
+  "financial_concepts": [
+    "TOTAL_ASSETS","TOTAL_LIABILITIES","TOTAL_EQUITY","EQUITY_ATTRIBUTABLE_TO_PARENT",
+    "OPERATING_REVENUE","OPERATING_COST","NET_PROFIT_ATTRIBUTABLE_TO_PARENT",
+    "NET_PROFIT_EX_NONRECURRING_ATTRIBUTABLE_TO_PARENT","NET_CASH_FLOW_FROM_OPERATING_ACTIVITIES"
+  ],
+  "hard_boundaries": {
+    "no_industry_identity": true,
+    "no_general_web_news": true,
+    "no_social_media": true,
+    "no_current_industry_backfill": true,
+    "no_zero_fill_financials": true,
+    "no_alpha_labels": true,
+    "alpha_training_allowed": false,
+    "live_signal_allowed": false,
+    "authoritative_model_output": false
+  }
+}
