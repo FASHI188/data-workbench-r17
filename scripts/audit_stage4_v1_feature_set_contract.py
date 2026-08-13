@@ -19,11 +19,21 @@ def main() -> int:
     market = load("governance/market_regime_v1_module_manifest.json")
     accepted = load("governance/stage4_market_regime_v1_accepted_promotion.json")
     registry = load("governance/extension_module_registry.json")
+    supersession = load("governance/stage4_v1_feature_set_v1_0_supersession.json")
     basis = contract["fingerprint_basis"]
 
     checks: dict[str, bool] = {}
     canonical = json.dumps(basis, sort_keys=True, separators=(",", ":")).encode()
-    checks["fingerprint_exact"] = hashlib.sha256(canonical).hexdigest() == contract["feature_set_fingerprint"]
+    checks["fingerprint_exact"] = (
+        hashlib.sha256(canonical).hexdigest() == contract["feature_set_fingerprint"]
+        and contract["feature_set_fingerprint"] == "757d384cd090620cb8a351b8bcf6d93884577c74dd4fb874bb2f7880e0c939a3"
+    )
+    checks["v1_0_superseded_before_materialization"] = (
+        contract["feature_set_version"] == "V1.1"
+        and contract["supersedes_feature_set_version"] == "V1.0"
+        and supersession["superseded_fingerprint"] == "dab3ffc74a518fd0a75a3a63b0717354162820d1f5ab0cb5d75448cc9a4e9937"
+        and supersession["replacement"]["version"] == "V1.1"
+    )
     checks["stage2_authority_exact"] = (
         stage2["version"] == basis["stage2"]["version"]
         and stage2["stage2_dataset_fingerprint"] == basis["stage2"]["fingerprint"]
@@ -61,6 +71,20 @@ def main() -> int:
     )
     families = {row["family_id"]: row for row in basis["feature_families"]}
     checks["market_regime_feature_family_is_in"] = families["MARKET_REGIME_V1"]["disposition"] == "IN"
+    industry = families["INDUSTRY_IDENTITY_PIT"]
+    industry_evidence = contract["source_facts"]["industry_artifact"]
+    checks["industry_identity_excluded_pending_normalization"] = (
+        industry["disposition"] == "OUT_PENDING_NORMALIZATION_PLUGIN"
+        and industry["model_visible"] is False
+        and industry_evidence["ledger_rows"] == 94171
+        and industry_evidence["normalized_primary_code_rows"] == 19048
+        and industry_evidence["csrc_2012_rows"] == 75124
+        and industry_evidence["csrc_2012_normalized_primary_code_rows"] == 1
+        and industry_evidence["capco_2023_rows"] == 19047
+        and industry_evidence["capco_2023_normalized_primary_code_rows"] == 19047
+        and supersession["hard_boundary"]["no_industry_forward_fill"] is True
+        and supersession["hard_boundary"]["no_current_industry_backfill"] is True
+    )
     out = set(basis["explicit_out"])
     checks["runtime_information_excluded"] = {
         "GENERAL_WEB_NEWS",
@@ -68,12 +92,14 @@ def main() -> int:
         "RUMOR_OR_UNVERIFIED_SUPPLY_CHAIN",
         "ETF_PRIMARY_FLOW_WITHOUT_STRICT_PIT",
         "GENERIC_ANNOUNCEMENT_TITLE_SENTIMENT_OR_SCALAR_INFERENCE",
+        "INDUSTRY_IDENTITY_UNTIL_NORMALIZED_PIT_PLUGIN",
     } <= out
     checks["pit_fail_closed"] = (
         basis["pit_policy"]["date_only_disclosure_uses_next_session"] is True
         and basis["pit_policy"]["future_backfill_forbidden"] is True
         and basis["missing_policy"]["zero_fill_for_missing_forbidden"] is True
         and basis["missing_policy"]["unknown_identity_or_time_semantics_fail_closed"] is True
+        and basis["missing_policy"]["industry_missingness_cannot_be_repaired_by_unvalidated_forward_fill"] is True
     )
     permissions = basis["permissions"]
     checks["freeze_without_training_or_live"] = (
@@ -95,6 +121,7 @@ def main() -> int:
         "feature_set_fingerprint": contract["feature_set_fingerprint"],
         "market_regime_lifecycle": market["lifecycle"],
         "market_regime_enabled": market["enabled"],
+        "industry_identity_disposition": industry["disposition"],
         "checks": checks,
         "failed_checks": failed,
         "next_gate": contract["next_gate"],
