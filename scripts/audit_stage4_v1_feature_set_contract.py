@@ -17,7 +17,8 @@ def main() -> int:
     stage2 = load("data/stage2_final/manifest.json")
     stage3 = load("data/stage3_final/manifest.json")
     market = load("governance/market_regime_v1_module_manifest.json")
-    tested = load("governance/stage4_market_regime_v1_tested_promotion.json")
+    accepted = load("governance/stage4_market_regime_v1_accepted_promotion.json")
+    registry = load("governance/extension_module_registry.json")
     basis = contract["fingerprint_basis"]
 
     checks: dict[str, bool] = {}
@@ -39,14 +40,27 @@ def main() -> int:
         stage3["s3g4"]["expectation_is_strictly_prior"] is True
         and stage3["s3g4"]["analyst_consensus_used"] is False
     )
-    checks["market_regime_is_tested_not_accepted"] = (
-        market["lifecycle"] == "TESTED"
+    checks["market_regime_is_accepted_but_disabled"] = (
+        market["lifecycle"] == "ACCEPTED"
+        and market["acceptance_ref"] == "governance/stage4_market_regime_v1_accepted_promotion.json"
         and market["enabled"] is False
         and market["training_allowed"] is False
         and market["live_allowed"] is False
-        and tested["permissions"]["stage4_feature_use_allowed"] is False
-        and tested["permissions"]["authoritative"] is False
+        and accepted["permissions"]["stage4_feature_use_allowed"] is True
+        and accepted["permissions"]["alpha_training_allowed"] is False
+        and accepted["permissions"]["live_signal_allowed"] is False
+        and accepted["permissions"]["authoritative_model_output"] is False
     )
+    modules = registry["modules"]
+    expected_module_set = hashlib.sha256(json.dumps(modules, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    checks["accepted_module_set_fingerprint_exact"] = expected_module_set == registry["module_set_fingerprint"]
+    checks["accepted_baseline_remains_locked"] = (
+        registry["accepted_baseline_anchor"]["stage4_unlocked"] is False
+        and registry["accepted_baseline_anchor"]["alpha_training_allowed"] is False
+        and registry["accepted_baseline_anchor"]["live_signal_allowed"] is False
+    )
+    families = {row["family_id"]: row for row in basis["feature_families"]}
+    checks["market_regime_feature_family_is_in"] = families["MARKET_REGIME_V1"]["disposition"] == "IN"
     out = set(basis["explicit_out"])
     checks["runtime_information_excluded"] = {
         "GENERAL_WEB_NEWS",
@@ -66,6 +80,7 @@ def main() -> int:
         permissions["feature_set_frozen"] is True
         and permissions["stage4_feature_materialization_allowed"] is True
         and permissions["market_regime_requires_ACCEPTED_before_materialization"] is True
+        and permissions["market_regime_acceptance_satisfied"] is True
         and permissions["alpha_training_allowed"] is False
         and permissions["live_signal_allowed"] is False
         and permissions["authoritative_model_output"] is False
@@ -78,6 +93,8 @@ def main() -> int:
         "feature_set_id": contract["feature_set_id"],
         "feature_set_version": contract["feature_set_version"],
         "feature_set_fingerprint": contract["feature_set_fingerprint"],
+        "market_regime_lifecycle": market["lifecycle"],
+        "market_regime_enabled": market["enabled"],
         "checks": checks,
         "failed_checks": failed,
         "next_gate": contract["next_gate"],
