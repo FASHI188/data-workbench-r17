@@ -13,124 +13,58 @@ def load(path: str) -> dict:
 
 
 def main() -> int:
-    contract = load("governance/stage4_v1_feature_set_contract.json")
-    stage2 = load("data/stage2_final/manifest.json")
-    stage3 = load("data/stage3_final/manifest.json")
+    c = load("governance/stage4_v1_feature_set_contract.json")
+    s2 = load("data/stage2_final/manifest.json")
+    s3 = load("data/stage3_final/manifest.json")
     market = load("governance/market_regime_v1_module_manifest.json")
     accepted = load("governance/stage4_market_regime_v1_accepted_promotion.json")
     registry = load("governance/extension_module_registry.json")
-    supersession = load("governance/stage4_v1_feature_set_v1_0_supersession.json")
-    basis = contract["fingerprint_basis"]
-
-    checks: dict[str, bool] = {}
-    canonical = json.dumps(basis, sort_keys=True, separators=(",", ":")).encode()
-    checks["fingerprint_exact"] = (
-        hashlib.sha256(canonical).hexdigest() == contract["feature_set_fingerprint"]
-        and contract["feature_set_fingerprint"] == "757d384cd090620cb8a351b8bcf6d93884577c74dd4fb874bb2f7880e0c939a3"
-    )
-    checks["v1_0_superseded_before_materialization"] = (
-        contract["feature_set_version"] == "V1.1"
-        and contract["supersedes_feature_set_version"] == "V1.0"
-        and supersession["superseded_fingerprint"] == "dab3ffc74a518fd0a75a3a63b0717354162820d1f5ab0cb5d75448cc9a4e9937"
-        and supersession["replacement"]["version"] == "V1.1"
-    )
-    checks["stage2_authority_exact"] = (
-        stage2["version"] == basis["stage2"]["version"]
-        and stage2["stage2_dataset_fingerprint"] == basis["stage2"]["fingerprint"]
-    )
-    checks["stage3_authority_exact"] = (
-        stage3["version"] == basis["stage3"]["version"]
-        and stage3["stage3_dataset_fingerprint"] == basis["stage3"]["fingerprint"]
-    )
-    checks["stage3_financial_residuals_missing_only"] = (
-        stage3["s3g1j_retained_raw_residuals"]["retained_as_missing"] is True
-        and stage3["s3g1j_retained_raw_residuals"]["usable_as_numeric_truth"] is False
-    )
-    checks["s3g4_is_strict_prior"] = (
-        stage3["s3g4"]["expectation_is_strictly_prior"] is True
-        and stage3["s3g4"]["analyst_consensus_used"] is False
-    )
-    checks["market_regime_is_accepted_but_disabled"] = (
-        market["lifecycle"] == "ACCEPTED"
-        and market["acceptance_ref"] == "governance/stage4_market_regime_v1_accepted_promotion.json"
-        and market["enabled"] is False
-        and market["training_allowed"] is False
-        and market["live_allowed"] is False
-        and accepted["permissions"]["stage4_feature_use_allowed"] is True
-        and accepted["permissions"]["alpha_training_allowed"] is False
-        and accepted["permissions"]["live_signal_allowed"] is False
-        and accepted["permissions"]["authoritative_model_output"] is False
-    )
-    modules = registry["modules"]
-    expected_module_set = hashlib.sha256(json.dumps(modules, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-    checks["accepted_module_set_fingerprint_exact"] = expected_module_set == registry["module_set_fingerprint"]
-    checks["accepted_baseline_remains_locked"] = (
-        registry["accepted_baseline_anchor"]["stage4_unlocked"] is False
-        and registry["accepted_baseline_anchor"]["alpha_training_allowed"] is False
-        and registry["accepted_baseline_anchor"]["live_signal_allowed"] is False
-    )
-    families = {row["family_id"]: row for row in basis["feature_families"]}
-    checks["market_regime_feature_family_is_in"] = families["MARKET_REGIME_V1"]["disposition"] == "IN"
+    s10 = load("governance/stage4_v1_feature_set_v1_0_supersession.json")
+    s11 = load("governance/stage4_v1_feature_set_v1_1_supersession.json")
+    b = c["fingerprint_basis"]
+    families = {r["family_id"]: r for r in b["feature_families"]}
     industry = families["INDUSTRY_IDENTITY_PIT"]
-    industry_evidence = contract["source_facts"]["industry_artifact"]
-    checks["industry_identity_excluded_pending_normalization"] = (
-        industry["disposition"] == "OUT_PENDING_NORMALIZATION_PLUGIN"
-        and industry["model_visible"] is False
-        and industry_evidence["ledger_rows"] == 94171
-        and industry_evidence["normalized_primary_code_rows"] == 19048
-        and industry_evidence["csrc_2012_rows"] == 75124
-        and industry_evidence["csrc_2012_normalized_primary_code_rows"] == 1
-        and industry_evidence["capco_2023_rows"] == 19047
-        and industry_evidence["capco_2023_normalized_primary_code_rows"] == 19047
-        and supersession["hard_boundary"]["no_industry_forward_fill"] is True
-        and supersession["hard_boundary"]["no_current_industry_backfill"] is True
-    )
-    out = set(basis["explicit_out"])
-    checks["runtime_information_excluded"] = {
-        "GENERAL_WEB_NEWS",
-        "SOCIAL_MEDIA",
-        "RUMOR_OR_UNVERIFIED_SUPPLY_CHAIN",
-        "ETF_PRIMARY_FLOW_WITHOUT_STRICT_PIT",
-        "GENERIC_ANNOUNCEMENT_TITLE_SENTIMENT_OR_SCALAR_INFERENCE",
-        "INDUSTRY_IDENTITY_UNTIL_NORMALIZED_PIT_PLUGIN",
-    } <= out
-    checks["pit_fail_closed"] = (
-        basis["pit_policy"]["date_only_disclosure_uses_next_session"] is True
-        and basis["pit_policy"]["future_backfill_forbidden"] is True
-        and basis["missing_policy"]["zero_fill_for_missing_forbidden"] is True
-        and basis["missing_policy"]["unknown_identity_or_time_semantics_fail_closed"] is True
-        and basis["missing_policy"]["industry_missingness_cannot_be_repaired_by_unvalidated_forward_fill"] is True
-    )
-    permissions = basis["permissions"]
-    checks["freeze_without_training_or_live"] = (
-        permissions["feature_set_frozen"] is True
-        and permissions["stage4_feature_materialization_allowed"] is True
-        and permissions["market_regime_requires_ACCEPTED_before_materialization"] is True
-        and permissions["market_regime_acceptance_satisfied"] is True
-        and permissions["alpha_training_allowed"] is False
-        and permissions["live_signal_allowed"] is False
-        and permissions["authoritative_model_output"] is False
-    )
+    surprise = families["EARNINGS_GUIDANCE_SURPRISE_PIT"]
+    canonical = json.dumps(b, sort_keys=True, separators=(",", ":")).encode()
+    modules = registry["modules"]
+    module_fp = hashlib.sha256(json.dumps(modules, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
-    failed = [name for name, ok in checks.items() if not ok]
-    result = {
-        "gate": "STAGE4_V1_FEATURE_SET_FREEZE_CONTRACT",
-        "pass": not failed,
-        "feature_set_id": contract["feature_set_id"],
-        "feature_set_version": contract["feature_set_version"],
-        "feature_set_fingerprint": contract["feature_set_fingerprint"],
-        "market_regime_lifecycle": market["lifecycle"],
-        "market_regime_enabled": market["enabled"],
-        "industry_identity_disposition": industry["disposition"],
-        "checks": checks,
-        "failed_checks": failed,
-        "next_gate": contract["next_gate"],
-        "alpha_training_allowed": False,
-        "live_signal_allowed": False,
+    checks = {
+      "fingerprint_exact": hashlib.sha256(canonical).hexdigest() == c["feature_set_fingerprint"] == "d319ea1c236d580d0d032a055e4cdc07bf45e586ecbef664c6f4b3a8be98f9ff",
+      "v1_2_supersedes_v1_1": c["feature_set_version"] == "V1.2" and c["supersedes_feature_set_version"] == "V1.1" and s11["superseded_fingerprint"] == "757d384cd090620cb8a351b8bcf6d93884577c74dd4fb874bb2f7880e0c939a3",
+      "v1_0_history_preserved": s10["superseded_fingerprint"] == "dab3ffc74a518fd0a75a3a63b0717354162820d1f5ab0cb5d75448cc9a4e9937",
+      "stage2_authority_exact": s2["version"] == b["stage2"]["version"] and s2["stage2_dataset_fingerprint"] == b["stage2"]["fingerprint"],
+      "stage3_authority_exact": s3["version"] == b["stage3"]["version"] and s3["stage3_dataset_fingerprint"] == b["stage3"]["fingerprint"],
+      "financial_residuals_missing_only": s3["s3g1j_retained_raw_residuals"]["retained_as_missing"] is True and s3["s3g1j_retained_raw_residuals"]["usable_as_numeric_truth"] is False,
+      "s3g4_strict_prior": s3["s3g4"]["expectation_is_strictly_prior"] is True and s3["s3g4"]["analyst_consensus_used"] is False,
+      "surprise_current_period_only": surprise["activation"] == "SURPRISE_ECONOMIC_DATE_EQUALS_CURRENT_LATEST_FINANCIAL_ECONOMIC_DATE" and b["pit_policy"]["earnings_surprise_requires_current_financial_economic_date_match"] is True and b["missing_policy"]["surprise_from_noncurrent_financial_economic_period_treated_missing"] is True and s11["hard_boundary"]["no_prior_period_surprise_carry"] is True,
+      "surprise_semantic_evidence_exact": s11["diagnostic_evidence"]["r1"]["age_p50_sessions"] == 133 and s11["diagnostic_evidence"]["r2_current_report_binding"]["current_report_match_rows"] == 1756064 and s11["diagnostic_evidence"]["r2_current_report_binding"]["prior_period_stale_rows"] == 3976955,
+      "industry_excluded": industry["disposition"] == "OUT_PENDING_NORMALIZATION_PLUGIN" and industry["model_visible"] is False and c["source_facts"]["industry_artifact"]["csrc_2012_normalized_primary_code_rows"] == 1,
+      "market_regime_accepted_disabled": market["lifecycle"] == "ACCEPTED" and market["enabled"] is False and market["training_allowed"] is False and market["live_allowed"] is False and accepted["permissions"]["stage4_feature_use_allowed"] is True,
+      "module_registry_exact": module_fp == registry["module_set_fingerprint"],
+      "baseline_still_locked": registry["accepted_baseline_anchor"]["stage4_unlocked"] is False and registry["accepted_baseline_anchor"]["alpha_training_allowed"] is False and registry["accepted_baseline_anchor"]["live_signal_allowed"] is False,
+      "runtime_information_excluded": {"GENERAL_WEB_NEWS","SOCIAL_MEDIA","RUMOR_OR_UNVERIFIED_SUPPLY_CHAIN","ETF_PRIMARY_FLOW_WITHOUT_STRICT_PIT","CURRENT_INDUSTRY_BACKFILL"} <= set(b["explicit_out"]),
+      "pit_fail_closed": b["pit_policy"]["future_backfill_forbidden"] is True and b["missing_policy"]["zero_fill_for_missing_forbidden"] is True and b["missing_policy"]["unknown_identity_or_time_semantics_fail_closed"] is True,
+      "no_training_or_live": b["permissions"]["alpha_training_allowed"] is False and b["permissions"]["live_signal_allowed"] is False and b["permissions"]["authoritative_model_output"] is False,
     }
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    failed=[k for k,v in checks.items() if not v]
+    result={
+      "gate":"STAGE4_V1_FEATURE_SET_FREEZE_CONTRACT",
+      "pass":not failed,
+      "feature_set_id":c["feature_set_id"],
+      "feature_set_version":c["feature_set_version"],
+      "feature_set_fingerprint":c["feature_set_fingerprint"],
+      "surprise_activation":surprise["activation"],
+      "industry_identity_disposition":industry["disposition"],
+      "market_regime_lifecycle":market["lifecycle"],
+      "checks":checks,
+      "failed_checks":failed,
+      "next_gate":c["next_gate"],
+      "alpha_training_allowed":False,
+      "live_signal_allowed":False,
+    }
+    print(json.dumps(result,ensure_ascii=False,indent=2))
     return 0 if not failed else 2
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
