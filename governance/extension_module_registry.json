@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "contract_version": "V1",
-  "status": "EXTENSION_FOUNDATION_WITH_TESTED_MODULES",
+  "status": "EXTENSION_FOUNDATION_WITH_ACCEPTED_MODULES",
   "default_enabled": false,
   "default_lifecycle": "REGISTERED",
   "accepted_baseline_anchor": {
@@ -14,7 +14,7 @@
     "live_signal_allowed": false
   },
   "module_set_fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT",
-  "module_set_fingerprint": "19568c012959f821a8efe94df5999f6066b612aecb4eba5412a38d4ba35695b2",
+  "module_set_fingerprint": "9d4bc3da00b8c1a7dca712b5b429d1b6491ce52ade7b1935664ffbdbc4235cb8",
   "policies": {
     "no_speculative_business_logic": true,
     "extensions_default_disabled": true,
@@ -50,7 +50,7 @@
       "module_version": "V1",
       "contract_version": "V1",
       "kind": "FEATURE_PLUGIN",
-      "lifecycle": "TESTED",
+      "lifecycle": "ACCEPTED",
       "enabled": false,
       "input_schema": "schemas/stage4_market_regime_v1_input.schema.json",
       "output_schema": "schemas/stage4_market_regime_v1_output.schema.json",
@@ -61,9 +61,9 @@
       "fallback_behavior": "BASELINE_UNCHANGED",
       "timeout_seconds": 1800,
       "max_retries": 0,
-      "acceptance_ref": null,
-      "rollback_target_module_version": null,
-      "rollback_target_module_set_fingerprint": null
+      "acceptance_ref": "governance/stage4_market_regime_v1_accepted_promotion.json",
+      "rollback_target_module_version": "V1",
+      "rollback_target_module_set_fingerprint": "19568c012959f821a8efe94df5999f6066b612aecb4eba5412a38d4ba35695b2"
     }
   ]
 }
