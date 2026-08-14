@@ -47,8 +47,7 @@ def main() -> int:
     rows,ukeys,bad_pred,bad_sid=con.execute(f"SELECT count(*),count(DISTINCT (trade_date,exchange,code,split_id)),sum(CASE WHEN NOT isfinite(prediction) THEN 1 ELSE 0 END),sum(CASE WHEN split_id<1 OR split_id>5 THEN 1 ELSE 0 END) FROM read_parquet({q(str(oof))})").fetchone()
     checks['oof_unique_and_finite']=rows==ukeys==summary['oof_rows'] and bad_pred==0 and bad_sid==0
 
-    split_by_id={int(s['split_id']):s for s in split['splits']}
-    drift=0
+    split_by_id={int(s['split_id']):s for s in split['splits']}; drift=0
     for sid in range(1,6):
         s=split_by_id[sid]
         n,bad=con.execute(f"SELECT count(*),sum(CASE WHEN trade_date<DATE {q(s['test_start'])} OR trade_date>DATE {q(s['test_end'])} THEN 1 ELSE 0 END) FROM read_parquet({q(str(oof))}) WHERE split_id={sid}").fetchone()
@@ -56,25 +55,34 @@ def main() -> int:
         if n!=trial['test_rows'] or (bad or 0)!=0: drift+=1
     checks['oof_rows_match_authorized_test_blocks']=drift==0
 
-    # Independent daily recomputation: average ranks handle Spearman ties exactly; top bucket uses prediction desc then exchange/code.
+    # 20d ranks use all valid-20d OOF rows. 5d Spearman is recomputed independently on the pairwise non-null 5d subset.
     recomputed=con.execute(f"""
-      WITH x AS (
+      WITH x20 AS (
         SELECT *,
           rank() OVER(PARTITION BY split_id,trade_date ORDER BY prediction) + (count(*) OVER(PARTITION BY split_id,trade_date,prediction)-1)/2.0 AS rp20,
           rank() OVER(PARTITION BY split_id,trade_date ORDER BY excess_return_20d) + (count(*) OVER(PARTITION BY split_id,trade_date,excess_return_20d)-1)/2.0 AS ry20,
-          rank() OVER(PARTITION BY split_id,trade_date ORDER BY excess_return_5d) + (count(*) OVER(PARTITION BY split_id,trade_date,excess_return_5d)-1)/2.0 AS ry5,
           row_number() OVER(PARTITION BY split_id,trade_date ORDER BY prediction DESC,exchange,code) AS score_rn,
           count(*) OVER(PARTITION BY split_id,trade_date) AS n
         FROM read_parquet({q(str(oof))})
-      ), d AS (
-        SELECT split_id,trade_date,count(*) n,
+      ), d20 AS (
+        SELECT split_id,trade_date,count(*) n20,
           CASE WHEN count(*)>=20 AND count(DISTINCT prediction)>1 AND count(DISTINCT excess_return_20d)>1 THEN corr(rp20,ry20) END AS daily_ic_20d,
-          CASE WHEN count(*)>=20 AND count(DISTINCT prediction)>1 AND count(DISTINCT excess_return_5d)>1 THEN corr(rp20,ry5) END AS daily_ic_5d,
           max(CAST(ceil(0.10*n) AS BIGINT)) AS top10_n,
           avg(excess_return_20d) FILTER(WHERE score_rn<=CAST(ceil(0.10*n) AS BIGINT)) AS top10_gross_excess_20d,
           avg(stock_total_return_20d) FILTER(WHERE score_rn<=CAST(ceil(0.10*n) AS BIGINT)) AS top10_stock_total_return_20d,
           avg(benchmark_return_20d) FILTER(WHERE score_rn<=CAST(ceil(0.10*n) AS BIGINT)) AS benchmark_return_20d
-        FROM x GROUP BY split_id,trade_date
+        FROM x20 GROUP BY split_id,trade_date
+      ), x5 AS (
+        SELECT *,
+          rank() OVER(PARTITION BY split_id,trade_date ORDER BY prediction) + (count(*) OVER(PARTITION BY split_id,trade_date,prediction)-1)/2.0 AS rp5,
+          rank() OVER(PARTITION BY split_id,trade_date ORDER BY excess_return_5d) + (count(*) OVER(PARTITION BY split_id,trade_date,excess_return_5d)-1)/2.0 AS ry5
+        FROM read_parquet({q(str(oof))}) WHERE excess_return_5d IS NOT NULL AND isfinite(excess_return_5d)
+      ), d5 AS (
+        SELECT split_id,trade_date,count(*) n5,
+          CASE WHEN count(*)>=20 AND count(DISTINCT prediction)>1 AND count(DISTINCT excess_return_5d)>1 THEN corr(rp5,ry5) END AS daily_ic_5d
+        FROM x5 GROUP BY split_id,trade_date
+      ), d AS (
+        SELECT d20.*,coalesce(d5.n5,0) n5,d5.daily_ic_5d FROM d20 LEFT JOIN d5 USING(split_id,trade_date)
       ), orig AS (SELECT * FROM read_parquet({q(str(daily))}))
       SELECT count(*),
         max(abs(d.daily_ic_20d-orig.daily_ic_20d)) FILTER(WHERE d.daily_ic_20d IS NOT NULL AND orig.daily_ic_20d IS NOT NULL),
@@ -82,24 +90,22 @@ def main() -> int:
         max(abs(d.top10_gross_excess_20d-orig.top10_gross_excess_20d)),
         max(abs(d.top10_stock_total_return_20d-orig.top10_stock_total_return_20d)),
         max(abs(d.benchmark_return_20d-orig.benchmark_return_20d)),
-        sum(CASE WHEN d.top10_n<>orig.top10_n THEN 1 ELSE 0 END),
+        sum(CASE WHEN d.top10_n<>orig.top10_n OR d.n20<>orig.n20 OR d.n5<>orig.n5 THEN 1 ELSE 0 END),
         sum(CASE WHEN (d.daily_ic_20d IS NULL)<>(orig.daily_ic_20d IS NULL) THEN 1 ELSE 0 END),
         sum(CASE WHEN (d.daily_ic_5d IS NULL)<>(orig.daily_ic_5d IS NULL) THEN 1 ELSE 0 END)
       FROM d JOIN orig USING(split_id,trade_date)
     """).fetchone()
-    day_rows,err20,err5,errtop,errstock,errbench,badk,null20,null5=recomputed
+    day_rows,err20,err5,errtop,errstock,errbench,badcounts,null20,null5=recomputed
     checks['daily_metric_rows_exact']=day_rows==con.execute(f"SELECT count(*) FROM read_parquet({q(str(daily))})").fetchone()[0]
     checks['daily_spearman_recomputed']=float(err20 or 0)<1e-10 and float(err5 or 0)<1e-10 and (null20 or 0)==0 and (null5 or 0)==0
-    checks['top_bucket_recomputed']=float(errtop or 0)<1e-10 and float(errstock or 0)<1e-10 and float(errbench or 0)<1e-10 and (badk or 0)==0
+    checks['daily_counts_and_top_bucket_recomputed']=float(errtop or 0)<1e-10 and float(errstock or 0)<1e-10 and float(errbench or 0)<1e-10 and (badcounts or 0)==0
 
     recomputed_metrics=[]
     for sid in range(1,6):
-        vals=con.execute(f"SELECT count(*),count(daily_ic_20d),avg(daily_ic_20d),avg(daily_ic_5d) FROM read_parquet({q(str(daily))}) WHERE split_id={sid}").fetchone()
-        test_days,nonnull,mean20,mean5=vals; recomputed_metrics.append((sid,test_days,nonnull,mean20,mean5))
+        vals=con.execute(f"SELECT count(*),count(daily_ic_20d),avg(daily_ic_20d),avg(daily_ic_5d) FROM read_parquet({q(str(daily))}) WHERE split_id={sid}").fetchone(); test_days,nonnull,mean20,mean5=vals; recomputed_metrics.append((sid,test_days,nonnull,mean20,mean5))
     split_ok=True
     for sid,test_days,nonnull,mean20,mean5 in recomputed_metrics:
-        m=next(x for x in metrics if int(x['split_id'])==sid)
-        split_ok &= m['test_days']==test_days and m['nonnull_ic20_days']==nonnull and close(m['mean_daily_ic_20d'],mean20) and close(m['mean_daily_ic_5d'],mean5)
+        m=next(x for x in metrics if int(x['split_id'])==sid); split_ok &= m['test_days']==test_days and m['nonnull_ic20_days']==nonnull and close(m['mean_daily_ic_20d'],mean20) and close(m['mean_daily_ic_5d'],mean5)
     checks['split_metrics_recomputed']=bool(split_ok)
     means=[x[3] for x in recomputed_metrics]
     checks['candidate_selection_statistics_recomputed']=close(summary['primary_median_split_mean_daily_ic_20d'],sorted(means)[2]) and close(summary['worst_split_mean_daily_ic_20d'],min(means))
