@@ -4,8 +4,11 @@ on:
   push:
     branches:
       - agent/stage4-alpha-v1-prereg
+      - agent/stage4-alpha-v1-prereg-v1-2
     paths:
       - 'governance/stage4_alpha_v1_preregistration.json'
+      - 'governance/stage4_alpha_v1_preregistration_v1_1_supersession.json'
+      - 'governance/stage4_alpha_v1_preregistration_v1_2_supersession.json'
       - 'scripts/audit_stage4_alpha_v1_preregistration.py'
       - '.github/workflows/stage4-alpha-v1-preregistration.yml'
   pull_request:
@@ -13,6 +16,8 @@ on:
       - agent/stage3-clean-integration
     paths:
       - 'governance/stage4_alpha_v1_preregistration.json'
+      - 'governance/stage4_alpha_v1_preregistration_v1_1_supersession.json'
+      - 'governance/stage4_alpha_v1_preregistration_v1_2_supersession.json'
       - 'scripts/audit_stage4_alpha_v1_preregistration.py'
       - '.github/workflows/stage4-alpha-v1-preregistration.yml'
   workflow_dispatch:
@@ -41,7 +46,9 @@ jobs:
           test ! -e artifacts/stage4_alpha_v1_training
           ! grep -R --line-number -E 'fit\(|fit_predict\(|partial_fit\(' \
             scripts/audit_stage4_alpha_v1_preregistration.py \
-            governance/stage4_alpha_v1_preregistration.json
+            governance/stage4_alpha_v1_preregistration.json \
+            governance/stage4_alpha_v1_preregistration_v1_1_supersession.json \
+            governance/stage4_alpha_v1_preregistration_v1_2_supersession.json
       - name: Prove frozen Stage2/Stage3 and accepted feature matrix authority are not modified
         if: github.event_name == 'pull_request'
         env:
