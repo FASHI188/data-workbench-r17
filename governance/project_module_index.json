@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "index_version": "V1.1",
+  "index_version": "V1.2",
   "modules": [
     {"id":"STAGE2_PIT","aliases":["Stage2","历史PIT"],"status":"COMPLETE_FROZEN","depends_on":[],"evidence":["data/stage2_final/manifest.json"]},
     {"id":"STAGE3_PIT","aliases":["Stage3","财务PIT","S3G1J","S3G4"],"status":"COMPLETE_FROZEN_HISTORICAL","depends_on":["STAGE2_PIT"],"evidence":["data/stage3_final/manifest.json"]},
@@ -8,10 +8,11 @@
     {"id":"MARKET_REGIME_V1","aliases":["Market Regime","市场状态"],"status":"ACCEPTED_DISABLED","depends_on":["FRESHNESS_V2"],"evidence":["governance/extension_module_registry.json"]},
     {"id":"STAGE4_FEATURE_SET_V1_2","aliases":["Feature Set V1.2","Stage4特征"],"status":"COMPLETE","depends_on":["STAGE3_PIT","MARKET_REGIME_V1"],"evidence":["PR135"]},
     {"id":"STAGE4_FEATURE_MATRIX_V1_2","aliases":["Feature Matrix","PIT矩阵"],"status":"COMPLETE","depends_on":["STAGE4_FEATURE_SET_V1_2"],"evidence":["PR135"]},
-    {"id":"ALPHA_PREREG_V1_0","aliases":["Alpha预注册","OOS设计"],"status":"MERGED_SUPERSEDED_BOUNDARY","depends_on":["STAGE4_FEATURE_MATRIX_V1_2"],"evidence":["PR136"]},
-    {"id":"ALPHA_PREREG_V1_1","aliases":["prereg V1.1","PR137","标签跨分区修复"],"status":"IN_PROGRESS_PR_137_OPEN","depends_on":["ALPHA_PREREG_V1_0"],"evidence":["PR137"],"next":"merge PR137 and verify integration SHA"},
-    {"id":"DEV_LABELS_V1","aliases":["development labels","开发标签","split seal"],"status":"BLOCKED_NOT_STARTED","depends_on":["ALPHA_PREREG_V1_1"],"next":"development-only label materialization and split seal"},
-    {"id":"ALPHA_TRAIN_V1","aliases":["Alpha训练","Stage4模型"],"status":"NOT_STARTED","depends_on":["DEV_LABELS_V1"]},
+    {"id":"ALPHA_PREREG_V1_0","aliases":["Alpha预注册V1.0"],"status":"MERGED_SUPERSEDED","depends_on":["STAGE4_FEATURE_MATRIX_V1_2"],"evidence":["PR136"]},
+    {"id":"ALPHA_PREREG_V1_1","aliases":["prereg V1.1","PR137","标签跨分区修复"],"status":"MERGED_SUPERSEDED_BY_V1_2","depends_on":["ALPHA_PREREG_V1_0"],"evidence":["PR137"]},
+    {"id":"ALPHA_PREREG_V1_2","aliases":["Alpha预注册","OOS设计","prereg V1.2","因果CV"],"status":"COMPLETE_MERGED","depends_on":["ALPHA_PREREG_V1_1"],"evidence":["PR142","governance/stage4_alpha_v1_preregistration_v1_2_supersession.json"]},
+    {"id":"DEV_LABELS_V1","aliases":["development labels","开发标签","split seal","causal split seal"],"status":"COMPLETE","depends_on":["ALPHA_PREREG_V1_2"],"evidence":["PR143","governance/stage4_alpha_v1_development_labels_evidence.json","artifact:9216418323"],"next":"separate Alpha V1 development training execution authorization"},
+    {"id":"ALPHA_TRAIN_V1","aliases":["Alpha训练","Stage4模型"],"status":"BLOCKED_AWAITING_EXECUTION_AUTHORIZATION","depends_on":["DEV_LABELS_V1"],"next":"freeze and accept a separate development-training execution authorization before any model fit"},
     {"id":"OOS_VALIDATION_V1","aliases":["OOS","封存验证"],"status":"SEALED","depends_on":["ALPHA_TRAIN_V1"]},
     {"id":"FINAL_LOCKBOX_V1","aliases":["lockbox","最终锁箱"],"status":"SEALED","depends_on":["OOS_VALIDATION_V1"]},
     {"id":"CALIBRATION_ABSTENTION_V1","aliases":["Stage5","概率校准","弃权"],"status":"PLANNED","depends_on":["OOS_VALIDATION_V1"]},
@@ -22,6 +23,6 @@
     {"id":"PORTFOLIO_RISK_STAGE6","aliases":["Stage6","组合风险","仓位"],"status":"PLANNED","depends_on":["DECISION_FUSION_V1"]},
     {"id":"SIMULATION_STAGE7","aliases":["Stage7","模拟交易"],"status":"PLANNED","depends_on":["PORTFOLIO_RISK_STAGE6"]},
     {"id":"INVESTMENT_CONSOLE","aliases":["最终软件","控制台","Dashboard","Output Adapter"],"status":"PLANNED","depends_on":["DECISION_FUSION_V1"],"decision":"INVESTMENT_CONSOLE_ROADMAP_V1"},
-    {"id":"CONTINUITY_CONTROL_PLANE_V3","aliases":["接续治理","接续规则","checkpoint","Module Index","START HERE"],"status":"COMPLETE","depends_on":[],"decision":"CONTINUITY_CONTROL_PLANE_V3","evidence":["PR139","PR140","governance/INVESTMENT_CONTINUITY_RULES_V3.md","START_HERE.md"],"next":"use the stable rules plus RUNNING/BLOCKED checkpoints for all subsequent long tasks"}
+    {"id":"CONTINUITY_CONTROL_PLANE_V3","aliases":["接续治理","接续规则","checkpoint","Module Index","START HERE"],"status":"COMPLETE","depends_on":[],"decision":"CONTINUITY_CONTROL_PLANE_V3","evidence":["PR139","PR140","PR141","governance/INVESTMENT_CONTINUITY_RULES_V3.md","START_HERE.md"],"next":"use stable rules plus RUNNING/BLOCKED checkpoints for all subsequent long tasks"}
   ]
 }
