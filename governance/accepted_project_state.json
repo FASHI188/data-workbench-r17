@@ -1,9 +1,9 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "status": "RESEARCH_ONLY",
   "integration_ref": "agent/stage3-clean-integration",
   "live_integration_sha_source": "READ_GITHUB_REF_AT_RUNTIME",
-  "last_business_progress_sha": "c70161e6bd17df7f6ec5dd2e9b921174b117c42b",
+  "last_business_progress_sha": "03c3167ca259a3809c003f66082bc417cb1f1bb6",
   "main_sha": "2c32635e83ba9145d13b9a16b8a74f5750f02a94",
   "accepted_progress": {
     "stage2": "PASS_FROZEN",
@@ -12,16 +12,24 @@
     "market_regime_v1": "ACCEPTED_DISABLED",
     "stage4_feature_set": "V1_2_COMPLETE",
     "stage4_feature_matrix": "V1_2_COMPLETE",
-    "alpha_prereg_v1_0": "MERGED",
-    "alpha_prereg_v1_1": "PENDING_PR_137",
-    "continuity_control_plane_v3": "COMPLETE"
+    "alpha_prereg_v1_0": "MERGED_SUPERSEDED",
+    "alpha_prereg_v1_1": "MERGED_SUPERSEDED_BY_V1_2",
+    "alpha_prereg_v1_2": "MERGED_ACCEPTED_PR142",
+    "development_labels_v1": "COMPLETE_PR143_ARTIFACT_9216418323",
+    "continuity_control_plane_v3": "COMPLETE_V3_1"
   },
-  "continuity_governance_evidence": ["PR139", "PR140"],
-  "active_business_pr": {
-    "number": 137,
-    "head_sha": "8da916ec8247fb469e92e260e13107a5f2471e27",
-    "state": "OPEN"
+  "business_evidence": {
+    "alpha_prereg_v1_2": "governance/stage4_alpha_v1_preregistration_v1_2_supersession.json",
+    "development_labels_v1": "governance/stage4_alpha_v1_development_labels_evidence.json"
   },
-  "next_business_gate": "Merge PR137, verify live integration SHA, then create the separate development-label and split-seal gate",
-  "authority_note": "Live integration SHA must be read from GitHub at runtime. This file must not self-reference the SHA produced by merging its own update."
+  "active_business_pr": null,
+  "next_business_gate": "Create and accept a separate Alpha V1 development-training execution authorization; model fit remains forbidden until that gate is accepted",
+  "permissions": {
+    "model_fit_allowed": false,
+    "oos_label_access_allowed": false,
+    "lockbox_label_access_allowed": false,
+    "live_signal_allowed": false,
+    "main_merge_allowed": false
+  },
+  "authority_note": "Live integration SHA must be read from GitHub at runtime. This file records the last accepted business-progress anchor and must not self-reference the SHA produced by merging its own governance update."
 }
