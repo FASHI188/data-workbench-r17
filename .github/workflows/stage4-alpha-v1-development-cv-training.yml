@@ -1,0 +1,280 @@
+name: Stage4 Alpha V1 Exact Authorized Development CV
+
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - 'governance/stage4_alpha_v1_development_cv_execution_contract.json'
+      - 'scripts/prepare_stage4_alpha_v1_development_cv_data.py'
+      - 'scripts/run_stage4_alpha_v1_candidate_cv.py'
+      - 'scripts/audit_stage4_alpha_v1_candidate_cv.py'
+      - 'scripts/aggregate_stage4_alpha_v1_development_cv.py'
+      - 'scripts/audit_stage4_alpha_v1_development_cv_aggregate.py'
+      - '.github/workflows/stage4-alpha-v1-development-cv-training.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  AUTH_FP: '2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c'
+  EXEC_FP: '9b449b9c12ac98f1516812dfa4d3f40922668e35462087637cea79e81c1645dc'
+  MATRIX_AID: '9168728086'
+  MATRIX_ZIP_SHA: 'a4d3a10165bf3b369c77c7b4f77e97663bc3125f506d9203388e6f63198bda4a'
+  MATRIX_SHA: 'c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c'
+  LABEL_AID: '9216418323'
+  LABEL_ZIP_SHA: 'c4c8c475d79e964265dceec66da1673f9327469edc33531d6a21df8b61627e88'
+  LABEL_SHA: '092061da5666215dcc1f4fa75ec0b1cdbcc43969560755e7cdae6de55e64d673'
+  SPLIT_SHA: '98579c8d1b73a63bf18ee47a5cea94b730037d37979d7e38d0a98405efc2df72'
+  OMP_NUM_THREADS: '1'
+  MKL_NUM_THREADS: '1'
+  OPENBLAS_NUM_THREADS: '1'
+  NUMEXPR_NUM_THREADS: '1'
+
+jobs:
+  prepare-data:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact preparation runtime
+        run: python -m pip install --disable-pip-version-check duckdb==1.3.2
+      - name: Verify exact authorization, execution fingerprint and scoped permission
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          a=json.load(open('governance/stage4_alpha_v1_training_execution_authorization.json',encoding='utf-8'))
+          e=json.load(open('governance/stage4_alpha_v1_development_cv_execution_contract.json',encoding='utf-8'))
+          s=json.load(open('governance/accepted_project_state.json',encoding='utf-8'))
+          def fp(x): return hashlib.sha256(json.dumps(x['fingerprint_basis'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          assert fp(a)==a['fingerprint']=='2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c'
+          assert fp(e)==e['fingerprint']=='9b449b9c12ac98f1516812dfa4d3f40922668e35462087637cea79e81c1645dc'
+          assert e['fingerprint_basis']['authorization_fingerprint']==a['fingerprint']
+          p=s['permissions']
+          assert p['model_fit_allowed'] is True
+          assert p['model_fit_scope']=='RESEARCH_ONLY_DEVELOPMENT_CV_EXACT_AUTHORIZATION_2056EAE94770E9AFA65367999ADF05F57E799C6E6F2E88B501791F02B587706C'
+          assert p['development_final_refit_allowed'] is False
+          assert p['oos_label_access_allowed'] is False and p['lockbox_label_access_allowed'] is False
+          assert p['live_signal_allowed'] is False and p['main_merge_allowed'] is False and p['authoritative_model_output_allowed'] is False
+          assert e['fingerprint_basis']['candidate_execution']['required_trial_records']==55
+          print('exact scoped development-CV authorization: PASS')
+          PY
+      - name: Download exact immutable matrix and development labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/matrix build/labels build/prepared build/duckdb-train-prep-tmp
+          get_artifact() {
+            aid="$1"; sha="$2"; zip="$3"; dir="$4"
+            curl --fail --location --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${aid}/zip" -o "$zip"
+            echo "${sha}  ${zip}" | sha256sum -c -
+            unzip -q "$zip" -d "$dir"
+          }
+          get_artifact "$MATRIX_AID" "$MATRIX_ZIP_SHA" build/matrix.zip build/matrix
+          get_artifact "$LABEL_AID" "$LABEL_ZIP_SHA" build/labels.zip build/labels
+          echo "${MATRIX_SHA}  build/matrix/stage4_v1_2_feature_matrix.parquet" | sha256sum -c -
+          echo "${LABEL_SHA}  build/labels/development_labels.parquet" | sha256sum -c -
+          echo "${SPLIT_SHA}  build/labels/development_split_seal.json" | sha256sum -c -
+          python - <<'PY'
+          import json
+          a=json.load(open('build/labels/independent_audit.json',encoding='utf-8'))
+          m=json.load(open('build/labels/execution_manifest.json',encoding='utf-8'))
+          assert a['pass'] is True
+          assert m['label_rows']==5197648 and m['valid_20d_rows']==5103016
+          assert m['oos_labels_materialized'] is False and m['lockbox_labels_materialized'] is False
+          PY
+      - name: Join exact development population and freeze train-only preprocessing statistics
+        run: |
+          python scripts/prepare_stage4_alpha_v1_development_cv_data.py \
+            --matrix build/matrix/stage4_v1_2_feature_matrix.parquet \
+            --labels build/labels/development_labels.parquet \
+            --split-seal build/labels/development_split_seal.json \
+            --authorization governance/stage4_alpha_v1_training_execution_authorization.json \
+            --execution-contract governance/stage4_alpha_v1_development_cv_execution_contract.json \
+            --out build/prepared
+          cp build/labels/development_split_seal.json build/prepared/development_split_seal.json
+          echo "${SPLIT_SHA}  build/prepared/development_split_seal.json" | sha256sum -c -
+      - name: Prove prepare job performed no model fit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          a=json.load(open('build/prepared/prepare_audit.json',encoding='utf-8'))
+          assert a['pass'] is True and a['prepared_rows']==5197648 and a['valid20_rows']==5103016
+          assert a['model_fit_executed'] is False and a['oos_accessed'] is False and a['lockbox_accessed'] is False
+          PY
+          ! grep -n -E '\.fit\(|fit_predict\(|partial_fit\(' scripts/prepare_stage4_alpha_v1_development_cv_data.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage4-alpha-v1-training-prepared-data
+          path: build/prepared
+          compression-level: 0
+          retention-days: 30
+
+  candidate-cv:
+    needs: prepare-data
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        candidate: [C001, C002, C003, C004, C005, C006, C007, C008, C009, C010, C011]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact authorized training runtime
+        run: |
+          python -m pip install --disable-pip-version-check \
+            numpy==2.5.1 scipy==1.17.0 scikit-learn==1.9.0 pyarrow==25.0.0 duckdb==1.3.2
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage4-alpha-v1-training-prepared-data
+          path: build/prepared
+      - name: Verify prepared-data authority
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('build/prepared/prepare_audit.json',encoding='utf-8'))
+          p=json.load(open('build/prepared/split_preprocess.json',encoding='utf-8'))
+          assert a['pass'] is True and a['prepared_rows']==5197648 and a['valid20_rows']==5103016
+          assert p['authorization_fingerprint']=='2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c'
+          assert p['execution_fingerprint']=='9b449b9c12ac98f1516812dfa4d3f40922668e35462087637cea79e81c1645dc'
+          assert len(p['splits'])==5
+          PY
+          echo "${SPLIT_SHA}  build/prepared/development_split_seal.json" | sha256sum -c -
+      - name: Run exactly authorized five-split candidate CV
+        run: |
+          mkdir -p build/candidate build/duckdb-candidate-tmp build/duckdb-candidate-audit-tmp
+          python scripts/run_stage4_alpha_v1_candidate_cv.py \
+            --candidate-id '${{ matrix.candidate }}' \
+            --prepared build/prepared/joined_development.parquet \
+            --preprocess build/prepared/split_preprocess.json \
+            --authorization governance/stage4_alpha_v1_training_execution_authorization.json \
+            --execution-contract governance/stage4_alpha_v1_development_cv_execution_contract.json \
+            --out build/candidate
+      - name: Independently recompute candidate OOF metrics
+        run: |
+          python scripts/audit_stage4_alpha_v1_candidate_cv.py \
+            --candidate-dir build/candidate \
+            --authorization governance/stage4_alpha_v1_training_execution_authorization.json \
+            --execution-contract governance/stage4_alpha_v1_development_cv_execution_contract.json \
+            --split-seal build/prepared/development_split_seal.json \
+            --out build/candidate/candidate_audit.json
+      - name: Prove candidate stayed inside authorized research scope
+        run: |
+          python - <<'PY'
+          import json
+          s=json.load(open('build/candidate/candidate_summary.json',encoding='utf-8'))
+          a=json.load(open('build/candidate/candidate_audit.json',encoding='utf-8'))
+          t=json.load(open('build/candidate/trial_log.json',encoding='utf-8'))
+          assert a['pass'] is True and len(t)==5 and s['required_trials']==5
+          assert s['model_final_refit_executed'] is False and s['oos_accessed'] is False and s['lockbox_accessed'] is False
+          PY
+          test ! -e build/candidate/model.pkl
+          test ! -e build/candidate/model.joblib
+          test ! -e build/candidate/final_model
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage4-alpha-v1-cv-metrics-${{ matrix.candidate }}
+          path: |
+            build/candidate/candidate_summary.json
+            build/candidate/trial_log.json
+            build/candidate/split_metrics.json
+            build/candidate/daily_metrics.parquet
+            build/candidate/preprocess_manifest.json
+            build/candidate/runtime_manifest.json
+            build/candidate/artifact_hashes.json
+            build/candidate/candidate_audit.json
+          compression-level: 0
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage4-alpha-v1-cv-oof-${{ matrix.candidate }}
+          path: build/candidate/oof_predictions.parquet
+          if-no-files-found: ignore
+          compression-level: 0
+          retention-days: 90
+
+  aggregate:
+    needs: candidate-cv
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact aggregate runtime
+        run: python -m pip install --disable-pip-version-check numpy==2.5.1 scipy==1.17.0 pyarrow==25.0.0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage4-alpha-v1-cv-metrics-*
+          path: build/all-metrics
+          merge-multiple: false
+      - name: Aggregate preregistered candidate selection PBO and DSR
+        run: |
+          mkdir -p build/aggregate
+          python scripts/aggregate_stage4_alpha_v1_development_cv.py \
+            --metrics-root build/all-metrics \
+            --authorization governance/stage4_alpha_v1_training_execution_authorization.json \
+            --execution-contract governance/stage4_alpha_v1_development_cv_execution_contract.json \
+            --out build/aggregate
+      - name: Independently recompute selection PBO and DSR
+        run: |
+          python scripts/audit_stage4_alpha_v1_development_cv_aggregate.py \
+            --metrics-root build/all-metrics \
+            --aggregate-dir build/aggregate \
+            --authorization governance/stage4_alpha_v1_training_execution_authorization.json \
+            --execution-contract governance/stage4_alpha_v1_development_cv_execution_contract.json \
+            --out build/aggregate/aggregate_independent_audit.json
+      - name: Lock exact-head research execution manifest
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path('build/aggregate')
+          m=json.load(open(p/'training_execution_manifest.json',encoding='utf-8'))
+          a=json.load(open(p/'aggregate_independent_audit.json',encoding='utf-8'))
+          assert m['execution_complete'] is True and m['trial_records']==55
+          assert a['pass'] is True and a['trial_records']==55
+          assert m['final_development_refit_executed'] is False and m['oos_accessed'] is False and m['lockbox_accessed'] is False
+          def h(n): return hashlib.sha256((p/n).read_bytes()).hexdigest()
+          out={'schema_version':1,'gate':'STAGE4_ALPHA_V1_EXACT_AUTHORIZED_DEVELOPMENT_CV_EXACT_HEAD','execution_head':'${{ github.sha }}','authorization_fingerprint':'2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c','execution_fingerprint':'9b449b9c12ac98f1516812dfa4d3f40922668e35462087637cea79e81c1645dc','candidate_count':11,'trial_records':55,'successful_trial_records':m['successful_trial_records'],'all_candidates_valid':m['all_candidates_valid'],'selected_candidate':m['selected_candidate'],'pbo':m['pbo'],'pbo_pass':m['pbo_pass'],'dsr_probability':m['dsr_probability'],'dsr_pass':m['dsr_pass'],'research_gate_pass':m['research_gate_pass'],'next_gate':m['next_gate'],'candidate_summary_sha256':h('all_candidate_summary.json'),'candidate_selection_sha256':h('candidate_selection.json'),'pbo_sha256':h('pbo_diagnostic.json'),'dsr_sha256':h('dsr_diagnostic.json'),'aggregate_independent_audit_sha256':h('aggregate_independent_audit.json'),'final_development_refit_executed':False,'oos_accessed':False,'lockbox_accessed':False,'live_signal_allowed':False,'authoritative_model_output':False}
+          (p/'execution_manifest.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Prove aggregate produced no model weights
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e build/aggregate/model.pkl
+          test ! -e build/aggregate/model.joblib
+          test ! -e build/aggregate/final_model
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage4-alpha-v1-development-cv-aggregate
+          path: build/aggregate
+          compression-level: 0
+          retention-days: 90
