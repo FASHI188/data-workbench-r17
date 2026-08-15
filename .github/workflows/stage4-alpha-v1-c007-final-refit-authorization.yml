@@ -143,13 +143,19 @@ jobs:
           unzip -q build/dev-labels.zip -d build/dev-labels
           echo "${LABEL_SHA}  build/dev-labels/development_labels.parquet" | sha256sum -c -
           python - <<'PY'
-          import json
+          import json,os
           p='build/dev-labels/'
           m=json.load(open(p+'execution_manifest.json',encoding='utf-8'))
           a=json.load(open(p+'independent_audit.json',encoding='utf-8'))
           assert m['label_rows']==5197648 and m['valid_20d_rows']==5103016
+          assert m['labels_sha256']==os.environ['LABEL_SHA']
+          assert m['independent_audit_pass'] is True
           assert m['oos_labels_materialized'] is False and m['lockbox_labels_materialized'] is False
-          assert a['pass'] is True and a['future_market_rows_read']==0
+          assert a['pass'] is True and a['failed_checks']==[]
+          assert a['checks']['physical_market_source_guard'] is True
+          assert a['checks']['no_future_market_rows_read'] is True
+          assert a['labels_sha256']==os.environ['LABEL_SHA']
+          assert a['model_fit_allowed'] is False and a['oos_label_access_allowed'] is False and a['lockbox_label_access_allowed'] is False
           PY
 
       - name: Prove authorization gate has no trainer fit or model weights
