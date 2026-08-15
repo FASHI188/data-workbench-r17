@@ -1,9 +1,9 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "status": "RESEARCH_ONLY",
   "integration_ref": "agent/stage3-clean-integration",
   "live_integration_sha_source": "READ_GITHUB_REF_AT_RUNTIME",
-  "last_business_progress_sha": "df82aacbdd8584769c0280208e4de16ca5744658",
+  "last_business_progress_sha": "257923ea0007673ab53d0e0de4ebc596ddfcbc9a",
   "main_sha": "2c32635e83ba9145d13b9a16b8a74f5750f02a94",
   "accepted_progress": {
     "stage2": "PASS_FROZEN",
@@ -17,19 +17,20 @@
     "alpha_prereg_v1_2": "MERGED_ACCEPTED_PR142",
     "development_labels_v1": "COMPLETE_PR143_ARTIFACT_9216418323",
     "alpha_training_authorization_v1": "MERGED_ACCEPTED_PR145_AUTH_2056EAE9",
-    "alpha_training_v1": "AUTHORIZED_DEVELOPMENT_CV_NOT_EXECUTED",
+    "alpha_training_v1": "DEVELOPMENT_CV_COMPLETE_PR147_C007_SELECTED_OVERFIT_CONTROLS_PASS",
     "continuity_control_plane_v3": "COMPLETE_V3_1"
   },
   "business_evidence": {
     "alpha_prereg_v1_2": "governance/stage4_alpha_v1_preregistration_v1_2_supersession.json",
     "development_labels_v1": "governance/stage4_alpha_v1_development_labels_evidence.json",
-    "alpha_training_authorization_v1": "governance/stage4_alpha_v1_training_authorization_evidence.json"
+    "alpha_training_authorization_v1": "governance/stage4_alpha_v1_training_authorization_evidence.json",
+    "alpha_training_v1": "governance/stage4_alpha_v1_development_cv_evidence.json"
   },
   "active_business_pr": null,
-  "next_business_gate": "Execute only the exact authorized research-only 11-candidate x 5-causal-split development CV under authorization fingerprint 2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c",
+  "next_business_gate": "Create and accept a separate research-only final development refit authorization for selected candidate C007; OOS and lockbox remain sealed",
   "permissions": {
-    "model_fit_allowed": true,
-    "model_fit_scope": "RESEARCH_ONLY_DEVELOPMENT_CV_EXACT_AUTHORIZATION_2056EAE94770E9AFA65367999ADF05F57E799C6E6F2E88B501791F02B587706C",
+    "model_fit_allowed": false,
+    "model_fit_scope": "NONE_PENDING_SEPARATE_FINAL_DEVELOPMENT_REFIT_AUTHORIZATION",
     "development_final_refit_allowed": false,
     "oos_label_access_allowed": false,
     "lockbox_label_access_allowed": false,
@@ -37,5 +38,5 @@
     "main_merge_allowed": false,
     "authoritative_model_output_allowed": false
   },
-  "authority_note": "Live integration SHA must be read from GitHub at runtime. Model fit permission is scoped only to the exact accepted research-only development-CV authorization fingerprint; it does not authorize final refit, OOS, lockbox, live signals, main merge, or authoritative model output."
+  "authority_note": "Live integration SHA must be read from GitHub at runtime. The exact research-only development-CV authorization fingerprint 2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c has been executed and its evidence accepted; its fit permission is no longer reusable. Any final development refit requires a separate accepted authorization. OOS, lockbox, live signals, main merge, and authoritative model output remain prohibited."
 }
