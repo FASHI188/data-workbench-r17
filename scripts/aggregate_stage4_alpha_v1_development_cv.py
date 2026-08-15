@@ -63,17 +63,18 @@ def main() -> int:
         n=len(common); base,rem=divmod(n,10); sizes=[base+(1 if i<rem else 0) for i in range(10)]; pos=0; blocks=[]
         for i,size in enumerate(sizes):
             part=common[pos:pos+size]; blocks.append(part); block_defs.append({'block_id':i,'start':part[0],'end':part[-1],'date_count':len(part)}); pos+=size
-        block_scores={cid:[float(np.mean([maps[cid][d] for d in block])) for block in blocks] for cid in expected}
         for combo in itertools.combinations(range(10),5):
             is_blocks=set(combo); oos_blocks=[i for i in range(10) if i not in is_blocks]
-            is_scores={cid:float(np.mean([block_scores[cid][i] for i in combo])) for cid in expected}
+            is_dates=[d for i in combo for d in blocks[i]]
+            oos_dates=[d for i in oos_blocks for d in blocks[i]]
+            is_scores={cid:float(np.mean([maps[cid][d] for d in is_dates])) for cid in expected}
             best=min(expected,key=lambda cid:(-is_scores[cid],catalog[cid]['ordinal']))
-            oos_scores={cid:float(np.mean([block_scores[cid][i] for i in oos_blocks])) for cid in expected}
+            oos_scores={cid:float(np.mean([maps[cid][d] for d in oos_dates])) for cid in expected}
             vals=np.asarray([oos_scores[cid] for cid in expected],dtype=float); ranks=rankdata(vals,method='average')
             rank=float(ranks[expected.index(best)]); frac=(rank-0.5)/11.0; logit=float(math.log(frac/(1.0-frac)))
             pbo_rows.append({'is_blocks':list(combo),'selected_candidate':best,'selected_is_score':is_scores[best],'selected_oos_score':oos_scores[best],'selected_oos_rank_1_worst':rank,'rank_fraction':frac,'logit':logit,'overfit_event':logit<=0.0})
         pbo_value=float(np.mean([r['overfit_event'] for r in pbo_rows])); pbo_pass=pbo_value<=float(pbo_cfg['pass_ceiling'])
-    pbo_diag={'method':'CSCV_ON_CAUSAL_FORWARD_OOF_CANDIDATE_PERFORMANCE_SERIES','all_candidates_valid':all_valid,'union_nonnull_ic_dates':len(unions),'common_nonnull_ic_dates':len(common),'common_date_fraction':common_fraction,'minimum_common_date_fraction':pbo_cfg['minimum_common_date_fraction'],'blocks':block_defs,'combination_count':len(pbo_rows),'expected_combinations':252,'pbo':pbo_value,'pass_ceiling':pbo_cfg['pass_ceiling'],'pass':pbo_pass,'model_refit_inside_pbo':False,'rows':pbo_rows}
+    pbo_diag={'method':'CSCV_ON_CAUSAL_FORWARD_OOF_CANDIDATE_PERFORMANCE_SERIES','score_weighting':'DAILY_OBSERVATION_WEIGHTED_ACROSS_SELECTED_BLOCKS','all_candidates_valid':all_valid,'union_nonnull_ic_dates':len(unions),'common_nonnull_ic_dates':len(common),'common_date_fraction':common_fraction,'minimum_common_date_fraction':pbo_cfg['minimum_common_date_fraction'],'blocks':block_defs,'combination_count':len(pbo_rows),'expected_combinations':252,'pbo':pbo_value,'pass_ceiling':pbo_cfg['pass_ceiling'],'pass':pbo_pass,'model_refit_inside_pbo':False,'rows':pbo_rows}
     (out/'pbo_diagnostic.json').write_text(json.dumps(pbo_diag,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 
     # DSR: fixed non-overlapping test-session anchor within each split.
