@@ -52,9 +52,14 @@ def main()->int:
         for size in sizes:blocks.append(common[pos:pos+size]);pos+=size
         block_scores={cid:[float(np.mean([maps[cid][d] for d in b])) for b in blocks] for cid in expected}; events=[]
         for combo in itertools.combinations(range(10),5):
-            comp=[i for i in range(10) if i not in combo]; ins={cid:float(np.mean([block_scores[cid][i] for i in combo])) for cid in expected}; best=min(expected,key=lambda c:(-ins[c],catalog[c]['ordinal'])); outs=np.asarray([float(np.mean([block_scores[c][i] for i in comp])) for c in expected]); ranks=rankdata(outs,method='average'); rank=float(ranks[expected.index(best)]); f=(rank-.5)/11.0; events.append(math.log(f/(1-f))<=0);combo_count+=1
+            comp=[i for i in range(10) if i not in combo]
+            is_weights=np.asarray([len(blocks[i]) for i in combo],dtype=float); oos_weights=np.asarray([len(blocks[i]) for i in comp],dtype=float)
+            ins={cid:float(np.average(np.asarray([block_scores[cid][i] for i in combo],dtype=float),weights=is_weights)) for cid in expected}
+            best=min(expected,key=lambda c:(-ins[c],catalog[c]['ordinal']))
+            outs=np.asarray([float(np.average(np.asarray([block_scores[c][i] for i in comp],dtype=float),weights=oos_weights)) for c in expected])
+            ranks=rankdata(outs,method='average'); rank=float(ranks[expected.index(best)]); f=(rank-.5)/11.0; events.append(math.log(f/(1-f))<=0);combo_count+=1
         pbo_re=float(np.mean(events))
-    checks['pbo_recomputed']=(close(pbo_re,pbo['pbo']) and combo_count==pbo['combination_count'] and combo_count in (0,252) and close(common_fraction,pbo['common_date_fraction']) and bool(pbo_re is not None and pbo_re<=0.2)==pbo['pass']==manifest['pbo_pass'])
+    checks['pbo_recomputed']=(pbo.get('score_weighting')=='DAILY_OBSERVATION_WEIGHTED_ACROSS_SELECTED_BLOCKS' and close(pbo_re,pbo['pbo']) and combo_count==pbo['combination_count'] and combo_count in (0,252) and close(common_fraction,pbo['common_date_fraction']) and bool(pbo_re is not None and pbo_re<=0.2)==pbo['pass']==manifest['pbo_pass'])
 
     ret={}; sharpes={}
     for cid in expected:
