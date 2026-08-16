@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "index_version": "V1.6",
+  "index_version": "V1.7",
   "modules": [
     {"id":"STAGE2_PIT","aliases":["Stage2","历史PIT"],"status":"COMPLETE_FROZEN","depends_on":[],"evidence":["data/stage2_final/manifest.json"]},
     {"id":"STAGE3_PIT","aliases":["Stage3","财务PIT","S3G1J","S3G4"],"status":"COMPLETE_FROZEN_HISTORICAL","depends_on":["STAGE2_PIT"],"evidence":["data/stage3_final/manifest.json"]},
@@ -25,6 +25,7 @@
     {"id":"PORTFOLIO_RISK_STAGE6","aliases":["Stage6","组合风险","仓位"],"status":"PLANNED","depends_on":["DECISION_FUSION_V1"]},
     {"id":"SIMULATION_STAGE7","aliases":["Stage7","模拟交易"],"status":"PLANNED","depends_on":["PORTFOLIO_RISK_STAGE6"]},
     {"id":"INVESTMENT_CONSOLE","aliases":["最终软件","控制台","Dashboard","Output Adapter"],"status":"PLANNED","depends_on":["DECISION_FUSION_V1"],"decision":"INVESTMENT_CONSOLE_ROADMAP_V1"},
-    {"id":"CONTINUITY_CONTROL_PLANE_V3","aliases":["接续治理","接续规则","checkpoint","Module Index","START HERE"],"status":"COMPLETE","depends_on":[],"decision":"CONTINUITY_CONTROL_PLANE_V3","evidence":["PR139","PR140","PR141","governance/INVESTMENT_CONTINUITY_RULES_V3.md","START_HERE.md"]}
+    {"id":"RESEARCH_METHOD_CORE_V1","aliases":["投资项目总线","市场内部指标","ETF一级二级","市场宽度","利润桥","三道否决门","研究方法"],"status":"ACTIVE_STABLE_ON_DEMAND","depends_on":[],"evidence":["governance/INVESTMENT_RESEARCH_METHOD_CORE_V1.md"],"load_policy":"ON_DEMAND_NOT_STARTUP_CONTEXT","supersedes_sources":["交易员26规则总结.txt","交易员29规则总结.txt"]},
+    {"id":"CONTINUITY_CONTROL_PLANE_V3","aliases":["接续治理","接续规则","checkpoint","Module Index","START HERE"],"status":"COMPLETE","depends_on":[],"decision":"CONTINUITY_CONTROL_PLANE_V3","evidence":["PR139","PR140","PR141","PR153","PR154","governance/INVESTMENT_CONTINUITY_RULES_V3.md","START_HERE.md"]}
   ]
 }
