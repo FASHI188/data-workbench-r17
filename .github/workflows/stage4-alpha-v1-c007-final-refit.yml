@@ -1,0 +1,176 @@
+name: Stage4 Alpha V1 C007 Exact Final Development Refit
+
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - 'scripts/run_stage4_alpha_v1_c007_final_refit.py'
+      - 'scripts/audit_stage4_alpha_v1_c007_final_refit.py'
+      - '.github/workflows/stage4-alpha-v1-c007-final-refit.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  FINAL_AUTH_FP: '7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295'
+  EXECUTION_HEAD: ${{ github.event.pull_request.head.sha }}
+  MATRIX_AID: '9168728086'
+  MATRIX_ZIP_SHA: 'a4d3a10165bf3b369c77c7b4f77e97663bc3125f506d9203388e6f63198bda4a'
+  MATRIX_SHA: 'c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c'
+  LABEL_AID: '9216418323'
+  LABEL_ZIP_SHA: 'c4c8c475d79e964265dceec66da1673f9327469edc33531d6a21df8b61627e88'
+  LABEL_SHA: '092061da5666215dcc1f4fa75ec0b1cdbcc43969560755e7cdae6de55e64d673'
+  OMP_NUM_THREADS: '1'
+  MKL_NUM_THREADS: '1'
+  OPENBLAS_NUM_THREADS: '1'
+  NUMEXPR_NUM_THREADS: '1'
+
+jobs:
+  c007-final-development-refit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXECUTION_HEAD }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+
+      - name: Install exact authorized runtime
+        run: |
+          python -m pip install --disable-pip-version-check \
+            numpy==2.5.1 scipy==1.17.0 scikit-learn==1.9.0 pyarrow==25.0.0 duckdb==1.3.2
+
+      - name: Verify exact PR head and single-use governance scope
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXECUTION_HEAD"
+          python - <<'PY'
+          import hashlib,json,os
+          auth=json.load(open('governance/stage4_alpha_v1_c007_final_refit_authorization.json',encoding='utf-8'))
+          state=json.load(open('governance/accepted_project_state.json',encoding='utf-8'))
+          fp=hashlib.sha256(json.dumps(auth['fingerprint_basis'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          assert fp==auth['fingerprint']==os.environ['FINAL_AUTH_FP']
+          p=state['permissions']
+          assert p['model_fit_allowed'] is True
+          assert p['development_final_refit_allowed'] is True
+          assert p['model_fit_scope']=='RESEARCH_ONLY_C007_FINAL_DEVELOPMENT_REFIT_EXACT_AUTHORIZATION_7D5F88013329973C6C446D9210ADBB9E60BA04A9FB615098E21318F1AB053295'
+          assert p['oos_label_access_allowed'] is False and p['lockbox_label_access_allowed'] is False
+          assert p['live_signal_allowed'] is False and p['main_merge_allowed'] is False and p['authoritative_model_output_allowed'] is False
+          assert auth['fingerprint_basis']['fit_execution']['fit_count_exact']==1
+          assert auth['fingerprint_basis']['fit_execution']['candidate_id']=='C007'
+          assert auth['fingerprint_basis']['fit_execution']['authorization_single_use'] is True
+          assert auth['fingerprint_basis']['fit_execution']['execution_must_be_separate_exact_head_pr'] is True
+          print(json.dumps({'execution_head':os.environ['EXECUTION_HEAD'],'authorization_fingerprint':fp,'candidate':'C007','fit_count_exact':1}))
+          PY
+
+      - name: Download and hash exact immutable matrix and development labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/matrix build/labels build/final-refit build/final-work build/audit-work
+          get_artifact() {
+            aid="$1"; zip_sha="$2"; zip="$3"; dir="$4"
+            curl --fail --location --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${aid}/zip" -o "$zip"
+            echo "${zip_sha}  ${zip}" | sha256sum -c -
+            unzip -q "$zip" -d "$dir"
+          }
+          get_artifact "$MATRIX_AID" "$MATRIX_ZIP_SHA" build/matrix.zip build/matrix
+          get_artifact "$LABEL_AID" "$LABEL_ZIP_SHA" build/labels.zip build/labels
+          echo "${MATRIX_SHA}  build/matrix/stage4_v1_2_feature_matrix.parquet" | sha256sum -c -
+          echo "${LABEL_SHA}  build/labels/development_labels.parquet" | sha256sum -c -
+          python - <<'PY'
+          import json,os
+          m=json.load(open('build/labels/execution_manifest.json',encoding='utf-8'))
+          a=json.load(open('build/labels/independent_audit.json',encoding='utf-8'))
+          assert m['label_rows']==5197648 and m['valid_20d_rows']==5103016
+          assert m['labels_sha256']==os.environ['LABEL_SHA']
+          assert m['independent_audit_pass'] is True
+          assert m['oos_labels_materialized'] is False and m['lockbox_labels_materialized'] is False
+          assert a['pass'] is True and a['failed_checks']==[]
+          assert a['checks']['physical_market_source_guard'] is True
+          assert a['checks']['no_future_market_rows_read'] is True
+          assert a['model_fit_allowed'] is False and a['oos_label_access_allowed'] is False and a['lockbox_label_access_allowed'] is False
+          PY
+
+      - name: Prove source contains exactly one authorized fit call
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(grep -F -c 'model.fit(X, y)' scripts/run_stage4_alpha_v1_c007_final_refit.py)" -eq 1
+          ! grep -n -E '\.fit\(|fit_predict\(|partial_fit\(' scripts/audit_stage4_alpha_v1_c007_final_refit.py
+          ! grep -n -E 'spearman|sharpe|return_5d|top10' scripts/run_stage4_alpha_v1_c007_final_refit.py
+
+      - name: Execute exactly one C007 full-development refit
+        run: |
+          python scripts/run_stage4_alpha_v1_c007_final_refit.py \
+            --matrix build/matrix/stage4_v1_2_feature_matrix.parquet \
+            --labels build/labels/development_labels.parquet \
+            --authorization governance/stage4_alpha_v1_c007_final_refit_authorization.json \
+            --source-cv-authorization governance/stage4_alpha_v1_training_execution_authorization.json \
+            --accepted-state governance/accepted_project_state.json \
+            --work-dir build/final-work \
+            --out build/final-refit
+
+      - name: Independently recompute final-refit population preprocessing and sentinel predictions
+        run: |
+          python scripts/audit_stage4_alpha_v1_c007_final_refit.py \
+            --matrix build/matrix/stage4_v1_2_feature_matrix.parquet \
+            --labels build/labels/development_labels.parquet \
+            --authorization governance/stage4_alpha_v1_c007_final_refit_authorization.json \
+            --source-cv-authorization governance/stage4_alpha_v1_training_execution_authorization.json \
+            --accepted-state governance/accepted_project_state.json \
+            --execution-dir build/final-refit \
+            --work-dir build/audit-work
+
+      - name: Prove exact research-only output and sealed boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXECUTION_HEAD"
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          p=Path('build/final-refit')
+          expected={'model.pkl','final_preprocess_manifest.json','final_refit_execution_manifest.json','final_refit_independent_audit.json','artifact_hashes.json'}
+          assert {x.name for x in p.iterdir() if x.is_file()}==expected
+          x=json.load(open(p/'final_refit_execution_manifest.json',encoding='utf-8'))
+          a=json.load(open(p/'final_refit_independent_audit.json',encoding='utf-8'))
+          h=json.load(open(p/'artifact_hashes.json',encoding='utf-8'))
+          assert x['execution_head']==os.environ['EXECUTION_HEAD']
+          assert x['authorization_fingerprint']==os.environ['FINAL_AUTH_FP']
+          assert x['selected_candidate']=='C007' and x['fit_count']==1 and x['fit_rows']==5103016
+          assert x['final_development_refit_executed'] is True
+          assert x['training_prediction_performance_report_created'] is False
+          assert x['oos_accessed'] is False and x['lockbox_accessed'] is False
+          assert x['live_signal_allowed'] is False and x['main_merge_allowed'] is False and x['authoritative_model_output'] is False
+          assert a['pass'] is True and a['failed_checks']==[]
+          assert a['training_performance_metric_computed'] is False and a['model_fit_executed_by_audit'] is False
+          assert a['oos_accessed'] is False and a['lockbox_accessed'] is False and a['authoritative_model_output'] is False
+          for name in ['model.pkl','final_preprocess_manifest.json','final_refit_execution_manifest.json','final_refit_independent_audit.json']:
+            got=hashlib.sha256((p/name).read_bytes()).hexdigest()
+            assert h[name]==got
+          print(json.dumps({'execution_head':x['execution_head'],'model_sha256':x['model_sha256'],'fit_rows':x['fit_rows'],'independent_audit_pass':a['pass'],'oos_accessed':False,'lockbox_accessed':False}))
+          PY
+          test ! -e build/final-refit/oos_predictions.parquet
+          test ! -e build/final-refit/lockbox_predictions.parquet
+          test ! -e build/final-refit/training_predictions.parquet
+          test ! -e build/final-refit/training_metrics.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage4-alpha-v1-c007-final-development-refit
+          path: build/final-refit
+          compression-level: 0
+          retention-days: 90
