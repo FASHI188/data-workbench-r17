@@ -20,7 +20,8 @@
     "alpha_training_v1": "FINAL_DEVELOPMENT_REFIT_COMPLETE_PR151_C007_RESEARCH_ONLY",
     "alpha_final_refit_authorization_v1": "MERGED_ACCEPTED_CONSUMED_PR151_AUTH_7D5F8801",
     "alpha_final_refit_execution_v1": "COMPLETE_PR151_ARTIFACT_9251178312_MODEL_E85AABF6",
-    "continuity_control_plane_v3": "COMPLETE_V3_3_CONTEXT_BUDGET_CHAT_LIFECYCLE"
+    "continuity_control_plane_v3": "COMPLETE_V3_3_CONTEXT_BUDGET_CHAT_LIFECYCLE",
+    "research_method_core_v1": "ACTIVE_STABLE_ON_DEMAND_MIGRATED_TRADER26_29"
   },
   "business_evidence": {
     "alpha_prereg_v1_2": "governance/stage4_alpha_v1_preregistration_v1_2_supersession.json",
@@ -28,7 +29,8 @@
     "alpha_training_authorization_v1": "governance/stage4_alpha_v1_training_authorization_evidence.json",
     "alpha_training_v1": "governance/stage4_alpha_v1_development_cv_evidence.json",
     "alpha_final_refit_authorization_v1": "governance/stage4_alpha_v1_c007_final_refit_authorization_evidence.json",
-    "alpha_final_refit_execution_v1": "governance/stage4_alpha_v1_c007_final_refit_execution_evidence.json"
+    "alpha_final_refit_execution_v1": "governance/stage4_alpha_v1_c007_final_refit_execution_evidence.json",
+    "research_method_core_v1": "governance/INVESTMENT_RESEARCH_METHOD_CORE_V1.md"
   },
   "active_business_pr": null,
   "next_business_gate": "Design and separately accept an OOS validation authorization for the frozen research-only C007 final-development model; OOS remains sealed until that authorization is explicitly accepted",
@@ -42,5 +44,5 @@
     "main_merge_allowed": false,
     "authoritative_model_output_allowed": false
   },
-  "authority_note": "Live integration SHA must be read from GitHub at runtime. The development-CV authorization 2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c is consumed and cannot be reused. The C007 final-refit authorization 7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295 was consumed exactly once by PR151 run 31901165536 at head 8a2fabe08bff824b8e72e5400dcf167e59d4eca0. The resulting model SHA256 e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c is research-only and non-authoritative. Refit/retraining, candidate reselection, hyperparameter search, OOS access, lockbox access, live signals, main merge, and authoritative model output are prohibited unless separately authorized by a later gate. Continuity V3.3 requires the V3.2 minimal startup package and adds a two-active-one-archive chat lifecycle: current trader plus previous trader remain active by default; once a new trader successfully verifies recovery from Airtable/GitHub, chats two generations back and older should be archived rather than used as startup context."
+  "authority_note": "Live integration SHA must be read from GitHub at runtime. The development-CV authorization 2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c is consumed and cannot be reused. The C007 final-refit authorization 7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295 was consumed exactly once by PR151 run 31901165536 at head 8a2fabe08bff824b8e72e5400dcf167e59d4eca0. The resulting model SHA256 e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c is research-only and non-authoritative. Refit/retraining, candidate reselection, hyperparameter search, OOS access, lockbox access, live signals, main merge, and authoritative model output are prohibited unless separately authorized by a later gate. Continuity V3.3 requires the V3.2 minimal startup package and adds a two-active-one-archive chat lifecycle. Research Method Core V1 is a compact on-demand migration of still-valid methodology from the old Trader 26/29 rule summaries; after this migration is accepted, those old TXT files are superseded as active project-source authority and may be removed from ChatGPT project sources without losing the canonical method, provided the GitHub method-core file remains authoritative."
 }
