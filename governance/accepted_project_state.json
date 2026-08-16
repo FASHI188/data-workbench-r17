@@ -3,7 +3,7 @@
   "status": "RESEARCH_ONLY",
   "integration_ref": "agent/stage3-clean-integration",
   "live_integration_sha_source": "READ_GITHUB_REF_AT_RUNTIME",
-  "last_business_progress_sha": "67f6a67692182f552f8265b2ac0cb7d2eb44c7b5",
+  "last_business_progress_sha": "685a87542fd7afbf2da1ad1b5d39691d26ad51e1",
   "main_sha": "2c32635e83ba9145d13b9a16b8a74f5750f02a94",
   "accepted_progress": {
     "stage2": "PASS_FROZEN",
@@ -17,8 +17,9 @@
     "alpha_prereg_v1_2": "MERGED_ACCEPTED_PR142",
     "development_labels_v1": "COMPLETE_PR143_ARTIFACT_9216418323",
     "alpha_training_authorization_v1": "MERGED_ACCEPTED_CONSUMED_PR145_AUTH_2056EAE9",
-    "alpha_training_v1": "DEVELOPMENT_CV_COMPLETE_PR147_C007_SELECTED_OVERFIT_CONTROLS_PASS",
-    "alpha_final_refit_authorization_v1": "MERGED_AUTH_PR149_ACCEPTED_SINGLE_USE_AUTH_7D5F8801",
+    "alpha_training_v1": "FINAL_DEVELOPMENT_REFIT_COMPLETE_PR151_C007_RESEARCH_ONLY",
+    "alpha_final_refit_authorization_v1": "MERGED_ACCEPTED_CONSUMED_PR151_AUTH_7D5F8801",
+    "alpha_final_refit_execution_v1": "COMPLETE_PR151_ARTIFACT_9251178312_MODEL_E85AABF6",
     "continuity_control_plane_v3": "COMPLETE_V3_1"
   },
   "business_evidence": {
@@ -26,19 +27,20 @@
     "development_labels_v1": "governance/stage4_alpha_v1_development_labels_evidence.json",
     "alpha_training_authorization_v1": "governance/stage4_alpha_v1_training_authorization_evidence.json",
     "alpha_training_v1": "governance/stage4_alpha_v1_development_cv_evidence.json",
-    "alpha_final_refit_authorization_v1": "governance/stage4_alpha_v1_c007_final_refit_authorization_evidence.json"
+    "alpha_final_refit_authorization_v1": "governance/stage4_alpha_v1_c007_final_refit_authorization_evidence.json",
+    "alpha_final_refit_execution_v1": "governance/stage4_alpha_v1_c007_final_refit_execution_evidence.json"
   },
   "active_business_pr": null,
-  "next_business_gate": "Execute exactly one research-only C007 final development refit under authorization fingerprint 7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295 in a separate exact-head PR; OOS and lockbox remain sealed",
+  "next_business_gate": "Design and separately accept an OOS validation authorization for the frozen research-only C007 final-development model; OOS remains sealed until that authorization is explicitly accepted",
   "permissions": {
-    "model_fit_allowed": true,
-    "model_fit_scope": "RESEARCH_ONLY_C007_FINAL_DEVELOPMENT_REFIT_EXACT_AUTHORIZATION_7D5F88013329973C6C446D9210ADBB9E60BA04A9FB615098E21318F1AB053295",
-    "development_final_refit_allowed": true,
+    "model_fit_allowed": false,
+    "model_fit_scope": "NONE",
+    "development_final_refit_allowed": false,
     "oos_label_access_allowed": false,
     "lockbox_label_access_allowed": false,
     "live_signal_allowed": false,
     "main_merge_allowed": false,
     "authoritative_model_output_allowed": false
   },
-  "authority_note": "Live integration SHA must be read from GitHub at runtime. The prior development-CV fit authorization 2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c is consumed and cannot be reused. The accepted final-refit authorization 7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295 permits exactly one research-only full-development refit of frozen candidate C007 in a separate exact-head execution PR. Candidate reselection, hyperparameter search, performance-driven model changes, OOS access, lockbox access, live signals, main merge, and authoritative model output remain prohibited. This permission is single-use and must be closed after execution evidence is accepted."
+  "authority_note": "Live integration SHA must be read from GitHub at runtime. The development-CV authorization 2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c is consumed and cannot be reused. The C007 final-refit authorization 7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295 was consumed exactly once by PR151 run 31901165536 at head 8a2fabe08bff824b8e72e5400dcf167e59d4eca0. The resulting model SHA256 e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c is research-only and non-authoritative. Refit/retraining, candidate reselection, hyperparameter search, OOS access, lockbox access, live signals, main merge, and authoritative model output are prohibited unless separately authorized by a later gate."
 }
