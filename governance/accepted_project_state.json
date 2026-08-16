@@ -20,7 +20,7 @@
     "alpha_training_v1": "FINAL_DEVELOPMENT_REFIT_COMPLETE_PR151_C007_RESEARCH_ONLY",
     "alpha_final_refit_authorization_v1": "MERGED_ACCEPTED_CONSUMED_PR151_AUTH_7D5F8801",
     "alpha_final_refit_execution_v1": "COMPLETE_PR151_ARTIFACT_9251178312_MODEL_E85AABF6",
-    "continuity_control_plane_v3": "COMPLETE_V3_1"
+    "continuity_control_plane_v3": "COMPLETE_V3_2_CONTEXT_BUDGET"
   },
   "business_evidence": {
     "alpha_prereg_v1_2": "governance/stage4_alpha_v1_preregistration_v1_2_supersession.json",
@@ -42,5 +42,5 @@
     "main_merge_allowed": false,
     "authoritative_model_output_allowed": false
   },
-  "authority_note": "Live integration SHA must be read from GitHub at runtime. The development-CV authorization 2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c is consumed and cannot be reused. The C007 final-refit authorization 7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295 was consumed exactly once by PR151 run 31901165536 at head 8a2fabe08bff824b8e72e5400dcf167e59d4eca0. The resulting model SHA256 e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c is research-only and non-authoritative. Refit/retraining, candidate reselection, hyperparameter search, OOS access, lockbox access, live signals, main merge, and authoritative model output are prohibited unless separately authorized by a later gate."
+  "authority_note": "Live integration SHA must be read from GitHub at runtime. The development-CV authorization 2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c is consumed and cannot be reused. The C007 final-refit authorization 7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295 was consumed exactly once by PR151 run 31901165536 at head 8a2fabe08bff824b8e72e5400dcf167e59d4eca0. The resulting model SHA256 e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c is research-only and non-authoritative. Refit/retraining, candidate reselection, hyperparameter search, OOS access, lockbox access, live signals, main merge, and authoritative model output are prohibited unless separately authorized by a later gate. Continuity V3.2 additionally requires a minimal startup context package and forbids routine bulk-loading of historical trader chats, maintenance logs, decisions, or PR chains."
 }
