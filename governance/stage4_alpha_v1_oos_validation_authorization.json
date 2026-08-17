@@ -2,7 +2,7 @@
   "schema_version": 1,
   "status": "FROZEN_AUTHORIZATION_NO_OOS_ACCESS_IN_THIS_GATE",
   "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
-  "fingerprint": "3c706a51b2107300fb9353af4c634a8163551b792bbee93edf895d133ee0593f",
+  "fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
   "fingerprint_basis": {
     "authorization_id": "STAGE4_ALPHA_V1_OOS_VALIDATION_AUTHORIZATION",
     "version": "V1.0",
