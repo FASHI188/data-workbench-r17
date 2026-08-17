@@ -20,7 +20,7 @@
     "alpha_training_v1": "FINAL_DEVELOPMENT_REFIT_COMPLETE_PR151_C007_RESEARCH_ONLY",
     "alpha_final_refit_authorization_v1": "MERGED_ACCEPTED_CONSUMED_PR151_AUTH_7D5F8801",
     "alpha_final_refit_execution_v1": "COMPLETE_PR151_ARTIFACT_9251178312_MODEL_E85AABF6",
-    "oos_validation_authorization_v1": "MERGED_ACCEPTED_NOT_CONSUMED_PR156_AUTH_D260F117_IF_THIS_PR_IS_MERGED",
+    "oos_validation_authorization_v1": "MERGED_ACCEPTED_NOT_CONSUMED_PR156_AUTH_D260F117",
     "continuity_control_plane_v3": "COMPLETE_V3_3_CONTEXT_BUDGET_CHAT_LIFECYCLE",
     "research_method_core_v1": "ACTIVE_STABLE_ON_DEMAND_MIGRATED_TRADER26_29"
   },
@@ -35,19 +35,19 @@
     "oos_validation_authorization_audit_v1": "governance/stage4_alpha_v1_oos_validation_authorization_audit.json",
     "research_method_core_v1": "governance/INVESTMENT_RESEARCH_METHOD_CORE_V1.md"
   },
-  "active_business_pr": "PR156_OOS_AUTHORIZATION_GOVERNANCE_ONLY_UNTIL_MERGED",
-  "next_business_gate": "After PR156 exact-head governance acceptance and merge, create a separate OOS execution PR. That later PR must be exact-head reviewed before a single workflow-dispatch label-bearing run. Until then OOS label access remains false and FINAL_LOCKBOX_V1 remains sealed.",
+  "active_business_pr": null,
+  "next_business_gate": "Create a separate OOS execution PR. It must be exact-head reviewed before a single workflow-dispatch label-bearing run. Until that dispatch begins under the accepted authorization, OOS label access on integration remains false and FINAL_LOCKBOX_V1 remains sealed.",
   "permissions": {
     "model_fit_allowed": false,
     "model_fit_scope": "NONE",
     "development_final_refit_allowed": false,
-    "oos_execution_pr_creation_allowed_after_pr156_merge": true,
+    "oos_execution_pr_creation_allowed": true,
     "oos_label_access_allowed": false,
-    "oos_label_bearing_execution_runs_remaining_after_pr156_merge": 1,
+    "oos_label_bearing_execution_runs_remaining": 1,
     "lockbox_label_access_allowed": false,
     "live_signal_allowed": false,
     "main_merge_allowed": false,
     "authoritative_model_output_allowed": false
   },
-  "authority_note": "Live integration SHA must be read from GitHub at runtime. Development-CV authorization 2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c and C007 final-refit authorization 7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295 are consumed and non-reusable. Frozen C007 model SHA256 is e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c. PR156 freezes OOS authorization fingerprint d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d without accessing OOS. If PR156 is merged, it authorizes only creation/review of a separate exact-head OOS execution PR and one later workflow-dispatch label-bearing run under that contract; integration itself still has oos_label_access_allowed=false. Any OOS label read or OOS prediction computation consumes the authorization. FINAL_LOCKBOX_V1 starting 2025-01-02 remains sealed. No refit/retraining, candidate reselection, hyperparameter search, live signals, main merge, or authoritative model output is allowed. Continuity V3.3 and Research Method Core V1 remain unchanged."
+  "authority_note": "Live integration SHA must be read from GitHub at runtime. Development-CV authorization 2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c and C007 final-refit authorization 7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295 are consumed and non-reusable. Frozen C007 model SHA256 is e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c. PR156 accepts OOS authorization fingerprint d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d without accessing OOS. The accepted authorization permits only creation and exact-head review of a separate OOS execution PR followed by at most one workflow-dispatch label-bearing run under that contract; integration itself still has oos_label_access_allowed=false. Any OOS label read or OOS prediction computation consumes the authorization. FINAL_LOCKBOX_V1 starting 2025-01-02 remains sealed. No refit/retraining, candidate reselection, hyperparameter search, live signals, main merge, or authoritative model output is allowed. Continuity V3.3 and Research Method Core V1 remain unchanged."
 }
