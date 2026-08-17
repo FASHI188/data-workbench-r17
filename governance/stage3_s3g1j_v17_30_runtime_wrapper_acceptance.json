@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "status": "MACHINE_ACCEPTED_INACTIVE_RUNTIME_WRAPPER_ONLY_NO_AUTHORITY_ACTIVATION",
+  "gate": "S3G1J_V17_30_INACTIVE_RUNTIME_WRAPPER_V1",
+  "execution_pr": {
+    "number": 123,
+    "final_head_sha": "d26d7f543c20d717ed8c8a421e28838feecd7a03",
+    "closed_without_merge": true,
+    "merge_authorized": false
+  },
+  "accepted_run": {
+    "run_id": 31458469699,
+    "workflow_name": "Stage3 S3G1J V17.30 Inactive Runtime Wrapper",
+    "head_sha": "d26d7f543c20d717ed8c8a421e28838feecd7a03",
+    "conclusion": "SUCCESS",
+    "artifact_id": 9088925988,
+    "artifact_name": "stage3-s3g1j-v17-30-inactive-runtime-wrapper",
+    "artifact_digest": "sha256:232b2e4a6c64b271193853d4e8fd32c0fdfd367344ecec720902fe8f090333dc",
+    "report_sha256": "8e07e885bfdabc009b82ce791f2ce10c48f92111bf8956891af273e6d9221411",
+    "output_hash_text_sha256": "4add6a15202cb47bd601055d2a9e728443c0f4dd2ac686266089c8039ad5d523"
+  },
+  "supporting_exact_head_runs": {
+    "repository_safety": 31458469713,
+    "runtime_reproducibility": 31458469690,
+    "clean_s3g1j": 31458469694
+  },
+  "locked_prerequisite": {
+    "integration_base": "62c6da875650d1aa3a06dcc13751599033248e6d",
+    "formal_v17_29_parser_blob": "37ab001356c479808e3fa5f67f2270649e3130ba",
+    "formal_v17_29_extractor_blob": "7be4f17357e92144c3f54ddd4951ec57a0878049",
+    "accepted_full_basis_run": 31389854868,
+    "accepted_full_basis_artifact_id": 9063271903,
+    "accepted_full_basis_numeric_rows": 1051820,
+    "accepted_full_basis_document_errors": 1364,
+    "accepted_full_basis_unresolved_ties": 1281,
+    "accepted_full_basis_verdict": "FAIL_CLOSED",
+    "production_promotion_safety_pr": 121,
+    "production_promotion_safety_run": 31452374012,
+    "production_promotion_safety_artifact_id": 9086776910,
+    "production_promotion_safety_artifact_digest": "sha256:d3bb089c7e0524a39b62016f6b6b41539aec99894b874c2940678bee24edebc4",
+    "production_promotion_safety_evidence_pr": 122
+  },
+  "machine_result": {
+    "target_count": 2,
+    "target_announcement_ids": ["1223347318", "1223407043"],
+    "real_source_runtime_wrapper_pass": true,
+    "real_formal_v17_29_non_target_delegation_pass": true,
+    "synthetic_wrong_identity_delegation_contract_pass": true,
+    "target_output_matches_registered_shadow": true,
+    "formal_runtime_authority_before_activation": "V17.29",
+    "v17_30_authority_activated": false,
+    "fresh_full_basis_execution_started": false,
+    "shadow_expected_full_basis_numeric_rows": 1051826,
+    "shadow_expected_full_basis_document_errors": 1362,
+    "shadow_expected_full_basis_unresolved_ties": 1279,
+    "shadow_expected_values_are_not_production_acceptance": true
+  },
+  "targets": [
+    {
+      "announcement_id": "1223347318",
+      "source_sha256": "d765c94532cd41a496d147da72cbff392bce4ff776b41b88d95dcf3f1fb697c8",
+      "source_bytes": 492929,
+      "economic_date": "2025-03-31",
+      "selected_pages": {"TOTAL_ASSETS": 7, "TOTAL_LIABILITIES": 8, "TOTAL_EQUITY": 8},
+      "values": {"TOTAL_ASSETS": "2250857154.79", "TOTAL_LIABILITIES": "954370096.74", "TOTAL_EQUITY": "1296487058.05"},
+      "equity_amount_page": 8,
+      "equity_suffix_page": 9,
+      "equity_label_prefix": "所有者权益（或股东权益）合",
+      "equity_label_suffix": "计",
+      "completed_equity_alias": "所有者权益（或股东权益）合计",
+      "current_identity_residual_cny": "0.00",
+      "prior_identity_residual_cny": "0.00"
+    },
+    {
+      "announcement_id": "1223407043",
+      "source_sha256": "7540a56179783625ac256726480ef32faf85a893549057fe9e6546abfd6ee903",
+      "source_bytes": 1367714,
+      "economic_date": "2024-12-31",
+      "selected_pages": {"TOTAL_ASSETS": 83, "TOTAL_LIABILITIES": 84, "TOTAL_EQUITY": 84},
+      "values": {"TOTAL_ASSETS": "1885230514.78", "TOTAL_LIABILITIES": "564752701.93", "TOTAL_EQUITY": "1320477812.85"},
+      "equity_amount_page": 84,
+      "equity_suffix_page": 85,
+      "equity_label_prefix": "所有者权益（或股东权",
+      "equity_label_suffix": "益）合计",
+      "completed_equity_alias": "所有者权益（或股东权益）合计",
+      "current_identity_residual_cny": "0.00",
+      "prior_identity_residual_cny": "0.00"
+    }
+  ],
+  "first_run_correction": {
+    "initial_head": "ec174b1cf45a6b4d1771904efecdea7d23a92756",
+    "classification": "ACCEPTANCE_PROJECTION_MISMATCH_NOT_PARSER_FAILURE",
+    "detail": "The first real-source comparison used whole-object equality between the new helper cross_page evidence and the narrower accepted PR121 shadow. The helper carried an additional next_statement_title evidence field while the parser already enforced that boundary. The final fix removed only the extra serialized field; the boundary rule and candidate parser logic were not relaxed."
+  },
+  "artifact_head_note": {
+    "report_implementation_head_is_pr_merge_ref": true,
+    "report_implementation_head": "2f5de9a8eade4d90eb3e2df66669b830d86e9262",
+    "authoritative_branch_head_source": "GitHub workflow_run.head_sha",
+    "authoritative_branch_head": "d26d7f543c20d717ed8c8a421e28838feecd7a03"
+  },
+  "hard_boundaries": {
+    "formal_runtime_generation_remains": "V17.29",
+    "runtime_authority_changed": false,
+    "production_data_changed": false,
+    "trained_model_changed": false,
+    "live_configuration_changed": false,
+    "fresh_full_basis_execution_started": false,
+    "ocr_enabled": false,
+    "fuzzy_alias_matching_enabled": false,
+    "equity_inferred_from_assets_minus_liabilities": false,
+    "source_policy_relaxed": false,
+    "point_in_time_policy_relaxed": false,
+    "issuer_gate_relaxed": false,
+    "accounting_tolerance_changed": false,
+    "stage3_status": "NOT_READY",
+    "stage4_alpha_live_locked": true,
+    "main_changed": false
+  },
+  "authorization": {
+    "inactive_runtime_wrapper_acceptance_pass": true,
+    "formal_v17_30_runtime_promotion_governance_eligible": true,
+    "v17_30_runtime_authority_activated": false,
+    "fresh_v17_30_full_basis_execution_authorized": false,
+    "stage3_gate_pass": false
+  },
+  "next_gate": "A separate formal V17.30 runtime-promotion governance change may now be prepared. It must promote only the machine-accepted inactive wrapper identity, update runtime/activation/authority manifests atomically, continue to keep fresh V17.30 full-basis execution pending until the promoted runtime receives its own exact-head governance acceptance, and must not reinterpret the shadow 1051826/1362/1279 counts as full-basis acceptance."
+}

@@ -1,0 +1,69 @@
+name: Stage4 V1.2 Feature Matrix Evidence Contract
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/stage4-v1-feature-set]
+    paths:
+      - '.github/workflows/stage4-v1-2-feature-matrix-evidence.yml'
+      - 'governance/stage4_v1_2_feature_matrix_evidence.json'
+      - 'governance/stage4_v1_feature_set_contract.json'
+      - 'config/stage4_v1_feature_matrix_contract.json'
+      - 'tests/test_stage4_v1_2_feature_matrix_evidence.py'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  AID: '9168728086'
+  ADIGEST: 'a4d3a10165bf3b369c77c7b4f77e97663bc3125f506d9203388e6f63198bda4a'
+
+jobs:
+  evidence-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check pytest
+      - name: Static evidence contract
+        run: pytest -q tests/test_stage4_v1_2_feature_matrix_evidence.py tests/test_stage4_v1_feature_set_contract.py tests/test_stage4_v1_feature_matrix_contract.py
+      - name: Download exact accepted artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p build/artifact
+          curl --fail --location --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${AID}/zip" \
+            -o build/artifact.zip
+          echo "${ADIGEST}  build/artifact.zip" | sha256sum -c -
+          unzip -q build/artifact.zip -d build/artifact
+      - name: Revalidate accepted machine files and hashes
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('build/artifact')
+          def load(n): return json.loads((root/n).read_text(encoding='utf-8'))
+          e=json.load(open('governance/stage4_v1_2_feature_matrix_evidence.json',encoding='utf-8'))
+          x=load('execution_manifest.json'); a=load('independent_audit.json'); m=load('materialization_audit.json'); mf=load('manifest.json')
+          matrix=root/'stage4_v1_2_feature_matrix.parquet'; cov=root/'feature_coverage.json'
+          assert hashlib.sha256(matrix.read_bytes()).hexdigest()==e['matrix']['matrix_sha256']==x['matrix_sha256']==mf['matrix_sha256']
+          assert hashlib.sha256(cov.read_bytes()).hexdigest()==e['matrix']['coverage_sha256']==x['coverage_sha256']==mf['coverage_sha256']
+          assert hashlib.sha256((root/'independent_audit.json').read_bytes()).hexdigest()==e['independent_audit']['sha256']==x['independent_audit_sha256']
+          assert hashlib.sha256((root/'materialization_audit.json').read_bytes()).hexdigest()==e['materialization_audit']['sha256']==x['materialization_audit_sha256']
+          assert a['pass'] is True and m['pass'] is True and x['independent_audit_pass'] is True
+          assert x['matrix_rows']==mf['row_count']==a['matrix_rows']==7924181
+          assert a['unaffected_column_mismatches']==a['transformed_column_mismatches']==0
+          assert a['active_current_period_surprise_rows']==1756064
+          assert a['prior_period_surprise_rows_removed']==3976955
+          assert a['active_surprise_period_mismatch_rows']==0
+          assert a['future_surprise_source_rows']==0 and a['negative_guidance_age_rows']==0
+          assert x['alpha_training_allowed'] is False and x['live_signal_allowed'] is False and x['authoritative_model_output'] is False
+          PY

@@ -1,0 +1,50 @@
+name: Stage4 V1 Feature Set - Freeze Contract
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/stage4-v1-feature-set]
+    paths:
+      - '.github/workflows/stage4-v1-feature-set-contract.yml'
+      - 'governance/stage4_v1_feature_set_contract.json'
+      - 'governance/market_regime_v1_module_manifest.json'
+      - 'governance/stage4_market_regime_v1_tested_promotion.json'
+      - 'data/stage2_final/manifest.json'
+      - 'data/stage3_final/manifest.json'
+      - 'scripts/audit_stage4_v1_feature_set_contract.py'
+      - 'tests/test_stage4_v1_feature_set_contract.py'
+
+permissions:
+  contents: read
+
+jobs:
+  freeze-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check pytest
+      - name: Run feature-set contract tests
+        run: pytest -q tests/test_stage4_v1_feature_set_contract.py tests/test_extension_foundation.py tests/test_stage4_market_regime_v1.py
+      - name: Run fail-closed feature-set audit
+        run: python scripts/audit_stage4_v1_feature_set_contract.py | tee stage4_v1_feature_set_audit.json
+      - name: Verify no training or live authorization leaked
+        run: |
+          python - <<'PY'
+          import json
+          c=json.load(open('governance/stage4_v1_feature_set_contract.json',encoding='utf-8'))
+          p=c['fingerprint_basis']['permissions']
+          assert c['status']=='FROZEN_PRETRAINING_CONTRACT'
+          assert p['feature_set_frozen'] is True
+          assert p['alpha_training_allowed'] is False
+          assert p['live_signal_allowed'] is False
+          assert p['authoritative_model_output'] is False
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage4-v1-feature-set-freeze-contract
+          path: stage4_v1_feature_set_audit.json
+          if-no-files-found: error

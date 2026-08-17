@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "supersession_id": "STAGE4_V1_FEATURE_SET_V1_0_TO_V1_1",
+  "feature_set_id": "STAGE4_ALPHA_V1_FEATURE_SET",
+  "superseded_version": "V1.0",
+  "superseded_fingerprint": "dab3ffc74a518fd0a75a3a63b0717354162820d1f5ab0cb5d75448cc9a4e9937",
+  "superseded_freeze_evidence": {
+    "run_id": 31665026918,
+    "head_sha": "2058ddd88066f618db7c4033e6bf373067e9b2af",
+    "artifact_id": 9167586580,
+    "artifact_digest": "sha256:f7d108c172f9ccc5b48b6f74629119817f7b33816f0079de0ce3fa0b4839188a",
+    "contract_checks_passed": 12
+  },
+  "reason": "Pre-materialization inspection of the frozen S3G3B industry artifact showed that the authoritative normalized industry_code_primary is not populated across the legacy CSRC_2012_GUIDE population. Using source-layout carry-forward or current-industry backfill during Stage4 materialization would create a new unaccepted inference after the Stage3 freeze. Because no Alpha training has started, V1.0 is superseded before materialization rather than silently repairing the input.",
+  "industry_evidence": {
+    "run_id": 30331243641,
+    "head_sha": "40dcab6df468bbf2d47dd48ac77ea150190c279b",
+    "artifact_id": 8678162835,
+    "artifact_digest": "sha256:f1da814c71fa698f3f10ce5dc7019bb86770f9d4e15ed7d7823a93a085adc872",
+    "ledger_rows": 94171,
+    "normalized_primary_code_rows": 19048,
+    "csrc_2012_rows": 75124,
+    "csrc_2012_normalized_primary_code_rows": 1,
+    "capco_2023_rows": 19047,
+    "capco_2023_normalized_primary_code_rows": 19047,
+    "builder_policy": "The frozen Stage3 builder writes normalize_record() output directly; no new Stage4 cross-row inheritance or current-industry backfill is authorized."
+  },
+  "replacement": {
+    "version": "V1.1",
+    "change": "INDUSTRY_IDENTITY_PIT becomes OUT_PENDING_NORMALIZATION_PLUGIN and model_visible=false. All other accepted V1 families remain unchanged.",
+    "alpha_training_allowed": false,
+    "live_signal_allowed": false
+  },
+  "hard_boundary": {
+    "no_stage2_mutation": true,
+    "no_stage3_mutation": true,
+    "no_industry_forward_fill": true,
+    "no_current_industry_backfill": true,
+    "no_alpha_training": true,
+    "no_live_signal": true
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "schema_version": 7,
+  "status": "RESEARCH_ONLY",
+  "integration_ref": "agent/stage3-clean-integration",
+  "live_integration_sha_source": "READ_GITHUB_REF_AT_RUNTIME",
+  "last_business_progress_sha": "685a87542fd7afbf2da1ad1b5d39691d26ad51e1",
+  "main_sha": "2c32635e83ba9145d13b9a16b8a74f5750f02a94",
+  "accepted_progress": {
+    "stage2": "PASS_FROZEN",
+    "stage3": "PASS_FROZEN_HISTORICAL",
+    "freshness_v2": "PASS_THROUGH_2026_08_12",
+    "market_regime_v1": "ACCEPTED_DISABLED",
+    "stage4_feature_set": "V1_2_COMPLETE",
+    "stage4_feature_matrix": "V1_2_COMPLETE",
+    "alpha_prereg_v1_0": "MERGED_SUPERSEDED",
+    "alpha_prereg_v1_1": "MERGED_SUPERSEDED_BY_V1_2",
+    "alpha_prereg_v1_2": "MERGED_ACCEPTED_PR142",
+    "development_labels_v1": "COMPLETE_PR143_ARTIFACT_9216418323",
+    "alpha_training_authorization_v1": "MERGED_ACCEPTED_CONSUMED_PR145_AUTH_2056EAE9",
+    "alpha_training_v1": "FINAL_DEVELOPMENT_REFIT_COMPLETE_PR151_C007_RESEARCH_ONLY",
+    "alpha_final_refit_authorization_v1": "MERGED_ACCEPTED_CONSUMED_PR151_AUTH_7D5F8801",
+    "alpha_final_refit_execution_v1": "COMPLETE_PR151_ARTIFACT_9251178312_MODEL_E85AABF6",
+    "oos_validation_authorization_v1": "MERGED_ACCEPTED_NOT_CONSUMED_PR156_AUTH_D260F117",
+    "continuity_control_plane_v3": "COMPLETE_V3_3_CONTEXT_BUDGET_CHAT_LIFECYCLE",
+    "research_method_core_v1": "ACTIVE_STABLE_ON_DEMAND_MIGRATED_TRADER26_29"
+  },
+  "business_evidence": {
+    "alpha_prereg_v1_2": "governance/stage4_alpha_v1_preregistration_v1_2_supersession.json",
+    "development_labels_v1": "governance/stage4_alpha_v1_development_labels_evidence.json",
+    "alpha_training_authorization_v1": "governance/stage4_alpha_v1_training_authorization_evidence.json",
+    "alpha_training_v1": "governance/stage4_alpha_v1_development_cv_evidence.json",
+    "alpha_final_refit_authorization_v1": "governance/stage4_alpha_v1_c007_final_refit_authorization_evidence.json",
+    "alpha_final_refit_execution_v1": "governance/stage4_alpha_v1_c007_final_refit_execution_evidence.json",
+    "oos_validation_authorization_v1": "governance/stage4_alpha_v1_oos_validation_authorization.json",
+    "oos_validation_authorization_audit_v1": "governance/stage4_alpha_v1_oos_validation_authorization_audit.json",
+    "research_method_core_v1": "governance/INVESTMENT_RESEARCH_METHOD_CORE_V1.md"
+  },
+  "active_business_pr": null,
+  "next_business_gate": "Create a separate OOS execution PR. It must be exact-head reviewed before a single workflow-dispatch label-bearing run. Until that dispatch begins under the accepted authorization, OOS label access on integration remains false and FINAL_LOCKBOX_V1 remains sealed.",
+  "permissions": {
+    "model_fit_allowed": false,
+    "model_fit_scope": "NONE",
+    "development_final_refit_allowed": false,
+    "oos_execution_pr_creation_allowed": true,
+    "oos_label_access_allowed": false,
+    "oos_label_bearing_execution_runs_remaining": 1,
+    "lockbox_label_access_allowed": false,
+    "live_signal_allowed": false,
+    "main_merge_allowed": false,
+    "authoritative_model_output_allowed": false
+  },
+  "authority_note": "Live integration SHA must be read from GitHub at runtime. Development-CV authorization 2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c and C007 final-refit authorization 7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295 are consumed and non-reusable. Frozen C007 model SHA256 is e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c. PR156 accepts OOS authorization fingerprint d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d without accessing OOS. The accepted authorization permits only creation and exact-head review of a separate OOS execution PR followed by at most one workflow-dispatch label-bearing run under that contract; integration itself still has oos_label_access_allowed=false. Any OOS label read or OOS prediction computation consumes the authorization. FINAL_LOCKBOX_V1 starting 2025-01-02 remains sealed. No refit/retraining, candidate reselection, hyperparameter search, live signals, main merge, or authoritative model output is allowed. Continuity V3.3 and Research Method Core V1 remain unchanged."
+}

@@ -1,0 +1,67 @@
+name: Stage3 S3G1J V17.30 Full Acceptance Prep
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/compare_stage3_s3g1j_v17_30_full_final.py'
+      - 'tests/test_stage3_v17_30_full_final_comparator.py'
+      - '.github/workflows/stage3-s3g1j-v17-30-full-acceptance-prep.yml'
+
+permissions:
+  contents: read
+
+env:
+  PYTHONPATH: scripts
+
+jobs:
+  prep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Compile strict comparator
+        run: python -m py_compile scripts/compare_stage3_s3g1j_v17_30_full_final.py
+      - name: Run strict comparator unit contracts
+        run: python -m unittest tests.test_stage3_v17_30_full_final_comparator -v
+      - name: Assert current authority boundary before fresh acceptance
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          a=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
+          p=json.load(open('data/project_status.json',encoding='utf-8'))
+          assert r['schema_version']==14
+          assert r['formal_runtime']['runtime_generation']=='V17.30'
+          assert r['formal_runtime']['parser_git_blob']=='cc782817e5ee73fcae085d71f4896a0adc004dcd'
+          assert r['formal_runtime']['extractor_git_blob']=='d74a2b1f8f0ec3af8d89ce259e83392d7f8cc20c'
+          latest=r['full_basis_last_completed_final']
+          assert latest['generation']=='V17.29'
+          assert latest['run']==31389854868
+          assert latest['artifact_id']==9063271903
+          assert latest['numeric_observations']==1051820
+          assert latest['document_error_count']==1364
+          assert latest['unresolved_tie_count']==1281
+          assert latest['verdict']=='FAIL_CLOSED'
+          nxt=r['next_full_basis_required']
+          assert nxt['generation']=='V17.30'
+          assert nxt['status']=='REQUIRED_NOT_STARTED'
+          assert nxt['expected_document_rows']==121354
+          assert nxt['expected_numeric_observations']==1051826
+          assert nxt['expected_document_error_count']==1362
+          assert nxt['expected_unresolved_tie_count']==1279
+          assert nxt['expected_changed_announcement_ids']==['1223347318','1223407043']
+          assert nxt['expected_target_numeric_rows']==6
+          assert nxt['expected_values_are_not_production_acceptance'] is True
+          assert a['accepted_production_runtime']['generation']=='V17.30'
+          assert a['accepted_production_runtime']['full_basis_execution_pending'] is True
+          assert a['accepted_production_runtime']['last_completed_full_basis_generation']=='V17.29'
+          assert p['stage3']['status']=='NOT_READY'
+          assert p['stage4_unlocked'] is False
+          assert p['alpha_training_allowed'] is False
+          assert p['live_signal_allowed'] is False
+          print('V17_30_FULL_ACCEPTANCE_PREP_AUTHORITY_BOUNDARY_PASS')
+          PY

@@ -1,0 +1,110 @@
+name: Stage3 Historical Final Freeze V3.3.17 Build
+
+on:
+  pull_request:
+    paths:
+      - 'governance/stage3_s3g4_final.json'
+      - 'governance/stage3_authority_map.json'
+      - 'config/stage3_final_lock.json'
+      - 'data/project_status.json'
+      - 'data/stage3_final/manifest.json'
+      - 'data/stage3_final/stage3_final_audit.json'
+      - '.github/workflows/stage3-historical-final-freeze-v3317-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  freeze-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Lock exact accepted Stage3 terminal component evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_artifact() {
+            run="$1"; head="$2"; id="$3"; digest="$4"
+            r=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run")
+            test "$(jq -r .status <<<"$r")" = completed
+            test "$(jq -r .conclusion <<<"$r")" = success
+            test "$(jq -r .head_sha <<<"$r")" = "$head"
+            a=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id")
+            test "$(jq -r .expired <<<"$a")" = false
+            test "$(jq -r .workflow_run.id <<<"$a")" = "$run"
+            test "$(jq -r .workflow_run.head_sha <<<"$a")" = "$head"
+            test "$(jq -r .digest <<<"$a")" = "$digest"
+          }
+          verify_artifact 31518370789 a18b81a9f38692533d0427f4a5b50767abf1a7c8 9112098872 sha256:706c6dd7252a64fd5c2956df6c594b5c91de29f02ca7d0553fa932017e8867ba
+          verify_artifact 31555404674 bf32938fea81b6133592f7f3ba2456897e65bd1d 9125809076 sha256:d0921e3069abb695de54de4d3ecec5a5394e831a820757d1b2e2fda02861722a
+          verify_artifact 31557811596 fe722f82f599489f4fcf86cefc47afe1c9235b64 9126607328 sha256:b87e822278f044f8fd6dd5a8cf7bb2e342890b27086951d377d73ed70c7bd4b3
+          src=$(gh api "repos/$GITHUB_REPOSITORY/pulls/131")
+          test "$(jq -r .state <<<"$src")" = closed
+          test "$(jq -r .merged <<<"$src")" = false
+          test "$(jq -r .head.sha <<<"$src")" = 8422f1ce24a19c80560ee9a626b14a7eb9b2a5be
+          acc=$(gh api "repos/$GITHUB_REPOSITORY/pulls/132")
+          test "$(jq -r .state <<<"$acc")" = closed
+          test "$(jq -r .merged <<<"$acc")" = false
+          test "$(jq -r .head.sha <<<"$acc")" = fe722f82f599489f4fcf86cefc47afe1c9235b64
+          main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main")
+          test "$(jq -r .object.sha <<<"$main")" = 2c32635e83ba9145d13b9a16b8a74f5750f02a94
+      - name: Verify committed deterministic Stage3 historical final freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          expected_hashes={
+            'data/stage3_final/manifest.json':'bd8bd3f40e6a76a049d660c1601c37b3d0773cf0dccb37c3aa45e84975cdeb26',
+            'data/stage3_final/stage3_final_audit.json':'60876913ed205e3a93e06cc83be5d0759efb56213ff70dc5cb50602ea1a1f441',
+            'governance/stage3_authority_map.json':'6a55c7a0d27a2665953414fae34e1b505c79fa75ee805c614226da69c8165fc7',
+            'config/stage3_final_lock.json':'a367ff7283df96064c68d343bd8ee2515ed1d6cb6fe2cf96b2402159d81c3385',
+            'data/project_status.json':'84a1e13bf0e72b145a2c5806941b15f85767bd0c4b1067eed6bf16d1ba05a582',
+          }
+          for path,want in expected_hashes.items():
+            got=hashlib.sha256(Path(path).read_bytes()).hexdigest()
+            assert got==want,(path,got,want)
+          p=json.load(open('data/stage3_final/manifest.json',encoding='utf-8'))
+          a=json.load(open('data/stage3_final/stage3_final_audit.json',encoding='utf-8'))
+          auth=json.load(open('governance/stage3_authority_map.json',encoding='utf-8'))
+          lock=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
+          project=json.load(open('data/project_status.json',encoding='utf-8'))
+          fp='36bfbe0ae703a923ce2575f111a8c68a64c89177c71eeee2cfd9e1ec47bf535f'
+          assert p['status']=='PASS_FROZEN_HISTORICAL'
+          assert p['stage3_dataset_fingerprint']==fp
+          assert a['pass'] is True and a['errors']==[] and a['stage3_dataset_fingerprint']==fp
+          assert p['s3g1j_retained_raw_residuals']['document_error_count']==1362
+          assert p['s3g1j_retained_raw_residuals']['unresolved_tie_count']==1279
+          assert p['s3g1j_retained_raw_residuals']['usable_as_numeric_truth'] is False
+          assert p['s3g4']['surprise_observations']==29139
+          assert p['freshness']['status']=='STALE' and p['freshness']['eligible_for_stage4'] is False
+          assert p['downstream']['stage4_model_training_allowed'] is False
+          assert p['downstream']['stage4_unlocked'] is False
+          assert p['downstream']['alpha_training_allowed'] is False
+          assert p['downstream']['live_signal_allowed'] is False
+          assert p['downstream']['user_hold_before_stage4'] is True
+          assert auth['status']=='STAGE3_HISTORICAL_FINAL_FREEZE_PASS'
+          assert auth['final_freeze']['stage3_dataset_fingerprint']==fp
+          assert lock['status']=='PASS_FROZEN_HISTORICAL'
+          assert lock['remaining_unlocked_gates']==[]
+          assert project['stage3']['status']=='PASS_FROZEN_HISTORICAL'
+          assert project['stage3']['historical_final_freeze']['stage3_dataset_fingerprint']==fp
+          assert project['reproducibility']['overall_pass'] is True
+          assert project['freshness']['status']=='STALE'
+          assert project['stage4_unlocked'] is False
+          assert project['alpha_training_allowed'] is False
+          assert project['live_signal_allowed'] is False
+          assert project['user_hold_before_stage4'] is True
+          print('STAGE3_HISTORICAL_FINAL_FREEZE_V3317_COMMITTED_EVIDENCE_PASS',fp)
+          PY

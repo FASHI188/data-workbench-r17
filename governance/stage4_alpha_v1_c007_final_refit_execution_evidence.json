@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "evidence_id": "STAGE4_ALPHA_V1_C007_FINAL_DEVELOPMENT_REFIT_EXECUTION",
+  "status": "COMPLETE_IMMUTABLE_EVIDENCE",
+  "authorization": {
+    "fingerprint": "7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295",
+    "contract": "governance/stage4_alpha_v1_c007_final_refit_authorization.json",
+    "authorization_pr": 149,
+    "single_use": true,
+    "consumed": true,
+    "reusable": false
+  },
+  "implementation_pr": 151,
+  "implementation_head": "8a2fabe08bff824b8e72e5400dcf167e59d4eca0",
+  "integration_merge_sha": "685a87542fd7afbf2da1ad1b5d39691d26ad51e1",
+  "workflow": {
+    "run_id": 31901165536,
+    "conclusion": "success",
+    "artifact_id": 9251178312,
+    "artifact_name": "stage4-alpha-v1-c007-final-development-refit",
+    "artifact_digest": "sha256:e222dd2931933eb3e0c8aca0a35ee09e388a89cc8ea8f194df61c0c3b4b6cb5d",
+    "exact_pr_head_confirmed": true,
+    "execution_manifest_head": "8a2fabe08bff824b8e72e5400dcf167e59d4eca0"
+  },
+  "immutable_inputs": {
+    "feature_matrix_artifact_id": 9168728086,
+    "feature_matrix_zip_sha256": "a4d3a10165bf3b369c77c7b4f77e97663bc3125f506d9203388e6f63198bda4a",
+    "feature_matrix_sha256": "c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c",
+    "development_labels_artifact_id": 9216418323,
+    "development_labels_zip_sha256": "c4c8c475d79e964265dceec66da1673f9327469edc33531d6a21df8b61627e88",
+    "development_labels_sha256": "092061da5666215dcc1f4fa75ec0b1cdbcc43969560755e7cdae6de55e64d673"
+  },
+  "execution": {
+    "selected_candidate": "C007",
+    "candidate_family": "HIST_GRADIENT_BOOSTING_V1",
+    "fit_population": "DEVELOPMENT_ONLY_VALID_LABEL_20D",
+    "fit_count": 1,
+    "fit_rows": 5103016,
+    "fit_date_start": "2015-01-05",
+    "fit_date_end": "2022-12-02",
+    "fit_seconds": 231.353848019,
+    "model_input_feature_count": 45,
+    "model_n_iter": 200,
+    "final_development_refit_executed": true,
+    "training_prediction_performance_report_created": false,
+    "model_output_status": "RESEARCH_ONLY_NON_AUTHORITATIVE"
+  },
+  "immutable_output_hashes": {
+    "model.pkl": "e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c",
+    "final_preprocess_manifest.json": "4b7833e4c4bdba9b956dba190f7337003ae944a624b59ddad7654b1457608330",
+    "final_refit_execution_manifest.json": "153886720fc5d3fb424514984d51843c0e04c35474aa0c5feb4d81682982d826",
+    "final_refit_independent_audit.json": "81760170e7d383c1a5a58f8ccc637a3444473ac0f22fb3a85b337d635867b295",
+    "artifact_hashes.json": "e872f97d079b9406c22a72d1251167b5586aa44294dbf9d0191d657282b6dcb9"
+  },
+  "independent_audit": {
+    "pass": true,
+    "failed_checks": [],
+    "fit_rows_recomputed": 5103016,
+    "model_sha256_recomputed": "e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c",
+    "preprocess_manifest_sha256_recomputed": "4b7833e4c4bdba9b956dba190f7337003ae944a624b59ddad7654b1457608330",
+    "model_fit_executed_by_audit": false,
+    "training_performance_metric_computed": false
+  },
+  "sealed_scope": {
+    "oos_accessed": false,
+    "lockbox_accessed": false,
+    "live_signal_allowed": false,
+    "main_merge_allowed": false,
+    "authoritative_model_output": false
+  },
+  "authorization_consumption": {
+    "authorization_single_use": true,
+    "consumed_by_run_id": 31901165536,
+    "consumed_by_pr": 151,
+    "consumed_by_head": "8a2fabe08bff824b8e72e5400dcf167e59d4eca0",
+    "reexecution_allowed": false,
+    "model_fit_permission_must_be_closed": true,
+    "development_final_refit_permission_must_be_closed": true
+  },
+  "next_gate": "SEPARATE_OOS_VALIDATION_AUTHORIZATION_DESIGN_AND_ACCEPTANCE"
+}

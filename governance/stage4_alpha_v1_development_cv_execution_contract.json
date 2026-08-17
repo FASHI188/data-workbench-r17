@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "status": "AUTHORIZED_RESEARCH_ONLY_DEVELOPMENT_CV_EXECUTION",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "9b449b9c12ac98f1516812dfa4d3f40922668e35462087637cea79e81c1645dc",
+  "fingerprint_basis": {
+    "execution_id": "STAGE4_ALPHA_V1_DEVELOPMENT_CV_EXECUTION",
+    "version": "V1.0",
+    "authorization_fingerprint": "2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c",
+    "integration_base_sha": "b04a6be5d5db7a89fcc2273c3a92a1c3414f2a2b",
+    "input_artifacts": {
+      "feature_matrix": {"artifact_id":9168728086,"matrix_sha256":"c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c"},
+      "development_labels": {"artifact_id":9216418323,"artifact_digest":"sha256:c4c8c475d79e964265dceec66da1673f9327469edc33531d6a21df8b61627e88","labels_sha256":"092061da5666215dcc1f4fa75ec0b1cdbcc43969560755e7cdae6de55e64d673","split_seal_sha256":"98579c8d1b73a63bf18ee47a5cea94b730037d37979d7e38d0a98405efc2df72"}
+    },
+    "prepare_data": {
+      "join_key":["trade_date","exchange","code"],"development_only":true,"prepared_rows":5197648,"date_min":"2015-01-05","date_max":"2022-12-30","only_authorized_39_features":true,
+      "labels_in_prepared":["valid_label_5d","valid_label_20d","excess_return_5d","excess_return_20d","stock_total_return_20d","benchmark_return_20d"],
+      "split_stats_fit_on_training_rows_only":true,"financial_signed_log1p_before_quantiles":true,"quantiles":[0.001,0.999],"median_after_signed_log_before_clipping_equivalent_for_central_quantile":true,
+      "binary_indicators_must_be_0_or_1_and_nonmissing":true,"split_seal_copied_byte_exact":true
+    },
+    "candidate_execution": {
+      "candidate_ids":["C001","C002","C003","C004","C005","C006","C007","C008","C009","C010","C011"],"candidate_jobs_max_parallel":4,"splits_per_candidate":5,"required_trial_records":55,
+      "candidate_job_catches_fit_failure_and_records_invalid_split":true,"infrastructure_or_input_integrity_failure_is_hard_job_failure":true,"final_refit_forbidden":true
+    },
+    "daily_metric_tie_handling": {"rows_sorted":"trade_date,exchange,code","top_decile_n":"ceil(0.10*n_valid_20d)","prediction_ties":"stable_descending_prediction_sort_preserving_exchange_code_order","spearman":"scipy.stats.spearmanr after pairwise finite filter","constant_or_n_lt_20":"null_ic"},
+    "pbo_exact": {"common_dates":"intersection of nonnull daily_ic_20d dates across all 11 candidates","minimum_common_date_fraction":0.9,"blocks":10,"block_sizes":"contiguous balanced by common-date count","combinations":252,"is_score":"mean daily_ic_20d across 5 selected blocks","oos_score":"mean daily_ic_20d across complement 5 blocks","selected_candidate":"highest IS score, ties lower candidate ordinal","oos_rank":"scipy.stats.rankdata ascending average; rank 1 worst","rank_fraction":"(rank-0.5)/11","logit":"ln(rank_fraction/(1-rank_fraction))","pbo":"fraction logit <= 0","pass_ceiling":0.2},
+    "dsr_exact": {"return_series_per_candidate":"top10_gross_excess_20d on test_session_index 0,20,40,... within each causal split","candidate_sharpe":"mean/std(ddof=1)*sqrt(252/20)","trial_count":11,"expected_max_sharpe":"sqrt(var(candidate_sharpes,ddof=1))*((1-gamma)*norm.ppf(1-1/N)+gamma*norm.ppf(1-1/(N*e)))","selected_series_skew":"scipy.stats.skew(bias=False)","selected_series_kurtosis":"scipy.stats.kurtosis(fisher=False,bias=False)","dsr_probability":"norm.cdf((SR_selected-SR_star)*sqrt(T-1)/sqrt(1-skew*SR_selected+((kurtosis-1)/4)*SR_selected^2))","pass_floor":0.95,"stress_diagnostics_round_trip_bps":[0,10,30,60],"does_not_change_candidate_selection":true},
+    "candidate_selection": {"selectable_requires_all_5_splits_valid":true,"primary":"median split_mean_daily_ic_20d","tie1":"higher worst_split_mean_daily_ic_20d","tie2":"lower complexity rank","tie3":"lower candidate ordinal","overfit_controls_do_not_change_candidate_identity":true,"next_gate_eligible_only_if_pbo_and_dsr_pass":true},
+    "outputs": {"candidate_metrics_artifact_pattern":"stage4-alpha-v1-cv-metrics-C###","candidate_oof_artifact_pattern":"stage4-alpha-v1-cv-oof-C###","aggregate_artifact":"stage4-alpha-v1-development-cv-aggregate","full_oof_retained":true,"artifact_hashes_required":true},
+    "permissions": {"research_development_cv_fit_allowed":true,"final_development_refit_allowed":false,"oos_access_allowed":false,"lockbox_access_allowed":false,"live_signal_allowed":false,"main_merge_allowed":false,"authoritative_model_output_allowed":false}
+  }
+}

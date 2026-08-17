@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "gate": "S3G1J_P0_LAYOUT_EVIDENCE_V1",
+  "status": "MACHINE_ACCEPTED_DIAGNOSTIC_EVIDENCE_NOT_PRODUCTION_PROMOTION",
+  "source_diagnostic": {
+    "run": 30687837626,
+    "head_sha": "ef083b267625a4942c6f4e736d2c8178aa4a594d",
+    "artifact": "stage3-s3g1j-p0-current-v17-24-diagnostic-v1",
+    "artifact_digest": "sha256:b4e310fbb2b41d33d2c2c545589a6af53487dbfd1492dbb971d860fdcb4a14f0",
+    "report_sha256": "a3121a6a16261ed622a6b88fcc2db77fe791c317c133dddd2e45be8a523b943d",
+    "target_count": 22
+  },
+  "accepted_layout_evidence": {
+    "run": 30688404543,
+    "head_sha": "a7b1c812481e00d45035274cf746985bd7282c58",
+    "artifact_id": 8814765745,
+    "artifact": "stage3-s3g1j-p0-layout-evidence-v1",
+    "artifact_digest": "sha256:22b8fd0612c7550dadec6336856fbe1ad5461e5526a4d2a48c0919fab53f122b",
+    "report_sha256": "44010177f49751eb2ccfd7f8a536848ec386ce73b5b7f0db46773f23b10907da",
+    "processed_count": 22,
+    "source_sha_match_count": 22,
+    "pass": true,
+    "errors": []
+  },
+  "missing_all_candidates_cluster": {
+    "source_count": 11,
+    "strict_group_witness_candidate_count": 8,
+    "strict_group_witness_candidate_announcement_ids": [
+      "1200907104",
+      "1201708762",
+      "1202195310",
+      "1202774611",
+      "1203358200",
+      "1204077386",
+      "1205543437",
+      "1207035181"
+    ],
+    "strict_group_witness_source_codes": {
+      "000708": 6,
+      "000985": 2
+    },
+    "strict_group_witness_definition": [
+      "formal statement role is currently UNKNOWN_STATEMENT from an exact or enumerated generic 资产负债表 title",
+      "same table block contains explicit row 归属于母公司所有者权益合计",
+      "same table block contains a total equity row 所有者权益合计",
+      "candidate values must still pass exact period/unit/column evidence and A=L+E tolerance 0.005"
+    ],
+    "negative_samples": [
+      {
+        "announcement_id": "1202799494",
+        "source_code": "603023",
+        "reason": "generic equity total exists but no explicit group-only equity witness"
+      },
+      {
+        "announcement_id": "1209806910",
+        "source_code": "600353",
+        "reason": "only parent-company balance-sheet title is observed"
+      },
+      {
+        "announcement_id": "1219834247",
+        "source_code": "601860",
+        "reason": "asset/equity text occurs in balance-sheet analysis or narrative, not a validated statement block"
+      }
+    ],
+    "candidate_status": "NARROW_CANDIDATE_SAFETY_TEST_REQUIRED_NOT_PROMOTED"
+  },
+  "missing_equity_cluster": {
+    "source_count": 11,
+    "equity_alias_bound_group_count": 0,
+    "equity_alias_bound_parent_count": 17,
+    "equity_alias_unbound_count": 8,
+    "interpretation": "No observed equity alias row is bound to a GROUP statement event. The current evidence does not permit combining these equity values with GROUP asset/liability candidates.",
+    "auto_recovery_forbidden": true
+  },
+  "next_action": {
+    "priority": 0,
+    "scope": "Build a candidate-only generic-balance-sheet GROUP witness for the exact eight source-locked documents, requiring explicit 归属于母公司所有者权益合计 inside the same UNKNOWN statement block and preserving all unit/date/column/A=L+E gates.",
+    "required_negative_samples": [
+      "1202799494",
+      "1209806910",
+      "1219834247"
+    ],
+    "required_regressions": [
+      "accepted V17.24 exact-82 recovery set remains unchanged except explicitly approved candidate recoveries",
+      "all 11 missing-equity documents remain fail-closed",
+      "no generic UNKNOWN statement is globally promoted without the exact group-only witness",
+      "accounting tolerance remains 0.005",
+      "E=A-L inference remains forbidden"
+    ]
+  },
+  "parser_changed": false,
+  "source_policy_changed": false,
+  "accounting_tolerance_changed": false,
+  "production_data_changed": false,
+  "stage3_status": "NOT_READY",
+  "stage4_alpha_live_locked": true
+}

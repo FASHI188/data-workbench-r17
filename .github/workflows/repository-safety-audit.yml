@@ -1,0 +1,59 @@
+name: Repository Safety Audit
+# Full-history, redacted secret scan plus current-workflow write-capability audit.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'scripts/audit_repository_safety.py'
+      - '.env*'
+      - '**/*.pem'
+      - '**/*.p12'
+      - '**/*.pfx'
+      - '**/*.key'
+      - 'README.md'
+      - 'DATA_DISTRIBUTION_POLICY.md'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Scan workflows, current tree, and reachable Git history
+        id: safety
+        shell: bash
+        run: |
+          set +e
+          python scripts/audit_repository_safety.py \
+            --out build/repository-safety/repository_safety_audit.json \
+            > build_repository_safety_stdout.log \
+            2> build_repository_safety_stderr.log
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          cat build_repository_safety_stdout.log || true
+          cat build_repository_safety_stderr.log || true
+          exit 0
+      - name: Upload redacted safety evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-safety-audit
+          path: |
+            build/repository-safety/repository_safety_audit.json
+            build_repository_safety_stdout.log
+            build_repository_safety_stderr.log
+          retention-days: 90
+      - name: Preserve fail-closed repository safety status
+        if: steps.safety.outputs.exit_code != '0'
+        run: exit 1

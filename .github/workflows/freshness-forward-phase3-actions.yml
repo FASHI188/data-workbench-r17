@@ -1,0 +1,102 @@
+name: Freshness Forward Phase3 - Corporate Actions
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/freshness-v2-execution-20260812]
+    paths:
+      - '.github/workflows/freshness-forward-phase3-actions.yml'
+      - 'scripts/build_forward_corporate_actions.py'
+      - 'scripts/audit_forward_corporate_actions.py'
+      - 'scripts/build_g5_official_actions.py'
+permissions:
+  contents: read
+  actions: read
+env:
+  PYTHONPATH: scripts
+  PHASE1_ARTIFACT: '9149393864'
+  PHASE1_DIGEST: '0caf22ac24c81edba7fe63ad7d445b193218b96d37436dbceb435a2736c899e2'
+concurrency:
+  group: freshness-forward-phase3-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  sse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Materialize exact Phase1 current master
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; mkdir -p build/p1
+          curl --fail --location --silent --show-error -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${GH_TOKEN}" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PHASE1_ARTIFACT}/zip" -o build/p1.zip
+          echo "${PHASE1_DIGEST}  build/p1.zip" | sha256sum -c -
+          unzip -q build/p1.zip -d build/p1; rm -rf data/current_master; cp -a build/p1/data/current_master data/current_master
+      - run: python scripts/build_forward_corporate_actions.py sse --out build/freshness-phase3/sse
+      - uses: actions/upload-artifact@v4
+        with: {name: freshness-phase3-sse, path: build/freshness-phase3/sse, compression-level: 0, retention-days: 90}
+  szse:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: {shard: [0,1,2,3,4,5,6,7]}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --disable-pip-version-check requests akshare py-mini-racer
+      - name: Materialize exact Phase1 current master
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; mkdir -p build/p1
+          curl --fail --location --silent --show-error -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${GH_TOKEN}" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PHASE1_ARTIFACT}/zip" -o build/p1.zip
+          echo "${PHASE1_DIGEST}  build/p1.zip" | sha256sum -c -
+          unzip -q build/p1.zip -d build/p1; rm -rf data/current_master; cp -a build/p1/data/current_master data/current_master
+      - run: python scripts/build_forward_corporate_actions.py szse-shard --shard ${{ matrix.shard }} --shards 8 --out build/freshness-phase3/szse
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freshness-phase3-szse-${{ matrix.shard }}
+          path: build/freshness-phase3/szse
+          compression-level: 0
+          retention-days: 90
+  audit:
+    needs: [sse, szse]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Materialize exact Phase1 current master
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; mkdir -p build/p1
+          curl --fail --location --silent --show-error -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${GH_TOKEN}" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PHASE1_ARTIFACT}/zip" -o build/p1.zip
+          echo "${PHASE1_DIGEST}  build/p1.zip" | sha256sum -c -
+          unzip -q build/p1.zip -d build/p1; rm -rf data/current_master; cp -a build/p1/data/current_master data/current_master
+      - uses: actions/download-artifact@v4
+        with: {name: freshness-phase3-sse, path: build/freshness-phase3/sse}
+      - uses: actions/download-artifact@v4
+        with: {pattern: 'freshness-phase3-szse-*', path: build/freshness-phase3/szse, merge-multiple: true}
+      - run: python scripts/audit_forward_corporate_actions.py --root build/freshness-phase3 --master data/current_master/cn_main_a.csv --shards 8 --out build/freshness-phase3/forward_corporate_action_audit.json
+      - name: Write Phase3 manifest
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path('build/freshness-phase3/forward_corporate_action_audit.json');a=json.loads(p.read_text())
+          out={'schema_version':1,'execution_head':'${{ github.sha }}','phase1_artifact':int('${{ env.PHASE1_ARTIFACT }}'),'phase1_digest':'sha256:${{ env.PHASE1_DIGEST }}','audit_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'phase3_pass':a.get('pass') is True,'audit':a,'authoritative':False}
+          Path('build/freshness-phase3/manifest.json').write_text(json.dumps(out,ensure_ascii=False,indent=2))
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freshness-forward-phase3-corporate-actions
+          path: build/freshness-phase3
+          compression-level: 0
+          retention-days: 90
