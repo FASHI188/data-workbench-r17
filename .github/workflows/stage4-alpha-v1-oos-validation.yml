@@ -113,8 +113,8 @@ jobs:
           ! grep -n -E '\.fit\(|fit_predict\(|partial_fit\(' scripts/run_stage4_alpha_v1_oos_validation.py scripts/audit_stage4_alpha_v1_oos_validation.py
           grep -F "if: github.event_name == 'workflow_dispatch'" .github/workflows/stage4-alpha-v1-oos-validation.yml
           ! grep -n -E '^\s*(push|schedule):' .github/workflows/stage4-alpha-v1-oos-validation.yml
-          test "$(grep -F -c 'workflow_dispatch:' .github/workflows/stage4-alpha-v1-oos-validation.yml)" -eq 1
-          test "$(grep -F -c 'pull_request:' .github/workflows/stage4-alpha-v1-oos-validation.yml)" -eq 1
+          test "$(grep -E -c '^  workflow_dispatch:$' .github/workflows/stage4-alpha-v1-oos-validation.yml)" -eq 1
+          test "$(grep -E -c '^  pull_request:$' .github/workflows/stage4-alpha-v1-oos-validation.yml)" -eq 1
 
       - name: Run synthetic-only executor and auditor self-tests
         run: |
@@ -155,7 +155,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${{ inputs.execution_head }}"
-          git status --porcelain | test ! -s /dev/stdin
+          test -z "$(git status --porcelain)"
 
       - uses: actions/setup-python@v5
         with:
