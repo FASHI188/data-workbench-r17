@@ -34,7 +34,7 @@ permissions:
 
 env:
   AUTH_FP: 'd260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d'
-  EXEC_FP: 'b61333a33870ac079cd2dc94c71cb53e3f1a267dc9ff8e26e2ef7d9fea95ed2e'
+  EXEC_FP: '224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177'
   CONFIRM_TOKEN: 'CONSUME_D260F117_SINGLE_OOS_RUN'
   MATRIX_AID: '9168728086'
   MATRIX_ZIP_SHA: 'a4d3a10165bf3b369c77c7b4f77e97663bc3125f506d9203388e6f63198bda4a'
@@ -86,10 +86,14 @@ jobs:
           eh=hashlib.sha256(json.dumps(exe['fingerprint_basis'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
           assert ah==auth['fingerprint']==os.environ['AUTH_FP']
           assert eh==exe['fingerprint']==os.environ['EXEC_FP']
+          assert exe['fingerprint_basis']['version']=='V1.1'
           assert exe['fingerprint_basis']['authority']['oos_authorization_fingerprint']==os.environ['AUTH_FP']
           assert exe['fingerprint_basis']['execution_semantics']['pr_events_are_static_and_synthetic_only'] is True
           assert exe['fingerprint_basis']['execution_semantics']['label_bearing_execution_event']=='workflow_dispatch'
           assert exe['fingerprint_basis']['execution_semantics']['max_label_bearing_runs']==1
+          assert exe['fingerprint_basis']['execution_semantics']['economic_selection_population']=='ALL_PREDICTED_ROWS_ON_REBALANCE_DATE_BEFORE_ANY_LABEL_VALIDITY_FILTER'
+          assert exe['fingerprint_basis']['metric_semantics']['bucket_size']=='CEIL_COVERAGE_TIMES_ALL_PREDICTION_ROWS_ON_REBALANCE_DATE'
+          assert exe['fingerprint_basis']['metric_semantics']['selected_label_censoring']=='ANY_SELECTED_ROW_WITHOUT_VALID_20D_LABEL_INVALIDATES_THAT_COVERAGE_FAIL_CLOSED_NO_BACKFILL_NO_POST_SELECTION_DROP'
           assert exe['fingerprint_basis']['hard_boundaries']['fit'] is False
           assert exe['fingerprint_basis']['hard_boundaries']['lockbox_access'] is False
           assert exe['fingerprint_basis']['hard_boundaries']['main_merge'] is False
@@ -102,7 +106,7 @@ jobs:
           assert p['live_signal_allowed'] is False
           assert p['main_merge_allowed'] is False
           assert p['authoritative_model_output_allowed'] is False
-          print(json.dumps({'authorization':ah,'execution_contract':eh,'oos_label_access':False,'label_bearing_runs_remaining':1}))
+          print(json.dumps({'authorization':ah,'execution_contract':eh,'execution_version':'V1.1','economic_label_validity_lookahead':False,'oos_label_access':False,'label_bearing_runs_remaining':1}))
           PY
 
       - name: Static source guard - no training API and no PR-path OOS execution
@@ -115,6 +119,8 @@ jobs:
           ! grep -n -E '^\s*(push|schedule):' .github/workflows/stage4-alpha-v1-oos-validation.yml
           test "$(grep -E -c '^  workflow_dispatch:$' .github/workflows/stage4-alpha-v1-oos-validation.yml)" -eq 1
           test "$(grep -E -c '^  pull_request:$' .github/workflows/stage4-alpha-v1-oos-validation.yml)" -eq 1
+          grep -F 'ALL_PREDICTED_ROWS_ON_REBALANCE_DATE_BEFORE_ANY_LABEL_VALIDITY_FILTER' governance/stage4_alpha_v1_oos_validation_execution_contract.json scripts/run_stage4_alpha_v1_oos_validation.py scripts/audit_stage4_alpha_v1_oos_validation.py
+          grep -F 'FAIL_CLOSED_NO_BACKFILL_NO_POST_SELECTION_DROP' governance/stage4_alpha_v1_oos_validation_execution_contract.json scripts/run_stage4_alpha_v1_oos_validation.py scripts/audit_stage4_alpha_v1_oos_validation.py
 
       - name: Run synthetic-only executor and auditor self-tests
         run: |
@@ -179,6 +185,9 @@ jobs:
           eh=hashlib.sha256(json.dumps(exe['fingerprint_basis'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
           assert ah==auth['fingerprint']==os.environ['AUTH_FP']
           assert eh==exe['fingerprint']==os.environ['EXEC_FP']
+          assert exe['fingerprint_basis']['version']=='V1.1'
+          assert exe['fingerprint_basis']['execution_semantics']['economic_selection_population']=='ALL_PREDICTED_ROWS_ON_REBALANCE_DATE_BEFORE_ANY_LABEL_VALIDITY_FILTER'
+          assert exe['fingerprint_basis']['metric_semantics']['bucket_size']=='CEIL_COVERAGE_TIMES_ALL_PREDICTION_ROWS_ON_REBALANCE_DATE'
           p=state['permissions']
           assert p['oos_execution_pr_creation_allowed'] is True
           assert p['oos_label_access_allowed'] is False
@@ -260,18 +269,15 @@ jobs:
           import hashlib,json
           from pathlib import Path
           p=Path('build/oos')
-          required={
-            'oos_execution_manifest.json','oos_predictions.parquet','oos_daily_metrics.parquet',
-            'oos_quarter_metrics.json','oos_economic_metrics.json','oos_gate_result.json',
-            'oos_independent_audit.json','authorization_consumption.json','artifact_hashes.json'
-          }
+          required={'oos_execution_manifest.json','oos_predictions.parquet','oos_daily_metrics.parquet','oos_quarter_metrics.json','oos_economic_metrics.json','oos_gate_result.json','oos_independent_audit.json','authorization_consumption.json','artifact_hashes.json'}
           have={x.name for x in p.iterdir() if x.is_file()}
-          assert have==required, (have,required)
+          assert have==required,(have,required)
           audit=json.load(open(p/'oos_independent_audit.json',encoding='utf-8'))
           manifest=json.load(open(p/'oos_execution_manifest.json',encoding='utf-8'))
           consumption=json.load(open(p/'authorization_consumption.json',encoding='utf-8'))
           assert audit['pass'] is True and audit['failed_checks']==[]
-          assert manifest['authorization_consumed'] is True
+          assert audit['economic_label_validity_lookahead'] is False
+          assert manifest['authorization_consumed'] is True and manifest['economic_label_validity_lookahead'] is False
           assert manifest['fit_executed'] is False and manifest['lockbox_accessed'] is False
           assert consumption['status']=='CONSUMED' and consumption['lockbox_accessed'] is False
           def h(name):
@@ -281,7 +287,7 @@ jobs:
             return x.hexdigest()
           hashes={n:h(n) for n in sorted(required-{'artifact_hashes.json'})}
           (p/'artifact_hashes.json').write_text(json.dumps(hashes,sort_keys=True,indent=2)+'\n',encoding='utf-8')
-          print(json.dumps({'independent_audit_pass':True,'gate_status':json.load(open(p/'oos_gate_result.json'))['status'],'authorization_consumed':True,'lockbox_accessed':False,'artifact_hashes':hashes},indent=2))
+          print(json.dumps({'independent_audit_pass':True,'economic_label_validity_lookahead':False,'gate_status':json.load(open(p/'oos_gate_result.json'))['status'],'authorization_consumed':True,'lockbox_accessed':False,'artifact_hashes':hashes},indent=2))
           PY
           test ! -e build/oos/model.pkl
           test ! -e build/oos/lockbox_predictions.parquet
