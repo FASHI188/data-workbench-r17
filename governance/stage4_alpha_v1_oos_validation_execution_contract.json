@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "status": "FROZEN_PRE_ACCESS_EXECUTION_IMPLEMENTATION",
+  "status": "FROZEN_PRE_ACCESS_EXECUTION_IMPLEMENTATION_V1_1_NO_OOS_ACCESS",
   "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
-  "fingerprint": "b61333a33870ac079cd2dc94c71cb53e3f1a267dc9ff8e26e2ef7d9fea95ed2e",
+  "fingerprint": "224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177",
   "fingerprint_basis": {
     "execution_id": "STAGE4_ALPHA_V1_OOS_VALIDATION_EXECUTION",
-    "version": "V1.0",
+    "version": "V1.1",
     "authority": {
       "integration_base_sha": "c484b6f8e0b404f790995274b768fdde3000bd8d",
       "oos_authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
@@ -57,9 +57,10 @@
       "authorization_consumed_at": "FIRST_MODEL_PREDICT_CALL_BEFORE_ANY_OOS_LABEL_BUILD",
       "fit_calls_allowed": 0,
       "oos_prediction_population": "ALL_FEATURE_MATRIX_ROWS_WITH_DECISION_DATE_2023_01_03_THROUGH_2024_12_31",
-      "metric_evaluation_population": "ROWS_WITH_VALID_LABEL_20D_ONLY_MATCHING_DEVELOPMENT_CV_EVALUATION_SEMANTICS",
       "boundary_rows_without_full_20d_label": "PREDICTED_BUT_EXCLUDED_FROM_VALIDATION_METRICS",
-      "label_values_never_joined_back_into_feature_matrix": true
+      "label_values_never_joined_back_into_feature_matrix": true,
+      "ic_evaluation_population": "ROWS_WITH_VALID_LABEL_20D_ONLY",
+      "economic_selection_population": "ALL_PREDICTED_ROWS_ON_REBALANCE_DATE_BEFORE_ANY_LABEL_VALIDITY_FILTER"
     },
     "metric_semantics": {
       "daily_ic_20d": "SCIPY_SPEARMANR_PREDICTION_VS_EXCESS_RETURN_20D_BY_DECISION_DATE_MIN20_VARIATION_REQUIRED",
@@ -77,7 +78,7 @@
       "expected_quarters": ["2023Q1", "2023Q2", "2023Q3", "2023Q4", "2024Q1", "2024Q2", "2024Q3", "2024Q4"],
       "coverage": [0.05, 0.10, 0.20],
       "bucket_order": "PREDICTION_DESC_THEN_EXCHANGE_ASC_CODE_ASC",
-      "bucket_size": "CEIL_COVERAGE_TIMES_VALID20_EVALUATION_ROWS_ON_REBALANCE_DATE",
+      "bucket_size": "CEIL_COVERAGE_TIMES_ALL_PREDICTION_ROWS_ON_REBALANCE_DATE",
       "rebalance_sessions": 20,
       "rebalance_anchor": "2023-01-03",
       "rebalance_calendar": "DISTINCT_OOS_DECISION_DATES_THROUGH_2024_12_03_THEN_EVERY_20TH_SESSION_FROM_ANCHOR",
@@ -89,7 +90,9 @@
       "handling_fee_from_2023_08_28": 0.0000341,
       "stamp_duty_sell_before_2023_08_28": 0.001,
       "stamp_duty_sell_from_2023_08_28": 0.0005,
-      "implementation_shortfall_each_side": 0.0015
+      "implementation_shortfall_each_side": 0.0015,
+      "selected_label_censoring": "ANY_SELECTED_ROW_WITHOUT_VALID_20D_LABEL_INVALIDATES_THAT_COVERAGE_FAIL_CLOSED_NO_BACKFILL_NO_POST_SELECTION_DROP",
+      "coverage_validity": "ALL_REBALANCE_COHORTS_AND_ALL_SELECTED_ROWS_MUST_HAVE_VALID_20D_LABELS_FOR_COVERAGE_GATE_TO_BE_EVALUABLE"
     },
     "gate": {
       "all_required_must_pass": true,
@@ -115,6 +118,11 @@
       "authoritative_output": false,
       "main_merge": false,
       "oos_failure_action": "NO_PROMOTION_NO_RETUNING_ON_OOS"
+    },
+    "supersedes_execution_implementation": {
+      "version": "V1.0",
+      "fingerprint": "b61333a33870ac079cd2dc94c71cb53e3f1a267dc9ff8e26e2ef7d9fea95ed2e",
+      "reason": "REMOVE_FUTURE_LABEL_VALIDITY_LOOKAHEAD_FROM_ECONOMIC_BUCKET_SELECTION_BEFORE_ANY_OOS_ACCESS"
     }
   },
   "next_gate": "EXACT_HEAD_STATIC_AND_SYNTHETIC_AUDIT_BEFORE_SINGLE_LABEL_BEARING_DISPATCH"
