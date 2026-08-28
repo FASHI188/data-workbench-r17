@@ -131,9 +131,9 @@ def main() -> int:
 
     start = scope['development_decision_date_min']
     cutoff = scope['development_decision_date_max']
-    g3_bounds = rows_as_dicts(con.execute("SELECT min(trade_date) AS min_date,max(trade_date) AS max_date,count(*) FILTER(WHERE trade_date<DATE ? OR trade_date>DATE ?)::BIGINT AS outside_rows FROM g3", [start, cutoff]))[0]
-    g4_bounds = rows_as_dicts(con.execute("SELECT min(trade_date) AS min_date,max(trade_date) AS max_date,count(*) FILTER(WHERE trade_date<DATE ? OR trade_date>DATE ?)::BIGINT AS outside_rows FROM g4_dev", [start, cutoff]))[0]
-    oof_bounds = rows_as_dicts(con.execute("SELECT min(trade_date) AS min_date,max(trade_date) AS max_date,count(*) FILTER(WHERE trade_date<DATE ? OR trade_date>DATE ?)::BIGINT AS outside_rows,count(*)::BIGINT AS rows,count(DISTINCT trade_date)::BIGINT AS decision_days,count(DISTINCT split_id)::BIGINT AS split_count FROM oof", [start, cutoff]))[0]
+    g3_bounds = rows_as_dicts(con.execute(f"SELECT min(trade_date) AS min_date,max(trade_date) AS max_date,count(*) FILTER(WHERE trade_date<DATE {q(start)} OR trade_date>DATE {q(cutoff)})::BIGINT AS outside_rows FROM g3"))[0]
+    g4_bounds = rows_as_dicts(con.execute(f"SELECT min(trade_date) AS min_date,max(trade_date) AS max_date,count(*) FILTER(WHERE trade_date<DATE {q(start)} OR trade_date>DATE {q(cutoff)})::BIGINT AS outside_rows FROM g4_dev"))[0]
+    oof_bounds = rows_as_dicts(con.execute(f"SELECT min(trade_date) AS min_date,max(trade_date) AS max_date,count(*) FILTER(WHERE trade_date<DATE {q(start)} OR trade_date>DATE {q(cutoff)})::BIGINT AS outside_rows,count(*)::BIGINT AS rows,count(DISTINCT trade_date)::BIGINT AS decision_days,count(DISTINCT split_id)::BIGINT AS split_count FROM oof"))[0]
     for name, bounds in [('g3',g3_bounds),('g4',g4_bounds),('oof',oof_bounds)]:
         if int(bounds['outside_rows']) != 0 or str(bounds['min_date']) < start or str(bounds['max_date']) > cutoff:
             raise ValueError(f'physical date boundary failed for {name}: {bounds}')
