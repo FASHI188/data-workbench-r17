@@ -106,9 +106,9 @@ def main() -> int:
         con.execute(f"CREATE TEMP VIEW g4p AS SELECT * FROM read_parquet({q(str(g4))})")
         con.execute(f"CREATE TEMP VIEW oofp AS SELECT * FROM read_parquet({q(str(oof))})")
 
-        g3_stats = row(con, f"SELECT count(*)::BIGINT rows,count(DISTINCT (trade_date,exchange,code))::BIGINT unique_keys,min(trade_date) date_min,max(trade_date) date_max,count(*) FILTER(WHERE trade_date<DATE {q(start)} OR trade_date>DATE {q(end)})::BIGINT outside_rows FROM g3p")
-        g4_stats = row(con, f"SELECT count(*)::BIGINT rows,count(DISTINCT (trade_date,exchange,code))::BIGINT unique_keys,min(trade_date) date_min,max(trade_date) date_max,count(*) FILTER(WHERE trade_date<DATE {q(start)} OR trade_date>DATE {q(end)})::BIGINT outside_rows FROM g4p")
-        oof_stats = row(con, f"SELECT count(*)::BIGINT rows,count(DISTINCT trade_date)::BIGINT decision_days,count(DISTINCT split_id)::BIGINT split_count,min(trade_date) date_min,max(trade_date) date_max,count(*) FILTER(WHERE trade_date<DATE {q(start)} OR trade_date>DATE {q(end)})::BIGINT outside_rows FROM oofp")
+        g3_stats = row(con, f'SELECT count(*)::BIGINT AS "rows",count(DISTINCT (trade_date,exchange,code))::BIGINT AS unique_keys,min(trade_date) AS date_min,max(trade_date) AS date_max,count(*) FILTER(WHERE trade_date<DATE {q(start)} OR trade_date>DATE {q(end)})::BIGINT AS outside_rows FROM g3p')
+        g4_stats = row(con, f'SELECT count(*)::BIGINT AS "rows",count(DISTINCT (trade_date,exchange,code))::BIGINT AS unique_keys,min(trade_date) AS date_min,max(trade_date) AS date_max,count(*) FILTER(WHERE trade_date<DATE {q(start)} OR trade_date>DATE {q(end)})::BIGINT AS outside_rows FROM g4p')
+        oof_stats = row(con, f'SELECT count(*)::BIGINT AS "rows",count(DISTINCT trade_date)::BIGINT AS decision_days,count(DISTINCT split_id)::BIGINT AS split_count,min(trade_date) AS date_min,max(trade_date) AS date_max,count(*) FILTER(WHERE trade_date<DATE {q(start)} OR trade_date>DATE {q(end)})::BIGINT AS outside_rows FROM oofp')
 
         for name, stats in [("g3", g3_stats), ("g4", g4_stats), ("oof", oof_stats)]:
             check(f"{name}_outside_rows_zero", int(stats["outside_rows"]) == 0, str(stats))
@@ -128,14 +128,14 @@ def main() -> int:
         con.execute("""
           CREATE TEMP TABLE calendar_map AS
           WITH d AS (SELECT DISTINCT trade_date FROM g3p)
-          SELECT trade_date,lead(trade_date) OVER(ORDER BY trade_date) next_trade_date FROM d
+          SELECT trade_date,lead(trade_date) OVER(ORDER BY trade_date) AS next_trade_date FROM d
         """)
         structural = row(con, """
           WITH o AS (
-            SELECT trade_date,upper(exchange) exchange,lpad(CAST(code AS VARCHAR),6,'0') code FROM oofp
+            SELECT trade_date,upper(exchange) AS exchange,lpad(CAST(code AS VARCHAR),6,'0') AS code FROM oofp
           ), j AS (
-            SELECT o.trade_date,cm.next_trade_date,d.close decision_close,gd.tradable decision_tradable,
-                   e.open entry_open,ge.tradable entry_tradable
+            SELECT o.trade_date,cm.next_trade_date,d.close AS decision_close,gd.tradable AS decision_tradable,
+                   e.open AS entry_open,ge.tradable AS entry_tradable
             FROM o
             LEFT JOIN calendar_map cm ON o.trade_date=cm.trade_date
             LEFT JOIN g3p d ON o.trade_date=d.trade_date AND o.exchange=d.exchange AND o.code=d.code
@@ -143,13 +143,13 @@ def main() -> int:
             LEFT JOIN g3p e ON cm.next_trade_date=e.trade_date AND o.exchange=e.exchange AND o.code=e.code
             LEFT JOIN g4p ge ON cm.next_trade_date=ge.trade_date AND o.exchange=ge.exchange AND o.code=ge.code
           )
-          SELECT count(*)::BIGINT rows,
-                 sum(next_trade_date IS NULL)::BIGINT missing_entry_date,
-                 sum(decision_close IS NULL)::BIGINT missing_decision_g3,
-                 sum(decision_tradable IS NULL)::BIGINT missing_decision_g4,
-                 sum(entry_open IS NULL)::BIGINT missing_entry_g3,
-                 sum(entry_tradable IS NULL)::BIGINT missing_entry_g4,
-                 max(next_trade_date) max_entry_date
+          SELECT count(*)::BIGINT AS "rows",
+                 sum(next_trade_date IS NULL)::BIGINT AS missing_entry_date,
+                 sum(decision_close IS NULL)::BIGINT AS missing_decision_g3,
+                 sum(decision_tradable IS NULL)::BIGINT AS missing_decision_g4,
+                 sum(entry_open IS NULL)::BIGINT AS missing_entry_g3,
+                 sum(entry_tradable IS NULL)::BIGINT AS missing_entry_g4,
+                 max(next_trade_date) AS max_entry_date
           FROM j
         """)
         for key in ["missing_entry_date", "missing_decision_g3", "missing_decision_g4", "missing_entry_g3", "missing_entry_g4"]:
