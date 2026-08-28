@@ -11,9 +11,11 @@ from pathlib import Path
 
 AUTH_FP = "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d"
 EXEC_FP = "224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177"
+BOUNDARY_FP = "508f32767ecd12fab85e432e17eecb4f920822de1b3a5bef215e8e08d47bb8c8"
+SOURCE_CV_AUTH_FP = "2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c"
 MODEL_SHA = "e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c"
 PREPROCESS_SHA = "4b7833e4c4bdba9b956dba190f7337003ae944a624b59ddad7654b1457608330"
-MATRIX_SHA = "c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c"
+SOURCE_MATRIX_SHA = "c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c"
 OOS_START = "2023-01-03"
 OOS_END = "2024-12-31"
 LATEST_VALID20 = "2024-12-03"
@@ -82,7 +84,7 @@ def main() -> int:
         return synthetic_self_test()
 
     ap = argparse.ArgumentParser()
-    for n in ["matrix", "model", "preprocess", "authorization", "execution-contract", "predictions", "labels", "evaluation", "execution-dir", "execution-head", "out"]:
+    for n in ["physical-boundary", "boundary-contract", "source-cv-authorization", "model", "preprocess", "authorization", "execution-contract", "predictions", "labels", "evaluation", "execution-dir", "execution-head", "out"]:
         ap.add_argument("--" + n, required=True)
     args = ap.parse_args()
 
@@ -93,8 +95,11 @@ def main() -> int:
     from scipy.stats import spearmanr
 
     out = Path(args.execution_dir)
+    root = Path(args.physical_boundary)
     auth = json.loads(Path(args.authorization).read_text(encoding="utf-8"))
     exe = json.loads(Path(args.execution_contract).read_text(encoding="utf-8"))
+    boundary = json.loads(Path(args.boundary_contract).read_text(encoding="utf-8"))
+    source = json.loads(Path(args.source_cv_authorization).read_text(encoding="utf-8"))
     manifest = json.loads((out / "oos_execution_manifest.json").read_text(encoding="utf-8"))
     consumption = json.loads((out / "authorization_consumption.json").read_text(encoding="utf-8"))
     gate_actual = json.loads((out / "oos_gate_result.json").read_text(encoding="utf-8"))
@@ -110,12 +115,40 @@ def main() -> int:
 
     ck("authorization_fingerprint", auth.get("fingerprint") == AUTH_FP and canonical_hash(auth["fingerprint_basis"]) == AUTH_FP)
     ck("execution_contract_fingerprint", exe.get("fingerprint") == EXEC_FP and canonical_hash(exe["fingerprint_basis"]) == EXEC_FP and exe["fingerprint_basis"].get("version") == "V1.1")
+    ck("boundary_contract_fingerprint", boundary.get("fingerprint") == BOUNDARY_FP and canonical_hash(boundary["fingerprint_basis"]) == BOUNDARY_FP)
+    ck("source_cv_authorization_fingerprint", source.get("fingerprint") == SOURCE_CV_AUTH_FP and canonical_hash(source["fingerprint_basis"]) == SOURCE_CV_AUTH_FP)
     ck("economic_selection_contract", exe["fingerprint_basis"]["execution_semantics"].get("economic_selection_population") == "ALL_PREDICTED_ROWS_ON_REBALANCE_DATE_BEFORE_ANY_LABEL_VALIDITY_FILTER" and exe["fingerprint_basis"]["metric_semantics"].get("bucket_size") == "CEIL_COVERAGE_TIMES_ALL_PREDICTION_ROWS_ON_REBALANCE_DATE")
     ck("execution_head_exact", bool(re.fullmatch(r"[0-9a-f]{40}", args.execution_head)) and manifest.get("execution_head") == args.execution_head and consumption.get("execution_head") == args.execution_head)
-    ck("matrix_sha", sha256_file(Path(args.matrix)) == MATRIX_SHA == manifest.get("feature_matrix_sha256"))
     ck("model_sha", sha256_file(Path(args.model)) == MODEL_SHA == manifest.get("model_sha256"))
     ck("preprocess_sha", sha256_file(Path(args.preprocess)) == PREPROCESS_SHA == manifest.get("preprocess_manifest_sha256"))
-    ck("authorization_consumed_once", consumption.get("status") == "CONSUMED" and consumption.get("authorization_fingerprint") == AUTH_FP and consumption.get("execution_contract_fingerprint") == EXEC_FP and consumption.get("consumption_event") == "FIRST_OOS_PREDICTION_COMPUTATION")
+    ck("source_matrix_authority", manifest.get("source_feature_matrix_sha256") == SOURCE_MATRIX_SHA == boundary["fingerprint_basis"]["inputs"]["feature_matrix"]["file_sha256"])
+
+    boutputs = boundary["fingerprint_basis"]["outputs"]
+    expected_boundary_files = {boutputs[k] for k in ["features", "market", "lifecycle", "manifest", "source_verification", "independent_audit", "hashes"]}
+    actual_boundary_files = {p.name for p in root.iterdir() if p.is_file()}
+    ck("physical_boundary_file_set_exact", actual_boundary_files == expected_boundary_files)
+    bhashes = json.loads((root / boutputs["hashes"]).read_text(encoding="utf-8"))
+    ck("physical_boundary_hash_map_exact", set(bhashes) == expected_boundary_files - {boutputs["hashes"]})
+    ck("physical_boundary_hashes_verified", all(sha256_file(root / n) == h for n, h in bhashes.items()))
+    bmanifest = json.loads((root / boutputs["manifest"]).read_text(encoding="utf-8"))
+    baudit = json.loads((root / boutputs["independent_audit"]).read_text(encoding="utf-8"))
+    bsource = json.loads((root / boutputs["source_verification"]).read_text(encoding="utf-8"))
+    ck("physical_boundary_manifest_clean", bmanifest.get("status") == "PHYSICALLY_OOS_ONLY_PRE_PREDICTION_NON_LABEL" and bmanifest.get("boundary_contract_fingerprint") == BOUNDARY_FP and bmanifest.get("source_cv_authorization_fingerprint") == SOURCE_CV_AUTH_FP)
+    ck("physical_boundary_independent_audit_clean", baudit.get("pass") is True and baudit.get("failed_checks") == [] and int(baudit.get("post_oos_rows_observed", -1)) == 0)
+    ck("physical_boundary_source_verification_clean", bsource.get("status") == "VERIFIED" and bsource.get("boundary_contract_fingerprint") == BOUNDARY_FP)
+    ck("physical_boundary_nonconsuming", baudit.get("oos_prediction_executed") is False and baudit.get("oos_label_constructed") is False and baudit.get("oos_label_value_read") is False and baudit.get("model_loaded") is False and baudit.get("authorization_consumed") is False and baudit.get("final_lockbox_accessed") is False)
+
+    features = root / boutputs["features"]
+    market = root / boutputs["market"]
+    lifecycle = root / boutputs["lifecycle"]
+    ck("physical_features_sha_manifest", sha256_file(features) == manifest.get("physical_oos_features_sha256"))
+    ck("physical_market_sha_manifest", sha256_file(market) == manifest.get("physical_oos_market_sha256"))
+    ck("physical_lifecycle_sha_manifest", sha256_file(lifecycle) == manifest.get("physical_oos_lifecycle_sha256"))
+    ck("physical_boundary_manifest_sha_execution", sha256_file(root / boutputs["manifest"]) == manifest.get("physical_boundary_manifest_sha256"))
+    ck("physical_boundary_audit_sha_execution", sha256_file(root / boutputs["independent_audit"]) == manifest.get("physical_boundary_independent_audit_sha256"))
+    ck("execution_runner_no_broad_inputs", manifest.get("broad_source_inputs_available_in_execution_runner") is False and manifest.get("market_source_kind") == "SEALED_PHYSICAL_OOS_BOUNDARY")
+
+    ck("authorization_consumed_once", consumption.get("status") == "CONSUMED" and consumption.get("authorization_fingerprint") == AUTH_FP and consumption.get("execution_contract_fingerprint") == EXEC_FP and consumption.get("physical_boundary_contract_fingerprint") == BOUNDARY_FP and consumption.get("consumption_event") == "FIRST_OOS_PREDICTION_COMPUTATION")
     ck("zero_preconsumption_label_read", consumption.get("oos_label_read_before_consumption") is False)
     ck("no_fit", manifest.get("fit_executed") is False and manifest.get("retraining_executed") is False and manifest.get("hyperparameter_search_executed") is False and manifest.get("candidate_reselection_executed") is False and consumption.get("fit_executed") is False)
     ck("no_lockbox", manifest.get("lockbox_accessed") is False and consumption.get("lockbox_accessed") is False)
@@ -123,17 +156,26 @@ def main() -> int:
     ck("no_live_main_authoritative", manifest.get("live_signal_allowed") is False and manifest.get("main_merge_allowed") is False and manifest.get("authoritative_model_output") is False)
 
     con = duckdb.connect()
+    qf = str(features).replace("'", "''")
+    qm = str(market).replace("'", "''")
+    qlife = str(lifecycle).replace("'", "''")
+    frow, fu, fmin, fmax = con.execute(f"SELECT count(*),count(DISTINCT (trade_date,exchange,code)),min(trade_date),max(trade_date) FROM read_parquet('{qf}')").fetchone()
+    mrow, mu, mmin, mmax, mnull = con.execute(f"SELECT count(*),count(DISTINCT (trade_date,exchange,code)),min(trade_date),max(trade_date),count(*) FILTER(WHERE open IS NULL OR close IS NULL OR factor IS NULL) FROM read_parquet('{qm}')").fetchone()
+    lleak = con.execute(f"SELECT count(*) FROM read_parquet('{qlife}') WHERE listed_to_exclusive IS NOT NULL AND listed_to_exclusive>DATE '{OOS_END}'").fetchone()[0]
+    ck("physical_feature_population", frow > 0 and frow == fu and str(fmin) == OOS_START and str(fmax) == OOS_END and int(frow) == int(bmanifest["features"]["row_count"]))
+    ck("physical_market_population", mrow > 0 and mrow == mu and str(mmin) == OOS_START and str(mmax) == OOS_END and int(mrow) == int(bmanifest["market"]["row_count"]) and int(mnull) == 0)
+    ck("physical_lifecycle_no_post_oos", int(lleak) == 0)
+
     pred, labels, ev = Path(args.predictions), Path(args.labels), Path(args.evaluation)
     qp, ql, qe = str(pred).replace("'", "''"), str(labels).replace("'", "''"), str(ev).replace("'", "''")
     prow, pu, pmin, pmax = con.execute(f"SELECT count(*),count(DISTINCT (trade_date,exchange,code)),min(trade_date),max(trade_date) FROM read_parquet('{qp}')").fetchone()
     lrow, lu, lmin, lmax, valid20, maxvalid20, maxexit20 = con.execute(f"SELECT count(*),count(DISTINCT (trade_date,exchange,code)),min(trade_date),max(trade_date),count(*) FILTER(WHERE valid_label_20d),max(trade_date) FILTER(WHERE valid_label_20d),max(exit_date_20d) FILTER(WHERE valid_label_20d) FROM read_parquet('{ql}')").fetchone()
     erow, eu, emin, emax = con.execute(f"SELECT count(*),count(DISTINCT (trade_date,exchange,code)),min(trade_date),max(trade_date) FROM read_parquet('{qe}')").fetchone()
-    ck("prediction_population_unique", prow > 0 and prow == pu and str(pmin) == OOS_START and str(pmax) == OOS_END and manifest.get("prediction_rows") == prow)
+    ck("prediction_population_unique", prow > 0 and prow == pu == frow and str(pmin) == OOS_START and str(pmax) == OOS_END and manifest.get("prediction_rows") == prow)
     ck("label_population_unique", lrow == lu == prow and str(lmin) == OOS_START and str(lmax) == OOS_END and manifest.get("label_rows") == lrow)
     ck("valid20_boundary", valid20 == erow and str(maxvalid20) <= LATEST_VALID20 and str(maxexit20) <= OOS_END and str(emax) <= LATEST_VALID20 and manifest.get("valid_20d_rows") == valid20)
     ck("evaluation_population_unique", erow > 0 and erow == eu and manifest.get("evaluation_rows") == erow)
-    ck("market_physical_years_only", bool(manifest.get("market_source_file_names")) and all(re.search(r"_(2023|2024)(?:_shard\d+)?\.csv\.gz$", n, re.I) for n in manifest.get("market_source_file_names", [])))
-    ck("market_lockbox_boundary", str(manifest.get("market_source_max_date")) < LOCKBOX_START and str(manifest.get("market_source_max_date")) <= OOS_END)
+    ck("market_lockbox_boundary", str(manifest.get("market_source_min_date")) == OOS_START and str(manifest.get("market_source_max_date")) == OOS_END and str(manifest.get("market_source_max_date")) < LOCKBOX_START and int(manifest.get("market_source_rows", -1)) == int(mrow))
 
     icdf = pq.read_table(ev).to_pandas()
     icdf["trade_date"] = pd.to_datetime(icdf["trade_date"]).dt.date
@@ -235,13 +277,15 @@ def main() -> int:
     ck("artifact_hashes_match", all(hashes.get(n) == sha256_file(out / n) for n in required))
 
     audit = {
-        "schema_version": 1,
-        "gate": "STAGE4_ALPHA_V1_OOS_VALIDATION_INDEPENDENT_AUDIT",
+        "schema_version": 2,
+        "gate": "STAGE4_ALPHA_V1_OOS_VALIDATION_INDEPENDENT_AUDIT_PHYSICAL_INPUT",
         "execution_head": args.execution_head,
         "pass": len(failures) == 0,
         "failed_checks": failures,
         "checks": checks,
-        "recomputed": {"prediction_rows": int(prow), "label_rows": int(lrow), "valid_20d_rows": int(valid20), "evaluation_rows": int(erow), "mean_daily_ic_20d": mean_ic, "bootstrap_95pct_ci": {"lower": ci_lo, "upper": ci_hi}, "positive_quarters": positive_q, "coverage_validity": validity, "coverage_net_excess": agg, "gate_pass": all(gates.values())},
+        "recomputed": {"physical_feature_rows": int(frow), "physical_market_rows": int(mrow), "prediction_rows": int(prow), "label_rows": int(lrow), "valid_20d_rows": int(valid20), "evaluation_rows": int(erow), "mean_daily_ic_20d": mean_ic, "bootstrap_95pct_ci": {"lower": ci_lo, "upper": ci_hi}, "positive_quarters": positive_q, "coverage_validity": validity, "coverage_net_excess": agg, "gate_pass": all(gates.values())},
+        "physical_boundary_contract_fingerprint": BOUNDARY_FP,
+        "broad_source_inputs_available_to_audit": False,
         "economic_label_validity_lookahead": False,
         "model_fit_executed_by_audit": False,
         "oos_predictions_recomputed_by_audit": False,
