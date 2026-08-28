@@ -15,10 +15,11 @@ from pathlib import Path
 
 AUTH_FP = "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d"
 EXEC_FP = "224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177"
+BOUNDARY_FP = "508f32767ecd12fab85e432e17eecb4f920822de1b3a5bef215e8e08d47bb8c8"
 SOURCE_CV_AUTH_FP = "2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c"
 MODEL_SHA = "e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c"
 PREPROCESS_SHA = "4b7833e4c4bdba9b956dba190f7337003ae944a624b59ddad7654b1457608330"
-MATRIX_SHA = "c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c"
+SOURCE_MATRIX_SHA = "c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c"
 OOS_START = "2023-01-03"
 OOS_END = "2024-12-31"
 LATEST_VALID20 = "2024-12-03"
@@ -89,7 +90,7 @@ def synthetic_self_test() -> int:
     ordered = sorted(rows, key=lambda r: (-r["prediction"], r["exchange"], r["code"]))
     assert ordered[0]["code"] == "600001"
     top2 = ordered[:2]
-    assert any(not r["valid"] for r in top2)  # fail closed; do not backfill with row 3
+    assert any(not r["valid"] for r in top2)
     print(json.dumps({"synthetic_self_test": "PASS", "bootstrap_ci": a, "economic_label_lookahead": False, "fit_calls": 0}))
     return 0
 
@@ -125,6 +126,82 @@ def validate_authority(args):
     if basis["hard_boundaries"]["fit"] or basis["hard_boundaries"]["lockbox_access"] or basis["hard_boundaries"]["main_merge"]:
         raise ValueError("execution hard boundary drift")
     return exe, source
+
+
+def validate_physical_boundary(args, source):
+    root = Path(args.physical_boundary)
+    contract = json.loads(Path(args.boundary_contract).read_text(encoding="utf-8"))
+    if contract.get("fingerprint") != BOUNDARY_FP or canonical_hash(contract["fingerprint_basis"]) != BOUNDARY_FP:
+        raise ValueError("OOS physical boundary fingerprint mismatch")
+    if contract.get("status") != "PRE_PREDICTION_PHYSICAL_OOS_BOUNDARY_COMPILER_NON_LABEL_NON_CONSUMING":
+        raise ValueError("unexpected OOS physical boundary status")
+    basis = contract["fingerprint_basis"]
+    if basis.get("oos_authorization_fingerprint") != AUTH_FP or basis.get("source_cv_authorization_fingerprint") != SOURCE_CV_AUTH_FP:
+        raise ValueError("physical boundary authority binding mismatch")
+    scope = basis["scope"]
+    if scope["decision_start"] != OOS_START or scope["decision_end"] != OOS_END or scope["final_lockbox_start"] != LOCKBOX_START:
+        raise ValueError("physical boundary dates drift")
+    for key in ["oos_prediction_forbidden", "oos_label_construction_forbidden", "oos_label_value_read_forbidden", "model_load_forbidden", "authorization_consumption_forbidden", "fit_retrain_tune_reselect_forbidden", "final_lockbox_access_forbidden", "business_metrics_forbidden"]:
+        if scope.get(key) is not True:
+            raise ValueError(f"physical boundary permission not closed: {key}")
+
+    outputs = basis["outputs"]
+    expected = {outputs[k] for k in ["features", "market", "lifecycle", "manifest", "source_verification", "independent_audit", "hashes"]}
+    have = {p.name for p in root.iterdir() if p.is_file()}
+    if have != expected:
+        raise ValueError(f"physical boundary file set mismatch expected={sorted(expected)} actual={sorted(have)}")
+
+    final_hashes = json.loads((root / outputs["hashes"]).read_text(encoding="utf-8"))
+    if set(final_hashes) != expected - {outputs["hashes"]}:
+        raise ValueError("physical boundary final hash map file set mismatch")
+    for name, expected_sha in final_hashes.items():
+        actual = sha256_file(root / name)
+        if actual != expected_sha:
+            raise ValueError(f"physical boundary file SHA mismatch: {name}")
+
+    manifest = json.loads((root / outputs["manifest"]).read_text(encoding="utf-8"))
+    audit = json.loads((root / outputs["independent_audit"]).read_text(encoding="utf-8"))
+    verification = json.loads((root / outputs["source_verification"]).read_text(encoding="utf-8"))
+    if manifest.get("status") != "PHYSICALLY_OOS_ONLY_PRE_PREDICTION_NON_LABEL" or manifest.get("boundary_contract_fingerprint") != BOUNDARY_FP:
+        raise ValueError("physical boundary manifest identity mismatch")
+    if manifest.get("source_cv_authorization_fingerprint") != SOURCE_CV_AUTH_FP or manifest.get("feature_columns") != list(source["fingerprint_basis"]["feature_columns"]):
+        raise ValueError("physical boundary feature authority mismatch")
+    if audit.get("pass") is not True or audit.get("failed_checks") != [] or audit.get("boundary_contract_fingerprint") != BOUNDARY_FP:
+        raise ValueError("physical boundary independent audit did not pass cleanly")
+    if int(audit.get("post_oos_rows_observed", -1)) != 0:
+        raise ValueError("physical boundary independent audit observed post-OOS rows")
+    for key in ["oos_prediction_executed", "oos_label_constructed", "oos_label_value_read", "model_loaded", "authorization_consumed", "final_lockbox_accessed"]:
+        if audit.get(key) is not False:
+            raise ValueError(f"physical boundary audit permission evidence not closed: {key}")
+    if verification.get("status") != "VERIFIED" or verification.get("boundary_contract_fingerprint") != BOUNDARY_FP:
+        raise ValueError("physical boundary source verification invalid")
+    for key, expected_input in basis["inputs"].items():
+        got = verification.get("artifacts", {}).get(key, {})
+        if int(got.get("artifact_id", -1)) != int(expected_input["artifact_id"]) or got.get("archive_sha256") != expected_input["artifact_zip_sha256"] or got.get("verified") is not True:
+            raise ValueError(f"physical boundary source verification mismatch: {key}")
+    if basis["inputs"]["feature_matrix"]["file_sha256"] != SOURCE_MATRIX_SHA:
+        raise ValueError("source feature matrix authority drift")
+
+    guards = manifest.get("guards", {})
+    for key in ["broad_feature_matrix_available_downstream", "broad_g3_available_downstream", "raw_g5_available_downstream", "raw_g2_available_downstream", "oos_prediction_executed", "oos_label_constructed", "oos_label_value_read", "model_loaded", "authorization_consumed", "fit_retrain_tune_reselect_executed", "final_lockbox_accessed", "business_metrics_computed"]:
+        if guards.get(key) is not False:
+            raise ValueError(f"physical boundary manifest guard not closed: {key}")
+    for key in ["post_oos_feature_rows", "post_oos_market_rows", "post_oos_lifecycle_delist_rows"]:
+        if int(guards.get(key, -1)) != 0:
+            raise ValueError(f"physical boundary manifest guard nonzero: {key}")
+
+    return {
+        "root": root,
+        "contract": contract,
+        "manifest": manifest,
+        "audit": audit,
+        "hashes": final_hashes,
+        "features": root / outputs["features"],
+        "market": root / outputs["market"],
+        "lifecycle": root / outputs["lifecycle"],
+        "manifest_path": root / outputs["manifest"],
+        "audit_path": root / outputs["independent_audit"],
+    }
 
 
 def runtime_check(exe):
@@ -185,7 +262,7 @@ def transform_frame(df, preprocess, source):
     return X
 
 
-def materialize_predictions(args, source, preprocess, model, work: Path, out: Path, execution_head: str):
+def materialize_predictions(matrix_path: Path, source, preprocess, model, boundary_manifest, work: Path, out: Path, execution_head: str):
     import duckdb
     import numpy as np
     import pyarrow as pa
@@ -195,16 +272,18 @@ def materialize_predictions(args, source, preprocess, model, work: Path, out: Pa
     con.execute(f"PRAGMA temp_directory={q(str(work / 'duckdb-pred-tmp'))}")
     raw = work / "oos_features_raw.parquet"
     feat_sql = ",".join(qi(c) for c in preprocess["feature_columns"])
-    con.execute(f"""COPY (SELECT CAST(trade_date AS DATE) AS trade_date,upper(CAST(exchange AS VARCHAR)) AS exchange,lpad(CAST(code AS VARCHAR),6,'0') AS code,{feat_sql} FROM read_parquet({q(str(Path(args.matrix)))}) WHERE CAST(trade_date AS DATE) BETWEEN DATE '{OOS_START}' AND DATE '{OOS_END}' ORDER BY trade_date,exchange,code) TO {q(str(raw))} (FORMAT PARQUET,COMPRESSION ZSTD)""")
+    con.execute(f"""COPY (SELECT CAST(trade_date AS DATE) AS trade_date,upper(CAST(exchange AS VARCHAR)) AS exchange,lpad(CAST(code AS VARCHAR),6,'0') AS code,{feat_sql} FROM read_parquet({q(str(matrix_path))}) ORDER BY trade_date,exchange,code) TO {q(str(raw))} (FORMAT PARQUET,COMPRESSION ZSTD)""")
     rows, uniq, dmin, dmax = con.execute(f"SELECT count(*),count(DISTINCT (trade_date,exchange,code)),min(trade_date),max(trade_date) FROM read_parquet({q(str(raw))})").fetchone()
     if rows <= 0 or rows != uniq or str(dmin) != OOS_START or str(dmax) != OOS_END:
         raise ValueError(f"OOS prediction population mismatch {rows}/{uniq} {dmin}..{dmax}")
+    if int(rows) != int(boundary_manifest["features"]["row_count"]):
+        raise ValueError("OOS prediction population does not match sealed boundary manifest")
     writer = None; consumed = False; pred_rows = 0; pred_path = out / "oos_predictions.parquet"
     try:
         for batch in pq.ParquetFile(raw).iter_batches(batch_size=100000):
             df = pa.Table.from_batches([batch]).to_pandas(); X = transform_frame(df, preprocess, source)
             if not consumed:
-                payload = {"schema_version":1,"status":"CONSUMED","authorization_fingerprint":AUTH_FP,"execution_contract_fingerprint":EXEC_FP,"execution_head":execution_head,"consumption_event":"FIRST_OOS_PREDICTION_COMPUTATION","consumed_at_utc":datetime.now(timezone.utc).isoformat(),"oos_label_read_before_consumption":False,"lockbox_accessed":False,"fit_executed":False}
+                payload = {"schema_version":1,"status":"CONSUMED","authorization_fingerprint":AUTH_FP,"execution_contract_fingerprint":EXEC_FP,"physical_boundary_contract_fingerprint":BOUNDARY_FP,"execution_head":execution_head,"consumption_event":"FIRST_OOS_PREDICTION_COMPUTATION","consumed_at_utc":datetime.now(timezone.utc).isoformat(),"oos_label_read_before_consumption":False,"lockbox_accessed":False,"fit_executed":False}
                 (out / "authorization_consumption.json").write_text(json.dumps(payload,indent=2)+"\n",encoding="utf-8"); consumed = True
             pred = np.asarray(model.predict(X), dtype=np.float64)
             if len(pred) != len(df) or not np.isfinite(pred).all(): raise ValueError("invalid OOS predictions")
@@ -217,32 +296,21 @@ def materialize_predictions(args, source, preprocess, model, work: Path, out: Pa
     return {"prediction_rows":int(rows),"prediction_date_min":str(dmin),"prediction_date_max":str(dmax)}
 
 
-def market_source_files(root: Path):
-    rx = re.compile(r"(?:sse|szse)_(20\d\d)(?:_shard\d+)?\.csv\.gz$", re.I)
-    files=[]; years=set()
-    for p in root.rglob("*.csv.gz"):
-        m=rx.search(p.name)
-        if m and int(m.group(1)) in (2023,2024): files.append(p); years.add(int(m.group(1)))
-    files=sorted(files)
-    if not files or years != {2023,2024}: raise ValueError(f"missing guarded 2023/2024 G3 files: {sorted(years)}")
-    return files
-
-
-def materialize_labels(args, work: Path):
+def materialize_labels(matrix_path: Path, market_path: Path, lifecycle_path: Path, boundary_manifest, work: Path):
     import duckdb
-    files = market_source_files(Path(args.g3_root)); con=duckdb.connect(); con.execute("PRAGMA threads=4"); con.execute("PRAGMA memory_limit='7GB'")
+    con=duckdb.connect(); con.execute("PRAGMA threads=4"); con.execute("PRAGMA memory_limit='7GB'")
     (work/"duckdb-label-tmp").mkdir(parents=True,exist_ok=True); con.execute(f"PRAGMA temp_directory={q(str(work/'duckdb-label-tmp'))}")
-    flist="["+",".join(q(str(p)) for p in files)+"]"
-    con.execute(f"""CREATE TEMP TABLE market_raw AS SELECT upper(exchange) AS exchange,lpad(CAST(code AS VARCHAR),6,'0') AS code,CAST(trade_date AS DATE) AS trade_date,CAST(open AS DOUBLE) AS open,CAST(close AS DOUBLE) AS close FROM read_csv({flist},header=true,auto_detect=true,union_by_name=true) WHERE CAST(trade_date AS DATE)>=DATE '{OOS_START}' AND CAST(trade_date AS DATE)<DATE '{LOCKBOX_START}'""")
-    market_rows,mmin,mmax=con.execute("SELECT count(*),min(trade_date),max(trade_date) FROM market_raw").fetchone()
-    if market_rows<=0 or str(mmax)>=LOCKBOX_START or str(mmax)>OOS_END: raise ValueError(f"market boundary violation {mmin}..{mmax}")
-    con.execute(f"""CREATE TEMP TABLE g5 AS SELECT upper(exchange) AS exchange,lpad(CAST(code AS VARCHAR),6,'0') AS code,CAST(ex_date AS DATE) AS ex_date,CAST(cumulative_back_adjust_multiplier AS DOUBLE) AS factor FROM read_csv({q(str(Path(args.g5_chain)))},header=true,auto_detect=true,compression='gzip') WHERE CAST(ex_date AS DATE)<DATE '{LOCKBOX_START}' ORDER BY exchange,code,ex_date""")
-    con.execute("""CREATE TEMP TABLE market AS SELECT m.exchange,m.code,m.trade_date,m.open,m.close,coalesce(g.factor,1.0) AS factor FROM (SELECT * FROM market_raw ORDER BY exchange,code,trade_date) m ASOF LEFT JOIN g5 g ON m.exchange=g.exchange AND m.code=g.code AND m.trade_date>=g.ex_date""")
-    con.execute(f"""CREATE TEMP TABLE lifecycle AS SELECT upper(exchange) AS exchange,lpad(CAST(code AS VARCHAR),6,'0') AS code,CAST(listed_from AS DATE) AS listed_from,CASE WHEN listed_to_exclusive IS NULL OR trim(CAST(listed_to_exclusive AS VARCHAR))='' THEN NULL ELSE CAST(listed_to_exclusive AS DATE) END AS listed_to_exclusive FROM read_csv({q(str(Path(args.g2_intervals)))},header=true,auto_detect=true)""")
-    con.execute(f"""CREATE TEMP TABLE decisions AS SELECT CAST(trade_date AS DATE) AS decision_date,upper(CAST(exchange AS VARCHAR)) AS exchange,lpad(CAST(code AS VARCHAR),6,'0') AS code FROM read_parquet({q(str(Path(args.matrix)))}) WHERE CAST(trade_date AS DATE) BETWEEN DATE '{OOS_START}' AND DATE '{OOS_END}'""")
-    drows,duniq=con.execute("SELECT count(*),count(DISTINCT (decision_date,exchange,code)) FROM decisions").fetchone()
-    if drows!=duniq: raise ValueError("OOS decision keys not unique")
-    con.execute("""CREATE TEMP TABLE calendar AS SELECT trade_date,row_number() OVER(ORDER BY trade_date)-1 AS session_idx FROM (SELECT DISTINCT trade_date FROM market_raw) ORDER BY trade_date""")
+    con.execute(f"""CREATE TEMP TABLE market AS SELECT upper(CAST(exchange AS VARCHAR)) AS exchange,lpad(CAST(code AS VARCHAR),6,'0') AS code,CAST(trade_date AS DATE) AS trade_date,CAST(open AS DOUBLE) AS open,CAST(close AS DOUBLE) AS close,CAST(factor AS DOUBLE) AS factor FROM read_parquet({q(str(market_path))})""")
+    market_rows,mmin,mmax=con.execute("SELECT count(*),min(trade_date),max(trade_date) FROM market").fetchone()
+    if market_rows<=0 or str(mmin)!=OOS_START or str(mmax)!=OOS_END or str(mmax)>=LOCKBOX_START: raise ValueError(f"market boundary violation {mmin}..{mmax}")
+    if int(market_rows) != int(boundary_manifest["market"]["row_count"]): raise ValueError("sealed market row count drift")
+    con.execute(f"""CREATE TEMP TABLE lifecycle AS SELECT upper(CAST(exchange AS VARCHAR)) AS exchange,lpad(CAST(code AS VARCHAR),6,'0') AS code,CAST(listed_from AS DATE) AS listed_from,CAST(listed_to_exclusive AS DATE) AS listed_to_exclusive FROM read_parquet({q(str(lifecycle_path))})""")
+    leaked=con.execute(f"SELECT count(*) FROM lifecycle WHERE listed_to_exclusive IS NOT NULL AND listed_to_exclusive>DATE '{OOS_END}'").fetchone()[0]
+    if int(leaked)!=0: raise ValueError("physical lifecycle contains post-OOS delisting information")
+    con.execute(f"""CREATE TEMP TABLE decisions AS SELECT CAST(trade_date AS DATE) AS decision_date,upper(CAST(exchange AS VARCHAR)) AS exchange,lpad(CAST(code AS VARCHAR),6,'0') AS code FROM read_parquet({q(str(matrix_path))})""")
+    drows,duniq,dmin,dmax=con.execute("SELECT count(*),count(DISTINCT (decision_date,exchange,code)),min(decision_date),max(decision_date) FROM decisions").fetchone()
+    if drows!=duniq or str(dmin)!=OOS_START or str(dmax)!=OOS_END or int(drows)!=int(boundary_manifest["features"]["row_count"]): raise ValueError("OOS decision keys/boundary mismatch")
+    con.execute("""CREATE TEMP TABLE calendar AS SELECT trade_date,row_number() OVER(ORDER BY trade_date)-1 AS session_idx FROM (SELECT DISTINCT trade_date FROM market) ORDER BY trade_date""")
     con.execute("""CREATE TEMP TABLE schedule AS SELECT d.*,c.session_idx,e.trade_date AS entry_date,x5.trade_date AS exit_date_5d,x20.trade_date AS exit_date_20d FROM decisions d JOIN calendar c ON c.trade_date=d.decision_date LEFT JOIN calendar e ON e.session_idx=c.session_idx+1 LEFT JOIN calendar x5 ON x5.session_idx=c.session_idx+5 LEFT JOIN calendar x20 ON x20.session_idx=c.session_idx+20""")
     con.execute(f"""CREATE TEMP TABLE raw_labels AS SELECT s.decision_date,s.exchange,s.code,s.entry_date,s.exit_date_5d,s.exit_date_20d,ep.open AS entry_open_raw,ep.factor AS entry_factor,p5.close AS exit_close_5d_raw,p5.factor AS exit_factor_5d,p20.close AS exit_close_20d_raw,p20.factor AS exit_factor_20d,lc.listed_to_exclusive,
       CASE WHEN s.exit_date_5d IS NULL THEN 'PARTITION_BOUNDARY_INCOMPLETE_HORIZON' WHEN lc.listed_to_exclusive IS NOT NULL AND lc.listed_to_exclusive>s.decision_date AND lc.listed_to_exclusive<=s.exit_date_5d THEN 'DELISTING_HORIZON_CENSOR_NO_TERMINAL_IMPUTATION' WHEN ep.open IS NULL OR ep.open<=0 THEN 'MISSING_ENTRY_OPEN' WHEN p5.close IS NULL OR p5.close<=0 THEN 'MISSING_EXIT_CLOSE' ELSE 'VALID' END AS censor_reason_5d,
@@ -254,7 +322,7 @@ def materialize_labels(args, work: Path):
     con.execute(f"""COPY (SELECT r.decision_date AS trade_date,r.exchange,r.code,r.entry_date,r.exit_date_5d,r.exit_date_20d,r.censor_reason_5d='VALID' AS valid_label_5d,r.censor_reason_20d='VALID' AS valid_label_20d,r.censor_reason_5d,r.censor_reason_20d,r.stock_total_return_5d,b.benchmark_return_5d,CASE WHEN r.censor_reason_5d='VALID' THEN r.stock_total_return_5d-b.benchmark_return_5d END AS excess_return_5d,r.stock_total_return_20d,b.benchmark_return_20d,CASE WHEN r.censor_reason_20d='VALID' THEN r.stock_total_return_20d-b.benchmark_return_20d END AS excess_return_20d FROM stock_returns r JOIN benchmarks b USING(decision_date) ORDER BY trade_date,exchange,code) TO {q(str(labels))} (FORMAT PARQUET,COMPRESSION ZSTD)""")
     rows,uniq,valid20,maxvalid20,maxexit20=con.execute(f"SELECT count(*),count(DISTINCT (trade_date,exchange,code)),count(*) FILTER(WHERE valid_label_20d),max(trade_date) FILTER(WHERE valid_label_20d),max(exit_date_20d) FILTER(WHERE valid_label_20d) FROM read_parquet({q(str(labels))})").fetchone()
     if rows!=drows or uniq!=drows or str(maxvalid20)>LATEST_VALID20 or str(maxexit20)>OOS_END: raise ValueError("OOS label population/boundary violation")
-    return {"label_rows":int(rows),"valid_20d_rows":int(valid20),"latest_valid_20d_decision":str(maxvalid20),"latest_valid_20d_exit":str(maxexit20),"market_source_file_count":len(files),"market_source_file_names":[p.name for p in files],"market_source_rows":int(market_rows),"market_source_min_date":str(mmin),"market_source_max_date":str(mmax)}
+    return {"label_rows":int(rows),"valid_20d_rows":int(valid20),"latest_valid_20d_decision":str(maxvalid20),"latest_valid_20d_exit":str(maxexit20),"market_source_kind":"SEALED_PHYSICAL_OOS_BOUNDARY","market_source_rows":int(market_rows),"market_source_min_date":str(mmin),"market_source_max_date":str(mmax)}
 
 
 def evaluate(args, work: Path, out: Path, exe):
@@ -331,22 +399,26 @@ def evaluate(args, work: Path, out: Path, exe):
 def main() -> int:
     if "--synthetic-self-test" in sys.argv: return synthetic_self_test()
     ap=argparse.ArgumentParser()
-    for name in ["matrix","model","preprocess","g3-root","g5-chain","g2-intervals","authorization","execution-contract","source-cv-authorization","accepted-state","work-dir","out","execution-head"]: ap.add_argument("--"+name,required=True)
+    for name in ["physical-boundary","boundary-contract","model","preprocess","authorization","execution-contract","source-cv-authorization","accepted-state","work-dir","out","execution-head"]: ap.add_argument("--"+name,required=True)
     args=ap.parse_args(); exe,source=validate_authority(args); runtime=runtime_check(exe)
     if not re.fullmatch(r"[0-9a-f]{40}",args.execution_head) or os.environ.get("EXECUTION_HEAD")!=args.execution_head: raise ValueError("exact execution head mismatch")
-    if sha256_file(Path(args.matrix))!=MATRIX_SHA or sha256_file(Path(args.model))!=MODEL_SHA or sha256_file(Path(args.preprocess))!=PREPROCESS_SHA: raise ValueError("frozen input hash mismatch")
+    physical=validate_physical_boundary(args,source)
+    if sha256_file(Path(args.model))!=MODEL_SHA or sha256_file(Path(args.preprocess))!=PREPROCESS_SHA: raise ValueError("frozen model/preprocess hash mismatch")
     preprocess=json.loads(Path(args.preprocess).read_text(encoding="utf-8"))
     if preprocess.get("oos_rows_used") is not False or preprocess.get("lockbox_rows_used") is not False or preprocess.get("fit_rows")!=5103016 or preprocess.get("model_input_feature_count")!=45: raise ValueError("frozen preprocess identity drift")
+    if list(preprocess.get("feature_columns",[])) != list(physical["manifest"]["feature_columns"]): raise ValueError("preprocess feature columns do not match sealed physical features")
     with Path(args.model).open("rb") as f: model=pickle.load(f)
     if int(getattr(model,"n_features_in_",-1))!=45: raise ValueError("frozen model feature count mismatch")
     work=Path(args.work_dir); out=Path(args.out); work.mkdir(parents=True,exist_ok=True); out.mkdir(parents=True,exist_ok=True)
-    pred_meta=materialize_predictions(args,source,preprocess,model,work,out,args.execution_head); label_meta=materialize_labels(args,work); eval_meta=evaluate(args,work,out,exe)
+    pred_meta=materialize_predictions(physical["features"],source,preprocess,model,physical["manifest"],work,out,args.execution_head)
+    label_meta=materialize_labels(physical["features"],physical["market"],physical["lifecycle"],physical["manifest"],work)
+    eval_meta=evaluate(args,work,out,exe)
     consumption=json.loads((out/"authorization_consumption.json").read_text(encoding="utf-8"))
-    manifest={"schema_version":1,"gate":"STAGE4_ALPHA_V1_OOS_VALIDATION_SINGLE_USE_EXECUTION","execution_head":args.execution_head,"authorization_fingerprint":AUTH_FP,"execution_contract_fingerprint":EXEC_FP,"authorization_consumed":True,"consumption_event":consumption["consumption_event"],"runtime":runtime,"model_sha256":sha256_file(Path(args.model)),"preprocess_manifest_sha256":sha256_file(Path(args.preprocess)),"feature_matrix_sha256":sha256_file(Path(args.matrix)),**pred_meta,**label_meta,**eval_meta,"fit_executed":False,"retraining_executed":False,"hyperparameter_search_executed":False,"candidate_reselection_executed":False,"oos_fitted_preprocessor":False,"economic_label_validity_lookahead":False,"oos_accessed":True,"lockbox_accessed":False,"live_signal_allowed":False,"authoritative_model_output":False,"main_merge_allowed":False,"next_gate_if_pass":"SEPARATE_OOS_EVIDENCE_ACCEPTANCE_THEN_SEPARATE_LOCKBOX_AUTHORIZATION","next_gate_if_fail":"REGISTER_OOS_FAILURE_NO_PROMOTION_NO_RETUNING"}
+    manifest={"schema_version":1,"gate":"STAGE4_ALPHA_V1_OOS_VALIDATION_SINGLE_USE_EXECUTION","execution_head":args.execution_head,"authorization_fingerprint":AUTH_FP,"execution_contract_fingerprint":EXEC_FP,"physical_boundary_contract_fingerprint":BOUNDARY_FP,"authorization_consumed":True,"consumption_event":consumption["consumption_event"],"runtime":runtime,"model_sha256":sha256_file(Path(args.model)),"preprocess_manifest_sha256":sha256_file(Path(args.preprocess)),"source_feature_matrix_sha256":SOURCE_MATRIX_SHA,"physical_oos_features_sha256":sha256_file(physical["features"]),"physical_oos_market_sha256":sha256_file(physical["market"]),"physical_oos_lifecycle_sha256":sha256_file(physical["lifecycle"]),"physical_boundary_manifest_sha256":sha256_file(physical["manifest_path"]),"physical_boundary_independent_audit_sha256":sha256_file(physical["audit_path"]),"broad_source_inputs_available_in_execution_runner":False,**pred_meta,**label_meta,**eval_meta,"fit_executed":False,"retraining_executed":False,"hyperparameter_search_executed":False,"candidate_reselection_executed":False,"oos_fitted_preprocessor":False,"economic_label_validity_lookahead":False,"oos_accessed":True,"lockbox_accessed":False,"live_signal_allowed":False,"authoritative_model_output":False,"main_merge_allowed":False,"next_gate_if_pass":"SEPARATE_OOS_EVIDENCE_ACCEPTANCE_THEN_SEPARATE_LOCKBOX_AUTHORIZATION","next_gate_if_fail":"REGISTER_OOS_FAILURE_NO_PROMOTION_NO_RETUNING"}
     (out/"oos_execution_manifest.json").write_text(json.dumps(manifest,indent=2)+"\n",encoding="utf-8")
     required=["oos_execution_manifest.json","oos_predictions.parquet","oos_daily_metrics.parquet","oos_quarter_metrics.json","oos_economic_metrics.json","oos_gate_result.json","authorization_consumption.json"]
     (out/"artifact_hashes.json").write_text(json.dumps({n:sha256_file(out/n) for n in required},sort_keys=True,indent=2)+"\n",encoding="utf-8")
-    print(json.dumps({"execution_head":args.execution_head,"authorization_consumed":True,"prediction_rows":pred_meta["prediction_rows"],"valid_20d_rows":label_meta["valid_20d_rows"],"mean_daily_ic_20d":eval_meta["mean_daily_ic_20d"],"positive_quarters":eval_meta["positive_quarters"],"economic_coverage_valid":{"05pct":eval_meta["economic_05pct_coverage_valid"],"10pct":eval_meta["economic_10pct_coverage_valid"],"20pct":eval_meta["economic_20pct_coverage_valid"]},"gate_pass":eval_meta["gate_pass"],"lockbox_accessed":False,"fit_executed":False},indent=2)); return 0
+    print(json.dumps({"execution_head":args.execution_head,"physical_boundary_contract":BOUNDARY_FP,"broad_source_inputs_available_in_execution_runner":False,"authorization_consumed":True,"prediction_rows":pred_meta["prediction_rows"],"valid_20d_rows":label_meta["valid_20d_rows"],"mean_daily_ic_20d":eval_meta["mean_daily_ic_20d"],"positive_quarters":eval_meta["positive_quarters"],"economic_coverage_valid":{"05pct":eval_meta["economic_05pct_coverage_valid"],"10pct":eval_meta["economic_10pct_coverage_valid"],"20pct":eval_meta["economic_20pct_coverage_valid"]},"gate_pass":eval_meta["gate_pass"],"lockbox_accessed":False,"fit_executed":False},indent=2)); return 0
 
 
 if __name__ == "__main__": raise SystemExit(main())
