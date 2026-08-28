@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "status": "DEVELOPMENT_ONLY_READ_ONLY_AUDIT",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "a4ada01e4a9cc6a83f9689d7e10dffef899e2fa5747876be7f522476b119cb83",
+  "fingerprint_basis": {
+    "audit_id": "STAGE4_C007_DEVELOPMENT_EXECUTABILITY_AUDIT_V1",
+    "integration_base_sha": "c484b6f8e0b404f790995274b768fdde3000bd8d",
+    "scope": {
+      "development_decision_date_min": "2015-01-05",
+      "development_decision_date_max": "2022-12-30",
+      "oof_rows_are_frozen_valid_label_20d_test_rows_only": true,
+      "oos_prediction_forbidden": true,
+      "oos_label_access_forbidden": true,
+      "model_load_forbidden": true,
+      "fit_retrain_tune_reselect_forbidden": true,
+      "final_lockbox_access_forbidden": true
+    },
+    "inputs": {
+      "c007_oof": {
+        "run_id": 31898964450,
+        "artifact_id": 9250719606,
+        "artifact_name": "stage4-alpha-v1-cv-oof-C007",
+        "artifact_digest": "sha256:3676beb6d637ca0bfa4a4676d9b83f0468ff2d30152e669fc5a8a4b20a761fd7",
+        "oof_file_sha256": "9cd44a90a9f11907e8b79b86d33556555753b24f5511efdf6569c58cc51f8a4f"
+      },
+      "stage2_g3": {
+        "run_id": 30263014914,
+        "artifact_id": 8651700277,
+        "artifact_name": "stage2-g3-sse-601313-repaired-ohlcv",
+        "artifact_digest": "sha256:bf977d4f379d421bd198865b90df90caef7ba6cfb5d6d1af96e5487300c1a2f8"
+      },
+      "stage2_g4": {
+        "run_id": 30263162968,
+        "artifact_id": 8651786270,
+        "artifact_name": "stage2-g4-sse-601313-repaired-state",
+        "artifact_digest": "sha256:3343a1a42e5debf19d4a9595067cad50d808c979c8ae98f0ae8abbc09f1772cd"
+      }
+    },
+    "population_reconciliation": {
+      "stage4_development_universe_rule": "SSE_MAIN_A_OR_SZSE_MAIN_A_AND_0_LT_RAW_CLOSE_LT_70_AND_2015_01_05_TO_2022_12_30",
+      "expected_development_universe_rows": 5197648,
+      "oof_rank_population": "FROZEN_C007_OOF_VALID_LABEL_20D_ROWS_ONLY_MATCHING_ORIGINAL_DEVELOPMENT_CV_ECONOMIC_DIAGNOSTIC"
+    },
+    "selection": {
+      "coverages": [0.05, 0.1, 0.2],
+      "per_decision_date_k": "ceil(coverage*n_oof_rows_on_date)",
+      "ordering": "prediction_desc_then_exchange_asc_code_asc",
+      "nonoverlap_anchor": "within_each_frozen_split_first_oof_test_session_then_every_20th_oof_test_session"
+    },
+    "flags": {
+      "decision_low_price_lt2": "decision_day_raw_close < 2.0",
+      "hard_unexecutable_entry": "entry_day_tradable_eq_0 OR entry_day_volume_shares_le_0",
+      "one_price_entry": "entry_day_high == entry_day_low",
+      "one_price_limit_up": "one_price_entry AND volume_shares_gt_0 AND close_equals_half_up_cent_round(preclose*(1+limit_up_rate))",
+      "one_price_limit_down": "one_price_entry AND volume_shares_gt_0 AND close_equals_half_up_cent_round(preclose*(1-limit_down_rate))",
+      "high_execution_risk_union": "decision_day_tradable_eq_0 OR decision_day_risk_warning_eq_1 OR hard_unexecutable_entry OR entry_day_risk_warning_eq_1 OR one_price_limit_up"
+    },
+    "outputs": [
+      "c007_development_executability_audit.json",
+      "c007_top_bucket_daily_exposure.csv",
+      "artifact_hashes.json"
+    ]
+  }
+}
