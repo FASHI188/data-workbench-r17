@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "status": "PRE_PREDICTION_PHYSICAL_OOS_BOUNDARY_COMPILER_NON_LABEL_NON_CONSUMING",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "508f32767ecd12fab85e432e17eecb4f920822de1b3a5bef215e8e08d47bb8c8",
+  "fingerprint_basis": {
+    "boundary_id": "STAGE4_ALPHA_V1_OOS_PHYSICAL_BOUNDARY_V1",
+    "integration_base_sha": "c484b6f8e0b404f790995274b768fdde3000bd8d",
+    "oos_authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
+    "source_cv_authorization_fingerprint": "2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c",
+    "purpose": "Compile broad frozen research inputs into a physically OOS-only, pre-prediction, non-label bundle inside the authorized workflow_dispatch before single-use execution.",
+    "scope": {
+      "decision_start": "2023-01-03",
+      "decision_end": "2024-12-31",
+      "latest_labelable_decision": "2024-12-03",
+      "market_row_upper_bound_exclusive": "2025-01-02",
+      "final_lockbox_start": "2025-01-02",
+      "oos_prediction_forbidden": true,
+      "oos_label_construction_forbidden": true,
+      "oos_label_value_read_forbidden": true,
+      "model_load_forbidden": true,
+      "authorization_consumption_forbidden": true,
+      "fit_retrain_tune_reselect_forbidden": true,
+      "final_lockbox_access_forbidden": true,
+      "business_metrics_forbidden": true
+    },
+    "inputs": {
+      "feature_matrix": {
+        "artifact_id": 9168728086,
+        "artifact_name": "stage4-v1-2-feature-matrix",
+        "artifact_zip_sha256": "a4d3a10165bf3b369c77c7b4f77e97663bc3125f506d9203388e6f63198bda4a",
+        "file_name": "stage4_v1_2_feature_matrix.parquet",
+        "file_sha256": "c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c"
+      },
+      "stage2_g3": {
+        "artifact_id": 8651700277,
+        "artifact_name": "stage2-g3-sse-601313-repaired-ohlcv",
+        "artifact_zip_sha256": "bf977d4f379d421bd198865b90df90caef7ba6cfb5d6d1af96e5487300c1a2f8"
+      },
+      "stage2_g5": {
+        "artifact_id": 8651976824,
+        "artifact_name": "stage2-g5-final-validation",
+        "artifact_zip_sha256": "acbeaaca9fc849acbef213dbd9b50df034f28e36acd352e625acb44e536cbe22",
+        "file_name": "g5_adjustment_chain.csv.gz"
+      },
+      "stage2_g2": {
+        "artifact_id": 8651477081,
+        "artifact_name": "stage2-g2-lifecycle",
+        "artifact_zip_sha256": "652193c9ce18ad9e4cc93b8050910a1fb8b91c849bfdd990e9ee5f860ac147dd",
+        "file_name": "security_intervals.csv"
+      }
+    },
+    "outputs": {
+      "features": "oos_features.parquet",
+      "market": "oos_market.parquet",
+      "lifecycle": "oos_lifecycle.parquet",
+      "manifest": "oos_physical_boundary_manifest.json",
+      "source_verification": "source_archive_verification.json",
+      "independent_audit": "oos_physical_boundary_independent_audit.json",
+      "hashes": "artifact_hashes.json"
+    }
+  }
+}
