@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import re
 from pathlib import Path
 from typing import Any
 
@@ -27,10 +26,6 @@ def q(s: str) -> str:
     return "'" + s.replace("'", "''") + "'"
 
 
-def sql_file_list(paths: list[Path]) -> str:
-    return '[' + ','.join(q(str(p)) for p in paths) + ']'
-
-
 def rows_as_dicts(cur) -> list[dict[str, Any]]:
     cols = [d[0] for d in cur.description]
     return [dict(zip(cols, row)) for row in cur.fetchall()]
@@ -43,9 +38,7 @@ def scalar(con, sql: str):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument('--contract', required=True)
-    ap.add_argument('--oof-root', required=True)
-    ap.add_argument('--g3-root', required=True)
-    ap.add_argument('--g4-root', required=True)
+    ap.add_argument('--package-root', required=True)
     ap.add_argument('--out', required=True)
     args = ap.parse_args()
 
@@ -57,10 +50,14 @@ def main() -> int:
     actual_fp = canon_hash(contract['fingerprint_basis'])
     if actual_fp != expected_fp:
         raise ValueError(f'contract fingerprint mismatch expected={expected_fp} actual={actual_fp}')
+    if contract['status'] != 'DEVELOPMENT_ONLY_READ_ONLY_AUDIT_PHYSICAL_INPUT_RERUN':
+        raise ValueError(f'unexpected audit status {contract["status"]}')
 
     basis = contract['fingerprint_basis']
     scope = basis['scope']
     if not all([
+        scope['physical_development_input_required'],
+        scope['broad_stage2_inputs_forbidden'],
         scope['oos_prediction_forbidden'],
         scope['oos_label_access_forbidden'],
         scope['model_load_forbidden'],
@@ -71,67 +68,88 @@ def main() -> int:
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    package = Path(args.package_root)
+    physical = basis['inputs']['development_physical_boundary']
+    expected_hashes = physical['files']
+    expected_names = set(expected_hashes) | {'artifact_hashes.json'}
+    actual_names = {p.name for p in package.iterdir() if p.is_file()}
+    if actual_names != expected_names:
+        raise ValueError(f'physical package file set mismatch expected={sorted(expected_names)} actual={sorted(actual_names)}')
 
-    oof_hits = list(Path(args.oof_root).rglob('oof_predictions.parquet'))
-    if len(oof_hits) != 1:
-        raise ValueError(f'expected exactly one C007 OOF parquet, got {oof_hits}')
-    oof = oof_hits[0]
-    oof_sha = sha256_file(oof)
-    expected_oof_sha = basis['inputs']['c007_oof']['oof_file_sha256']
-    if oof_sha != expected_oof_sha:
-        raise ValueError(f'C007 OOF SHA mismatch expected={expected_oof_sha} actual={oof_sha}')
+    for name, expected_sha in expected_hashes.items():
+        path = package / name
+        actual_sha = sha256_file(path)
+        if actual_sha != expected_sha:
+            raise ValueError(f'physical package SHA mismatch {name} expected={expected_sha} actual={actual_sha}')
 
-    year_re = re.compile(r'(2015|2016|2017|2018|2019|2020|2021|2022)')
-    g3_all = sorted(Path(args.g3_root).rglob('*.csv.gz'))
-    g3_files = [p for p in g3_all if year_re.search(p.name)]
-    if not g3_files:
-        raise ValueError('no 2015-2022 G3 CSV.GZ files found')
-    if any(re.search(r'202[3-9]|203\d', p.name) for p in g3_files):
-        raise ValueError('post-2022 G3 file entered development audit')
+    package_hashes = json.loads((package / 'artifact_hashes.json').read_text(encoding='utf-8'))
+    if package_hashes != expected_hashes:
+        raise ValueError('physical package final hash map does not match frozen contract')
 
-    g4_files = sorted(Path(args.g4_root).rglob('g4_state_shard*.csv.gz'))
-    if len(g4_files) != 16:
-        raise ValueError(f'expected 16 G4 state shards, found {len(g4_files)}')
+    manifest = json.loads((package / 'development_physical_boundary_manifest.json').read_text(encoding='utf-8'))
+    independent = json.loads((package / 'development_physical_boundary_independent_audit.json').read_text(encoding='utf-8'))
+    source_verification = json.loads((package / 'source_archive_verification.json').read_text(encoding='utf-8'))
+    if manifest.get('status') != 'PHYSICALLY_DEVELOPMENT_ONLY':
+        raise ValueError('physical boundary manifest is not sealed development-only')
+    if manifest.get('boundary_contract_fingerprint') != physical['boundary_contract_fingerprint']:
+        raise ValueError('physical boundary contract fingerprint mismatch')
+    if manifest.get('development_start') != scope['development_decision_date_min'] or manifest.get('development_end') != scope['development_decision_date_max']:
+        raise ValueError('physical boundary date contract mismatch')
+    guards = manifest.get('physical_guards', {})
+    if int(guards.get('post_2022_output_rows', -1)) != 0:
+        raise ValueError('physical boundary manifest reports post-development rows')
+    for key in ['oos_prediction_executed','oos_label_accessed','model_loaded','fit_retrain_tune_reselect_executed','final_lockbox_evaluation_executed','business_metrics_computed']:
+        if guards.get(key) is not False:
+            raise ValueError(f'physical boundary permission evidence not closed: {key}')
+    if independent.get('pass') is not True or independent.get('failed_checks') != []:
+        raise ValueError('independent physical-boundary audit did not pass cleanly')
+    if int(independent.get('post_development_rows_observed', -1)) != 0:
+        raise ValueError('independent physical-boundary audit observed post-development rows')
+    if source_verification.get('status') != 'VERIFIED':
+        raise ValueError('physical-boundary source verification is not VERIFIED')
 
-    g3_cols = """{
-      'exchange':'VARCHAR','code':'VARCHAR','trade_date':'DATE','open':'DOUBLE','high':'DOUBLE','low':'DOUBLE',
-      'close':'DOUBLE','volume_shares':'DOUBLE','amount_cny':'DOUBLE'
-    }"""
-    g4_cols = """{
-      'exchange':'VARCHAR','code':'VARCHAR','trade_date':'DATE','tradable':'INTEGER','risk_warning':'INTEGER',
-      'preclose':'DOUBLE','pct_chg':'DOUBLE','limit_rule':'VARCHAR','limit_up_rate':'DOUBLE','limit_down_rate':'DOUBLE','evidence':'VARCHAR'
-    }"""
+    g3_path = package / 'development_g3.parquet'
+    g4_path = package / 'development_g4.parquet'
+    oof_path = package / 'c007_oof_predictions.parquet'
+    oof_sha = sha256_file(oof_path)
 
     con = duckdb.connect()
     con.execute("PRAGMA threads=4")
     con.execute("PRAGMA memory_limit='6GB'")
-    con.execute(f"PRAGMA temp_directory={q(str(out / 'duckdb-tmp'))}")
+    temp_dir = out / 'duckdb-tmp'
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    con.execute(f"PRAGMA temp_directory={q(str(temp_dir))}")
 
-    g3_list = sql_file_list(g3_files)
-    g4_list = sql_file_list(g4_files)
+    con.execute(f"CREATE TEMP VIEW g3 AS SELECT * FROM read_parquet({q(str(g3_path))})")
+    con.execute(f"CREATE TEMP VIEW g4_dev AS SELECT * FROM read_parquet({q(str(g4_path))})")
+    con.execute(f"""
+      CREATE TEMP VIEW oof AS
+      SELECT trade_date, exchange, code, split_id, prediction,
+             excess_return_20d, excess_return_5d, stock_total_return_20d, benchmark_return_20d
+      FROM read_parquet({q(str(oof_path))})
+    """)
+
+    start = scope['development_decision_date_min']
     cutoff = scope['development_decision_date_max']
+    g3_bounds = rows_as_dicts(con.execute("SELECT min(trade_date) AS min_date,max(trade_date) AS max_date,count(*) FILTER(WHERE trade_date<DATE ? OR trade_date>DATE ?)::BIGINT AS outside_rows FROM g3", [start, cutoff]))[0]
+    g4_bounds = rows_as_dicts(con.execute("SELECT min(trade_date) AS min_date,max(trade_date) AS max_date,count(*) FILTER(WHERE trade_date<DATE ? OR trade_date>DATE ?)::BIGINT AS outside_rows FROM g4_dev", [start, cutoff]))[0]
+    oof_bounds = rows_as_dicts(con.execute("SELECT min(trade_date) AS min_date,max(trade_date) AS max_date,count(*) FILTER(WHERE trade_date<DATE ? OR trade_date>DATE ?)::BIGINT AS outside_rows,count(*)::BIGINT AS rows,count(DISTINCT trade_date)::BIGINT AS decision_days,count(DISTINCT split_id)::BIGINT AS split_count FROM oof", [start, cutoff]))[0]
+    for name, bounds in [('g3',g3_bounds),('g4',g4_bounds),('oof',oof_bounds)]:
+        if int(bounds['outside_rows']) != 0 or str(bounds['min_date']) < start or str(bounds['max_date']) > cutoff:
+            raise ValueError(f'physical date boundary failed for {name}: {bounds}')
 
-    con.execute(f"""
-      CREATE TEMP VIEW g3 AS
-      SELECT exchange, code, trade_date, open, high, low, close, volume_shares, amount_cny
-      FROM read_csv({g3_list}, header=true, columns={g3_cols}, compression='gzip', union_by_name=true)
-      WHERE trade_date BETWEEN DATE '2015-01-05' AND DATE {q(cutoff)}
-    """)
-    con.execute(f"""
-      CREATE TEMP VIEW g4_dev AS
-      SELECT exchange, code, trade_date, tradable, risk_warning, preclose, pct_chg,
-             limit_rule, limit_up_rate, limit_down_rate
-      FROM read_csv({g4_list}, header=true, columns={g4_cols}, compression='gzip', union_by_name=true)
-      WHERE trade_date BETWEEN DATE '2015-01-05' AND DATE {q(cutoff)}
-    """)
-
-    max_g3 = str(scalar(con, 'SELECT max(trade_date) FROM g3'))
-    max_g4 = str(scalar(con, 'SELECT max(trade_date) FROM g4_dev'))
-    if max_g3 > cutoff or max_g4 > cutoff:
-        raise ValueError(f'development date guard failed g3={max_g3} g4={max_g4} cutoff={cutoff}')
+    pop = basis['population_reconciliation']
+    if int(oof_bounds['rows']) != int(pop['expected_c007_oof_rows']):
+        raise ValueError('C007 OOF row count drift')
+    if int(oof_bounds['decision_days']) != int(pop['expected_c007_oof_decision_days']):
+        raise ValueError('C007 OOF decision-day count drift')
+    if int(oof_bounds['split_count']) != int(pop['expected_c007_oof_split_count']):
+        raise ValueError('C007 OOF split count drift')
+    if int(scalar(con, 'SELECT count(*) FROM oof WHERE prediction IS NULL OR NOT isfinite(prediction)')) != 0:
+        raise ValueError('OOF contains invalid prediction')
 
     universe_rows = int(scalar(con, 'SELECT count(*) FROM g3 WHERE close > 0 AND close < 70'))
-    expected_universe_rows = int(basis['population_reconciliation']['expected_development_universe_rows'])
+    expected_universe_rows = int(pop['expected_development_universe_rows'])
     if universe_rows != expected_universe_rows:
         raise ValueError(f'development universe row mismatch expected={expected_universe_rows} actual={universe_rows}')
 
@@ -141,19 +159,6 @@ def main() -> int:
       x AS (SELECT trade_date, lead(trade_date) OVER (ORDER BY trade_date) AS next_trade_date FROM d)
       SELECT * FROM x
     ''')
-
-    con.execute(f"""
-      CREATE TEMP VIEW oof AS
-      SELECT trade_date, exchange, code, split_id, prediction,
-             excess_return_20d, excess_return_5d, stock_total_return_20d, benchmark_return_20d
-      FROM read_parquet({q(str(oof))})
-    """)
-
-    oof_max = str(scalar(con, 'SELECT max(trade_date) FROM oof'))
-    if oof_max > cutoff:
-        raise ValueError(f'OOF contains post-development date {oof_max}')
-    if int(scalar(con, 'SELECT count(*) FROM oof WHERE prediction IS NULL OR NOT isfinite(prediction)')) != 0:
-        raise ValueError('OOF contains invalid prediction')
 
     con.execute('''
       CREATE TEMP TABLE joined AS
@@ -339,12 +344,14 @@ def main() -> int:
             )
 
     result = {
-      'schema_version': 1,
+      'schema_version': 2,
       'audit_id': basis['audit_id'],
-      'status': 'PASS_DEVELOPMENT_ONLY_EXECUTABILITY_AUDIT',
+      'status': 'PASS_DEVELOPMENT_ONLY_EXECUTABILITY_AUDIT_PHYSICAL_INPUT',
       'contract_fingerprint': expected_fp,
       'permissions': {
         'development_only': True,
+        'physical_input_only': True,
+        'broad_stage2_inputs_used': False,
         'oos_prediction_performed': False,
         'oos_label_access_performed': False,
         'model_loaded': False,
@@ -352,11 +359,21 @@ def main() -> int:
         'final_lockbox_access_performed': False
       },
       'input_verification': {
+        'physical_boundary_run_id': physical['run_id'],
+        'physical_boundary_artifact_id': physical['artifact_id'],
+        'physical_boundary_artifact_digest': physical['artifact_digest'],
+        'physical_boundary_contract_fingerprint': physical['boundary_contract_fingerprint'],
+        'package_file_hashes_verified': True,
+        'package_hash_map_verified': True,
+        'physical_boundary_manifest_verified': True,
+        'physical_boundary_independent_audit_verified': True,
+        'source_archive_verification_verified': True,
         'c007_oof_file_sha256': oof_sha,
-        'g3_files_2015_2022': len(g3_files),
-        'g4_state_shards': len(g4_files),
-        'max_g3_row_retained': max_g3,
-        'max_g4_row_retained': max_g4,
+        'g3_min_date': str(g3_bounds['min_date']),
+        'g3_max_date': str(g3_bounds['max_date']),
+        'g4_min_date': str(g4_bounds['min_date']),
+        'g4_max_date': str(g4_bounds['max_date']),
+        'post_development_rows_observed': int(g3_bounds['outside_rows']) + int(g4_bounds['outside_rows']) + int(oof_bounds['outside_rows']),
         'development_universe_rows_recomputed': universe_rows,
         'development_universe_rows_expected': expected_universe_rows
       },
@@ -369,7 +386,8 @@ def main() -> int:
         'hard_unexecutable_entry': 'entry tradable=0 or entry volume_shares<=0',
         'one_price_limit_up': 'diagnostic exact-cent limit-price proxy using frozen G4 preclose/rate and G3 one-price positive-volume bar',
         'contribution_metrics_are_not_a_replacement_or_backfill_backtest': True,
-        'no_outcome_dependent_model_change_allowed': True
+        'no_outcome_dependent_model_change_allowed': True,
+        'rerun_may_validate_prior_research_only_finding_but_must_not_change_c007_or_oos_contract': True
       }
     }
 
@@ -379,7 +397,11 @@ def main() -> int:
       result_path.name: sha256_file(result_path),
       daily_csv.name: sha256_file(daily_csv),
       contract_path.name: sha256_file(contract_path),
-      'oof_predictions.parquet': oof_sha
+      'c007_oof_predictions.parquet': oof_sha,
+      'development_g3.parquet': sha256_file(g3_path),
+      'development_g4.parquet': sha256_file(g4_path),
+      'development_physical_boundary_manifest.json': sha256_file(package / 'development_physical_boundary_manifest.json'),
+      'development_physical_boundary_independent_audit.json': sha256_file(package / 'development_physical_boundary_independent_audit.json')
     }
     (out / 'artifact_hashes.json').write_text(json.dumps(hashes, sort_keys=True, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
