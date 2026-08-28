@@ -1,0 +1,66 @@
+{
+  "schema_version": 2,
+  "status": "DEVELOPMENT_ONLY_READ_ONLY_AUDIT_PHYSICAL_INPUT_RERUN",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "510aab7d557fe998a88d46426ca8384dc075362fe1340bb0a3db5b0a05e09652",
+  "fingerprint_basis": {
+    "audit_id": "STAGE4_C007_DEVELOPMENT_EXECUTABILITY_AUDIT_V2_PHYSICAL_INPUT_RERUN",
+    "integration_base_sha": "c484b6f8e0b404f790995274b768fdde3000bd8d",
+    "scope": {
+      "development_decision_date_min": "2015-01-05",
+      "development_decision_date_max": "2022-12-30",
+      "oof_rows_are_frozen_valid_label_20d_test_rows_only": true,
+      "physical_development_input_required": true,
+      "broad_stage2_inputs_forbidden": true,
+      "oos_prediction_forbidden": true,
+      "oos_label_access_forbidden": true,
+      "model_load_forbidden": true,
+      "fit_retrain_tune_reselect_forbidden": true,
+      "final_lockbox_access_forbidden": true
+    },
+    "inputs": {
+      "development_physical_boundary": {
+        "run_id": 33173676430,
+        "artifact_id": 9686675036,
+        "artifact_name": "stage4-development-physical-boundary-v1",
+        "artifact_digest": "sha256:feac72bb126504b27063ca86e8ce386376e813fa422c8552dd809135194fe6c5",
+        "boundary_contract_fingerprint": "a54b2beddd869748d2a00a8b08f8812ec9e344f7a0dd85064ad4a37f37bbe268",
+        "files": {
+          "development_g3.parquet": "024ac1d46d2a58ddd0b60c6865478c2a1855b853315cea123493211eda9c58e5",
+          "development_g4.parquet": "8b82791dbd4c0832a21b29811cefffdee3f8b037ed98f7a2618826d7b77a0b89",
+          "c007_oof_predictions.parquet": "9cd44a90a9f11907e8b79b86d33556555753b24f5511efdf6569c58cc51f8a4f",
+          "development_physical_boundary_independent_audit.json": "5e0604b2a3745befc64a90c59ce20b8a6b0195e634d076108d90703d7f1f9786",
+          "development_physical_boundary_manifest.json": "ab5433832924ba4781c4c553299b884fc789528ec5926ed2cb17d2ad21a40f5f",
+          "source_archive_verification.json": "03842f9d0c6b60dc7d8ef1cc42fb378d56bc5bdf3df885319f5dc5407ae569d9"
+        }
+      }
+    },
+    "population_reconciliation": {
+      "stage4_development_universe_rule": "SSE_MAIN_A_OR_SZSE_MAIN_A_AND_0_LT_RAW_CLOSE_LT_70_AND_2015_01_05_TO_2022_12_30",
+      "expected_development_universe_rows": 5197648,
+      "expected_c007_oof_rows": 4427609,
+      "expected_c007_oof_decision_days": 1605,
+      "expected_c007_oof_split_count": 5,
+      "oof_rank_population": "FROZEN_C007_OOF_VALID_LABEL_20D_ROWS_ONLY_MATCHING_ORIGINAL_DEVELOPMENT_CV_ECONOMIC_DIAGNOSTIC"
+    },
+    "selection": {
+      "coverages": [0.05, 0.1, 0.2],
+      "per_decision_date_k": "ceil(coverage*n_oof_rows_on_date)",
+      "ordering": "prediction_desc_then_exchange_asc_code_asc",
+      "nonoverlap_anchor": "within_each_frozen_split_first_oof_test_session_then_every_20th_oof_test_session"
+    },
+    "flags": {
+      "decision_low_price_lt2": "decision_day_raw_close < 2.0",
+      "hard_unexecutable_entry": "entry_day_tradable_eq_0 OR entry_day_volume_shares_le_0",
+      "one_price_entry": "entry_day_high == entry_day_low",
+      "one_price_limit_up": "one_price_entry AND volume_shares_gt_0 AND close_equals_half_up_cent_round(preclose*(1+limit_up_rate))",
+      "one_price_limit_down": "one_price_entry AND volume_shares_gt_0 AND close_equals_half_up_cent_round(preclose*(1-limit_down_rate))",
+      "high_execution_risk_union": "decision_day_tradable_eq_0 OR decision_day_risk_warning_eq_1 OR hard_unexecutable_entry OR entry_day_risk_warning_eq_1 OR one_price_limit_up"
+    },
+    "outputs": [
+      "c007_development_executability_audit.json",
+      "c007_top_bucket_daily_exposure.csv",
+      "artifact_hashes.json"
+    ]
+  }
+}
