@@ -1,14 +1,14 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "status": "PRE_PREDICTION_PHYSICAL_OOS_BOUNDARY_COMPILER_NON_LABEL_NON_CONSUMING",
   "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
-  "fingerprint": "508f32767ecd12fab85e432e17eecb4f920822de1b3a5bef215e8e08d47bb8c8",
+  "fingerprint": "67e8555d3a9212a003a8293dc381cce0f7294917ef72875fed3218f240e0c255",
   "fingerprint_basis": {
-    "boundary_id": "STAGE4_ALPHA_V1_OOS_PHYSICAL_BOUNDARY_V1",
+    "boundary_id": "STAGE4_ALPHA_V1_OOS_PHYSICAL_BOUNDARY_V1_1",
     "integration_base_sha": "c484b6f8e0b404f790995274b768fdde3000bd8d",
     "oos_authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
     "source_cv_authorization_fingerprint": "2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c",
-    "purpose": "Compile broad frozen research inputs into a physically OOS-only, pre-prediction, non-label bundle inside the authorized workflow_dispatch before single-use execution.",
+    "purpose": "Compile broad frozen research inputs into a physically OOS-only pre-prediction bundle, including independent execution-state evidence, inside the authorized workflow_dispatch before single-use execution.",
     "scope": {
       "decision_start": "2023-01-03",
       "decision_end": "2024-12-31",
@@ -37,6 +37,11 @@
         "artifact_name": "stage2-g3-sse-601313-repaired-ohlcv",
         "artifact_zip_sha256": "bf977d4f379d421bd198865b90df90caef7ba6cfb5d6d1af96e5487300c1a2f8"
       },
+      "stage2_g4": {
+        "artifact_id": 8651786270,
+        "artifact_name": "stage2-g4-sse-601313-repaired-state",
+        "artifact_zip_sha256": "3343a1a42e5debf19d4a9595067cad50d808c979c8ae98f0ae8abbc09f1772cd"
+      },
       "stage2_g5": {
         "artifact_id": 8651976824,
         "artifact_name": "stage2-g5-final-validation",
@@ -53,11 +58,17 @@
     "outputs": {
       "features": "oos_features.parquet",
       "market": "oos_market.parquet",
+      "execution_state": "oos_execution_state.parquet",
       "lifecycle": "oos_lifecycle.parquet",
       "manifest": "oos_physical_boundary_manifest.json",
       "source_verification": "source_archive_verification.json",
       "independent_audit": "oos_physical_boundary_independent_audit.json",
       "hashes": "artifact_hashes.json"
+    },
+    "supersedes": {
+      "boundary_id": "STAGE4_ALPHA_V1_OOS_PHYSICAL_BOUNDARY_V1",
+      "fingerprint": "508f32767ecd12fab85e432e17eecb4f920822de1b3a5bef215e8e08d47bb8c8",
+      "reason": "ADD_PHYSICALLY_BOUNDED_G4_EXECUTION_STATE_BEFORE_ANY_OOS_PREDICTION_OR_LABEL_ACCESS"
     }
   }
 }
