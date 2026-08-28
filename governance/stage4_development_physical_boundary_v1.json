@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "status": "BOUNDARY_COMPILER_DEVELOPMENT_ONLY_NON_EVALUATION",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "9b930365f88f123cec00eb9d08d770b5e9fd242f4a83eada7151fa2edffaa3fa",
+  "fingerprint_basis": {
+    "boundary_id": "STAGE4_DEVELOPMENT_PHYSICAL_BOUNDARY_V1",
+    "integration_base_sha": "c484b6f8e0b404f790995274b768fdde3000bd8d",
+    "purpose": "Compile immutable broad frozen research inputs into a physically development-only package for downstream read-only audits.",
+    "scope": {
+      "development_start": "2015-01-05",
+      "development_end": "2022-12-30",
+      "post_development_rows_in_output_forbidden": true,
+      "oos_prediction_forbidden": true,
+      "oos_label_access_forbidden": true,
+      "model_load_forbidden": true,
+      "fit_retrain_tune_reselect_forbidden": true,
+      "final_lockbox_evaluation_forbidden": true,
+      "business_metrics_forbidden": true
+    },
+    "inputs": {
+      "c007_oof": {
+        "run_id": 31898964450,
+        "artifact_id": 9250719606,
+        "artifact_name": "stage4-alpha-v1-cv-oof-C007",
+        "artifact_digest": "sha256:3676beb6d637ca0bfa4a4676d9b83f0468ff2d30152e669fc5a8a4b20a761fd7",
+        "oof_file_sha256": "9cd44a90a9f11907e8b79b86d33556555753b24f5511efdf6569c58cc51f8a4f",
+        "expected_rows": 4427609,
+        "expected_decision_days": 1605,
+        "expected_split_count": 5
+      },
+      "stage2_g3": {
+        "run_id": 30263014914,
+        "artifact_id": 8651700277,
+        "artifact_name": "stage2-g3-sse-601313-repaired-ohlcv",
+        "artifact_digest": "sha256:bf977d4f379d421bd198865b90df90caef7ba6cfb5d6d1af96e5487300c1a2f8",
+        "source_coverage_start": "2015-01-01",
+        "source_coverage_end": "2026-07-24"
+      },
+      "stage2_g4": {
+        "run_id": 30263162968,
+        "artifact_id": 8651786270,
+        "artifact_name": "stage2-g4-sse-601313-repaired-state",
+        "artifact_digest": "sha256:3343a1a42e5debf19d4a9595067cad50d808c979c8ae98f0ae8abbc09f1772cd",
+        "source_coverage_start": "2015-01-01",
+        "source_coverage_end": "2026-07-24"
+      }
+    },
+    "population_invariants": {
+      "stage4_development_universe_rule": "SSE_MAIN_A_OR_SZSE_MAIN_A_AND_0_LT_RAW_CLOSE_LT_70_AND_2015_01_05_TO_2022_12_30",
+      "expected_development_universe_rows": 5197648
+    },
+    "outputs": {
+      "g3": "development_g3.parquet",
+      "g4": "development_g4.parquet",
+      "c007_oof": "c007_oof_predictions.parquet",
+      "manifest": "development_physical_boundary_manifest.json",
+      "hashes": "artifact_hashes.json"
+    }
+  }
+}
