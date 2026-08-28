@@ -6,8 +6,11 @@ on:
       - agent/stage3-clean-integration
     paths:
       - 'governance/stage4_alpha_v1_oos_validation_execution_contract.json'
+      - 'governance/stage4_alpha_v1_oos_physical_boundary_contract.json'
       - 'scripts/run_stage4_alpha_v1_oos_validation.py'
       - 'scripts/audit_stage4_alpha_v1_oos_validation.py'
+      - 'scripts/build_stage4_alpha_v1_oos_physical_boundary.py'
+      - 'scripts/audit_stage4_alpha_v1_oos_physical_boundary.py'
       - '.github/workflows/stage2-final-freeze-v325.yml'
   workflow_dispatch:
     inputs:
@@ -38,6 +41,7 @@ env:
   EXECUTION_BRANCH_REF: 'refs/heads/agent/stage4-alpha-v1-oos-validation-execution'
   AUTH_FP: 'd260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d'
   EXEC_FP: '224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177'
+  BOUNDARY_FP: '508f32767ecd12fab85e432e17eecb4f920822de1b3a5bef215e8e08d47bb8c8'
   CONFIRM_TOKEN: 'CONSUME_D260F117_SINGLE_OOS_RUN'
   MATRIX_AID: '9168728086'
   MATRIX_ZIP_SHA: 'a4d3a10165bf3b369c77c7b4f77e97663bc3125f506d9203388e6f63198bda4a'
@@ -92,11 +96,22 @@ jobs:
           import hashlib,json,os
           auth=json.load(open('governance/stage4_alpha_v1_oos_validation_authorization.json',encoding='utf-8'))
           exe=json.load(open('governance/stage4_alpha_v1_oos_validation_execution_contract.json',encoding='utf-8'))
+          boundary=json.load(open('governance/stage4_alpha_v1_oos_physical_boundary_contract.json',encoding='utf-8'))
           state=json.load(open('governance/accepted_project_state.json',encoding='utf-8'))
           ah=hashlib.sha256(json.dumps(auth['fingerprint_basis'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
           eh=hashlib.sha256(json.dumps(exe['fingerprint_basis'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          bh=hashlib.sha256(json.dumps(boundary['fingerprint_basis'],sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
           assert ah==auth['fingerprint']==os.environ['AUTH_FP']
           assert eh==exe['fingerprint']==os.environ['EXEC_FP']
+          assert bh==boundary['fingerprint']==os.environ['BOUNDARY_FP']
+          assert boundary['status']=='PRE_PREDICTION_PHYSICAL_OOS_BOUNDARY_COMPILER_NON_LABEL_NON_CONSUMING'
+          bs=boundary['fingerprint_basis']['scope']
+          assert bs['oos_prediction_forbidden'] is True
+          assert bs['oos_label_construction_forbidden'] is True
+          assert bs['oos_label_value_read_forbidden'] is True
+          assert bs['model_load_forbidden'] is True
+          assert bs['authorization_consumption_forbidden'] is True
+          assert bs['final_lockbox_access_forbidden'] is True
           assert exe['fingerprint_basis']['version']=='V1.1'
           assert exe['fingerprint_basis']['authority']['oos_authorization_fingerprint']==os.environ['AUTH_FP']
           assert exe['fingerprint_basis']['execution_semantics']['pr_events_are_static_and_synthetic_only'] is True
@@ -117,15 +132,22 @@ jobs:
           assert p['live_signal_allowed'] is False
           assert p['main_merge_allowed'] is False
           assert p['authoritative_model_output_allowed'] is False
-          print(json.dumps({'authorization':ah,'execution_contract':eh,'execution_version':'V1.1','economic_label_validity_lookahead':False,'oos_label_access':False,'label_bearing_runs_remaining':1}))
+          print(json.dumps({'authorization':ah,'execution_contract':eh,'physical_boundary_contract':bh,'execution_version':'V1.1','economic_label_validity_lookahead':False,'oos_label_access':False,'label_bearing_runs_remaining':1}))
           PY
 
       - name: Static source guard - no training API and no PR-path OOS execution
         shell: bash
         run: |
           set -euo pipefail
-          python -m py_compile scripts/run_stage4_alpha_v1_oos_validation.py scripts/audit_stage4_alpha_v1_oos_validation.py
+          python -m py_compile \
+            scripts/run_stage4_alpha_v1_oos_validation.py \
+            scripts/audit_stage4_alpha_v1_oos_validation.py \
+            scripts/build_stage4_alpha_v1_oos_physical_boundary.py \
+            scripts/audit_stage4_alpha_v1_oos_physical_boundary.py
           ! grep -n -E '\.fit\(|fit_predict\(|partial_fit\(' scripts/run_stage4_alpha_v1_oos_validation.py scripts/audit_stage4_alpha_v1_oos_validation.py
+          ! grep -n -E 'pickle|model\.predict|predict_proba|oos_labels|excess_return|authorization_consumption' \
+            scripts/build_stage4_alpha_v1_oos_physical_boundary.py \
+            scripts/audit_stage4_alpha_v1_oos_physical_boundary.py
           grep -F "if: github.event_name == 'workflow_dispatch'" "$CARRIER_PATH"
           ! grep -n -E '^\s*(push|schedule):' "$CARRIER_PATH"
           test "$(grep -E -c '^  workflow_dispatch:$' "$CARRIER_PATH")" -eq 1
@@ -144,12 +166,189 @@ jobs:
           set -euo pipefail
           test ! -e build/oos
           test ! -e build/oos-work
+          test ! -e build/oos-boundary
           test ! -e oos_predictions.parquet
           test ! -e authorization_consumption.json
 
-  single-label-bearing-oos-execution:
+  compile-oos-physical-boundary:
     if: github.event_name == 'workflow_dispatch'
     needs: pre-access-static-and-synthetic
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Fail closed unless dispatch identity is exact before broad source download
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "$EXECUTION_BRANCH_REF"
+          test "${{ inputs.authorization_fingerprint }}" = "$AUTH_FP"
+          test "${{ inputs.execution_contract_fingerprint }}" = "$EXEC_FP"
+          test "${{ inputs.confirmation }}" = "$CONFIRM_TOKEN"
+          echo "${{ inputs.execution_head }}" | grep -Eq '^[0-9a-f]{40}$'
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.execution_head }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify exact reviewed head before broad source download
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ inputs.execution_head }}"
+          test -z "$(git status --porcelain)"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+
+      - name: Install boundary-only runtime
+        run: python -m pip install --disable-pip-version-check duckdb==1.3.2
+
+      - name: Re-prove non-consuming boundary authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json,os
+          p='governance/stage4_alpha_v1_oos_physical_boundary_contract.json'
+          c=json.load(open(p,encoding='utf-8'))
+          fp=hashlib.sha256(json.dumps(c['fingerprint_basis'],sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
+          assert fp==c['fingerprint']==os.environ['BOUNDARY_FP']
+          s=c['fingerprint_basis']['scope']
+          assert s['decision_start']=='2023-01-03' and s['decision_end']=='2024-12-31'
+          assert s['final_lockbox_start']=='2025-01-02'
+          assert s['oos_prediction_forbidden'] is True
+          assert s['oos_label_construction_forbidden'] is True
+          assert s['oos_label_value_read_forbidden'] is True
+          assert s['model_load_forbidden'] is True
+          assert s['authorization_consumption_forbidden'] is True
+          assert s['final_lockbox_access_forbidden'] is True
+          print(json.dumps({'boundary_contract':fp,'prediction_authority':False,'label_authority':False,'consumption_authority':False}))
+          PY
+          ! grep -n -E 'pickle|model\.predict|predict_proba|oos_labels|excess_return|authorization_consumption' \
+            scripts/build_stage4_alpha_v1_oos_physical_boundary.py \
+            scripts/audit_stage4_alpha_v1_oos_physical_boundary.py
+
+      - name: Download and verify broad immutable sources only inside trusted boundary compiler
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/oos-boundary-sources/matrix build/oos-boundary-sources/g3 build/oos-boundary-sources/g5 build/oos-boundary-sources/g2 build/oos-boundary build/oos-boundary-work
+          download() {
+            aid="$1"; sha="$2"; zip="$3"; dir="$4"
+            curl --fail --location --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${aid}/zip" -o "$zip"
+            echo "${sha}  ${zip}" | sha256sum -c -
+            unzip -q "$zip" -d "$dir"
+          }
+          download "$MATRIX_AID" "$MATRIX_ZIP_SHA" build/oos-boundary-sources/matrix.zip build/oos-boundary-sources/matrix
+          download "$G3_AID" "$G3_ZIP_SHA" build/oos-boundary-sources/g3.zip build/oos-boundary-sources/g3
+          download "$G5_AID" "$G5_ZIP_SHA" build/oos-boundary-sources/g5.zip build/oos-boundary-sources/g5
+          download "$G2_AID" "$G2_ZIP_SHA" build/oos-boundary-sources/g2.zip build/oos-boundary-sources/g2
+          echo "${MATRIX_SHA}  build/oos-boundary-sources/matrix/stage4_v1_2_feature_matrix.parquet" | sha256sum -c -
+
+      - name: Persist source archive verification
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          c=json.load(open('governance/stage4_alpha_v1_oos_physical_boundary_contract.json',encoding='utf-8'))
+          i=c['fingerprint_basis']['inputs']
+          artifacts={}
+          for key,env_aid,env_sha in [
+            ('feature_matrix','MATRIX_AID','MATRIX_ZIP_SHA'),
+            ('stage2_g3','G3_AID','G3_ZIP_SHA'),
+            ('stage2_g5','G5_AID','G5_ZIP_SHA'),
+            ('stage2_g2','G2_AID','G2_ZIP_SHA'),
+          ]:
+            assert int(os.environ[env_aid])==int(i[key]['artifact_id'])
+            assert os.environ[env_sha]==i[key]['artifact_zip_sha256']
+            artifacts[key]={'artifact_id':int(os.environ[env_aid]),'archive_sha256':os.environ[env_sha],'verified':True}
+          out={'schema_version':1,'status':'VERIFIED','boundary_contract_fingerprint':c['fingerprint'],'artifacts':artifacts}
+          Path('build/oos-boundary/source_archive_verification.json').write_text(json.dumps(out,sort_keys=True,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(out,indent=2))
+          PY
+
+      - name: Compile physically OOS-only non-label package
+        run: |
+          python scripts/build_stage4_alpha_v1_oos_physical_boundary.py \
+            --contract governance/stage4_alpha_v1_oos_physical_boundary_contract.json \
+            --source-cv-authorization governance/stage4_alpha_v1_training_execution_authorization.json \
+            --source-verification build/oos-boundary/source_archive_verification.json \
+            --matrix-root build/oos-boundary-sources/matrix \
+            --g3-root build/oos-boundary-sources/g3 \
+            --g5-root build/oos-boundary-sources/g5 \
+            --g2-root build/oos-boundary-sources/g2 \
+            --work-dir build/oos-boundary-work \
+            --out build/oos-boundary
+
+      - name: Independently audit only the physical OOS package
+        run: |
+          python scripts/audit_stage4_alpha_v1_oos_physical_boundary.py \
+            --contract governance/stage4_alpha_v1_oos_physical_boundary_contract.json \
+            --source-cv-authorization governance/stage4_alpha_v1_training_execution_authorization.json \
+            --source-verification build/oos-boundary/source_archive_verification.json \
+            --package-dir build/oos-boundary \
+            --out build/oos-boundary/oos_physical_boundary_independent_audit.json
+
+      - name: Seal exact physical package and prove zero authorization consumption
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('build/oos-boundary')
+          c=json.load(open('governance/stage4_alpha_v1_oos_physical_boundary_contract.json',encoding='utf-8'))
+          o=c['fingerprint_basis']['outputs']
+          expected={o[k] for k in ['features','market','lifecycle','manifest','source_verification','independent_audit','hashes']}
+          have={p.name for p in root.iterdir() if p.is_file()}
+          assert have==expected,(have,expected)
+          manifest=json.load(open(root/o['manifest'],encoding='utf-8'))
+          audit=json.load(open(root/o['independent_audit'],encoding='utf-8'))
+          assert manifest['status']=='PHYSICALLY_OOS_ONLY_PRE_PREDICTION_NON_LABEL'
+          assert audit['pass'] is True and audit['failed_checks']==[]
+          assert audit['post_oos_rows_observed']==0
+          assert audit['oos_prediction_executed'] is False
+          assert audit['oos_label_constructed'] is False
+          assert audit['oos_label_value_read'] is False
+          assert audit['model_loaded'] is False
+          assert audit['authorization_consumed'] is False
+          assert audit['final_lockbox_accessed'] is False
+          assert not (root/'authorization_consumption.json').exists()
+          assert not (root/'oos_predictions.parquet').exists()
+          assert not (root/'oos_labels.parquet').exists()
+          def sha(p):
+            h=hashlib.sha256()
+            with p.open('rb') as f:
+              for b in iter(lambda:f.read(1024*1024),b''): h.update(b)
+            return h.hexdigest()
+          final={p.name:sha(p) for p in sorted(root.iterdir()) if p.is_file() and p.name!=o['hashes']}
+          (root/o['hashes']).write_text(json.dumps(final,sort_keys=True,indent=2)+'\n',encoding='utf-8')
+          assert set(final)==expected-{o['hashes']}
+          print(json.dumps({'status':'SEALED_PHYSICAL_OOS_PRE_PREDICTION','boundary_contract':c['fingerprint'],'post_oos_rows':0,'oos_prediction_executed':False,'oos_label_value_read':False,'authorization_consumed':False,'final_lockbox_accessed':False,'hashes':final},indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage4-alpha-v1-oos-physical-boundary
+          path: build/oos-boundary
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90
+
+  single-label-bearing-oos-execution:
+    if: github.event_name == 'workflow_dispatch'
+    needs:
+      - pre-access-static-and-synthetic
+      - compile-oos-physical-boundary
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     steps:
@@ -192,11 +391,14 @@ jobs:
           import hashlib,json,os
           auth=json.load(open('governance/stage4_alpha_v1_oos_validation_authorization.json',encoding='utf-8'))
           exe=json.load(open('governance/stage4_alpha_v1_oos_validation_execution_contract.json',encoding='utf-8'))
+          boundary=json.load(open('governance/stage4_alpha_v1_oos_physical_boundary_contract.json',encoding='utf-8'))
           state=json.load(open('governance/accepted_project_state.json',encoding='utf-8'))
           ah=hashlib.sha256(json.dumps(auth['fingerprint_basis'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
           eh=hashlib.sha256(json.dumps(exe['fingerprint_basis'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          bh=hashlib.sha256(json.dumps(boundary['fingerprint_basis'],sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
           assert ah==auth['fingerprint']==os.environ['AUTH_FP']
           assert eh==exe['fingerprint']==os.environ['EXEC_FP']
+          assert bh==boundary['fingerprint']==os.environ['BOUNDARY_FP']
           assert exe['fingerprint_basis']['version']=='V1.1'
           assert exe['fingerprint_basis']['execution_semantics']['economic_selection_population']=='ALL_PREDICTED_ROWS_ON_REBALANCE_DATE_BEFORE_ANY_LABEL_VALIDITY_FILTER'
           assert exe['fingerprint_basis']['metric_semantics']['bucket_size']=='CEIL_COVERAGE_TIMES_ALL_PREDICTION_ROWS_ON_REBALANCE_DATE'
