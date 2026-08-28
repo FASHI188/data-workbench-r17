@@ -2,7 +2,7 @@
   "schema_version": 1,
   "status": "BOUNDARY_COMPILER_DEVELOPMENT_ONLY_NON_EVALUATION",
   "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
-  "fingerprint": "9b930365f88f123cec00eb9d08d770b5e9fd242f4a83eada7151fa2edffaa3fa",
+  "fingerprint": "a54b2beddd869748d2a00a8b08f8812ec9e344f7a0dd85064ad4a37f37bbe268",
   "fingerprint_basis": {
     "boundary_id": "STAGE4_DEVELOPMENT_PHYSICAL_BOUNDARY_V1",
     "integration_base_sha": "c484b6f8e0b404f790995274b768fdde3000bd8d",
@@ -55,7 +55,9 @@
       "g4": "development_g4.parquet",
       "c007_oof": "c007_oof_predictions.parquet",
       "manifest": "development_physical_boundary_manifest.json",
-      "hashes": "artifact_hashes.json"
+      "hashes": "artifact_hashes.json",
+      "source_verification": "source_archive_verification.json",
+      "independent_audit": "development_physical_boundary_independent_audit.json"
     }
   }
 }
