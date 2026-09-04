@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "ledger_id": "STAGE4_ALPHA_V1_OOS_AUTHORIZATION_LEDGER_V1",
+  "ledger_contract_fingerprint": "81840cb1ba16e9c14238117e66adb92fc3493b1824c1c6a78ec61d63f74de8bd",
+  "authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
+  "execution_contract_fingerprint": "224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177",
+  "ledger_branch": "governance/stage4-alpha-v1-oos-consumption-ledger",
+  "ledger_path": "governance/stage4_alpha_v1_oos_authorization_ledger.json",
+  "status": "UNCONSUMED",
+  "reservation": null,
+  "consumption": null,
+  "history": [
+    {
+      "transition": "INITIALIZED_UNCONSUMED_AFTER_INDEPENDENT_ZERO_ACCESS_PROOF",
+      "evidence_runs": [33858867504, 33862541324],
+      "oos_prediction_computed": false,
+      "oos_label_value_read": false,
+      "authorization_consumed": false
+    }
+  ]
+}
