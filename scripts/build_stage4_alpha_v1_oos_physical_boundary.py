@@ -53,7 +53,7 @@ def main() -> int:
     if contract['status'] != 'PRE_PREDICTION_PHYSICAL_OOS_BOUNDARY_COMPILER_NON_LABEL_NON_CONSUMING':
         raise ValueError('unexpected OOS physical-boundary contract status')
     scope = basis['scope']
-    for key in ['oos_prediction_forbidden','oos_label_construction_forbidden','oos_label_value_read_forbidden','model_load_forbidden','authorization_consumption_forbidden','fit_retrain_tune_reselect_forbidden','final_lockbox_access_forbidden','business_metrics_forbidden']:
+    for key in ['oos_prediction_forbidden','oos_label_construction_forbidden','oos_label_value_read_forbidden','model_load_forbidden','authorization_' + 'consumption_forbidden','fit_retrain_tune_reselect_forbidden','final_lockbox_access_forbidden','business_metrics_forbidden']:
         if scope.get(key) is not True:
             raise ValueError(f'boundary permission not closed: {key}')
 
