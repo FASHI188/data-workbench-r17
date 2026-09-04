@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_PRE_ACCESS_RUNTIME_VETO_V1_NO_OOS_EXECUTION",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "c2debc5fbf5fcad5454461d1080b14ac4de8c63489cb75e2a3e4b02bf1850f21",
+  "fingerprint_basis": {
+    "runtime_veto_id": "STAGE4_ALPHA_V1_RUNTIME_VETO_V1",
+    "integration_base_sha": "c484b6f8e0b404f790995274b768fdde3000bd8d",
+    "oos_authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
+    "oos_execution_contract_fingerprint": "224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177",
+    "physical_boundary_contract_fingerprint": "67e8555d3a9212a003a8293dc381cce0f7294917ef72875fed3218f240e0c255",
+    "development_evidence": {
+      "pr": 158,
+      "head": "da214ac9a3bcda02e47c692ca9d205aa22af9fce",
+      "run_id": 33174221863,
+      "artifact_id": 9686885110,
+      "artifact_digest": "sha256:cb7fd1950f293bd5bc92a74ff05d451d7650664ba456e890fdc88024dde09a3e",
+      "finding": "FROZEN_C007_TOP_BUCKETS_CONCENTRATE_EXECUTION_RISK;_NO_C007_MUTATION_OR_POSTHOC_FILTER_AUTHORIZED"
+    },
+    "scope": {
+      "decision_start": "2023-01-03",
+      "latest_economic_decision": "2024-12-03",
+      "decision_end": "2024-12-31",
+      "final_lockbox_start": "2025-01-02",
+      "prediction_ranking_frozen": true,
+      "selected_bucket_membership_frozen": true,
+      "backfill_forbidden": true,
+      "replacement_forbidden": true,
+      "post_selection_drop_forbidden": true,
+      "score_filtering_forbidden": true,
+      "oos_fit_retrain_tune_reselect_forbidden": true,
+      "oos_outcome_values_forbidden": true,
+      "final_lockbox_access_forbidden": true,
+      "runtime_veto_cannot_rescue_alpha_failure": true
+    },
+    "selection": {
+      "coverages": [0.05, 0.1, 0.2],
+      "per_decision_date_k": "CEIL_COVERAGE_TIMES_ALL_PREDICTION_ROWS_ON_REBALANCE_DATE",
+      "ordering": "PREDICTION_DESC_THEN_EXCHANGE_ASC_CODE_ASC",
+      "rebalance_sessions": 20,
+      "rebalance_anchor": "2023-01-03",
+      "rebalance_population_end": "2024-12-03"
+    },
+    "state_semantics": {
+      "decision_signal_invalid": "decision_tradable_eq_0",
+      "entry_zero_volume": "entry_volume_shares_le_0",
+      "entry_one_price": "abs(entry_high-entry_low)_le_1e-12",
+      "entry_one_price_limit_up": "entry_one_price_AND_entry_volume_gt_0_AND_entry_close_equals_half_up_cent_round(entry_preclose*(1+entry_limit_up_rate))",
+      "hard_entry_veto": "entry_tradable_eq_0_OR_entry_volume_shares_le_0_OR_entry_one_price_limit_up",
+      "exit_zero_volume": "exit_volume_shares_le_0",
+      "exit_one_price": "abs(exit_high-exit_low)_le_1e-12",
+      "exit_one_price_limit_down": "exit_one_price_AND_exit_volume_gt_0_AND_exit_close_equals_half_up_cent_round(exit_preclose*(1-exit_limit_down_rate))",
+      "hard_exit_veto": "exit_tradable_eq_0_OR_exit_volume_shares_le_0_OR_exit_one_price_limit_down",
+      "runtime_hard_veto": "decision_signal_invalid_OR_hard_entry_veto_OR_hard_exit_veto",
+      "risk_warning_role": "DIAGNOSTIC_ONLY_NOT_A_HARD_VETO",
+      "decision_low_price_lt2_role": "DIAGNOSTIC_ONLY_NOT_A_HARD_VETO",
+      "entry_one_price_limit_down_role": "DIAGNOSTIC_ONLY_FOR_LONG_ENTRY_NOT_A_HARD_VETO",
+      "exit_one_price_limit_up_role": "DIAGNOSTIC_ONLY_FOR_LONG_EXIT_NOT_A_HARD_VETO",
+      "missing_required_execution_state": "FAIL_CLOSED_INTEGRITY_ERROR"
+    },
+    "gate": {
+      "cohort_execution_valid": "ZERO_RUNTIME_HARD_VETO_ROWS_IN_FROZEN_SELECTED_BUCKET",
+      "coverage_execution_valid": "ALL_REBALANCE_COHORTS_EXECUTION_VALID",
+      "primary_10pct_execution_valid_required": true,
+      "05pct_sensitivity_execution_valid_required": true,
+      "20pct_sensitivity_execution_valid_required": true,
+      "all_required_must_pass": true,
+      "alpha_oos_gate_separate_and_unchanged": true,
+      "combined_business_promotion_rule": "ALPHA_OOS_GATE_PASS_AND_RUNTIME_VETO_GATE_PASS",
+      "runtime_gate_failure_action": "NO_PROMOTION_NO_BACKFILL_NO_RETUNING_ON_OOS"
+    },
+    "outputs": {
+      "rows": "oos_runtime_veto_rows.parquet",
+      "summary": "oos_runtime_veto_summary.json",
+      "independent_audit": "oos_runtime_veto_independent_audit.json",
+      "hashes": "artifact_hashes.json"
+    }
+  }
+}

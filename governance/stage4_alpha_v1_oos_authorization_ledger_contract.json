@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_PRE_ACCESS_DURABLE_SINGLE_USE_LEDGER_V1_NO_OOS_ACCESS",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "81840cb1ba16e9c14238117e66adb92fc3493b1824c1c6a78ec61d63f74de8bd",
+  "fingerprint_basis": {
+    "ledger_id": "STAGE4_ALPHA_V1_OOS_AUTHORIZATION_LEDGER_V1",
+    "version": "V1.0",
+    "integration_base_sha": "c484b6f8e0b404f790995274b768fdde3000bd8d",
+    "oos_authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
+    "oos_execution_contract_fingerprint": "224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177",
+    "ledger_branch": "governance/stage4-alpha-v1-oos-consumption-ledger",
+    "ledger_path": "governance/stage4_alpha_v1_oos_authorization_ledger.json",
+    "purpose": "Provide a durable cross-workflow single-use reservation and consumption ledger independent of run-local artifacts and mutable execution-branch state.",
+    "reservation_point": "AFTER_SEALED_PHYSICAL_OOS_BOUNDARY_VERIFICATION_AND_BEFORE_MODEL_ARTIFACT_DOWNLOAD_OR_ANY_MODEL_PREDICTION",
+    "state_machine": {
+      "initial_state": "UNCONSUMED",
+      "allowed_transitions": ["UNCONSUMED_TO_RESERVED", "RESERVED_TO_CONSUMED"],
+      "terminal_state": "CONSUMED",
+      "reservation_is_not_authorization_consumption": true,
+      "authorization_consumption_event_unchanged": "FIRST_SUCCESSFUL_READ_OF_ANY_OOS_LABEL_VALUE_OR_FIRST_OOS_PREDICTION_COMPUTATION_WHICHEVER_OCCURS_FIRST",
+      "reserved_or_consumed_blocks_new_reservation": true,
+      "automatic_release_from_reserved_forbidden": true,
+      "reserved_recovery_requires_separate_governance_acknowledgement_and_independent_zero_access_proof": true
+    },
+    "cas_semantics": {
+      "backend": "GITHUB_CONTENTS_API_EXISTING_BLOB_SHA_COMPARE_AND_SWAP",
+      "existing_blob_sha_required_for_every_mutation": true,
+      "concurrent_stale_writer_must_fail_closed": true,
+      "force_update_forbidden": true,
+      "ledger_branch_is_independent_of_execution_pr_branch": true
+    },
+    "consumption_finalization": {
+      "marker_file": "authorization_consumption.json",
+      "required_marker_status": "CONSUMED",
+      "required_marker_event": "FIRST_OOS_PREDICTION_COMPUTATION",
+      "required_marker_oos_label_read_before_consumption": false,
+      "required_marker_lockbox_accessed": false,
+      "required_marker_fit_executed": false,
+      "finalize_step_runs_after_execution_attempt_even_on_failure": true,
+      "missing_marker_after_reservation": "LEAVE_RESERVED_FAIL_CLOSED_NO_AUTORELEASE"
+    },
+    "verified_zero_access_incidents": [
+      {"run_id":33858867504,"run_number":32,"exact_head":"22e3b411b4f5c9965843069a8e05a85cb587f1b3","oos_prediction_computed":false,"oos_label_value_read":false,"authorization_consumed":false},
+      {"run_id":33862541324,"run_number":35,"exact_head":"200d38e1a7231498bd7e51b417ba36ee8a8345e9","oos_prediction_computed":false,"oos_label_value_read":false,"authorization_consumed":false}
+    ],
+    "hard_boundaries": {
+      "fit_retrain_tune_reselect": false,
+      "final_lockbox_access": false,
+      "live_signal": false,
+      "authoritative_output": false,
+      "main_merge": false,
+      "c007_identity_change": false,
+      "alpha_gate_change": false,
+      "runtime_veto_semantics_change": false
+    }
+  },
+  "next_gate": "EXACT_HEAD_STATIC_SYNTHETIC_AND_LEDGER_AUTHORITY_AUDIT_BEFORE_ANY_NEW_WORKFLOW_DISPATCH"
+}

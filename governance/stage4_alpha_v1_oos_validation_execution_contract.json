@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_PRE_ACCESS_EXECUTION_IMPLEMENTATION_V1_1_NO_OOS_ACCESS",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177",
+  "fingerprint_basis": {
+    "execution_id": "STAGE4_ALPHA_V1_OOS_VALIDATION_EXECUTION",
+    "version": "V1.1",
+    "authority": {
+      "integration_base_sha": "c484b6f8e0b404f790995274b768fdde3000bd8d",
+      "oos_authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
+      "effective_preregistration_fingerprint": "b73f9b55efb04fac5416f6fdd39c17780b3f9e46c82d0da6b111547e3d258cf8",
+      "feature_matrix_artifact_id": 9168728086,
+      "feature_matrix_artifact_zip_sha256": "a4d3a10165bf3b369c77c7b4f77e97663bc3125f506d9203388e6f63198bda4a",
+      "feature_matrix_sha256": "c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c",
+      "model_artifact_id": 9251178312,
+      "model_artifact_zip_sha256": "e222dd2931933eb3e0c8aca0a35ee09e388a89cc8ea8f194df61c0c3b4b6cb5d",
+      "model_sha256": "e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c",
+      "final_preprocess_manifest_sha256": "4b7833e4c4bdba9b956dba190f7337003ae944a624b59ddad7654b1457608330",
+      "final_refit_execution_manifest_sha256": "153886720fc5d3fb424514984d51843c0e04c35474aa0c5feb4d81682982d826",
+      "historical_ohlcv_artifact_id": 8651700277,
+      "historical_ohlcv_artifact_zip_sha256": "bf977d4f379d421bd198865b90df90caef7ba6cfb5d6d1af96e5487300c1a2f8",
+      "historical_g5_artifact_id": 8651976824,
+      "historical_g5_artifact_zip_sha256": "acbeaaca9fc849acbef213dbd9b50df034f28e36acd352e625acb44e536cbe22",
+      "historical_lifecycle_artifact_id": 8651477081,
+      "historical_lifecycle_artifact_zip_sha256": "652193c9ce18ad9e4cc93b8050910a1fb8b91c849bfdd990e9ee5f860ac147dd"
+    },
+    "runtime": {
+      "python": "3.12.13",
+      "numpy": "2.5.1",
+      "scipy": "1.17.0",
+      "scikit_learn": "1.9.0",
+      "pyarrow": "25.0.0",
+      "duckdb": "1.3.2",
+      "pandas": "3.0.5",
+      "thread_env": {
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1"
+      }
+    },
+    "oos_partition": {
+      "decision_start": "2023-01-03",
+      "decision_end": "2024-12-31",
+      "latest_valid_20d_decision": "2024-12-03",
+      "market_row_upper_bound_exclusive": "2025-01-02",
+      "physical_market_source_years": [2023, 2024],
+      "final_lockbox_start": "2025-01-02"
+    },
+    "execution_semantics": {
+      "pr_events_are_static_and_synthetic_only": true,
+      "label_bearing_execution_event": "workflow_dispatch",
+      "max_label_bearing_runs": 1,
+      "execution_head_input_required": true,
+      "exact_head_must_equal_checked_out_head": true,
+      "authorization_consumed_at": "FIRST_MODEL_PREDICT_CALL_BEFORE_ANY_OOS_LABEL_BUILD",
+      "fit_calls_allowed": 0,
+      "oos_prediction_population": "ALL_FEATURE_MATRIX_ROWS_WITH_DECISION_DATE_2023_01_03_THROUGH_2024_12_31",
+      "boundary_rows_without_full_20d_label": "PREDICTED_BUT_EXCLUDED_FROM_VALIDATION_METRICS",
+      "label_values_never_joined_back_into_feature_matrix": true,
+      "ic_evaluation_population": "ROWS_WITH_VALID_LABEL_20D_ONLY",
+      "economic_selection_population": "ALL_PREDICTED_ROWS_ON_REBALANCE_DATE_BEFORE_ANY_LABEL_VALIDITY_FILTER"
+    },
+    "metric_semantics": {
+      "daily_ic_20d": "SCIPY_SPEARMANR_PREDICTION_VS_EXCESS_RETURN_20D_BY_DECISION_DATE_MIN20_VARIATION_REQUIRED",
+      "daily_ic_aggregate": "ARITHMETIC_MEAN_VALID_DAYS",
+      "bootstrap": {
+        "method": "MOVING_BLOCK_BOOTSTRAP",
+        "block_length_sessions": 20,
+        "resamples": 10000,
+        "rng": "NUMPY_GENERATOR_PCG64",
+        "seed": 20260817,
+        "ci": "PERCENTILE_2_5_97_5",
+        "sampling": "UNIFORM_CONTIGUOUS_START_BLOCKS_WITH_REPLACEMENT_CONCAT_UNTIL_N_TRUNCATE"
+      },
+      "quarter_metric": "ARITHMETIC_MEAN_VALID_DAILY_IC_20D_WITHIN_CALENDAR_QUARTER",
+      "expected_quarters": ["2023Q1", "2023Q2", "2023Q3", "2023Q4", "2024Q1", "2024Q2", "2024Q3", "2024Q4"],
+      "coverage": [0.05, 0.10, 0.20],
+      "bucket_order": "PREDICTION_DESC_THEN_EXCHANGE_ASC_CODE_ASC",
+      "bucket_size": "CEIL_COVERAGE_TIMES_ALL_PREDICTION_ROWS_ON_REBALANCE_DATE",
+      "rebalance_sessions": 20,
+      "rebalance_anchor": "2023-01-03",
+      "rebalance_calendar": "DISTINCT_OOS_DECISION_DATES_THROUGH_2024_12_03_THEN_EVERY_20TH_SESSION_FROM_ANCHOR",
+      "portfolio": "EQUAL_WEIGHT_LONG_ONLY",
+      "cohort_gross_excess": "MEAN_EXCESS_RETURN_20D_OF_SELECTED_BUCKET",
+      "cohort_net_excess": "GROSS_EXCESS_MINUS_15BPS_ENTRY_MINUS_15BPS_EXIT_MINUS_ENTRY_HANDLING_FEE_MINUS_EXIT_HANDLING_FEE_MINUS_EXIT_SELL_STAMP_DUTY",
+      "aggregate_net_excess": "ARITHMETIC_MEAN_ACROSS_NON_OVERLAPPING_REBALANCE_COHORTS",
+      "handling_fee_before_2023_08_28": 0.0000487,
+      "handling_fee_from_2023_08_28": 0.0000341,
+      "stamp_duty_sell_before_2023_08_28": 0.001,
+      "stamp_duty_sell_from_2023_08_28": 0.0005,
+      "implementation_shortfall_each_side": 0.0015,
+      "selected_label_censoring": "ANY_SELECTED_ROW_WITHOUT_VALID_20D_LABEL_INVALIDATES_THAT_COVERAGE_FAIL_CLOSED_NO_BACKFILL_NO_POST_SELECTION_DROP",
+      "coverage_validity": "ALL_REBALANCE_COHORTS_AND_ALL_SELECTED_ROWS_MUST_HAVE_VALID_20D_LABELS_FOR_COVERAGE_GATE_TO_BE_EVALUABLE"
+    },
+    "gate": {
+      "all_required_must_pass": true,
+      "mean_daily_ic_gt_0": true,
+      "bootstrap_ci_lower_gt_0": true,
+      "positive_quarters_at_least": 6,
+      "top10_net_excess_gt_0": true,
+      "top05_net_excess_ge_0": true,
+      "top20_net_excess_ge_0": true,
+      "pbo_carried": 0.11904761904761904,
+      "pbo_max": 0.2,
+      "dsr_carried": 0.9999989891602007,
+      "dsr_min": 0.95
+    },
+    "hard_boundaries": {
+      "fit": false,
+      "retraining": false,
+      "tuning": false,
+      "candidate_reselection": false,
+      "oos_fitted_preprocessor": false,
+      "lockbox_access": false,
+      "live_signal": false,
+      "authoritative_output": false,
+      "main_merge": false,
+      "oos_failure_action": "NO_PROMOTION_NO_RETUNING_ON_OOS"
+    },
+    "supersedes_execution_implementation": {
+      "version": "V1.0",
+      "fingerprint": "b61333a33870ac079cd2dc94c71cb53e3f1a267dc9ff8e26e2ef7d9fea95ed2e",
+      "reason": "REMOVE_FUTURE_LABEL_VALIDITY_LOOKAHEAD_FROM_ECONOMIC_BUCKET_SELECTION_BEFORE_ANY_OOS_ACCESS"
+    }
+  },
+  "next_gate": "EXACT_HEAD_STATIC_AND_SYNTHETIC_AUDIT_BEFORE_SINGLE_LABEL_BEARING_DISPATCH"
+}
