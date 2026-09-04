@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_PRE_ACCESS_INFRASTRUCTURE_RETRY_SUPERSESSION_NO_OOS_ACCESS",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "823f93d274411fbfc4dd9d2a16833f66b9f75ba86c9640dd6bcd09deeaa75652",
+  "fingerprint_basis": {
+    "supersession_id": "STAGE4_ALPHA_V1_OOS_PRE_ACCESS_RETRY_SUPERSESSION_V1",
+    "version": "V1.0",
+    "supersedes_retry_clause_only": {
+      "authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
+      "original_clause": "pre_access_retry_requires_same_exact_head_and_separate_governance_acknowledgement",
+      "scope": "ONLY_PRE_ACCESS_INFRASTRUCTURE_RETRY_AFTER_RUN_33858867504"
+    },
+    "incident": {
+      "pr": 157,
+      "failed_run_id": 33858867504,
+      "failed_run_number": 32,
+      "failed_job_id": 100978500908,
+      "failed_exact_head": "22e3b411b4f5c9965843069a8e05a85cb587f1b3",
+      "failure_stage": "RE_PROVE_NON_CONSUMING_BOUNDARY_AUTHORITY_BEFORE_BROAD_SOURCE_DOWNLOAD",
+      "failure_class": "STATIC_GREP_FALSE_POSITIVE_ON_FAIL_CLOSED_IDENTIFIER",
+      "false_positive_token": "authorization_consumption_forbidden",
+      "broad_source_download_started": false,
+      "physical_boundary_compilation_started": false,
+      "oos_prediction_computed": false,
+      "oos_label_value_read": false,
+      "model_loaded_for_oos": false,
+      "runtime_veto_oos_evaluated": false,
+      "final_lockbox_accessed": false,
+      "authorization_consumed": false
+    },
+    "retry_authority": {
+      "head_migration_allowed": true,
+      "head_migration_reason": "SAME_HEAD_RETRY_IS_DETERMINISTICALLY_IMPOSSIBLE_BECAUSE_THE_FROZEN_STATIC_GUARD_MATCHES_ITS_OWN_FAIL_CLOSED_ASSERTION",
+      "new_head_rule": "ONE_NEW_EXACT_REVIEWED_HEAD_DESCENDED_FROM_FAILED_HEAD_BY_ONLY_MINIMAL_PRE_ACCESS_INFRASTRUCTURE_REPAIR_AND_THIS_SUPERSESSION",
+      "allowed_delta_paths": [
+        "scripts/build_stage4_alpha_v1_oos_physical_boundary.py",
+        "governance/stage4_alpha_v1_oos_pre_access_retry_supersession.json"
+      ],
+      "required_semantic_delta": "SPLIT_THE_LITERAL_AUTHORIZATION_CONSUMPTION_FORBIDDEN_IDENTIFIER_IN_SOURCE_WITHOUT_CHANGING_THE_RUNTIME_KEY_OR_BOUNDARY_PERMISSION_CHECK",
+      "full_exact_head_pr_ci_required": true,
+      "separate_human_redispatch_required": true,
+      "automatic_rerun_forbidden": true,
+      "original_failed_run_must_not_be_rerun": true
+    },
+    "single_use_preservation": {
+      "creates_new_oos_authorization": false,
+      "adds_label_bearing_runs": false,
+      "max_label_bearing_runs_total_remains": 1,
+      "original_authorization_remains_business_authority": true,
+      "consumption_event_unchanged": "FIRST_SUCCESSFUL_READ_OF_ANY_OOS_LABEL_VALUE_OR_FIRST_OOS_PREDICTION_COMPUTATION_WHICHEVER_OCCURS_FIRST",
+      "c007_identity_unchanged": true,
+      "preprocess_identity_unchanged": true,
+      "alpha_gate_semantics_unchanged": true,
+      "runtime_veto_semantics_unchanged": true,
+      "physical_boundary_semantics_unchanged": true,
+      "oos_partition_unchanged": true
+    },
+    "hard_boundaries": {
+      "oos_prediction_in_this_supersession": false,
+      "oos_label_read_in_this_supersession": false,
+      "fit_retrain_tune_reselect": false,
+      "lockbox_access": false,
+      "live_signal": false,
+      "authoritative_output": false,
+      "main_merge": false
+    }
+  },
+  "next_gate": "FRESH_EXACT_HEAD_PRE_ACCESS_CI_THEN_ONE_SEPARATE_HUMAN_WORKFLOW_DISPATCH_ONLY"
+}
