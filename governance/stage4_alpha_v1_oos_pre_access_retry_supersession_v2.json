@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_PRE_ACCESS_EXECUTION_STATE_APPLICABILITY_RETRY_SUPERSESSION_NO_OOS_ACCESS",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "812f32690becb2378adf3c41568c034db9a2810a94e5fbed9c5804c1d4ebbd79",
+  "fingerprint_basis": {
+    "supersession_id": "STAGE4_ALPHA_V1_OOS_PRE_ACCESS_RETRY_SUPERSESSION_V2",
+    "version": "V2.0",
+    "supersedes_retry_supersession": {
+      "version": "V1.0",
+      "fingerprint": "823f93d274411fbfc4dd9d2a16833f66b9f75ba86c9640dd6bcd09deeaa75652",
+      "scope": "PRE_ACCESS_RETRY_AUTHORITY_ONLY_NO_CORE_CONTRACT_SUPERSESSION"
+    },
+    "incident": {
+      "pr": 157,
+      "failed_run_id": 33862541324,
+      "failed_run_number": 35,
+      "failed_job_id": 100990124255,
+      "failed_exact_head": "200d38e1a7231498bd7e51b417ba36ee8a8345e9",
+      "failure_stage": "COMPILE_PHYSICALLY_OOS_ONLY_NON_LABEL_PACKAGE_BEFORE_INDEPENDENT_AUDIT",
+      "failure_class": "EXECUTION_STATE_APPLICABILITY_ASSERTION_TOO_STRICT_FOR_FROZEN_G4_NA_SEMANTICS",
+      "broad_source_archives_downloaded_and_hash_verified": true,
+      "physical_boundary_compilation_started": true,
+      "physical_boundary_sealed_or_uploaded": false,
+      "single_label_bearing_job_started": false,
+      "oos_prediction_computed": false,
+      "oos_label_value_read": false,
+      "model_loaded_for_oos": false,
+      "runtime_veto_oos_evaluated": false,
+      "final_lockbox_accessed": false,
+      "authorization_consumed": false
+    },
+    "frozen_source_findings": {
+      "g4_oos_rows": 1542958,
+      "g3_oos_rows": 1541435,
+      "g4_rows_with_both_limit_rates_null": 4609,
+      "null_rate_rows_by_rule": {
+        "SUSPENDED": {
+          "rows": 4283,
+          "tradable": 0
+        },
+        "IPO_FIRST5_NO_LIMIT": {
+          "rows": 302,
+          "tradable": 1
+        },
+        "DELISTING_15DAY_FIRST_DAY_NO_LIMIT": {
+          "rows": 24,
+          "tradable": 1
+        }
+      },
+      "g4_rows_missing_g3_key": 1523,
+      "g4_rows_missing_g3_all_rule": "SUSPENDED",
+      "g4_rows_missing_g3_all_tradable": 0,
+      "g3_rows_missing_g4_key": 0,
+      "g3_authority_semantic": "INDIVIDUAL_NONTRADE_DAYS_DEFERRED_TO_G4"
+    },
+    "applicability_clarification": {
+      "na_limit_rules": [
+        "SUSPENDED",
+        "IPO_FIRST5_NO_LIMIT",
+        "DELISTING_15DAY_FIRST_DAY_NO_LIMIT"
+      ],
+      "null_limit_rates_for_na_rules": "VALID_NOT_APPLICABLE_STATE_NOT_MISSING_DATA",
+      "limit_rate_imputation_forbidden": true,
+      "limit_applicable_rule_missing_any_rate": "FAIL_CLOSED_INTEGRITY_ERROR",
+      "partial_limit_rate_null": "FAIL_CLOSED_INTEGRITY_ERROR",
+      "suspended_rule_requires_tradable_0": true,
+      "tradable_no_limit_rules_require_tradable_1": true,
+      "market_ohlcv_required_when_tradable_1": true,
+      "missing_market_ohlcv_allowed_only_when": "TRADABLE_0_AND_LIMIT_RULE_SUSPENDED",
+      "one_price_limit_flags_for_na_rules": "ZERO_NOT_APPLICABLE",
+      "hard_veto_semantics_unchanged": true,
+      "alpha_gate_semantics_unchanged": true,
+      "c007_ranking_and_bucket_membership_unchanged": true
+    },
+    "pre_prediction_hardening": {
+      "all_feature_candidate_rows_through_latest_economic_decision_must_be_checked_before_model_prediction": true,
+      "candidate_schedule": "DECISION_PLUS_1_MARKET_SESSION_ENTRY_AND_PLUS_20_MARKET_SESSION_EXIT",
+      "candidate_path_checks": [
+        "SCHEDULE_EXISTS",
+        "CORE_G4_STATE_EXISTS",
+        "RATE_APPLICABILITY_VALID",
+        "TRADABLE_ROWS_HAVE_MARKET",
+        "MARKET_ABSENCE_ONLY_SUSPENDED_NONTRADABLE"
+      ],
+      "purpose": "PROVE_RUNTIME_VETO_INTEGRITY_CAN_COMPLETE_FOR_ANY_FROZEN_SELECTED_BUCKET_BEFORE_SINGLE_USE_CONSUMPTION",
+      "prediction_or_label_access_in_preflight": false
+    },
+    "retry_authority": {
+      "head_migration_allowed": true,
+      "new_head_rule": "ONE_NEW_EXACT_REVIEWED_HEAD_DESCENDED_FROM_RUN35_HEAD_BY_ONLY_APPLICABILITY_REPAIR_AND_THIS_V2_SUPERSESSION",
+      "allowed_delta_paths": [
+        "scripts/build_stage4_alpha_v1_oos_physical_boundary.py",
+        "scripts/audit_stage4_alpha_v1_oos_physical_boundary.py",
+        "scripts/run_stage4_alpha_v1_runtime_veto.py",
+        "scripts/audit_stage4_alpha_v1_runtime_veto.py",
+        "governance/stage4_alpha_v1_oos_pre_access_retry_supersession_v2.json"
+      ],
+      "full_exact_head_pr_ci_required": true,
+      "separate_human_redispatch_required": true,
+      "automatic_rerun_forbidden": true,
+      "failed_runs_forbidden_to_rerun": [
+        33858867504,
+        33862541324
+      ]
+    },
+    "single_use_preservation": {
+      "creates_new_oos_authorization": false,
+      "adds_label_bearing_runs": false,
+      "max_label_bearing_runs_total_remains": 1,
+      "original_authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
+      "original_authorization_remains_business_authority": true,
+      "consumption_event_unchanged": "FIRST_SUCCESSFUL_READ_OF_ANY_OOS_LABEL_VALUE_OR_FIRST_OOS_PREDICTION_COMPUTATION_WHICHEVER_OCCURS_FIRST",
+      "execution_contract_fingerprint_unchanged": "224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177",
+      "physical_boundary_contract_fingerprint_unchanged": "67e8555d3a9212a003a8293dc381cce0f7294917ef72875fed3218f240e0c255",
+      "runtime_veto_contract_fingerprint_unchanged": "c2debc5fbf5fcad5454461d1080b14ac4de8c63489cb75e2a3e4b02bf1850f21",
+      "c007_identity_unchanged": true,
+      "preprocess_identity_unchanged": true,
+      "oos_partition_unchanged": true
+    },
+    "hard_boundaries": {
+      "oos_prediction_in_this_supersession": false,
+      "oos_label_read_in_this_supersession": false,
+      "fit_retrain_tune_reselect": false,
+      "lockbox_access": false,
+      "live_signal": false,
+      "authoritative_output": false,
+      "main_merge": false
+    }
+  },
+  "next_gate": "FRESH_EXACT_HEAD_PRE_ACCESS_CI_THEN_ONE_SEPARATE_HUMAN_WORKFLOW_DISPATCH_ONLY"
+}
