@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "request_id": "STAGE4_ALPHA_V1_OOS_AUTO_DISPATCH_REQUEST_V1",
+  "status": "DISARMED_PRE_ACCESS",
+  "armed": false,
+  "bridge_contract_fingerprint": "aaefe0a7fafee60fdfb274fbea44e0d60cc71949da35e1b3a9417f92bcd9ed38",
+  "target_workflow_id": 321367424,
+  "target_branch": "agent/stage4-alpha-v1-oos-validation-execution",
+  "authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
+  "execution_contract_fingerprint": "224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177",
+  "confirmation": "CONSUME_D260F117_SINGLE_OOS_RUN",
+  "execution_head_source": "GITHUB_SHA_OF_ARMING_REQUEST_COMMIT",
+  "expected_prior_zero_access_dispatch_run_ids": [
+    33858867504,
+    33862541324
+  ],
+  "note": "DISARMED placeholder created before the bridge workflow exists; changing this file to ARMED is the only automatic dispatch trigger."
+}
