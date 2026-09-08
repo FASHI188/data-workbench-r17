@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_PRE_ACCESS_AUTO_DISPATCH_BRIDGE_V1_NO_OOS_ACCESS",
+  "fingerprint_basis": {
+    "bridge_id": "STAGE4_ALPHA_V1_OOS_AUTO_DISPATCH_BRIDGE_V1",
+    "repository": "FASHI188/data-workbench-r17",
+    "execution_branch": "agent/stage4-alpha-v1-oos-validation-execution",
+    "request_path": "governance/stage4_alpha_v1_oos_auto_dispatch_request.json",
+    "bridge_workflow_path": ".github/workflows/stage4-alpha-v1-oos-auto-dispatch-bridge.yml",
+    "target_workflow_id": 321367424,
+    "target_workflow_path": ".github/workflows/stage2-final-freeze-v325.yml",
+    "oos_authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
+    "oos_execution_contract_fingerprint": "224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177",
+    "confirmation_token": "CONSUME_D260F117_SINGLE_OOS_RUN",
+    "preserved_label_bearing_event": "workflow_dispatch",
+    "zero_access_prior_dispatches": [
+      {
+        "run_id": 33858867504,
+        "head_sha": "22e3b411b4f5c9965843069a8e05a85cb587f1b3",
+        "independent_zero_access_proof": true
+      },
+      {
+        "run_id": 33862541324,
+        "head_sha": "200d38e1a7231498bd7e51b417ba36ee8a8345e9",
+        "independent_zero_access_proof": true
+      }
+    ],
+    "bridge_semantics": {
+      "push_trigger_path_is_request_only": true,
+      "request_commit_must_change_only_request_path": true,
+      "bridge_run_attempt_must_equal": 1,
+      "pre_dispatch_history_must_contain_only_frozen_zero_access_dispatches": true,
+      "max_new_dispatches_created_by_bridge": 1,
+      "dispatch_ref_is_exact_execution_branch": true,
+      "execution_head_input_is_bridge_push_commit_sha": true,
+      "authorization_fingerprint_input_is_frozen": true,
+      "execution_contract_fingerprint_input_is_frozen": true,
+      "confirmation_input_is_frozen": true,
+      "github_actions_write_allowed_only_for_target_workflow_dispatch_post": true,
+      "contents_write_forbidden": true,
+      "git_push_from_workflow_forbidden": true,
+      "pull_request_write_forbidden": true,
+      "repository_content_mutation_forbidden": true,
+      "automatic_retry_after_dispatch_post_forbidden": true,
+      "ambiguous_post_result_requires_history_check_not_retry": true,
+      "oos_prediction_in_bridge_forbidden": true,
+      "oos_label_read_in_bridge_forbidden": true,
+      "model_load_in_bridge_forbidden": true,
+      "final_lockbox_access_in_bridge_forbidden": true
+    },
+    "preservation": {
+      "c007_model_unchanged": true,
+      "preprocess_unchanged": true,
+      "alpha_gate_unchanged": true,
+      "runtime_veto_unchanged": true,
+      "physical_boundary_unchanged": true,
+      "run_history_reservation_v1_unchanged": true,
+      "oos_window_unchanged": true,
+      "oos_run_count_not_increased": true
+    }
+  },
+  "fingerprint": "aaefe0a7fafee60fdfb274fbea44e0d60cc71949da35e1b3a9417f92bcd9ed38"
+}
