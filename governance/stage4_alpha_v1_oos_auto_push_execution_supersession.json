@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_PRE_ACCESS_TRIGGER_SUPERSESSION_V1_NO_OOS_ACCESS",
+  "fingerprint_basis": {
+    "supersession_id": "STAGE4_ALPHA_V1_OOS_AUTO_PUSH_EXECUTION_SUPERSESSION_V1",
+    "repository": "FASHI188/data-workbench-r17",
+    "execution_branch": "agent/stage4-alpha-v1-oos-validation-execution",
+    "auto_workflow_path": ".github/workflows/stage4-alpha-v1-oos-auto-push-execution.yml",
+    "request_path": "governance/stage4_alpha_v1_oos_auto_dispatch_request.json",
+    "authority": {
+      "oos_authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
+      "execution_contract_v1_1_fingerprint": "224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177",
+      "physical_boundary_fingerprint": "67e8555d3a9212a003a8293dc381cce0f7294917ef72875fed3218f240e0c255",
+      "runtime_veto_fingerprint": "c2debc5fbf5fcad5454461d1080b14ac4de8c63489cb75e2a3e4b02bf1850f21",
+      "confirmation_token": "CONSUME_D260F117_SINGLE_OOS_RUN",
+      "frozen_core_git_blob": "19134bc8960b6c9c825ea2708aa1aac14ce914af"
+    },
+    "trigger_supersession": {
+      "original_label_bearing_event": "workflow_dispatch",
+      "superseding_label_bearing_event": "push",
+      "push_branch_exact": "agent/stage4-alpha-v1-oos-validation-execution",
+      "push_path_exact": "governance/stage4_alpha_v1_oos_auto_dispatch_request.json",
+      "request_status_required": "ARMED_SINGLE_USE_AUTO_PUSH_EXECUTION",
+      "request_commit_changes_only_request_path": true,
+      "execution_head_is_push_commit_sha": true,
+      "run_attempt_must_equal": 1,
+      "automatic_rerun_forbidden": true,
+      "manual_workflow_dispatch_not_required": true
+    },
+    "durable_single_use": {
+      "ledger_source": "IMMUTABLE_GITHUB_ACTIONS_RUN_HISTORY_FOR_AUTO_WORKFLOW",
+      "eligible_event": "push",
+      "earliest_eligible_push_run_is_reservation_owner": true,
+      "only_owner_run_may_reach_boundary_or_prediction": true,
+      "later_push_runs_fail_closed": true,
+      "rerun_attempts_fail_closed": true,
+      "reservation_is_not_authorization_consumption": true,
+      "authorization_consumed_at": "FIRST_OOS_PREDICTION_COMPUTATION",
+      "pre_prediction_owner_failure_remains_reserved": true,
+      "recovery_requires_separate_governance_supersession_and_independent_zero_access_proof": true
+    },
+    "physical_isolation": {
+      "broad_sources_allowed_only_before_boundary_seal": true,
+      "boundary_independent_audit_required": true,
+      "broad_source_directories_deleted_before_model_download": true,
+      "model_execution_receives_only_sealed_physical_boundary": true,
+      "post_oos_rows_forbidden": true,
+      "final_lockbox_access_forbidden": true
+    },
+    "preservation": {
+      "c007_model_unchanged": true,
+      "preprocess_unchanged": true,
+      "alpha_statistical_gate_unchanged": true,
+      "economic_bucket_semantics_unchanged": true,
+      "runtime_veto_unchanged": true,
+      "no_backfill_replacement_or_post_selection_drop": true,
+      "no_fit_retrain_tune_or_reselection": true,
+      "oos_window_2023_01_03_through_2024_12_31_unchanged": true,
+      "latest_valid20_2024_12_03_unchanged": true,
+      "final_lockbox_2025_01_02_sealed": true,
+      "accepted_authorization_run_count_not_increased": true,
+      "prior_failed_dispatches_32_35_remain_zero_access_evidence_only": true
+    },
+    "workflow_permissions": {
+      "contents": "read",
+      "actions": "read",
+      "repository_write_forbidden": true,
+      "workflow_dispatch_creation_forbidden": true
+    }
+  },
+  "fingerprint": "d47f1288a3eeae0aada72794c7a07eee7c702835e1d4b4d67c0adf2c77114fb3"
+}
