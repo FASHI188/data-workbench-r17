@@ -1,0 +1,119 @@
+name: Stage4 Alpha V1 OOS Lifecycle Gap Diagnostic
+
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - '.github/workflows/stage4-alpha-v1-oos-lifecycle-diagnostic.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  lifecycle-gap-diagnostic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install diagnostic runtime only
+        run: python -m pip install --disable-pip-version-check duckdb==1.3.2
+      - name: Download failed pre-access physical-boundary artifact only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/diag
+          curl --fail --location --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/10048757085/zip" \
+            -o build/diag/boundary.zip
+          echo "9a8bb2fbea117d960db0ae5c70c677906902ba98f20c740231a2d2f4325330d0  build/diag/boundary.zip" | sha256sum -c -
+          unzip -q build/diag/boundary.zip -d build/diag/boundary
+          test -f build/diag/boundary/oos_features.parquet
+          test -f build/diag/boundary/oos_market.parquet
+          test -f build/diag/boundary/oos_execution_state.parquet
+          test -f build/diag/boundary/oos_lifecycle.parquet
+          test ! -e build/model
+          test ! -e build/oos
+      - name: Classify every missing T+1 and +20 state by lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import duckdb,json
+          from pathlib import Path
+          root=Path('build/diag/boundary')
+          con=duckdb.connect()
+          con.execute("PRAGMA threads=2")
+          for v,f in [('features_p','oos_features.parquet'),('market_p','oos_market.parquet'),('state_p','oos_execution_state.parquet'),('lifecycle_p','oos_lifecycle.parquet')]:
+              con.execute(f"CREATE TEMP VIEW {v} AS SELECT * FROM read_parquet('{root/f}')")
+          con.execute("CREATE TEMP TABLE cal AS SELECT trade_date,row_number() OVER(ORDER BY trade_date)-1 AS session_idx FROM (SELECT DISTINCT trade_date FROM market_p) ORDER BY trade_date")
+          con.execute("""CREATE TEMP TABLE cs AS
+            SELECT f.trade_date,f.exchange,f.code,c.session_idx,e.trade_date AS entry_date,x.trade_date AS exit_date
+            FROM (SELECT trade_date,exchange,code FROM features_p WHERE trade_date<=DATE '2024-12-03') f
+            JOIN cal c ON f.trade_date=c.trade_date
+            LEFT JOIN cal e ON e.session_idx=c.session_idx+1
+            LEFT JOIN cal x ON x.session_idx=c.session_idx+20""")
+          con.execute("""CREATE TEMP TABLE gaps AS
+            SELECT 'ENTRY' AS leg,cs.trade_date AS decision_date,cs.entry_date AS target_date,cs.exchange,cs.code,
+                   em.code IS NOT NULL AS market_present,
+                   EXISTS(SELECT 1 FROM lifecycle_p l WHERE l.exchange=cs.exchange AND l.code=cs.code AND cs.entry_date>=l.listed_from AND (l.listed_to_exclusive IS NULL OR cs.entry_date<l.listed_to_exclusive)) AS lifecycle_active,
+                   (SELECT max(l.listed_to_exclusive) FROM lifecycle_p l WHERE l.exchange=cs.exchange AND l.code=cs.code AND l.listed_to_exclusive IS NOT NULL AND l.listed_to_exclusive<=cs.entry_date) AS prior_listed_to_exclusive,
+                   (SELECT min(l.listed_from) FROM lifecycle_p l WHERE l.exchange=cs.exchange AND l.code=cs.code AND l.listed_from>cs.entry_date) AS next_listed_from
+            FROM cs
+            LEFT JOIN state_p es ON cs.entry_date=es.trade_date AND cs.exchange=es.exchange AND cs.code=es.code
+            LEFT JOIN market_p em ON cs.entry_date=em.trade_date AND cs.exchange=em.exchange AND cs.code=em.code
+            WHERE es.code IS NULL
+            UNION ALL
+            SELECT 'EXIT',cs.trade_date,cs.exit_date,cs.exchange,cs.code,
+                   xm.code IS NOT NULL,
+                   EXISTS(SELECT 1 FROM lifecycle_p l WHERE l.exchange=cs.exchange AND l.code=cs.code AND cs.exit_date>=l.listed_from AND (l.listed_to_exclusive IS NULL OR cs.exit_date<l.listed_to_exclusive)),
+                   (SELECT max(l.listed_to_exclusive) FROM lifecycle_p l WHERE l.exchange=cs.exchange AND l.code=cs.code AND l.listed_to_exclusive IS NOT NULL AND l.listed_to_exclusive<=cs.exit_date),
+                   (SELECT min(l.listed_from) FROM lifecycle_p l WHERE l.exchange=cs.exchange AND l.code=cs.code AND l.listed_from>cs.exit_date)
+            FROM cs
+            LEFT JOIN state_p xs ON cs.exit_date=xs.trade_date AND cs.exchange=xs.exchange AND cs.code=xs.code
+            LEFT JOIN market_p xm ON cs.exit_date=xm.trade_date AND cs.exchange=xm.exchange AND cs.code=xm.code
+            WHERE xs.code IS NULL""")
+          cur=con.execute("""SELECT leg,count(*)::BIGINT AS missing_state_rows,
+            count(*) FILTER(WHERE lifecycle_active)::BIGINT AS active_lifecycle_missing_rows,
+            count(*) FILTER(WHERE NOT lifecycle_active)::BIGINT AS outside_lifecycle_missing_rows,
+            count(*) FILTER(WHERE market_present)::BIGINT AS market_present_rows,
+            count(*) FILTER(WHERE NOT market_present)::BIGINT AS market_absent_rows,
+            count(*) FILTER(WHERE NOT lifecycle_active AND prior_listed_to_exclusive IS NOT NULL)::BIGINT AS after_delist_rows,
+            count(*) FILTER(WHERE NOT lifecycle_active AND prior_listed_to_exclusive IS NULL AND next_listed_from IS NOT NULL)::BIGINT AS before_listing_rows,
+            count(DISTINCT (exchange,code))::BIGINT AS unique_symbols
+            FROM gaps GROUP BY leg ORDER BY leg""")
+          rows=[dict(zip([d[0] for d in cur.description],r)) for r in cur.fetchall()]
+          samples={}
+          for leg in ['ENTRY','EXIT']:
+              c=con.execute("SELECT decision_date,target_date,exchange,code,market_present,lifecycle_active,prior_listed_to_exclusive,next_listed_from FROM gaps WHERE leg=? ORDER BY target_date,exchange,code LIMIT 20",[leg])
+              samples[leg]=[dict(zip([d[0] for d in c.description],r)) for r in c.fetchall()]
+          active_total=sum(int(r['active_lifecycle_missing_rows']) for r in rows)
+          out={'schema_version':1,'status':'PASS_LIFECYCLE_EXPLAINS_ALL_GAPS' if active_total==0 else 'FAIL_ACTIVE_LIFECYCLE_G4_GAPS_EXIST','source_run_id':34208397287,'source_artifact_id':10048757085,'source_artifact_sha256':'9a8bb2fbea117d960db0ae5c70c677906902ba98f20c740231a2d2f4325330d0','rows':rows,'active_lifecycle_missing_total':active_total,'samples':samples,'oos_prediction_executed':False,'oos_label_value_read':False,'model_loaded':False,'authorization_consumed':False,'final_lockbox_accessed':False}
+          Path('build/diag/lifecycle_gap_diagnostic.json').write_text(json.dumps(out,ensure_ascii=False,indent=2,default=str)+'\n',encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2,default=str))
+          if active_total:
+              raise SystemExit(2)
+          PY
+          test ! -e build/model
+          test ! -e build/oos
+          test ! -e authorization_consumption.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage4-alpha-v1-oos-lifecycle-gap-diagnostic
+          path: build/diag/lifecycle_gap_diagnostic.json
+          if-no-files-found: error
+          retention-days: 90
