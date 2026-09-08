@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "request_id": "STAGE4_ALPHA_V1_OOS_AUTO_DISPATCH_REQUEST_V1",
-  "status": "DISARMED_PRE_ACCESS",
-  "armed": false,
-  "bridge_contract_fingerprint": "aaefe0a7fafee60fdfb274fbea44e0d60cc71949da35e1b3a9417f92bcd9ed38",
+  "status": "ARMED_SINGLE_USE_AUTO_PUSH_EXECUTION",
+  "armed": true,
+  "supersession_fingerprint": "d47f1288a3eeae0aada72794c7a07eee7c702835e1d4b4d67c0adf2c77114fb3",
   "target_workflow_id": 321367424,
   "target_branch": "agent/stage4-alpha-v1-oos-validation-execution",
   "authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
