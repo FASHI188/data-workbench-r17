@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_PRE_ACCESS_RUN_HISTORY_RESERVATION_V1_NO_OOS_ACCESS",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "adf770ecb90759489b3c1a97325d06a616443b206bc91472dd05aa209240f628",
+  "fingerprint_basis": {
+    "contract_id": "STAGE4_ALPHA_V1_OOS_RUN_HISTORY_RESERVATION_V1",
+    "version": "V1",
+    "repository": "FASHI188/data-workbench-r17",
+    "workflow_id": 321367424,
+    "workflow_path": ".github/workflows/stage2-final-freeze-v325.yml",
+    "execution_branch": "agent/stage4-alpha-v1-oos-validation-execution",
+    "oos_authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
+    "oos_execution_contract_fingerprint": "224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177",
+    "zero_access_exemptions": [
+      {"run_id": 33858867504, "head_sha": "22e3b411b4f5c9965843069a8e05a85cb587f1b3", "reason": "PRE_ACCESS_STATIC_GREP_FALSE_POSITIVE_BEFORE_BROAD_SOURCE_DOWNLOAD", "independent_zero_access_proof": true, "oos_prediction_computed": false, "oos_label_value_read": false, "authorization_consumed": false},
+      {"run_id": 33862541324, "head_sha": "200d38e1a7231498bd7e51b417ba36ee8a8345e9", "reason": "PRE_ACCESS_PHYSICAL_BOUNDARY_G4_APPLICABILITY_FAILURE_BEFORE_MODEL_EXECUTION", "independent_zero_access_proof": true, "oos_prediction_computed": false, "oos_label_value_read": false, "authorization_consumed": false}
+    ],
+    "reservation_semantics": {
+      "ledger_source": "IMMUTABLE_GITHUB_ACTIONS_WORKFLOW_RUN_HISTORY",
+      "query_event": "workflow_dispatch",
+      "query_branch_exact": "agent/stage4-alpha-v1-oos-validation-execution",
+      "earliest_non_exempt_dispatch_is_reservation_owner": true,
+      "only_reservation_owner_may_proceed_to_oos_prediction": true,
+      "current_run_attempt_must_equal": 1,
+      "current_run_head_sha_must_equal_execution_head": true,
+      "later_dispatches_do_not_displace_owner_and_must_fail_closed": true,
+      "reservation_persists_if_owner_fails_before_prediction": true,
+      "automatic_release_forbidden": true,
+      "recovery_requires_separate_governance_supersession_and_independent_zero_access_proof": true,
+      "github_api_write_forbidden": true,
+      "workflow_contents_write_forbidden": true
+    },
+    "consumption_semantics": {
+      "authorization_consumed_at": "FIRST_OOS_PREDICTION_COMPUTATION",
+      "run_history_reservation_is_not_authorization_consumption": true,
+      "consumption_marker": "build/oos/authorization_consumption.json",
+      "future_dispatch_after_owner_exists_must_fail_before_prediction": true
+    },
+    "hard_boundaries": {"model_fit": false, "retraining": false, "tuning": false, "candidate_reselection": false, "final_lockbox_access": false, "live_signal": false, "authoritative_output": false, "main_merge": false}
+  }
+}
