@@ -93,6 +93,7 @@
       "scripts/audit_stage4_alpha_v1_oos_physical_boundary_v1_2.py",
       "scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py",
       "scripts/audit_stage4_alpha_v1_runtime_veto_v1_1.py",
+      "scripts/run_stage4_alpha_v1_auto_push_recovery_v2.py",
       ".github/workflows/stage4-alpha-v1-oos-auto-push-execution.yml"
     ],
     "workflow_permissions": {
@@ -102,5 +103,5 @@
       "workflow_dispatch_creation_forbidden": true
     }
   },
-  "fingerprint": "60a8bf15ab5a083d17e1b57ab7beb40906dfd3eb19efc9d53d7d9269c5485fc9"
+  "fingerprint": "c1f203eef0bb7ca513a964b64e7a41c695a62c0e81af0d782b32d28351f17709"
 }
