@@ -67,6 +67,59 @@ jobs:
           test ! -e build/oos-boundary
           test ! -e build/runtime-veto
 
+  physical-boundary-pre-access-recovery-v2:
+    if: github.event_name == 'pull_request'
+    needs: static-pre-access-recovery-v2
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+      EXECUTION_HEAD: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install boundary runtime only
+        run: python -m pip install --disable-pip-version-check duckdb==1.3.2
+      - name: Arm request only inside the ephemeral PR workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('governance/stage4_alpha_v1_oos_auto_push_recovery_request_v2.json')
+          r=json.loads(p.read_text(encoding='utf-8'))
+          assert r['status']=='DISARMED_PRE_ACCESS_RECOVERY_V2' and r['armed'] is False
+          r['status']='ARMED_SINGLE_USE_AUTO_PUSH_RECOVERY_V2'
+          r['armed']=True
+          p.write_text(json.dumps(r,indent=2)+'\n',encoding='utf-8')
+          PY
+      - name: Build and independently audit physical boundary without model bytes
+        run: python scripts/run_stage4_alpha_v1_auto_push_recovery_v2.py --mode boundary
+      - name: Prove zero consuming access
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e build/model
+          test ! -e build/oos
+          test ! -e build/runtime-veto
+          test ! -e build/oos-boundary/authorization_consumption.json
+          test ! -e build/oos-boundary/oos_predictions.parquet
+          test ! -e build/oos-boundary/oos_labels.parquet
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage4-alpha-v1-recovery-v2-pre-access-boundary-dryrun
+          path: build/oos-boundary
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90
+
   single-use-auto-push-recovery-v2:
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
