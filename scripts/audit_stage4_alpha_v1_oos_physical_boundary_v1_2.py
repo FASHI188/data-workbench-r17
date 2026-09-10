@@ -58,13 +58,18 @@ def main()->int:
    count(*) FILTER(WHERE c.decision_active AND (ds.tradable IS NULL OR ds.risk_warning IS NULL OR ds.preclose IS NULL OR ds.limit_rule IS NULL))::BIGINT missing_decision_core_state_active_rows,
    count(*) FILTER(WHERE c.entry_active AND (es.tradable IS NULL OR es.risk_warning IS NULL OR es.preclose IS NULL OR es.limit_rule IS NULL))::BIGINT missing_entry_core_state_active_rows,
    count(*) FILTER(WHERE c.exit_active AND (xs.tradable IS NULL OR xs.risk_warning IS NULL OR xs.preclose IS NULL OR xs.limit_rule IS NULL))::BIGINT missing_exit_core_state_active_rows,
+   count(*) FILTER(WHERE c.decision_active AND ds.limit_rule NOT IN {na} AND (ds.limit_up_rate IS NULL OR ds.limit_down_rate IS NULL))::BIGINT decision_applicable_rate_missing_active_rows,
    count(*) FILTER(WHERE c.entry_active AND es.limit_rule NOT IN {na} AND (es.limit_up_rate IS NULL OR es.limit_down_rate IS NULL))::BIGINT entry_applicable_rate_missing_active_rows,
    count(*) FILTER(WHERE c.exit_active AND xs.limit_rule NOT IN {na} AND (xs.limit_up_rate IS NULL OR xs.limit_down_rate IS NULL))::BIGINT exit_applicable_rate_missing_active_rows,
+   count(*) FILTER(WHERE c.decision_active AND ds.tradable=1 AND dm.code IS NULL)::BIGINT tradable_decision_market_missing_active_rows,
    count(*) FILTER(WHERE c.entry_active AND es.tradable=1 AND em.code IS NULL)::BIGINT tradable_entry_market_missing_active_rows,
    count(*) FILTER(WHERE c.exit_active AND xs.tradable=1 AND xm.code IS NULL)::BIGINT tradable_exit_market_missing_active_rows,
+   count(*) FILTER(WHERE c.decision_active AND dm.code IS NULL AND NOT (ds.tradable=0 AND ds.limit_rule='SUSPENDED'))::BIGINT invalid_decision_market_missing_active_rows,
+   count(*) FILTER(WHERE c.entry_active AND em.code IS NULL AND NOT (es.tradable=0 AND es.limit_rule='SUSPENDED'))::BIGINT invalid_entry_market_missing_active_rows,
+   count(*) FILTER(WHERE c.exit_active AND xm.code IS NULL AND NOT (xs.tradable=0 AND xs.limit_rule='SUSPENDED'))::BIGINT invalid_exit_market_missing_active_rows,
    count(*) FILTER(WHERE NOT c.entry_active AND em.code IS NOT NULL)::BIGINT lifecycle_inactive_entry_market_present_rows,
    count(*) FILTER(WHERE NOT c.exit_active AND xm.code IS NOT NULL)::BIGINT lifecycle_inactive_exit_market_present_rows
-   FROM c2 c LEFT JOIN s ds ON c.trade_date=ds.trade_date AND c.exchange=ds.exchange AND c.code=ds.code LEFT JOIN s es ON c.entry_date=es.trade_date AND c.exchange=es.exchange AND c.code=es.code LEFT JOIN s xs ON c.exit_date=xs.trade_date AND c.exchange=xs.exchange AND c.code=xs.code LEFT JOIN m em ON c.entry_date=em.trade_date AND c.exchange=em.exchange AND c.code=em.code LEFT JOIN m xm ON c.exit_date=xm.trade_date AND c.exchange=xm.exchange AND c.code=xm.code""")
+   FROM c2 c LEFT JOIN s ds ON c.trade_date=ds.trade_date AND c.exchange=ds.exchange AND c.code=ds.code LEFT JOIN s es ON c.entry_date=es.trade_date AND c.exchange=es.exchange AND c.code=es.code LEFT JOIN s xs ON c.exit_date=xs.trade_date AND c.exchange=xs.exchange AND c.code=xs.code LEFT JOIN m dm ON c.trade_date=dm.trade_date AND c.exchange=dm.exchange AND c.code=dm.code LEFT JOIN m em ON c.entry_date=em.trade_date AND c.exchange=em.exchange AND c.code=em.code LEFT JOIN m xm ON c.exit_date=xm.trade_date AND c.exchange=xm.exchange AND c.code=xm.code""")
   ck('lifecycle_counts',int(cr['entry_lifecycle_inactive_rows'])==52 and int(cr['exit_lifecycle_inactive_rows'])==1217,str(cr))
   for k,v in cr.items():
    if k not in {'candidate_rows','entry_lifecycle_inactive_rows','exit_lifecycle_inactive_rows'}:ck('candidate_'+k,int(v)==0,str(cr))
