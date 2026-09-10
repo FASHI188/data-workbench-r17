@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
   "request_id": "STAGE4_ALPHA_V1_OOS_AUTO_PUSH_RECOVERY_REQUEST_V2",
-  "status": "DISARMED_PRE_ACCESS_RECOVERY_V2",
-  "armed": false,
+  "status": "ARMED_SINGLE_USE_AUTO_PUSH_RECOVERY_V2",
+  "armed": true,
   "supersession_fingerprint": "e7074a5bf328c548be0d7c6d1fba4db2a36ec3712e14842c912125bef85e75ad",
   "target_workflow_file": "stage4-alpha-v1-oos-auto-push-recovery-v2.yml",
   "target_branch": "agent/stage4-alpha-v1-oos-validation-execution",
