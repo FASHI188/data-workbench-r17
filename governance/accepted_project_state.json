@@ -1,5 +1,5 @@
 {
-  "schema_version": 7,
+  "schema_version": 8,
   "status": "RESEARCH_ONLY",
   "integration_ref": "agent/stage3-clean-integration",
   "live_integration_sha_source": "READ_GITHUB_REF_AT_RUNTIME",
@@ -20,7 +20,8 @@
     "alpha_training_v1": "FINAL_DEVELOPMENT_REFIT_COMPLETE_PR151_C007_RESEARCH_ONLY",
     "alpha_final_refit_authorization_v1": "MERGED_ACCEPTED_CONSUMED_PR151_AUTH_7D5F8801",
     "alpha_final_refit_execution_v1": "COMPLETE_PR151_ARTIFACT_9251178312_MODEL_E85AABF6",
-    "oos_validation_authorization_v1": "MERGED_ACCEPTED_NOT_CONSUMED_PR156_AUTH_D260F117",
+    "oos_validation_authorization_v1": "MERGED_ACCEPTED_CONSUMED_PR157_RUN_34454575970_AUTH_D260F117",
+    "oos_validation_execution_v1": "CONSUMED_INCOMPLETE_NO_PROMOTION_PR157_RUN_34454575970",
     "continuity_control_plane_v3": "COMPLETE_V3_3_CONTEXT_BUDGET_CHAT_LIFECYCLE",
     "research_method_core_v1": "ACTIVE_STABLE_ON_DEMAND_MIGRATED_TRADER26_29"
   },
@@ -33,21 +34,22 @@
     "alpha_final_refit_execution_v1": "governance/stage4_alpha_v1_c007_final_refit_execution_evidence.json",
     "oos_validation_authorization_v1": "governance/stage4_alpha_v1_oos_validation_authorization.json",
     "oos_validation_authorization_audit_v1": "governance/stage4_alpha_v1_oos_validation_authorization_audit.json",
+    "oos_validation_execution_v1": "governance/stage4_alpha_v1_oos_validation_consumed_incomplete_evidence.json",
     "research_method_core_v1": "governance/INVESTMENT_RESEARCH_METHOD_CORE_V1.md"
   },
   "active_business_pr": null,
-  "next_business_gate": "Create a separate OOS execution PR. It must be exact-head reviewed before a single workflow-dispatch label-bearing run. Until that dispatch begins under the accepted authorization, OOS label access on integration remains false and FINAL_LOCKBOX_V1 remains sealed.",
+  "next_business_gate": "Accept the consumed-incomplete OOS evidence with NO_PROMOTION. The D260F117 authorization is exhausted and may not be reused. Any further research must begin with a separate superseding preregistration/governance decision that explicitly preserves Run 34454575970 and its incomplete OOS failure. FINAL_LOCKBOX_V1 remains sealed.",
   "permissions": {
     "model_fit_allowed": false,
     "model_fit_scope": "NONE",
     "development_final_refit_allowed": false,
-    "oos_execution_pr_creation_allowed": true,
+    "oos_execution_pr_creation_allowed": false,
     "oos_label_access_allowed": false,
-    "oos_label_bearing_execution_runs_remaining": 1,
+    "oos_label_bearing_execution_runs_remaining": 0,
     "lockbox_label_access_allowed": false,
     "live_signal_allowed": false,
     "main_merge_allowed": false,
     "authoritative_model_output_allowed": false
   },
-  "authority_note": "Live integration SHA must be read from GitHub at runtime. Development-CV authorization 2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c and C007 final-refit authorization 7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295 are consumed and non-reusable. Frozen C007 model SHA256 is e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c. PR156 accepts OOS authorization fingerprint d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d without accessing OOS. The accepted authorization permits only creation and exact-head review of a separate OOS execution PR followed by at most one workflow-dispatch label-bearing run under that contract; integration itself still has oos_label_access_allowed=false. Any OOS label read or OOS prediction computation consumes the authorization. FINAL_LOCKBOX_V1 starting 2025-01-02 remains sealed. No refit/retraining, candidate reselection, hyperparameter search, live signals, main merge, or authoritative model output is allowed. Continuity V3.3 and Research Method Core V1 remain unchanged."
+  "authority_note": "Live integration SHA must be read from GitHub at runtime. Development-CV authorization 2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c and C007 final-refit authorization 7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295 are consumed and non-reusable. Frozen C007 model SHA256 remains e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c. OOS authorization d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d was consumed by Run 34454575970 at exact execution head 3b91203693fb1dcc4c6e649747f89b1ca7be622e when the first OOS prediction computation occurred. Immutable predictions were produced, but the frozen execution implementation then failed during label materialization with a DuckDB parser error before Alpha or Runtime Veto could be evaluated. Therefore no promotion is established, no rerun is permitted under the consumed authorization, and the failure must not be erased by retuning or reselection. FINAL_LOCKBOX_V1 starting 2025-01-02 remains sealed. No fit/retraining, candidate reselection, hyperparameter search, live signals, main merge, authoritative model output, or additional label-bearing run is allowed under the current authority."
 }
