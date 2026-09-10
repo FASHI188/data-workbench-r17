@@ -1,0 +1,119 @@
+name: Stage4 Alpha V1 Single-Use OOS Auto-Push Recovery V2
+
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - '.github/workflows/stage4-alpha-v1-oos-auto-push-recovery-v2.yml'
+      - 'governance/stage4_alpha_v1_oos_auto_push_recovery_supersession_v2.json'
+      - 'governance/stage4_alpha_v1_oos_auto_push_recovery_request_v2.json'
+      - 'governance/stage4_alpha_v1_runtime_veto_contract_v1_1.json'
+      - 'scripts/build_stage4_alpha_v1_oos_physical_boundary_v1_2.py'
+      - 'scripts/audit_stage4_alpha_v1_oos_physical_boundary_v1_2.py'
+      - 'scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py'
+      - 'scripts/audit_stage4_alpha_v1_runtime_veto_v1_1.py'
+      - 'scripts/run_stage4_alpha_v1_auto_push_recovery_v2.py'
+  push:
+    branches:
+      - agent/stage4-alpha-v1-oos-validation-execution
+    paths:
+      - 'governance/stage4_alpha_v1_oos_auto_push_recovery_request_v2.json'
+
+concurrency:
+  group: stage4-alpha-v1-oos-auto-push-recovery-v2-single-use
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CORE_BLOB: '19134bc8960b6c9c825ea2708aa1aac14ce914af'
+  OMP_NUM_THREADS: '1'
+  MKL_NUM_THREADS: '1'
+  OPENBLAS_NUM_THREADS: '1'
+  NUMEXPR_NUM_THREADS: '1'
+
+jobs:
+  static-pre-access-recovery-v2:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Verify recovery V2 without OOS access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            scripts/build_stage4_alpha_v1_oos_physical_boundary_v1_2.py \
+            scripts/audit_stage4_alpha_v1_oos_physical_boundary_v1_2.py \
+            scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py \
+            scripts/audit_stage4_alpha_v1_runtime_veto_v1_1.py \
+            scripts/run_stage4_alpha_v1_auto_push_recovery_v2.py
+          python scripts/run_stage4_alpha_v1_auto_push_recovery_v2.py --mode static
+          test "$(git hash-object scripts/run_stage4_alpha_v1_oos_validation_core.py)" = "$CORE_BLOB"
+          ! grep -n -E '^\s*contents:\s*write\s*$|^\s*actions:\s*write\s*$|\bgit\s+push\b|\bgh\s+api\b|\bgh\s+pr\s+merge\b' \
+            .github/workflows/stage4-alpha-v1-oos-auto-push-recovery-v2.yml
+          test ! -e build/oos
+          test ! -e build/oos-boundary
+          test ! -e build/runtime-veto
+
+  single-use-auto-push-recovery-v2:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      GH_TOKEN: ${{ github.token }}
+      EXECUTION_HEAD: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Reserve recovery V2 before OOS access
+        run: python scripts/run_stage4_alpha_v1_auto_push_recovery_v2.py --mode reserve
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install boundary runtime only
+        run: python -m pip install --disable-pip-version-check duckdb==1.3.2
+      - name: Build and audit lifecycle-aware physical boundary
+        run: python scripts/run_stage4_alpha_v1_auto_push_recovery_v2.py --mode boundary
+      - name: Install exact frozen model runtime
+        run: python -m pip install --disable-pip-version-check numpy==2.5.1 scipy==1.17.0 scikit-learn==1.9.0 pyarrow==25.0.0 duckdb==1.3.2 pandas==3.0.5
+      - name: Execute frozen C007 once and audit Alpha plus Runtime Veto V1.1
+        run: python scripts/run_stage4_alpha_v1_auto_push_recovery_v2.py --mode execute
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage4-alpha-v1-recovery-v2-oos-physical-boundary
+          path: build/oos-boundary
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage4-alpha-v1-recovery-v2-oos-validation-single-use
+          path: build/oos
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage4-alpha-v1-recovery-v2-runtime-veto-single-use
+          path: build/runtime-veto
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 90
