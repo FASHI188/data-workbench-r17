@@ -1,13 +1,13 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "status": "FROZEN_PRE_ACCESS_AUTO_PUSH_RECOVERY_V2_NO_OOS_ACCESS",
   "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
   "fingerprint_basis": {
     "supersession_id": "STAGE4_ALPHA_V1_OOS_AUTO_PUSH_RECOVERY_V2",
     "repository": "FASHI188/data-workbench-r17",
     "execution_branch": "agent/stage4-alpha-v1-oos-validation-execution",
-    "auto_workflow_path": ".github/workflows/stage4-alpha-v1-oos-auto-push-execution.yml",
-    "request_path": "governance/stage4_alpha_v1_oos_auto_dispatch_request.json",
+    "auto_workflow_path": ".github/workflows/stage4-alpha-v1-oos-auto-push-recovery-v2.yml",
+    "request_path": "governance/stage4_alpha_v1_oos_auto_push_recovery_request_v2.json",
     "authority": {
       "oos_authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
       "execution_contract_v1_1_fingerprint": "224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177",
@@ -54,12 +54,13 @@
       "old_owner_is_exempt_only_for_this_explicit_recovery_supersession": true,
       "eligible_recovery_event": "push",
       "push_branch_exact": "agent/stage4-alpha-v1-oos-validation-execution",
-      "push_path_exact": "governance/stage4_alpha_v1_oos_auto_dispatch_request.json",
+      "push_path_exact": "governance/stage4_alpha_v1_oos_auto_push_recovery_request_v2.json",
       "request_status_required": "ARMED_SINGLE_USE_AUTO_PUSH_RECOVERY_V2",
       "request_commit_changes_only_request_path": true,
       "execution_head_is_recovery_push_commit_sha": true,
       "current_run_attempt_must_equal": 1,
-      "earliest_non_exempt_recovery_push_is_owner": true,
+      "recovery_ledger_source": "IMMUTABLE_GITHUB_ACTIONS_RUN_HISTORY_FOR_RECOVERY_V2_WORKFLOW",
+      "earliest_recovery_v2_push_run_is_owner": true,
       "later_recovery_pushes_fail_closed": true,
       "automatic_rerun_forbidden": true,
       "automatic_release_forbidden": true,
@@ -87,14 +88,16 @@
       "final_lockbox_sealed": true
     },
     "allowed_pre_access_delta_paths": [
+      ".github/workflows/stage4-alpha-v1-oos-lifecycle-diagnostic.yml",
+      ".github/workflows/stage4-alpha-v1-oos-auto-push-recovery-v2.yml",
       "governance/stage4_alpha_v1_oos_auto_push_recovery_supersession_v2.json",
+      "governance/stage4_alpha_v1_oos_auto_push_recovery_request_v2.json",
       "governance/stage4_alpha_v1_runtime_veto_contract_v1_1.json",
       "scripts/build_stage4_alpha_v1_oos_physical_boundary_v1_2.py",
       "scripts/audit_stage4_alpha_v1_oos_physical_boundary_v1_2.py",
       "scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py",
       "scripts/audit_stage4_alpha_v1_runtime_veto_v1_1.py",
-      "scripts/run_stage4_alpha_v1_auto_push_recovery_v2.py",
-      ".github/workflows/stage4-alpha-v1-oos-auto-push-execution.yml"
+      "scripts/run_stage4_alpha_v1_auto_push_recovery_v2.py"
     ],
     "workflow_permissions": {
       "contents": "read",
@@ -103,5 +106,5 @@
       "workflow_dispatch_creation_forbidden": true
     }
   },
-  "fingerprint": "c1f203eef0bb7ca513a964b64e7a41c695a62c0e81af0d782b32d28351f17709"
+  "fingerprint": "e7074a5bf328c548be0d7c6d1fba4db2a36ec3712e14842c912125bef85e75ad"
 }
