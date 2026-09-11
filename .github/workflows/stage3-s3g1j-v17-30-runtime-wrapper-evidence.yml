@@ -1,0 +1,153 @@
+name: Stage3 S3G1J V17.30 Runtime Wrapper Evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'governance/stage3_s3g1j_v17_30_runtime_wrapper_acceptance.json'
+      - 'tests/test_stage3_v17_30_runtime_wrapper_acceptance_evidence.py'
+      - '.github/workflows/stage3-s3g1j-v17-30-runtime-wrapper-evidence.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  EXECUTION_PR: '123'
+  EXECUTION_HEAD: 'd26d7f543c20d717ed8c8a421e28838feecd7a03'
+  EXECUTION_RUN: '31458469699'
+  ARTIFACT_ID: '9088925988'
+  ARTIFACT_NAME: 'stage3-s3g1j-v17-30-inactive-runtime-wrapper'
+  ARTIFACT_DIGEST: 'sha256:232b2e4a6c64b271193853d4e8fd32c0fdfd367344ecec720902fe8f090333dc'
+  REPORT_SHA: '8e07e885bfdabc009b82ce791f2ce10c48f92111bf8956891af273e6d9221411'
+  OUTPUT_SHA: '4add6a15202cb47bd601055d2a9e728443c0f4dd2ac686266089c8039ad5d523'
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Lock closed-unmerged wrapper execution and exact head runs
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$EXECUTION_PR")
+          test "$(jq -r '.state' <<<"$pr")" = closed
+          test "$(jq -r '.merged' <<<"$pr")" = false
+          test "$(jq -r '.head.sha' <<<"$pr")" = "$EXECUTION_HEAD"
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$EXECUTION_RUN")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.head_sha' <<<"$run")" = "$EXECUTION_HEAD"
+          python - <<'PY'
+          import os,subprocess,json
+          repo=os.environ['GITHUB_REPOSITORY']
+          head=os.environ['EXECUTION_HEAD']
+          required={
+            'Stage3 S3G1J V17.30 Inactive Runtime Wrapper':31458469699,
+            'Repository Safety Audit':31458469713,
+            'Runtime Reproducibility Contract':31458469690,
+            'Stage3 Clean S3G1J Runtime Contract':31458469694,
+          }
+          for name,run_id in required.items():
+              raw=subprocess.check_output(['gh','api',f'repos/{repo}/actions/runs/{run_id}'],text=True)
+              r=json.loads(raw)
+              assert r['name']==name,(name,r['name'])
+              assert r['head_sha']==head,(name,r['head_sha'])
+              assert r['status']=='completed' and r['conclusion']=='success',(name,r['status'],r['conclusion'])
+          print('V17_30_WRAPPER_EXACT_HEAD_RUNS_PASS')
+          PY
+      - name: Lock exact wrapper artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID")
+          test "$(jq -r '.name' <<<"$artifact")" = "$ARTIFACT_NAME"
+          test "$(jq -r '.digest' <<<"$artifact")" = "$ARTIFACT_DIGEST"
+          test "$(jq -r '.expired' <<<"$artifact")" = false
+          test "$(jq -r '.workflow_run.id' <<<"$artifact")" = "$EXECUTION_RUN"
+          test "$(jq -r '.workflow_run.head_sha' <<<"$artifact")" = "$EXECUTION_HEAD"
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-30-inactive-runtime-wrapper
+          path: accepted
+          repository: FASHI188/data-workbench-r17
+          run-id: 31458469699
+          github-token: ${{ github.token }}
+      - name: Verify downloaded wrapper report and output hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          report=accepted/stage3_s3g1j_v17_30_runtime_wrapper.json
+          hashes=accepted/output_sha256.txt
+          test "$(sha256sum "$report" | awk '{print $1}')" = "$REPORT_SHA"
+          test "$(sha256sum "$hashes" | awk '{print $1}')" = "$OUTPUT_SHA"
+          grep -F "$REPORT_SHA  build/v17_30_runtime_wrapper/stage3_s3g1j_v17_30_runtime_wrapper.json" "$hashes"
+          python - <<'PY'
+          import json
+          r=json.load(open('accepted/stage3_s3g1j_v17_30_runtime_wrapper.json',encoding='utf-8'))
+          assert r['gate']=='S3G1J_V17_30_INACTIVE_RUNTIME_WRAPPER_V1'
+          assert r['pass'] is True and r['errors']==[]
+          assert r['target_count']==2
+          assert [x['announcement_id'] for x in r['targets']]==['1223347318','1223407043']
+          assert r['real_source_runtime_wrapper_pass'] is True
+          assert r['real_formal_v17_29_non_target_delegation_pass'] is True
+          assert r['synthetic_wrong_identity_delegation_contract_pass'] is True
+          assert r['formal_runtime_authority_before_activation']=='V17.29'
+          assert r['v17_30_authority_activated'] is False
+          assert r['fresh_full_basis_execution_started'] is False
+          assert r['shadow_expected_full_basis_numeric_rows']==1051826
+          assert r['shadow_expected_full_basis_document_errors']==1362
+          assert r['shadow_expected_full_basis_unresolved_ties']==1279
+          assert r['shadow_expected_values_are_not_production_acceptance'] is True
+          assert r['production_data_changed'] is False
+          assert r['trained_model_changed'] is False
+          assert r['live_configuration_changed'] is False
+          assert r['stage3_status']=='NOT_READY'
+          assert r['stage4_alpha_live_locked'] is True
+          assert r['main_changed'] is False
+          for x in r['targets']:
+              assert set(x['values'])=={'TOTAL_ASSETS','TOTAL_LIABILITIES','TOTAL_EQUITY'}
+              assert x['cross_page_equity']['equity_amount_page']+1==x['cross_page_equity']['suffix_page']
+              assert x['cross_page_equity']['equity_prefix']+x['cross_page_equity']['equity_suffix']=='所有者权益（或股东权益）合计'
+              assert all(c['identity_residual_cny']=='0.00' for c in x['dual_column_identity']['columns'])
+          print('DOWNLOADED_V17_30_WRAPPER_REPORT_PASS')
+          PY
+      - name: Verify committed evidence and formal V17.29 authority locks
+        run: |
+          python -m unittest tests.test_stage3_v17_30_runtime_wrapper_acceptance_evidence -v
+          python - <<'PY'
+          import json
+          e=json.load(open('governance/stage3_s3g1j_v17_30_runtime_wrapper_acceptance.json',encoding='utf-8'))
+          runtime=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          project=json.load(open('data/project_status.json',encoding='utf-8'))
+          lock=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
+          assert e['authorization']['inactive_runtime_wrapper_acceptance_pass'] is True
+          assert e['authorization']['formal_v17_30_runtime_promotion_governance_eligible'] is True
+          assert e['authorization']['v17_30_runtime_authority_activated'] is False
+          assert e['authorization']['fresh_v17_30_full_basis_execution_authorized'] is False
+          assert runtime['current_production_authority']['generation']=='V17.29'
+          assert runtime['formal_runtime']['runtime_generation']=='V17.29'
+          assert runtime['formal_runtime']['parser_git_blob']=='37ab001356c479808e3fa5f67f2270649e3130ba'
+          assert runtime['formal_runtime']['extractor_git_blob']=='7be4f17357e92144c3f54ddd4951ec57a0878049'
+          full=runtime['full_basis_last_completed_final']
+          assert full['generation']=='V17.29'
+          assert full['run']==31389854868
+          assert full['artifact_id']==9063271903
+          assert full['numeric_observations']==1051820
+          assert full['document_error_count']==1364
+          assert full['unresolved_tie_count']==1281
+          assert full['verdict']=='FAIL_CLOSED'
+          assert project['stage3']['status']=='NOT_READY'
+          assert project['stage4_unlocked'] is False
+          assert project['alpha_training_allowed'] is False
+          assert project['live_signal_allowed'] is False
+          assert lock['status']=='NOT_READY'
+          print('V17_30_WRAPPER_EVIDENCE_FORMAL_V17_29_AUTHORITY_PASS')
+          PY

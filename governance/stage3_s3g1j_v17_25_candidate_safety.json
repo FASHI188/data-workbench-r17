@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "gate": "S3G1J_V17_25_GENERIC_GROUP_WITNESS_CANDIDATE_SAFETY",
+  "status": "MACHINE_ACCEPTED_CANDIDATE_NOT_PRODUCTION_AUTHORITY",
+  "accepted_run": 30690306327,
+  "accepted_head_sha": "db28bc96283e3d003527a5dd007ff056892e9db4",
+  "artifact_id": 8815553282,
+  "artifact": "stage3-s3g1j-v17-25-generic-group-witness-candidate-safety-sharded",
+  "artifact_digest": "sha256:b63cdb341ab30d62bb25bf49cc8c94d3ffdc8df97fd9e39c9aada0629c867dd9",
+  "report_sha256": "f985cc7d1d24f42e4908bc27a556dcd92393261907181a57237e25bdd412c331",
+  "source_authorities": {
+    "p0_diagnostic_run": 30687837626,
+    "v17_24_runtime_run": 30685830808
+  },
+  "execution": {
+    "prepare": "SUCCESS",
+    "p0_shards": 2,
+    "exact82_shards": 8,
+    "finalizer": "SUCCESS",
+    "p0_input_count": 22,
+    "exact82_input_count": 82,
+    "source_sha_match_count": 104,
+    "errors": [],
+    "pass": true
+  },
+  "candidate_rule": {
+    "generic_title_roles": [
+      "资产负债表",
+      "1、资产负债表"
+    ],
+    "required_group_witness_alias": "归属于母公司所有者权益合计",
+    "required_total_equity_alias": "所有者权益合计",
+    "required_amount_column_count": 2,
+    "same_statement_segment_required": true,
+    "same_page_required": true,
+    "amount_pairs_equal_required": true,
+    "witness_precedes_total_equity_required": true
+  },
+  "promoted_group_witness_announcement_ids": [
+    "1200907104",
+    "1201708762",
+    "1202195310",
+    "1202774611",
+    "1203358200",
+    "1204077386",
+    "1205543437",
+    "1207035181"
+  ],
+  "candidate_recovered_count": 1,
+  "candidate_recovered_announcement_ids": [
+    "1207035181"
+  ],
+  "candidate_remaining_p0_fail_closed_count": 21,
+  "required_negative_announcement_ids": [
+    "1202799494",
+    "1209806910",
+    "1219834247"
+  ],
+  "missing_equity_population_count": 11,
+  "exact82_recovery_announcement_ids": [
+    "1212731093",
+    "1219311356",
+    "1221568845",
+    "1225153907"
+  ],
+  "exact82_recovery_state_equal_v17_24": true,
+  "exact82_balance_sheet_blocks_equal_v17_24": true,
+  "exact82_validation_errors_equal_v17_24": true,
+  "new_recovery_evidence": {
+    "announcement_id": "1207035181",
+    "source_code": "000985",
+    "report_family": "Q3",
+    "economic_date": "2019-09-30",
+    "source_sha256": "320e3a950a4768e73766d57a09bcf34d893d4da949b8ed5a1b2f887852e76229",
+    "identity_tolerance": "0.005",
+    "identity_relative_error": "0",
+    "identity_residual_cny": "0.00",
+    "selected_pages": {
+      "TOTAL_ASSETS": 8,
+      "TOTAL_LIABILITIES": 9,
+      "TOTAL_EQUITY": 9
+    },
+    "selected_aliases": {
+      "TOTAL_ASSETS": "资产总计",
+      "TOTAL_LIABILITIES": "负债合计",
+      "TOTAL_EQUITY": "所有者权益合计"
+    },
+    "column_role_gate_pass": true
+  },
+  "hard_boundaries": {
+    "production_runtime_changed": false,
+    "accepted_production_runtime": "V17.24",
+    "accounting_tolerance": "0.005",
+    "accounting_tolerance_changed": false,
+    "source_policy_changed": false,
+    "fuzzy_alias_matching_enabled": false,
+    "ocr_enabled": false,
+    "e_equals_a_minus_l_inference": false,
+    "production_data_changed": false,
+    "stage3_status": "NOT_READY",
+    "stage4_alpha_live_locked": true
+  },
+  "next_requirement": "Run an independently source-locked V17.25 production acceptance and register it before changing runtime authority. Candidate safety alone is not production promotion."
+}

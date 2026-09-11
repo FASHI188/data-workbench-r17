@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "status": "MACHINE_ACCEPTED_PRODUCTION_PROMOTION_SAFETY_ONLY",
+  "gate": "S3G1J_V17_29_PRODUCTION_PROMOTION_SAFETY_ACCEPTANCE_V1",
+  "execution_pr": {
+    "number": 107,
+    "head_sha": "4ea4ac01bcca3e580d73fc37378c2658df8f4b28",
+    "merge_authorized": false,
+    "disposition": "CLOSE_WITHOUT_MERGE_AFTER_GOVERNANCE_REGISTRATION"
+  },
+  "accepted_run": {
+    "run_id": 31311296836,
+    "workflow_name": "Stage3 S3G1J V17.29 Production Promotion Safety",
+    "head_sha": "4ea4ac01bcca3e580d73fc37378c2658df8f4b28",
+    "conclusion": "SUCCESS",
+    "artifact_id": 9037500964,
+    "artifact_name": "stage3-s3g1j-v17-29-production-promotion-safety",
+    "artifact_digest": "sha256:967727cf95d9cd5d923e4f59f9cbedfe3e17599ceb31a1df06fa607ab75c4d12"
+  },
+  "supporting_exact_head_runs": {
+    "repository_safety": 31311296812,
+    "runtime_reproducibility": 31311296830,
+    "clean_s3g1j": 31311296816
+  },
+  "locked_authority": {
+    "integration_base_sha": "3c438ff4eabfe03af92422198a322f92d23f9dc3",
+    "formal_runtime_generation": "V17.28",
+    "formal_parser_path": "scripts/stage3_financial_pdf_parser_v20.py",
+    "formal_parser_blob": "b299accbd9b19c6f909b883738378b0119f855b9",
+    "v17_28_run": 30997260730,
+    "v17_28_artifact_id": 8927455692,
+    "v17_28_artifact_digest": "sha256:82375169faada969ceafd4356ab0a2707aa14592d5db090c5d3910863d571c8b",
+    "candidate_acceptance_manifest": "governance/stage3_s3g1j_v17_29_candidate_acceptance.json",
+    "candidate_pr": 105,
+    "candidate_head": "51bd3ccc0013c2c9a6a55bbb54a1d82dcbd2974e",
+    "candidate_run": 31310230656,
+    "candidate_artifact_id": 9037206225,
+    "candidate_artifact_digest": "sha256:fc8ff09522b67df8e8209f7e5d88a0d768ef68987201dbb8087df2b6424bb99c",
+    "candidate_documents_sha256": "343ef55dc8bcf0eb53e8eda2d77f58ddfc48c5c6d13011d02a12d00bd836179e",
+    "candidate_values_sha256": "31479f232fa2708b411730aa0e0513892a0e42359f0a0e80f4325af3f8b9de2a"
+  },
+  "full_basis_result": {
+    "source_document_rows": 121354,
+    "promotion_document_rows": 121354,
+    "source_numeric_rows": 1051799,
+    "promotion_numeric_rows": 1051820,
+    "source_document_errors": 1371,
+    "promotion_document_errors": 1364,
+    "source_unresolved_ties": 1288,
+    "promotion_unresolved_ties": 1281,
+    "source_tie_taxonomy": {
+      "TIE_SOURCE_INCOMPLETE": 1274,
+      "TIE_VALUE_CONFLICT": 14
+    },
+    "promotion_tie_taxonomy": {
+      "TIE_SOURCE_INCOMPLETE": 1267,
+      "TIE_VALUE_CONFLICT": 14
+    },
+    "non_target_document_rows": 121347,
+    "non_target_document_exact_equal": true,
+    "existing_numeric_rows": 1051799,
+    "existing_numeric_exact_equal": true,
+    "candidate_target_document_semantic_equal": true,
+    "candidate_target_numeric_semantic_equal": true,
+    "candidate_target_document_semantic_sha256": "8b1bc94ff2e40b0a1778be64f5bdca0839a4e7f35db62ca9e893bd61fce96e31",
+    "promotion_target_document_semantic_sha256": "8b1bc94ff2e40b0a1778be64f5bdca0839a4e7f35db62ca9e893bd61fce96e31",
+    "candidate_target_numeric_semantic_sha256": "ee1eb9530b12f7666a65f02df30eafabf22e9c6106e787d4cf0153868aa870df",
+    "promotion_target_numeric_semantic_sha256": "ee1eb9530b12f7666a65f02df30eafabf22e9c6106e787d4cf0153868aa870df",
+    "target_announcement_ids": [
+      "1215186538",
+      "1219426855",
+      "1219792633",
+      "1219840508",
+      "1219879687",
+      "1220087244",
+      "1221006100"
+    ],
+    "target_numeric_distribution": {
+      "1215186538": 3,
+      "1219426855": 3,
+      "1219792633": 3,
+      "1219840508": 3,
+      "1219879687": 3,
+      "1220087244": 3,
+      "1221006100": 3
+    },
+    "target_concept_distribution": {
+      "TOTAL_ASSETS": 7,
+      "TOTAL_LIABILITIES": 7,
+      "TOTAL_EQUITY": 7
+    },
+    "split_equity_pattern": "SPLIT_LABEL_1_BEFORE_1_AFTER_AMOUNT",
+    "all_current_identity_residuals_zero": true,
+    "all_prior_identity_residuals_zero": true,
+    "accounting_tolerance": "0.005"
+  },
+  "independent_implementation": {
+    "imports_closed_candidate_implementation": false,
+    "reimplements_exact_source_rule_on_formal_v17_28": true,
+    "accepted_candidate_artifact_used_as_external_gold_standard": true,
+    "purpose": "Avoid self-validating the production wrapper against the exact same closed candidate code."
+  },
+  "output_hashes": {
+    "promotion_documents_gzip_sha256": "4e5d853ae9ba16dbfd6f0ca11e2310f00539ad18c8dfdc2b654f601ccf876e40",
+    "promotion_values_gzip_sha256": "2bfdd607580f474a5d5b1c1acb80468bd31906ebdc1235c798c58e12afd30fef",
+    "promotion_safety_report_sha256": "adcf8ad787957e1d9fba1961218de5919bbd202d33c51120dc811b0ed1de25fe",
+    "output_sha256_json_sha256": "1e49aa6dc2d540907e6a176932c123c8b4e358e65dea3bc93a73a90cb0290935",
+    "output_sha256_txt_sha256": "88ff06f5001521c0c4cb0f44e27d3eda8be692bbbed83c1dbefbbd9aa22b90f0"
+  },
+  "independent_verification": {
+    "artifact_downloaded_and_inspected": true,
+    "artifact_transport_digest_matches_github": true,
+    "source_promotion_documents_streamed_row_by_row": true,
+    "source_promotion_document_difference_ids_exactly_targets": true,
+    "non_target_document_difference_count": 0,
+    "candidate_promotion_target_document_projection_equal": true,
+    "source_promotion_existing_numeric_difference_count": 0,
+    "candidate_promotion_target_numeric_projection_equal": true,
+    "promotion_target_numeric_rows": 21,
+    "promotion_target_concept_distribution_rechecked": true,
+    "output_hashes_rechecked": true,
+    "errors": []
+  },
+  "hard_boundaries": {
+    "production_promotion_safety_machine_accepted": true,
+    "formal_runtime_generation": "V17.28",
+    "runtime_promotion_authorized": false,
+    "formal_runtime_changed": false,
+    "runtime_authority_changed": false,
+    "production_data_changed": false,
+    "trained_model_changed": false,
+    "live_configuration_changed": false,
+    "ocr_enabled": false,
+    "equity_inferred_as_assets_minus_liabilities": false,
+    "fuzzy_alias_matching_enabled": false,
+    "source_policy_relaxed": false,
+    "point_in_time_policy_relaxed": false,
+    "issuer_gate_relaxed": false,
+    "accounting_tolerance_changed": false,
+    "stage3_status": "NOT_READY",
+    "s3g1j_data_verdict": "FAIL_CLOSED",
+    "stage4_alpha_live_locked": true,
+    "main_changed": false,
+    "merge_to_main_authorized": false
+  },
+  "next_gate": "Register this production-promotion safety evidence on integration, close PR #107 without merge, then create a separate formal V17.29 runtime-promotion implementation/governance chain. Runtime authority must not change until that wrapper is independently accepted and a new 64-shard full-basis execution is subsequently accepted."
+}

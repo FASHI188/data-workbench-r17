@@ -1,0 +1,155 @@
+name: Freshness Forward Phase4 - Financial and Announcements
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/freshness-v2-execution-20260812]
+    paths:
+      - '.github/workflows/freshness-forward-phase4-disclosures.yml'
+      - 'scripts/build_forward_disclosure_ledger.py'
+      - 'scripts/audit_forward_financial_disclosures.py'
+      - 'tests/test_forward_disclosure_financial.py'
+permissions:
+  contents: read
+  actions: read
+env:
+  PYTHONPATH: scripts
+  PHASE1_ARTIFACT: '9149393864'
+  PHASE1_DIGEST: '0caf22ac24c81edba7fe63ad7d445b193218b96d37436dbceb435a2736c899e2'
+  PHASE2_ARTIFACT: '9150060738'
+  PHASE2_DIGEST: '1eaa0c0e588c95f835a9e576659616bb8e68d0c19c9712b9821ea88c90451ba9'
+  PHASE3_ARTIFACT: '9150398642'
+  PHASE3_DIGEST: '8e26469a5a6cd1537eb57bcbe787eadd48f54b56b3b209f618a74567278742a5'
+concurrency:
+  group: freshness-forward-phase4-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --disable-pip-version-check requests pytest
+      - run: pytest -q tests/test_forward_disclosure_financial.py
+  scan-source-ledgers:
+    needs: contract-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Materialize exact freshness anchors
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for spec in "p1:${PHASE1_ARTIFACT}:${PHASE1_DIGEST}" "p2:${PHASE2_ARTIFACT}:${PHASE2_DIGEST}" "p3:${PHASE3_ARTIFACT}:${PHASE3_DIGEST}"; do
+            IFS=: read -r name aid digest <<< "$spec"
+            mkdir -p "build/${name}"
+            curl --fail --location --silent --show-error -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${GH_TOKEN}" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${aid}/zip" -o "build/${name}.zip"
+            echo "${digest}  build/${name}.zip" | sha256sum -c -
+            unzip -q "build/${name}.zip" -d "build/${name}"
+          done
+          rm -rf data/current_master
+          cp -a build/p1/data/current_master data/current_master
+      - name: Build forward disclosure source ledgers
+        run: |
+          python scripts/build_forward_disclosure_ledger.py --master data/current_master/cn_main_a.csv --phase2-root build/p2 --phase3-manifest build/p3/manifest.json --out build/freshness-phase4/source
+      - uses: actions/upload-artifact@v4
+        with: {name: freshness-phase4-source-ledgers, path: build/freshness-phase4/source, compression-level: 0, retention-days: 90}
+  select-financial-versions:
+    needs: scan-source-ledgers
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/download-artifact@v4
+        with: {name: freshness-phase4-source-ledgers, path: build/freshness-phase4/source}
+      - run: python scripts/select_stage3_financial_report_versions_v3.py --ledger build/freshness-phase4/source/forward_periodic_filing_ledger.csv.gz --out build/freshness-phase4/versions
+      - uses: actions/upload-artifact@v4
+        with: {name: freshness-phase4-financial-versions, path: build/freshness-phase4/versions, compression-level: 0, retention-days: 90}
+  extract-financial:
+    needs: select-financial-versions
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: {shard: [0,1,2,3,4,5,6,7]}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --disable-pip-version-check requests pymupdf
+      - uses: actions/download-artifact@v4
+        with: {name: freshness-phase4-financial-versions, path: build/freshness-phase4/versions}
+      - name: Extend runtime identity set only for post-freeze official listings
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/p1
+          curl --fail --location --silent --show-error -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${GH_TOKEN}" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PHASE1_ARTIFACT}/zip" -o build/p1.zip
+          echo "${PHASE1_DIGEST}  build/p1.zip" | sha256sum -c -
+          unzip -q build/p1.zip -d build/p1
+          python - <<'PY'
+          import csv
+          from datetime import date, datetime
+          from pathlib import Path
+          master=Path('build/p1/data/current_master/cn_main_a.csv'); intervals=Path('data/security_lifecycle/security_intervals.csv')
+          with intervals.open(encoding='utf-8',newline='') as f: rows=list(csv.DictReader(f)); fields=list(rows[0])
+          known={(r['exchange'],r['code']) for r in rows}
+          with master.open(encoding='utf-8',newline='') as f:
+              for r in csv.DictReader(f):
+                  k=(r['exchange'],r['code'])
+                  if k in known: continue
+                  s=str(r['listing_date']).strip()
+                  d=(date.fromisoformat(s) if '-' in s else datetime.strptime(s,'%Y%m%d').date()).isoformat()
+                  rows.append({'exchange':r['exchange'],'code':r['code'],'name':r['name'],'listed_from':d,'listed_to_exclusive':'','list_evidence_class':'FORWARD_OFFICIAL_CURRENT_MASTER','delist_evidence_class':''})
+          with intervals.open('w',encoding='utf-8',newline='') as f: w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+          print('runtime identities',len(rows))
+          PY
+      - name: Extract original PDFs with frozen V17.30 runtime
+        shell: bash
+        run: |
+          set +e
+          python scripts/extract_stage3_financial_pdf_values_v20.py --versions build/freshness-phase4/versions/stage3_financial_report_versions_v3.csv.gz --shard ${{ matrix.shard }} --shards 8 --out build/freshness-phase4/extract
+          rc=$?
+          set -e
+          test -f build/freshness-phase4/extract/financial_extract_shard$(printf '%02d' ${{ matrix.shard }}).manifest.json
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 2 ]; then exit "$rc"; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freshness-phase4-financial-extract-${{ matrix.shard }}
+          path: build/freshness-phase4/extract
+          compression-level: 0
+          retention-days: 90
+  audit:
+    needs: [scan-source-ledgers, select-financial-versions, extract-financial]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: freshness-phase4-source-ledgers, path: build/freshness-phase4/source}
+      - uses: actions/download-artifact@v4
+        with: {name: freshness-phase4-financial-versions, path: build/freshness-phase4/versions}
+      - uses: actions/download-artifact@v4
+        with: {pattern: 'freshness-phase4-financial-extract-*', path: build/freshness-phase4/extract, merge-multiple: true}
+      - run: python scripts/audit_forward_financial_disclosures.py --source-root build/freshness-phase4/source --versions build/freshness-phase4/versions/stage3_financial_report_versions_v3.csv.gz --extract-root build/freshness-phase4/extract --out build/freshness-phase4/forward_financial_announcement_audit.json
+      - name: Write Phase4 manifest
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path('build/freshness-phase4/forward_financial_announcement_audit.json'); a=json.loads(p.read_text())
+          out={'schema_version':1,'execution_head':'${{ github.sha }}','phase1_artifact':int('${{ env.PHASE1_ARTIFACT }}'),'phase1_digest':'sha256:${{ env.PHASE1_DIGEST }}','phase2_artifact':int('${{ env.PHASE2_ARTIFACT }}'),'phase2_digest':'sha256:${{ env.PHASE2_DIGEST }}','phase3_artifact':int('${{ env.PHASE3_ARTIFACT }}'),'phase3_digest':'sha256:${{ env.PHASE3_DIGEST }}','audit_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'phase4_pass':a.get('pass') is True,'audit':a,'authoritative':False,'purpose':'forward financial + announcement freshness evidence only; frozen Stage3 remains unchanged; Stage4 remains locked until aggregate hard gate'}
+          Path('build/freshness-phase4/manifest.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)); print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: freshness-forward-phase4-financial-announcements, path: build/freshness-phase4, compression-level: 0, retention-days: 90}

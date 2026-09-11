@@ -1,0 +1,221 @@
+{
+  "schema_version": 1,
+  "status": "MACHINE_ACCEPTED_DIAGNOSTIC_ONLY_NO_PARSER_AUTHORIZATION",
+  "gate": "S3G1J_V17_29_FULL_BASIS_RESIDUAL_CLASSIFICATION_V1",
+  "diagnostic_pr": {
+    "number": 115,
+    "head_sha": "fe9ee8ab95bf0b8aac12f0461929c03c7ea5dfbf",
+    "closed_without_merge": true,
+    "merge_authorized": false
+  },
+  "accepted_run": {
+    "run_id": 31397106544,
+    "workflow_name": "Stage3 S3G1J V17.29 Residual Classification",
+    "head_sha": "fe9ee8ab95bf0b8aac12f0461929c03c7ea5dfbf",
+    "conclusion": "SUCCESS",
+    "artifact_id": 9066068547,
+    "artifact_name": "stage3-s3g1j-v17-29-residual-classification-v1",
+    "artifact_digest": "sha256:7b6f6347367e51c0130e2415dd908f8dc17848851cc6e51814dcd9aaf0173e7e",
+    "artifact_size_bytes": 1001033,
+    "created_at": "2026-08-10T14:45:16Z",
+    "retention_expires_at": "2026-11-08T14:45:16Z"
+  },
+  "machine_checks": {
+    "repository_safety_run": 31397109011,
+    "runtime_reproducibility_run": 31397106767,
+    "clean_s3g1j_run": 31397106887,
+    "all_exact_head_checks_success": true,
+    "review_threads": 0,
+    "reviews": 0
+  },
+  "locked_inputs": {
+    "v17_29_full_basis": {
+      "run_id": 31389854868,
+      "head_sha": "22fa37064eeb8a49ad5292dd2be48bd7b674c673",
+      "artifact_id": 9063271903,
+      "artifact_name": "stage3-s3g1j-v17-29-full-final",
+      "artifact_digest": "sha256:71a4daa6c8372f3d64080b5fa5b787914292d889da7051de699eb6610189c726",
+      "documents_gzip_sha256": "644bccd1a984fdbc002a139f8ced0313a8cf749124a178e7ace7965472f395af",
+      "documents_plaintext_sha256": "11ecdb2660b22e40d6134cd1b55caaacd18a69af89725b9c6ff0427b083171d4"
+    },
+    "v17_28_residual_classification": {
+      "run_id": 31022605702,
+      "head_sha": "b997f7b91cb2a5fcbb5d8473f428effd26ed5bf0",
+      "artifact_id": 8937238672,
+      "artifact_name": "stage3-s3g1j-v17-28-residual-classification-v1",
+      "artifact_digest": "sha256:2c54496b329b719c09f299fe0c2d61ece4b05a0c8859b4a39441012abfb248ad",
+      "classification_gzip_sha256": "d1d1c40cf242e93f0a5c8f18eb7335b15238bbf780429cd3e086eb7efe0765cc",
+      "classification_plaintext_sha256": "ad4a2372742c653672411194fdda476eae2076c6221f103d14bb9614788c088d"
+    },
+    "v17_28_p0_pdf_root_cause_evidence": {
+      "manifest": "governance/stage3_s3g1j_v17_28_p0_pdf_root_cause.json",
+      "run_id": 31111116235,
+      "head_sha": "c1e1a99533498c9e4eba7ae95323cc80586474c4",
+      "artifact_id": 8971708686,
+      "artifact_digest": "sha256:c743dc725e15037eb761244e5e0e88d37075a1cf5eab366e5d64c9d7ac0627b8"
+    }
+  },
+  "classification_result": {
+    "input_document_rows": 121354,
+    "pass_document_rows": 119990,
+    "residual_document_rows": 1364,
+    "class_counts": {
+      "CANONICAL_PDF_ISSUER_MISMATCH": 83,
+      "MULTI_CANDIDATE_SOURCE_INCOMPLETE_2_CANDIDATES": 85,
+      "MULTI_CANDIDATE_SOURCE_INCOMPLETE_3_CANDIDATES": 2,
+      "MULTI_CANDIDATE_VALUE_CONFLICT": 14,
+      "SINGLE_CANONICAL_IDENTITY_MISMATCH_TIER2_2": 12,
+      "SINGLE_CANONICAL_IDENTITY_MISMATCH_TIER2_3": 71,
+      "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_0": 550,
+      "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_1": 421,
+      "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_2": 119,
+      "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_3": 7
+    },
+    "priority_counts": {
+      "P0_SAFE_NEAR_COMPLETE_NO_IDENTITY_CONFLICT": 7,
+      "P1_IDENTITY_CONFLICT_TIER2_3": 71,
+      "P2_SAFE_PARTIAL_TIER2_2": 119,
+      "P3_IDENTITY_CONFLICT_LOWER_EVIDENCE": 12,
+      "P3_SAFE_PARTIAL_TIER2_1": 421,
+      "P3_SOURCE_COMPLETENESS_REVIEW": 87,
+      "P4_ISSUER_AUTHORITY_REVIEW": 83,
+      "P4_SAFE_PARTIAL_TIER2_0": 550,
+      "P4_SOURCE_VALUE_CONFLICT_REVIEW": 14
+    },
+    "tie_taxonomy": {
+      "TIE_SOURCE_INCOMPLETE": 1267,
+      "TIE_VALUE_CONFLICT": 14
+    },
+    "single_canonical_residual_count": 1180,
+    "multi_candidate_source_incomplete_count": 87,
+    "issuer_mismatch_count": 83,
+    "value_conflict_count": 14,
+    "p0_safe_near_complete_count": 7,
+    "p0_announcement_ids": [
+      "1202799494", "1204077386", "1205543437", "1209806910",
+      "1219834247", "1223347318", "1223407043"
+    ]
+  },
+  "migration_from_v17_28": {
+    "previous_residual_rows": 1371,
+    "current_residual_rows": 1364,
+    "unchanged_common_residuals": 1364,
+    "recovered_exit_count": 7,
+    "new_residual_count": 0,
+    "common_residual_reclassification_count": 0,
+    "recovered_exit_announcement_ids": [
+      "1215186538", "1219426855", "1219792633", "1219840508",
+      "1219879687", "1220087244", "1221006100"
+    ],
+    "p0_count_change": "14_TO_7",
+    "all_surviving_classifications_unchanged": true
+  },
+  "surviving_p0_root_cause_boundary": {
+    "source_evidence": "governance/stage3_s3g1j_v17_28_p0_pdf_root_cause.json",
+    "diagnostic_only_count": 6,
+    "do_not_promote_count": 1,
+    "safe_exact_source_candidate_count": 0,
+    "diagnostic_only": [
+      {
+        "announcement_id": "1202799494",
+        "source_code": "603023",
+        "report_family": "Q3",
+        "economic_date": "2016-09-30",
+        "source_sha256": "157c18169d22719986395fc1085acb25c6d90b5fd6bbce3f26d5bebd45f08e68",
+        "root_cause": "NO_FORMAL_GROUP_STATEMENT_ROLE_BINDING"
+      },
+      {
+        "announcement_id": "1204077386",
+        "source_code": "000708",
+        "report_family": "Q3",
+        "economic_date": "2017-09-30",
+        "source_sha256": "8e10d942b870e9ee9b874d94e8a58fb00b7d55757b7fdd5774615e75cc549608",
+        "root_cause": "GENERIC_GROUP_WITNESS_PRESENT_BUT_ROLE_LOCAL_PERIOD_MISSING"
+      },
+      {
+        "announcement_id": "1205543437",
+        "source_code": "000985",
+        "report_family": "Q3",
+        "economic_date": "2018-09-30",
+        "source_sha256": "4d87f58d20ce1b37c2d5edc129fb9b4f08769dc1614c76ff946c88f5ce8cc2de",
+        "root_cause": "GENERIC_GROUP_WITNESS_PRESENT_BUT_ROLE_LOCAL_PERIOD_MISSING"
+      },
+      {
+        "announcement_id": "1209806910",
+        "source_code": "600353",
+        "report_family": "Q1",
+        "economic_date": "2021-03-31",
+        "source_sha256": "b72f9603f124849fcd0d7be69ab5d35e0f04f12c530324a27dce1eab20e87a7f",
+        "root_cause": "NO_FORMAL_GROUP_STATEMENT_ROLE_BINDING"
+      },
+      {
+        "announcement_id": "1223347318",
+        "source_code": "605289",
+        "report_family": "Q1",
+        "economic_date": "2025-03-31",
+        "source_sha256": "d765c94532cd41a496d147da72cbff392bce4ff776b41b88d95dcf3f1fb697c8",
+        "root_cause": "FORMAL_GROUP_A_L_PRESENT_BUT_EXPLICIT_GROUP_EQUITY_PAIR_NOT_PROVEN"
+      },
+      {
+        "announcement_id": "1223407043",
+        "source_code": "605162",
+        "report_family": "ANNUAL",
+        "economic_date": "2024-12-31",
+        "source_sha256": "7540a56179783625ac256726480ef32faf85a893549057fe9e6546abfd6ee903",
+        "root_cause": "FORMAL_GROUP_A_L_PRESENT_BUT_EXPLICIT_GROUP_EQUITY_PAIR_NOT_PROVEN"
+      }
+    ],
+    "do_not_promote": [
+      {
+        "announcement_id": "1219834247",
+        "source_code": "601860",
+        "report_family": "ANNUAL",
+        "economic_date": "2023-12-31",
+        "source_sha256": "2ffd3d78537ed62eac213f0c5fb2356926c625cd1e528d93b21f7b640ebe9773",
+        "root_cause": "BANK_SPECIFIC_STATEMENT_WITHOUT_FORMAL_GROUP_ALE_ROLE_BINDING"
+      }
+    ],
+    "interpretation": "The residual classifier P0 label is a completeness class only. After V17.29 recovered all seven previously SAFE exact-source targets, no surviving P0 identity is authorized for ordinary parser promotion."
+  },
+  "output_hashes": {
+    "classification_ledger_plaintext_sha256": "31be1e40330be6b149e4eb630339131258b4212d1639e13bead207feae50afe5",
+    "classification_ledger_gzip_sha256": "34483c4096e21d943321bc12961a35a0685393401ee64b226a9a079255433bab",
+    "p0_ledger_plaintext_sha256": "6c5866e3fdbf6381bb0b982b8642aa9c4d5ce9833469a97bcceda6dbea1d5633",
+    "p0_ledger_gzip_sha256": "a64a1ce56761b3c135e68cd89b79cb458f8fc65f6f8b5b8255dfb8b18f45c61b",
+    "migration_ledger_plaintext_sha256": "c63b792afc9e3a29c073fa284ba5e7c4059426c16d40c4855bc39c904f29abe4",
+    "migration_ledger_gzip_sha256": "ca09698316d5c0460e926a1d5d2d33a46f3c78720ca9b1b9c2d32a800a05f784",
+    "gzip_encoding": "FIXED_RFC1951_STORED_BLOCKS",
+    "gzip_mtime": 0,
+    "gzip_embedded_filename": ""
+  },
+  "independent_verification": {
+    "artifact_downloaded_and_inspected": true,
+    "github_artifact_digest_matches_downloaded_archive": true,
+    "all_three_gzip_hashes_recomputed": true,
+    "all_three_plaintext_hashes_recomputed": true,
+    "row_counts_recomputed": true,
+    "migration_recomputed": true,
+    "errors": []
+  },
+  "hard_boundaries": {
+    "diagnostic_only": true,
+    "candidate_parser_authorized": false,
+    "formal_parser_changed": false,
+    "runtime_authority_changed": false,
+    "production_data_changed": false,
+    "trained_model_changed": false,
+    "live_configuration_changed": false,
+    "ocr_enabled": false,
+    "fuzzy_alias_matching_enabled": false,
+    "e_equals_a_minus_l_inference": false,
+    "source_policy_changed": false,
+    "point_in_time_policy_changed": false,
+    "issuer_gate_changed": false,
+    "accounting_tolerance_changed": false,
+    "stage3_status": "NOT_READY",
+    "stage4_alpha_live_locked": true,
+    "main_changed": false,
+    "merge_to_main_authorized": false
+  },
+  "next_gate": "Run a separate source-locked diagnostic over the six DIAGNOSTIC_ONLY identities, grouped as role-binding (2), role-local-period (2), and explicit-group-equity-pair (2). Keep the bank-specific DO_NOT_PROMOTE identity on a separate specialized path. Do not authorize parser changes until stronger explicit PDF evidence closes the relevant gate."
+}

@@ -1,0 +1,52 @@
+name: Stage4 V1 Surprise Age - Semantic Diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/stage4-v1-feature-set]
+    paths:
+      - '.github/workflows/stage4-v1-surprise-age-diagnostic.yml'
+      - 'scripts/diagnose_stage4_v1_surprise_age.py'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  MATRIX_AID: '9168438550'
+  MATRIX_DIGEST: '813ae234c149fb30f725895cd67bcfbe404b1050cba9f915c9c4c0f5a1392a42'
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check duckdb==1.3.2
+      - name: Download exact accepted matrix artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p build/matrix
+          curl --fail --location --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${MATRIX_AID}/zip" \
+            -o build/matrix.zip
+          echo "${MATRIX_DIGEST}  build/matrix.zip" | sha256sum -c -
+          unzip -q build/matrix.zip -d build/matrix
+          test -f build/matrix/stage4-v1-matrix/stage4_v1_feature_matrix.parquet
+      - name: Diagnose Surprise age tail
+        run: |
+          python scripts/diagnose_stage4_v1_surprise_age.py \
+            --matrix build/matrix/stage4-v1-matrix/stage4_v1_feature_matrix.parquet \
+            --out build/surprise_age_diagnostic.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage4-v1-surprise-age-semantic-diagnostic
+          path: build/surprise_age_diagnostic.json
+          retention-days: 90

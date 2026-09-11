@@ -1,0 +1,40 @@
+{
+  "version": "V1-user-trading-universe-policy-2026-07-27",
+  "status": "ACTIVE",
+  "purpose": "Define the investable/training eligibility universe without deleting raw historical evidence.",
+  "allowed_boards": [
+    "SSE_MAIN_A",
+    "SZSE_MAIN_A"
+  ],
+  "excluded_boards": [
+    "SSE_STAR",
+    "SZSE_CHINEXT",
+    "BSE",
+    "NEEQ"
+  ],
+  "price_rule": {
+    "currency": "CNY",
+    "maximum_exclusive": 70.0,
+    "eligible_expression": "point_in_time_unadjusted_price < 70.0",
+    "price_equal_70_is_excluded": true,
+    "backtest_price_source": "G3 official unadjusted close available at the signal session",
+    "live_price_source": "latest independently verified market price at the screening time",
+    "forbid_current_price_backfill_into_history": true
+  },
+  "application": {
+    "raw_stage2_stage3_data": "RETAIN_FULL_ALLOWED_BOARD_HISTORY",
+    "training_sample_eligibility": "APPLY_POINT_IN_TIME_BOARD_AND_PRICE_FILTER",
+    "backtest_trade_eligibility": "APPLY_POINT_IN_TIME_BOARD_AND_PRICE_FILTER",
+    "live_candidate_screening": "APPLY_CURRENT_BOARD_AND_LATEST_VERIFIED_PRICE_FILTER",
+    "research_deep_dive_candidate_pool": "APPLY_CURRENT_BOARD_AND_LATEST_VERIFIED_PRICE_FILTER"
+  },
+  "hard_rules": {
+    "exclude_price_ge_70_cny": true,
+    "exclude_neeq": true,
+    "exclude_bse": true,
+    "exclude_chinext": true,
+    "exclude_star_market": true,
+    "do_not_delete_raw_history_because_of_current_price": true,
+    "do_not_use_future_price_to_define_historical_eligibility": true
+  }
+}

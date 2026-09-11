@@ -1,0 +1,50 @@
+{
+  "version": "V3.3.0-stage3-source-authority",
+  "scope": "SSE_MAIN_A + SZSE_MAIN_A",
+  "principle": "Primary official disclosure/economic source first; wrappers and commercial portals may be used only as non-authoritative diagnostics or cross-checks.",
+  "families": {
+    "FINANCIAL_REPORT": {
+      "SZSE": {
+        "primary": [
+          "CNINFO_STATUTORY_DISCLOSURE_PLATFORM",
+          "CNINFO_DATA_SERVICE_ORIGINAL_RESPONSE"
+        ],
+        "controls": ["SZSE_OFFICIAL_DISCLOSURE_RULES"]
+      },
+      "SSE": {
+        "primary": [
+          "SSE_OFFICIAL_PERIODIC_REPORT_DISCLOSURE",
+          "CNINFO_UNIFIED_DISCLOSURE_ARCHIVE"
+        ],
+        "controls": ["SSE_OFFICIAL_ACTUAL_DISCLOSURE_DATE"]
+      },
+      "requirements": [
+        "raw response or original filing bytes must be hashed",
+        "report period must be stored separately from publication availability",
+        "corrections/restatements must be separate immutable revisions",
+        "third-party wrappers cannot establish publication availability",
+        "commercial finance portals cannot be the authoritative value source"
+      ]
+    },
+    "ANNOUNCEMENT": {
+      "primary": [
+        "CNINFO_STATUTORY_DISCLOSURE_PLATFORM",
+        "SSE_OFFICIAL_DISCLOSURE_FOR_SSE_CONTROL"
+      ]
+    },
+    "INDUSTRY": {
+      "primary_rule": "Use the original government, exchange, association, commodity-exchange, customs or company source that owns the observation. Source authority is dataset-specific and must be declared before ingestion."
+    },
+    "EVENT_SURPRISE": {
+      "primary_rule": "Actual event must come from the original official issuer/source. Expectation must be separately timestamped and already public before the actual event; otherwise no surprise feature is permitted."
+    }
+  },
+  "non_authoritative_by_default": [
+    "AKSHARE_WRAPPER_OUTPUT",
+    "EASTMONEY",
+    "TONGHUASHUN",
+    "SINA_FINANCE",
+    "MEDIA_REPRINT",
+    "SELF_MEDIA"
+  ]
+}

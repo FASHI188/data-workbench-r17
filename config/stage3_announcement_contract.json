@@ -1,0 +1,51 @@
+{
+  "version": "V3.3.2-stage3-announcement-contract",
+  "family": "ANNOUNCEMENT",
+  "status": "CONTRACT_ONLY_NOT_S3G2_PASS",
+  "source": {
+    "primary": "CNINFO_STATUTORY_DISCLOSURE_PLATFORM",
+    "sse_control": "SSE_OFFICIAL_DISCLOSURE_WHEN_EVENT_IS_SSE_SPECIFIC",
+    "publication_precision_default": "DATE_ONLY_UNLESS_INDEPENDENT_NONMIDNIGHT_TIME_IS_VERIFIED"
+  },
+  "cninfo_categories": {
+    "EARNINGS_FORECAST": "category_yjygjxz_szsh",
+    "DAILY_OPERATION": "category_rcjy_szsh",
+    "EQUITY_CHANGE": "category_gqbd_szsh",
+    "CORRECTION_SUPPLEMENT": "category_bcgz_szsh",
+    "CLARIFICATION_APOLOGY": "category_cqdq_szsh",
+    "RISK_WARNING": "category_fxts_szsh",
+    "SPECIAL_TREATMENT_DELISTING": "category_tbclts_szsh",
+    "DELISTING_PERIOD": "category_tszlq_szsh",
+    "UNLOCK": "category_jj_szsh",
+    "EQUITY_INCENTIVE": "category_gqjl_szsh",
+    "ADDITIONAL_ISSUANCE": "category_zf_szsh",
+    "RIGHTS_ISSUE": "category_pg_szsh",
+    "CONVERTIBLE_BOND": "category_kzzq_szsh",
+    "OTHER_FINANCING": "category_qtrz_szsh"
+  },
+  "event_policy": {
+    "metadata_ledger_first": true,
+    "source_pdf_hash_required_before_scalar_feature": true,
+    "date_only_effective_session": "FIRST_STRICTLY_LATER_G3_TRADING_SESSION",
+    "revisions_append_only": true,
+    "title_only_event_features": "ALLOWED_ONLY_FOR_CATEGORY_PRESENCE_OR_COUNT; numerical magnitude requires original filing extraction",
+    "same_source_reprints_do_not_count_as_independent_confirmation": true
+  },
+  "initial_scalar_events": [
+    "EARNINGS_FORECAST",
+    "UNLOCK",
+    "EQUITY_CHANGE",
+    "DAILY_OPERATION",
+    "RISK_WARNING",
+    "SPECIAL_TREATMENT_DELISTING"
+  ],
+  "hard_gates": {
+    "all_events_map_to_stage2_code_time_identity": true,
+    "all_events_have_announcement_id": true,
+    "all_events_have_query_response_sha256": true,
+    "scalar_events_have_original_filing_sha256": true,
+    "no_same_day_use_for_date_only_publication": true,
+    "corrections_do_not_overwrite_original_event_version": true,
+    "event_magnitude_not_inferred_from_title_when_pdf_value_is_required": true
+  }
+}

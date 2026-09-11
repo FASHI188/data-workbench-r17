@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "evidence_id": "STAGE4_ALPHA_V1_EXACT_AUTHORIZED_DEVELOPMENT_CV_EXECUTION",
+  "status": "COMPLETE_IMMUTABLE_EVIDENCE",
+  "authorization": {
+    "fingerprint": "2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c",
+    "contract": "governance/stage4_alpha_v1_training_execution_authorization.json",
+    "execution_fingerprint": "9b449b9c12ac98f1516812dfa4d3f40922668e35462087637cea79e81c1645dc",
+    "execution_contract": "governance/stage4_alpha_v1_development_cv_execution_contract.json"
+  },
+  "implementation_pr": 147,
+  "implementation_head": "c733d455d1f61723f0783c1809aa52ec4b0078b3",
+  "integration_merge_sha": "257923ea0007673ab53d0e0de4ebc596ddfcbc9a",
+  "workflow": {
+    "run_id": 31898964450,
+    "conclusion": "success",
+    "artifact_id": 9250847700,
+    "artifact_name": "stage4-alpha-v1-development-cv-aggregate",
+    "artifact_digest": "sha256:01eb4bd2e5e2a461e6cef09e4576b4b189622f52a70b210cee8b87887f2c80e1",
+    "exact_pr_head_confirmed": true,
+    "execution_manifest_head": "c733d455d1f61723f0783c1809aa52ec4b0078b3"
+  },
+  "development_cv": {
+    "candidate_count": 11,
+    "causal_split_count": 5,
+    "required_trial_records": 55,
+    "trial_records": 55,
+    "successful_trial_records": 55,
+    "all_candidates_valid": true
+  },
+  "selection": {
+    "selected_candidate": "C007",
+    "primary_median_split_mean_daily_ic_20d": 0.09414053237378939,
+    "worst_split_mean_daily_ic_20d": 0.05311070572623114,
+    "complexity_rank": 20,
+    "candidate_ordinal": 7,
+    "candidate_identity_frozen_by_preregistered_metric_only": true,
+    "pbo_and_dsr_do_not_change_candidate_identity": true
+  },
+  "overfit_controls": {
+    "pbo": {
+      "method": "CSCV_ON_CAUSAL_FORWARD_OOF_CANDIDATE_PERFORMANCE_SERIES",
+      "score_weighting": "DAILY_OBSERVATION_WEIGHTED_ACROSS_SELECTED_BLOCKS",
+      "common_nonnull_ic_dates": 1605,
+      "common_date_fraction": 1.0,
+      "combination_count": 252,
+      "value": 0.11904761904761904,
+      "pass_ceiling": 0.2,
+      "pass": true,
+      "model_refit_inside_pbo": false
+    },
+    "dsr": {
+      "method": "BAILEY_LOPEZ_DE_PRADO_DEFLATED_SHARPE_RATIO",
+      "trial_count": 11,
+      "selected_candidate": "C007",
+      "selected_sharpe": 2.352583554266,
+      "selected_series_observations": 85,
+      "expected_max_sharpe": 1.1705953545173249,
+      "probability": 0.9999989891602007,
+      "pass_floor": 0.95,
+      "pass": true
+    },
+    "independent_aggregate_audit": {
+      "pass": true,
+      "failed_checks": [],
+      "candidate_selection_recomputed": true,
+      "pbo_recomputed": 0.11904761904761904,
+      "dsr_probability_recomputed": 0.9999989891602007,
+      "sealed_permissions_preserved": true
+    },
+    "research_gate_pass": true
+  },
+  "aggregate_hashes": {
+    "all_candidate_summary_sha256": "9bdb72891f1aa2d4d9a7e9a8aca4fbbc8a76961e17662de529d802cb2de409f7",
+    "candidate_selection_sha256": "1c6ea217913b28dcb5c84eed5862dff8d2cc05b7c344b90993afb31091e1418f",
+    "pbo_diagnostic_sha256": "da2815d0490cf4dc984505b1939225318d7e85a112edbb2030c0f486f9e43ba8",
+    "dsr_diagnostic_sha256": "912e59c0ec5eb1d814d91aa92da2556a9f094cbcb803c61b65c52646a5dab8cf",
+    "aggregate_independent_audit_sha256": "5e14e489c1935276aa6ff01f04d1d622f3691796c2f04a54a1e54ebd98d190ed"
+  },
+  "sealed_scope": {
+    "final_development_refit_executed": false,
+    "oos_accessed": false,
+    "lockbox_accessed": false,
+    "live_signal_allowed": false,
+    "main_merge_allowed": false,
+    "authoritative_model_output": false,
+    "aggregate_created_model_weights": false
+  },
+  "next_gate": "SEPARATE_FINAL_DEVELOPMENT_REFIT_AUTHORIZATION"
+}

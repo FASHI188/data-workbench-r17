@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "status": "MACHINE_ACCEPTED_DIAGNOSTIC_ONLY",
+  "gate": "S3G1J_V17_28_FULL_BASIS_RESIDUAL_CLASSIFICATION_V1",
+  "diagnostic_pr": {
+    "number": 99,
+    "head_sha": "b997f7b91cb2a5fcbb5d8473f428effd26ed5bf0",
+    "merge_authorized": false,
+    "disposition": "CLOSE_WITHOUT_MERGE_AFTER_GOVERNANCE_REGISTRATION"
+  },
+  "accepted_run": {
+    "run_id": 31022605702,
+    "workflow_name": "Stage3 S3G1J V17.28 Residual Classification",
+    "head_sha": "b997f7b91cb2a5fcbb5d8473f428effd26ed5bf0",
+    "conclusion": "SUCCESS",
+    "artifact_id": 8937238672,
+    "artifact_name": "stage3-s3g1j-v17-28-residual-classification-v1",
+    "artifact_digest": "sha256:2c54496b329b719c09f299fe0c2d61ece4b05a0c8859b4a39441012abfb248ad",
+    "artifact_size_bytes": 82462,
+    "artifact_retention_expires_at": "2026-11-03T15:53:53Z"
+  },
+  "locked_inputs": {
+    "v17_28_full_basis": {
+      "run_id": 30997260730,
+      "head_sha": "611d402c3b61a35644a27fd33d3955b9976dec7c",
+      "artifact_id": 8927455692,
+      "artifact_name": "stage3-s3g1j-v17-28-full-final",
+      "artifact_digest": "sha256:82375169faada969ceafd4356ab0a2707aa14592d5db090c5d3910863d571c8b",
+      "documents_gzip_sha256": "7589750684ec26280c095d4b3a2d21b114c6bb77a882f4633c2ea128de5f38f3",
+      "documents_plaintext_sha256": "c4e251d769860f86f037889f0bcc58a76ee53526f1f0ac120aa2aa15a996cba5"
+    },
+    "v17_26_residual_classification": {
+      "run_id": 30734063100,
+      "head_sha": "d9dc3119cc710a46174fb9d5ce9a6f1518ea5c50",
+      "artifact_id": 8828913247,
+      "artifact_name": "stage3-s3g1j-v17-26-residual-classification-v2",
+      "artifact_digest": "sha256:f667e5e494e6ac1456a370b5dab47677b4925d0466beedceec3e47bdeb5f16a5",
+      "classification_ledger_gzip_sha256": "e39fdc8dea8639bf00d56f80a00cfba842c6194a787736bdcf40b2ab1accea89",
+      "classification_ledger_plaintext_sha256": "d685467918213b5b5b333dd7f893d633aebce9dd0d7d738082241e74a3519009"
+    }
+  },
+  "classification_result": {
+    "input_document_rows": 121354,
+    "pass_document_rows": 119983,
+    "residual_document_rows": 1371,
+    "class_counts": {
+      "CANONICAL_PDF_ISSUER_MISMATCH": 83,
+      "MULTI_CANDIDATE_SOURCE_INCOMPLETE_2_CANDIDATES": 85,
+      "MULTI_CANDIDATE_SOURCE_INCOMPLETE_3_CANDIDATES": 2,
+      "MULTI_CANDIDATE_VALUE_CONFLICT": 14,
+      "SINGLE_CANONICAL_IDENTITY_MISMATCH_TIER2_2": 12,
+      "SINGLE_CANONICAL_IDENTITY_MISMATCH_TIER2_3": 71,
+      "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_0": 550,
+      "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_1": 421,
+      "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_2": 119,
+      "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_3": 14
+    },
+    "priority_counts": {
+      "P0_SAFE_NEAR_COMPLETE_NO_IDENTITY_CONFLICT": 14,
+      "P1_IDENTITY_CONFLICT_TIER2_3": 71,
+      "P2_SAFE_PARTIAL_TIER2_2": 119,
+      "P3_IDENTITY_CONFLICT_LOWER_EVIDENCE": 12,
+      "P3_SAFE_PARTIAL_TIER2_1": 421,
+      "P3_SOURCE_COMPLETENESS_REVIEW": 87,
+      "P4_ISSUER_AUTHORITY_REVIEW": 83,
+      "P4_SAFE_PARTIAL_TIER2_0": 550,
+      "P4_SOURCE_VALUE_CONFLICT_REVIEW": 14
+    },
+    "unresolved_tie_taxonomy": {
+      "TIE_SOURCE_INCOMPLETE": 1274,
+      "TIE_VALUE_CONFLICT": 14
+    },
+    "p0_safe_near_complete_count": 14,
+    "p0_announcement_ids": [
+      "1202799494",
+      "1204077386",
+      "1205543437",
+      "1209806910",
+      "1215186538",
+      "1219426855",
+      "1219792633",
+      "1219834247",
+      "1219840508",
+      "1219879687",
+      "1220087244",
+      "1221006100",
+      "1223347318",
+      "1223407043"
+    ]
+  },
+  "migration_from_v17_26": {
+    "previous_residual_rows": 1378,
+    "current_residual_rows": 1371,
+    "unchanged_common_residuals": 1371,
+    "recovered_exit_count": 7,
+    "recovered_exit_announcement_ids": [
+      "1200907104",
+      "1201708762",
+      "1202195310",
+      "1202774611",
+      "1203358200",
+      "1207621057",
+      "1209825769"
+    ],
+    "new_residual_count": 0,
+    "common_residual_reclassification_count": 0,
+    "all_recovered_exits_were_prior_p0_safe_near_complete": true,
+    "all_other_residual_classes_and_priorities_unchanged": true
+  },
+  "output_hashes": {
+    "classification_ledger_plaintext_sha256": "ad4a2372742c653672411194fdda476eae2076c6221f103d14bb9614788c088d",
+    "classification_ledger_gzip_sha256": "d1d1c40cf242e93f0a5c8f18eb7335b15238bbf780429cd3e086eb7efe0765cc",
+    "p0_ledger_plaintext_sha256": "94c768d34844a7c47bdfaf6bfd4067b6533c572b4e30c2b0e00b554a09bb9ea1",
+    "p0_ledger_gzip_sha256": "dc6cc9b10482406121e66772c38bf13e745e00ab0a80f4e324ccf9bb897bd922",
+    "migration_ledger_plaintext_sha256": "68ea4941417dacdd74da207c77de29be43ab8659ceaf7b6895eebafa973948a2",
+    "migration_ledger_gzip_sha256": "2915b4b3d039a8e96a6cdbd60ced928b1e209c24a287ddeddb0353dce39fe114",
+    "summary_json_sha256": "7eccc3c9c14a9d67548d50b87a056c6f123c8f186633f297a3e21ae31adf8143",
+    "artifact_zip_sha256": "2c54496b329b719c09f299fe0c2d61ece4b05a0c8859b4a39441012abfb248ad",
+    "gzip_header_mtime": 0,
+    "gzip_embedded_filename": ""
+  },
+  "independent_verification": {
+    "artifact_downloaded_and_inspected": true,
+    "github_artifact_digest_matches_downloaded_archive": true,
+    "machine_outputs_byte_equal_local_read_only_reproduction": true,
+    "classification_rows_recounted": 1371,
+    "p0_rows_recounted": 14,
+    "migration_rows_recounted": 1378,
+    "class_counts_recomputed": true,
+    "priority_counts_recomputed": true,
+    "tie_taxonomy_recomputed": true,
+    "p0_identity_set_recomputed": true,
+    "migration_statuses_recomputed": true,
+    "errors": []
+  },
+  "hard_boundaries": {
+    "diagnostic_only": true,
+    "formal_parser_changed": false,
+    "runtime_authority_changed": false,
+    "production_data_changed": false,
+    "trained_model_changed": false,
+    "live_configuration_changed": false,
+    "source_policy_changed": false,
+    "point_in_time_policy_changed": false,
+    "issuer_gate_changed": false,
+    "accounting_tolerance_changed": false,
+    "ocr_enabled": false,
+    "fuzzy_alias_matching_enabled": false,
+    "equity_inference_enabled": false,
+    "stage3_status": "NOT_READY",
+    "stage4_alpha_live_locked": true,
+    "main_changed": false,
+    "merge_to_main_authorized": false
+  },
+  "next_gate": "Register this diagnostic evidence, close PR #99 without merge, then inspect the 14 exact P0 PDFs for formal statement role, local period/unit, row geometry, explicit A/L/E values and dual-column identities before authorizing any new parser candidate."
+}

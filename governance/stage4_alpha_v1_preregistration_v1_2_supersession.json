@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_NO_LABEL_ACCESS_NO_TRAINING",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "b73f9b55efb04fac5416f6fdd39c17780b3f9e46c82d0da6b111547e3d258cf8",
+  "fingerprint_basis": {
+    "supersession_id": "STAGE4_ALPHA_V1_PREREGISTRATION_CV_CAUSALITY_SEAL",
+    "version": "V1.2",
+    "supersedes": {
+      "version": "V1.1",
+      "fingerprint": "e17875e4936ee957f30b7fa61282a107d41bc8ae9e52d4a7d8a17b61e0969853"
+    },
+    "authority": {
+      "integration_base_sha": "b3f7b6a3ef2979494b0e71d161dc836bc65e41ab",
+      "feature_matrix_artifact_id": 9168728086,
+      "feature_matrix_sha256": "c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c",
+      "stage2_final_manifest": "data/stage2_final/manifest.json",
+      "historical_ohlcv_artifact_id": 8651700277,
+      "historical_g5_adjustment_artifact_id": 8651976824
+    },
+    "defect_being_corrected": {
+      "v1_1_cv_method": "COMBINATORIAL_PURGED_BLOCK_CV",
+      "calendar_blocks": 6,
+      "test_blocks_per_split": 2,
+      "expected_combinations": 15,
+      "future_train_to_past_test_forbidden": true,
+      "contradiction": "TEST_COMBINATIONS_CONTAIN_EARLIEST_BLOCK_WHILE_CAUSAL_TRAIN_SET_MUST_PRECEDE_TEST; SOME_SPLITS_HAVE_NO_LEGAL_TRAINING_BLOCKS",
+      "detected_before_development_label_materialization": true,
+      "detected_before_any_model_fit": true
+    },
+    "causal_development_cross_validation": {
+      "method": "ANCHORED_PURGED_EXPANDING_WINDOW_BLOCK_CV",
+      "calendar_blocks": 6,
+      "block_order": "STRICT_CHRONOLOGICAL_CONTIGUOUS",
+      "block_allocation": "BALANCED_BY_ACCEPTED_MARKET_TRADING_SESSION_COUNT",
+      "initial_train_blocks": 1,
+      "evaluation_splits": 5,
+      "split_rule": "FOR_TEST_BLOCK_K_IN_1_TO_5_TRAIN_ONLY_ON_BLOCKS_STRICTLY_BEFORE_K",
+      "training_sets_expand_monotonically": true,
+      "test_set_is_single_next_block": true,
+      "purge_sessions_before_test": 20,
+      "post_test_embargo_sessions": 20,
+      "embargo_rule": "A_TEST_BLOCKS_FIRST_20_SESSIONS_AFTER_ITS_END_ARE_NOT_ELIGIBLE_FOR_TRAINING_IN_THE_IMMEDIATELY_FOLLOWING_SPLIT",
+      "future_train_to_past_test_forbidden": true,
+      "random_kfold_forbidden": true,
+      "split_seal_must_freeze_exact_block_boundaries_before_fit": true,
+      "split_seal_must_be_label_value_blind": true
+    },
+    "pbo_semantics": {
+      "threshold_max": 0.2,
+      "method": "CSCV_ON_CAUSAL_FORWARD_OOF_CANDIDATE_PERFORMANCE_SERIES",
+      "candidate_performance_source": "ONLY_OUT_OF_FOLD_PREDICTIONS_FROM_THE_FIVE_CAUSAL_DEVELOPMENT_SPLITS",
+      "model_refit_inside_pbo_forbidden": true,
+      "future_trained_predictions_inside_pbo_forbidden": true,
+      "pbo_does_not_define_or_modify_cv_splits": true,
+      "purpose": "MULTIPLE_CONFIGURATION_SELECTION_OVERFIT_DIAGNOSTIC"
+    },
+    "unchanged_from_v1_0_v1_1": [
+      "LABEL_SPECIFICATION",
+      "DEVELOPMENT_OOS_LOCKBOX_PARTITIONS",
+      "V1_1_LABEL_HORIZON_BOUNDARY_SEAL",
+      "MODEL_CANDIDATE_HARD_CAP_11",
+      "PRIMARY_SELECTION_METRIC",
+      "DEFLATED_SHARPE_THRESHOLD",
+      "OOS_AND_LOCKBOX_SEAL",
+      "NO_LIVE_NO_MAIN"
+    ],
+    "hard_boundaries": {
+      "no_label_materialization_in_this_supersession": true,
+      "no_model_fit_in_this_supersession": true,
+      "no_oos_label_access": true,
+      "no_lockbox_label_access": true,
+      "main_unchanged": true
+    }
+  },
+  "next_gate": "SEPARATE_ALPHA_V1_DEVELOPMENT_LABEL_MATERIALIZATION_AND_CAUSAL_SPLIT_SEAL_WITHOUT_MODEL_FIT"
+}

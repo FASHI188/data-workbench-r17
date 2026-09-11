@@ -1,0 +1,55 @@
+name: Stage3 S3G1J V17.30 Full Final Evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'governance/stage3_s3g1j_v17_30_full_final.json'
+      - 'tests/test_stage3_v17_30_full_final_evidence.py'
+      - '.github/workflows/stage3-s3g1j-v17-30-full-final-evidence-contract.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Verify immutable V17.30 full-final evidence manifest
+        run: python -m unittest tests.test_stage3_v17_30_full_final_evidence -v
+      - name: Verify accepted PR and source execution lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          accepted=$(gh api "repos/$GITHUB_REPOSITORY/pulls/127")
+          test "$(jq -r '.state' <<<"$accepted")" = closed
+          test "$(jq -r '.merged' <<<"$accepted")" = true
+          test "$(jq -r '.head.sha' <<<"$accepted")" = a18b81a9f38692533d0427f4a5b50767abf1a7c8
+          test "$(jq -r '.merge_commit_sha' <<<"$accepted")" = 121972a404c8773963477907c8b9abd3a4f5160b
+          source=$(gh api "repos/$GITHUB_REPOSITORY/pulls/126")
+          test "$(jq -r '.state' <<<"$source")" = closed
+          test "$(jq -r '.merged' <<<"$source")" = false
+          test "$(jq -r '.head.sha' <<<"$source")" = 71b19f55648bdef6ded5e40335da9b6f09a8d44c
+      - name: Verify accepted full-final run and artifact digest
+        shell: bash
+        run: |
+          set -euo pipefail
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/31518370789")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.head_sha' <<<"$run")" = a18b81a9f38692533d0427f4a5b50767abf1a7c8
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/31518370789/artifacts?per_page=100")
+          test "$(jq -r '[.artifacts[]|select(.name=="stage3-s3g1j-v17-30-full-final-preacceptance")]|length' <<<"$artifacts")" = 1
+          test "$(jq -r '.artifacts[]|select(.name=="stage3-s3g1j-v17-30-full-final-preacceptance")|.id' <<<"$artifacts")" = 9112098872
+          test "$(jq -r '.artifacts[]|select(.name=="stage3-s3g1j-v17-30-full-final-preacceptance")|.digest' <<<"$artifacts")" = sha256:706c6dd7252a64fd5c2956df6c594b5c91de29f02ca7d0553fa932017e8867ba
+          test "$(jq -r '.artifacts[]|select(.name=="stage3-s3g1j-v17-30-full-final-preacceptance")|.expired' <<<"$artifacts")" = false

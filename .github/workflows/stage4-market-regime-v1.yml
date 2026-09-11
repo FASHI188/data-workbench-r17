@@ -1,0 +1,141 @@
+name: Stage4 Market Regime V1 - Shadow Replay
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/stage4-market-regime-v1]
+    paths:
+      - '.github/workflows/stage4-market-regime-v1.yml'
+      - 'config/stage4_market_regime_v1_contract.json'
+      - 'governance/market_regime_v1_module_manifest.json'
+      - 'schemas/stage4_market_regime_v1_input.schema.json'
+      - 'schemas/stage4_market_regime_v1_output.schema.json'
+      - 'scripts/build_stage4_market_regime_v1.py'
+      - 'scripts/audit_stage4_market_regime_v1.py'
+      - 'tests/test_stage4_market_regime_v1.py'
+      - 'extensions/contracts.py'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONPATH: scripts:.
+  HISTORICAL_ARTIFACT: '8651700277'
+  HISTORICAL_DIGEST: 'bf977d4f379d421bd198865b90df90caef7ba6cfb5d6d1af96e5487300c1a2f8'
+  FORWARD_ARTIFACT: '9150060738'
+  FORWARD_DIGEST: '1eaa0c0e588c95f835a9e576659616bb8e68d0c19c9712b9821ea88c90451ba9'
+  FRESHNESS_ARTIFACT: '9166063671'
+  FRESHNESS_DIGEST: '1134a8acdfab286e634eb13e802020145ec9f3cc31ed82df93f83cea0523230d'
+
+concurrency:
+  group: stage4-market-regime-v1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check pytest
+      - run: pytest -q tests/test_stage4_market_regime_v1.py
+
+  shadow-replay:
+    needs: contract-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Materialize pinned frozen + forward + freshness evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for spec in \
+            "historical:${HISTORICAL_ARTIFACT}:${HISTORICAL_DIGEST}" \
+            "forward:${FORWARD_ARTIFACT}:${FORWARD_DIGEST}" \
+            "freshness:${FRESHNESS_ARTIFACT}:${FRESHNESS_DIGEST}"; do
+            IFS=: read -r name aid digest <<< "$spec"
+            mkdir -p "build/${name}"
+            curl --fail --location --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${aid}/zip" \
+              -o "build/${name}.zip"
+            echo "${digest}  build/${name}.zip" | sha256sum -c -
+            unzip -q "build/${name}.zip" -d "build/${name}"
+          done
+          test -d build/historical/frozen-g3/build/g3
+          find build/forward -name '*.csv.gz' -print | head -20
+          FRESHNESS_GATE="$(find build/freshness -name 'freshness_v2_four_family_hard_gate.json' -print -quit)"
+          test -n "$FRESHNESS_GATE"
+          echo "FRESHNESS_GATE=$FRESHNESS_GATE" >> "$GITHUB_ENV"
+
+      - name: Build strict-PIT SHADOW market regime history
+        run: |
+          python scripts/build_stage4_market_regime_v1.py \
+            --historical-root build/historical/frozen-g3/build/g3 \
+            --forward-root build/forward \
+            --contract config/stage4_market_regime_v1_contract.json \
+            --out build/stage4-market-regime-v1
+
+      - name: Audit SHADOW replay fail-closed
+        run: |
+          python scripts/audit_stage4_market_regime_v1.py \
+            --root build/stage4-market-regime-v1 \
+            --contract config/stage4_market_regime_v1_contract.json \
+            --freshness-gate "$FRESHNESS_GATE" \
+            --out build/stage4-market-regime-v1/audit.json
+
+      - name: Lock execution manifest
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root=Path('build/stage4-market-regime-v1')
+          a=json.loads((root/'audit.json').read_text(encoding='utf-8'))
+          m=json.loads((root/'manifest.json').read_text(encoding='utf-8'))
+          out={
+            'schema_version':1,
+            'execution_head':'${{ github.sha }}',
+            'module_id':'market_regime_v1',
+            'module_version':'V1',
+            'lifecycle':'SHADOW',
+            'replay_pass':a.get('pass') is True,
+            'historical_artifact':int('${{ env.HISTORICAL_ARTIFACT }}'),
+            'historical_digest':'sha256:${{ env.HISTORICAL_DIGEST }}',
+            'forward_artifact':int('${{ env.FORWARD_ARTIFACT }}'),
+            'forward_digest':'sha256:${{ env.FORWARD_DIGEST }}',
+            'freshness_artifact':int('${{ env.FRESHNESS_ARTIFACT }}'),
+            'freshness_digest':'sha256:${{ env.FRESHNESS_DIGEST }}',
+            'market_regime_data_sha256':m.get('data_sha256'),
+            'audit_sha256':hashlib.sha256((root/'audit.json').read_bytes()).hexdigest(),
+            'source_rows':m.get('source_rows'),
+            'output_rows':m.get('output_rows'),
+            'state_counts':m.get('state_counts'),
+            'strict_pit':True,
+            'authoritative':False,
+            'stage4_feature_use_allowed':False,
+            'alpha_training_allowed':False,
+            'live_signal_allowed':False,
+            'meaning':'Successful replay proves a SHADOW candidate only. Separate TESTED/ACCEPTED governance remains required before Stage4 feature use.'
+          }
+          (root/'execution_manifest.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage4-market-regime-v1-shadow-replay
+          path: build/stage4-market-regime-v1
+          compression-level: 0
+          retention-days: 90

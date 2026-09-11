@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "status": "RUNTIME_PROMOTION_PROPOSED_FULL_BASIS_PENDING",
+  "generation": "V17.28",
+  "wrapper_implementation": {
+    "pr": 94,
+    "head_sha": "6969c58ee60314e3e897e55b132266612c602777",
+    "merge_commit": "d7c38e71c9155d404df1c08feba9d66fac0a4d7a",
+    "acceptance_run": 30978715158,
+    "acceptance_artifact_id": 8919289427,
+    "acceptance_artifact": "stage3-s3g1j-v17-28-runtime-wrapper",
+    "acceptance_artifact_digest": "sha256:f8639b4a2eac2d09b16586365b7932d255457ce66aad2484547bb517d0d185a6",
+    "acceptance_report_sha256": "8b19a8640b5644f216fe478576e25efaabddabe47ce1029e6cead624fe40664e",
+    "real_source_promotion_pass": true,
+    "non_target_v17_27_delegation_pass": true,
+    "independent_artifact_recheck_pass": true
+  },
+  "candidate_evidence": {
+    "manifest": "governance/stage3_s3g1j_v17_28_candidate_safety.json",
+    "candidate_run": 30827493788,
+    "candidate_head": "08ddddca5effac0f416b68ac2f4c07cdec99dfb2",
+    "candidate_artifact_id": 8861519922,
+    "candidate_artifact_digest": "sha256:8a87dfed63160374fc04c88c3d02a93eedac6ae239ae559b64aaad93c71d22c1",
+    "target_announcement_ids": ["1207621057", "1209825769"],
+    "candidate_document_rows": 121354,
+    "candidate_numeric_rows": 1051799,
+    "candidate_document_errors": 1371,
+    "candidate_unresolved_ties": 1288,
+    "candidate_data_verdict": "FAIL_CLOSED"
+  },
+  "formal_runtime": {
+    "runtime_generation": "V17.28",
+    "shard_count": 64,
+    "shard_gate": "S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_28",
+    "extractor_path": "scripts/extract_stage3_financial_pdf_values_v18.py",
+    "extractor_method": "CNINFO_ORIGINAL_PDF_PYMUPDF_V18_V17_28_EXACT_SOURCE_SPLIT_GROUP_EQUITY_PRODUCTION",
+    "parser_path": "scripts/stage3_financial_pdf_parser_v20.py",
+    "parser_method": "V17_28_EXACT_SOURCE_SPLIT_GROUP_EQUITY_PRODUCTION",
+    "methodology_version": "V3.3.8-V17.28",
+    "allowed_concepts": ["TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY"],
+    "target_announcement_ids": ["1207621057", "1209825769"],
+    "non_target_delegates_v17_27_exactly": true
+  },
+  "last_completed_full_basis": {
+    "generation": "V17.27",
+    "run": 30806818977,
+    "artifact_id": 8854139999,
+    "artifact_digest": "sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721",
+    "document_rows": 121354,
+    "numeric_rows": 1051793,
+    "document_errors": 1373,
+    "unresolved_ties": 1290,
+    "data_verdict": "FAIL_CLOSED"
+  },
+  "next_full_basis": {
+    "generation": "V17.28",
+    "status": "REQUIRED_NOT_STARTED",
+    "expected_document_rows": 121354,
+    "expected_numeric_rows": 1051799,
+    "expected_document_errors": 1371,
+    "expected_unresolved_ties": 1288,
+    "expected_changed_announcement_ids": ["1207621057", "1209825769"],
+    "expected_target_numeric_rows": 6,
+    "expected_values_are_not_production_acceptance": true
+  },
+  "hard_boundaries": {
+    "source_policy_changed": false,
+    "accounting_tolerance_changed": false,
+    "ocr_enabled": false,
+    "fuzzy_alias_matching_enabled": false,
+    "e_equals_a_minus_l_inference": false,
+    "production_data_changed": false,
+    "trained_model_changed": false,
+    "live_configuration_changed": false,
+    "stage3_status": "NOT_READY",
+    "stage4_alpha_live_locked": true,
+    "main_changed": false
+  },
+  "activation_effect": "After governance acceptance, V17.28 becomes the formal runtime only. The V17.27 artifact remains the last completed full-basis authority until a fresh V17.28 64-shard run and independent final comparison pass."
+}

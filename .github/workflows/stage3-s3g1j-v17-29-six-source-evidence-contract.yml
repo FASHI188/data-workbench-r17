@@ -1,0 +1,114 @@
+name: Stage3 S3G1J V17.29 Six Source Diagnostic Evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'governance/stage3_s3g1j_v17_29_six_source_diagnostic.json'
+      - 'tests/test_stage3_v17_29_six_source_diagnostic_evidence.py'
+      - '.github/workflows/stage3-s3g1j-v17-29-six-source-evidence-contract.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  DIAGNOSTIC_PR: '117'
+  DIAGNOSTIC_HEAD: 'bdbd4b197956206ce56cc21768a97cb8c27eb183'
+  DIAGNOSTIC_RUN: '31450849437'
+  DIAGNOSTIC_ARTIFACT_ID: '9086284056'
+  DIAGNOSTIC_ARTIFACT: 'stage3-s3g1j-v17-29-six-source-diagnostic-v1'
+  DIAGNOSTIC_DIGEST: 'sha256:a4a3b97bf82aebe85d9f3947307224d7d18df15ccd387aeb11bbbe61d21ed411'
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Lock closed-unmerged diagnostic PR and exact artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$DIAGNOSTIC_PR")
+          test "$(jq -r '.state' <<<"$pr")" = closed
+          test "$(jq -r '.merged' <<<"$pr")" = false
+          test "$(jq -r '.head.sha' <<<"$pr")" = "$DIAGNOSTIC_HEAD"
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$DIAGNOSTIC_RUN")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.head_sha' <<<"$run")" = "$DIAGNOSTIC_HEAD"
+          artifact=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$DIAGNOSTIC_ARTIFACT_ID")
+          test "$(jq -r '.name' <<<"$artifact")" = "$DIAGNOSTIC_ARTIFACT"
+          test "$(jq -r '.digest' <<<"$artifact")" = "$DIAGNOSTIC_DIGEST"
+          test "$(jq -r '.expired' <<<"$artifact")" = false
+          test "$(jq -r '.workflow_run.id' <<<"$artifact")" = "$DIAGNOSTIC_RUN"
+          test "$(jq -r '.workflow_run.head_sha' <<<"$artifact")" = "$DIAGNOSTIC_HEAD"
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-29-six-source-diagnostic-v1
+          path: accepted
+          repository: FASHI188/data-workbench-r17
+          run-id: 31450849437
+          github-token: ${{ github.token }}
+      - name: Verify downloaded evidence files and exact machine findings
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum accepted/input/six_source_input_identity.json
+          sha256sum accepted/diagnostic/s3g1j_v17_29_six_source_diagnostic.json
+          sha256sum accepted/diagnostic/s3g1j_v17_29_cross_page_equity_word_row_probe.json
+          test "$(sha256sum accepted/input/six_source_input_identity.json | awk '{print $1}')" = d406710981166b540ea8bd162dc2908699e594f1bcfb6bf378a141101893516b
+          test "$(sha256sum accepted/diagnostic/s3g1j_v17_29_six_source_diagnostic.json | awk '{print $1}')" = ae5ef66defe7228e664b7fcce874f91571cc941c5f9c6effc2039c9149782d9f
+          test "$(sha256sum accepted/diagnostic/s3g1j_v17_29_cross_page_equity_word_row_probe.json | awk '{print $1}')" = 00353bb302d5d4dd398d19d4122d01b73a05458ce8b70410287b3643f06824a0
+          python - <<'PY'
+          import json
+          six=json.load(open('accepted/diagnostic/s3g1j_v17_29_six_source_diagnostic.json',encoding='utf-8'))
+          probe=json.load(open('accepted/diagnostic/s3g1j_v17_29_cross_page_equity_word_row_probe.json',encoding='utf-8'))
+          assert six['target_count']==6
+          assert six['all_exact_source_sha_verified'] is True
+          assert six['candidate_parser_authorized'] is False
+          assert six['formal_parser_changed'] is False
+          assert six['runtime_authority_changed'] is False
+          assert six['production_data_changed'] is False
+          assert all(x['parser_snapshot']['tier2_found']==3 for x in six['targets'])
+          assert all('NO_VALIDATED_BALANCE_SHEET_BLOCK' in x['parser_snapshot']['validation_errors'] for x in six['targets'])
+          assert probe['gate']=='S3G1J_V17_29_CROSS_PAGE_EQUITY_WORD_ROW_PROBE_V2'
+          assert probe['target_ids']==['1223347318','1223407043']
+          assert probe['all_exact_source_sha_verified'] is True
+          assert probe['all_six_explicit_amounts_located_per_target'] is True
+          assert probe['all_dual_column_identity_exact_zero'] is True
+          assert probe['candidate_parser_authorized'] is False
+          for target in probe['targets']:
+              assert all(x['residual']=='0.00' for x in target['dual_column_identity'])
+              assert target['formal_group_balance_sheet_events']
+          print('V17_29_SIX_SOURCE_ACCEPTED_ARTIFACT_PASS')
+          PY
+      - name: Verify governance classification and current authority boundaries
+        run: |
+          python -m unittest tests.test_stage3_v17_29_six_source_diagnostic_evidence -v
+          python - <<'PY'
+          import json
+          e=json.load(open('governance/stage3_s3g1j_v17_29_six_source_diagnostic.json',encoding='utf-8'))
+          r=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          p=json.load(open('data/project_status.json',encoding='utf-8'))
+          assert e['classification_result']['cross_page_exact_source_candidate_experiment_eligible_count']==2
+          assert e['classification_result']['diagnostic_only_no_safe_ordinary_candidate_count']==4
+          assert e['classification_result']['candidate_parser_implementation_authorized'] is False
+          assert e['classification_result']['candidate_parser_promotion_authorized'] is False
+          assert r['formal_runtime']['runtime_generation']=='V17.29'
+          assert r['full_basis_last_completed_final']['run']==31389854868
+          assert r['full_basis_last_completed_final']['artifact_id']==9063271903
+          assert r['full_basis_last_completed_final']['verdict']=='FAIL_CLOSED'
+          assert p['stage3']['status']=='NOT_READY'
+          assert p['stage4_unlocked'] is False
+          assert p['alpha_training_allowed'] is False
+          assert p['live_signal_allowed'] is False
+          print('V17_29_SIX_SOURCE_GOVERNANCE_BOUNDARY_PASS')
+          PY

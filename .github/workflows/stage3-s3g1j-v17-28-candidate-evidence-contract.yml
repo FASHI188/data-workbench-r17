@@ -1,0 +1,125 @@
+name: Stage3 S3G1J V17.28 Candidate Evidence Contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'governance/stage3_s3g1j_v17_28_candidate_safety.json'
+      - 'tests/test_stage3_s3g1j_v17_28_candidate_evidence.py'
+      - '.github/workflows/stage3-s3g1j-v17-28-candidate-evidence-contract.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  CANDIDATE_PR: '92'
+  CANDIDATE_HEAD: '08ddddca5effac0f416b68ac2f4c07cdec99dfb2'
+  CANDIDATE_RUN: '30827493788'
+  CANDIDATE_ARTIFACT_ID: '8861519922'
+  CANDIDATE_ARTIFACT: 'stage3-s3g1j-v17-28-split-equity-candidate-safety'
+  CANDIDATE_DIGEST: 'sha256:8a87dfed63160374fc04c88c3d02a93eedac6ae239ae559b64aaad93c71d22c1'
+  REPORT_SHA256: '42fd39956ea3c2dafba98b4d5c1697c15a797099011b4d8ed531cead264e4b21'
+  DOCUMENTS_SHA256: '818f08602792dec73c4f6c84e9dd41e8633e7f4d56edecc2e0336e71d898491c'
+  VALUES_SHA256: '960926aa46e01182d30d97a552f674002f09303f73f142645374ba1a6116af65'
+  FULL_SEMANTIC_SHA256: 'bcb154cc4d80a81acd409e64dc35c2902a5aeb37726b313df936717caf400672'
+  INHERITED_SEMANTIC_SHA256: '05b914b03dbcc23d3f6eca560189afbfe6ea427913f9cf1380fa09cdea6aa8d7'
+
+jobs:
+  evidence-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Lock non-merge candidate PR identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload=$(gh pr view "$CANDIDATE_PR" -R "$GITHUB_REPOSITORY" --json headRefOid,mergedAt)
+          test "$(jq -r '.headRefOid' <<<"$payload")" = "$CANDIDATE_HEAD"
+          test "$(jq -r '.mergedAt // ""' <<<"$payload")" = ""
+      - name: Lock accepted candidate run and artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_payload=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN")
+          test "$(jq -r '.head_sha' <<<"$run_payload")" = "$CANDIDATE_HEAD"
+          test "$(jq -r '.conclusion' <<<"$run_payload")" = success
+          payload=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN/artifacts?per_page=100")
+          count=$(jq -r --arg name "$CANDIDATE_ARTIFACT" '[.artifacts[] | select(.name==$name)] | length' <<<"$payload")
+          test "$count" = 1
+          test "$(jq -r --arg name "$CANDIDATE_ARTIFACT" '.artifacts[] | select(.name==$name) | .id' <<<"$payload")" = "$CANDIDATE_ARTIFACT_ID"
+          test "$(jq -r --arg name "$CANDIDATE_ARTIFACT" '.artifacts[] | select(.name==$name) | .digest' <<<"$payload")" = "$CANDIDATE_DIGEST"
+          test "$(jq -r --arg name "$CANDIDATE_ARTIFACT" '.artifacts[] | select(.name==$name) | .workflow_run.head_sha' <<<"$payload")" = "$CANDIDATE_HEAD"
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-28-split-equity-candidate-safety
+          path: accepted
+          repository: FASHI188/data-workbench-r17
+          run-id: 30827493788
+          github-token: ${{ github.token }}
+      - name: Verify candidate output hashes and complete accounting
+        shell: bash
+        run: |
+          set -euo pipefail
+          report=$(find accepted -name stage3_s3g1j_v17_28_candidate_safety.json -print -quit)
+          documents=$(find accepted -name stage3_financial_documents_v17_28_candidate.csv.gz -print -quit)
+          values=$(find accepted -name stage3_financial_values_v17_28_candidate.csv.gz -print -quit)
+          test -n "$report" && test -n "$documents" && test -n "$values"
+          test "$(sha256sum "$report" | awk '{print $1}')" = "$REPORT_SHA256"
+          test "$(sha256sum "$documents" | awk '{print $1}')" = "$DOCUMENTS_SHA256"
+          test "$(sha256sum "$values" | awk '{print $1}')" = "$VALUES_SHA256"
+          REPORT="$report" DOCUMENTS="$documents" VALUES="$values" python - <<'PY'
+          import csv,gzip,json,os
+          report=json.load(open(os.environ['REPORT'],encoding='utf-8'))
+          assert report['gate']=='S3G1J_V17_28_SPLIT_GROUP_EQUITY_CANDIDATE_SAFETY_V3'
+          assert report['pass'] is True and report['errors']==[]
+          assert report['candidate_only'] is True
+          assert report['candidate_promotion_authorized'] is False
+          assert report['target_announcement_ids']==['1207621057','1209825769']
+          assert report['source_document_rows']==report['candidate_document_rows']==121354
+          assert report['source_numeric_rows']==1051793
+          assert report['candidate_numeric_rows']==1051799
+          assert report['source_document_errors']==1373
+          assert report['candidate_document_errors']==1371
+          assert report['source_unresolved_ties']==1290
+          assert report['candidate_unresolved_ties']==1288
+          assert report['non_target_document_rows']==121352
+          assert report['non_target_document_exact_equal'] is True
+          assert report['existing_numeric_rows']==1051793
+          assert report['existing_numeric_exact_equal'] is True
+          assert report['source_existing_numeric_semantic_sha256']==os.environ['FULL_SEMANTIC_SHA256']
+          assert report['candidate_existing_numeric_semantic_sha256']==os.environ['FULL_SEMANTIC_SHA256']
+          scope=report['numeric_semantic_identity_scope']
+          assert scope['full_v17_27_rows']==1051793
+          assert scope['full_v17_27_semantic_sha256']==os.environ['FULL_SEMANTIC_SHA256']
+          assert scope['inherited_pre_v17_27_rows']==1051778
+          assert scope['inherited_pre_v17_27_semantic_sha256']==os.environ['INHERITED_SEMANTIC_SHA256']
+          assert scope['populations_must_not_be_interchanged'] is True
+          assert report['non_balance_values_promoted'] is False
+          assert report['e_equals_a_minus_l_inference'] is False
+          assert report['production_runtime_changed'] is False
+          assert report['production_data_changed'] is False
+          assert report['final_data_verdict']=='FAIL_CLOSED'
+          assert report['stage3_status']=='NOT_READY'
+          assert report['stage4_alpha_live_locked'] is True
+          with gzip.open(os.environ['DOCUMENTS'],'rt',encoding='utf-8',newline='') as f:
+              docs={r['announcement_id']:r for r in csv.DictReader(f) if r['announcement_id'] in {'1207621057','1209825769'}}
+          assert set(docs)=={'1207621057','1209825769'}
+          assert all(r['document_status']=='PASS' and r['numeric_observations']=='3' for r in docs.values())
+          with gzip.open(os.environ['VALUES'],'rt',encoding='utf-8',newline='') as f:
+              rows=[r for r in csv.DictReader(f) if r['announcement_id'] in docs]
+          assert len(rows)==6
+          assert {r['concept'] for r in rows}=={'TOTAL_ASSETS','TOTAL_LIABILITIES','TOTAL_EQUITY'}
+          print('S3G1J_V17_28_CANDIDATE_ARTIFACT_EVIDENCE_PASS')
+          PY
+        env:
+          FULL_SEMANTIC_SHA256: ${{ env.FULL_SEMANTIC_SHA256 }}
+          INHERITED_SEMANTIC_SHA256: ${{ env.INHERITED_SEMANTIC_SHA256 }}
+      - name: Verify committed candidate evidence manifest
+        run: python -m unittest tests.test_stage3_s3g1j_v17_28_candidate_evidence -v

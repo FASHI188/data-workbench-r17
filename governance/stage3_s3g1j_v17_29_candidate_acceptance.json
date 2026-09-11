@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "status": "MACHINE_ACCEPTED_CANDIDATE_ONLY",
+  "gate": "S3G1J_V17_29_SEVEN_EXACT_SOURCE_CANDIDATE_ACCEPTANCE_V1",
+  "candidate_pr": {
+    "number": 105,
+    "head_sha": "51bd3ccc0013c2c9a6a55bbb54a1d82dcbd2974e",
+    "merge_authorized": false,
+    "disposition": "CLOSE_WITHOUT_MERGE_AFTER_GOVERNANCE_REGISTRATION"
+  },
+  "accepted_run": {
+    "run_id": 31310230656,
+    "workflow_name": "Stage3 S3G1J V17.29 Seven Exact Source Candidate Safety V2",
+    "head_sha": "51bd3ccc0013c2c9a6a55bbb54a1d82dcbd2974e",
+    "conclusion": "SUCCESS",
+    "artifact_id": 9037206225,
+    "artifact_name": "stage3-s3g1j-v17-29-seven-exact-source-candidate-safety-v2",
+    "artifact_digest": "sha256:fc8ff09522b67df8e8209f7e5d88a0d768ef68987201dbb8087df2b6424bb99c"
+  },
+  "supporting_exact_head_runs": {
+    "repository_safety": 31310230666,
+    "runtime_reproducibility": 31310230646,
+    "clean_s3g1j": 31310230660
+  },
+  "locked_inputs": {
+    "integration_base_sha": "84175dcd3695784025311291f80fd8a14a61931c",
+    "formal_runtime_generation": "V17.28",
+    "formal_parser_path": "scripts/stage3_financial_pdf_parser_v20.py",
+    "formal_parser_blob": "b299accbd9b19c6f909b883738378b0119f855b9",
+    "v17_28_full_basis_run": 30997260730,
+    "v17_28_full_basis_artifact_id": 8927455692,
+    "v17_28_full_basis_artifact_digest": "sha256:82375169faada969ceafd4356ab0a2707aa14592d5db090c5d3910863d571c8b",
+    "v17_28_documents_gzip_sha256": "7589750684ec26280c095d4b3a2d21b114c6bb77a882f4633c2ea128de5f38f3",
+    "v17_28_values_gzip_sha256": "2c6e6255be58e86a0b24b889a67e8dccb43835eb9770ca690dde7429b477bbf7",
+    "pre_candidate_safety_evidence": "governance/stage3_s3g1j_v17_29_exact_source_safety.json"
+  },
+  "targets": [
+    "1215186538",
+    "1219426855",
+    "1219792633",
+    "1219840508",
+    "1219879687",
+    "1220087244",
+    "1221006100"
+  ],
+  "candidate_result": {
+    "source_document_rows": 121354,
+    "candidate_document_rows": 121354,
+    "source_numeric_rows": 1051799,
+    "candidate_numeric_rows": 1051820,
+    "target_numeric_rows": 21,
+    "source_document_errors": 1371,
+    "candidate_document_errors": 1364,
+    "document_error_reduction": 7,
+    "source_unresolved_ties": 1288,
+    "candidate_unresolved_ties": 1281,
+    "unresolved_tie_reduction": 7,
+    "source_tie_taxonomy": {
+      "TIE_SOURCE_INCOMPLETE": 1274,
+      "TIE_VALUE_CONFLICT": 14
+    },
+    "candidate_tie_taxonomy": {
+      "TIE_SOURCE_INCOMPLETE": 1267,
+      "TIE_VALUE_CONFLICT": 14
+    },
+    "non_target_document_rows": 121347,
+    "non_target_document_exact_equal": true,
+    "existing_numeric_rows": 1051799,
+    "existing_numeric_exact_equal": true,
+    "existing_numeric_semantic_sha256": "8518e838921b92448952479855770893eea6227a891b83817929c3d8eb990322",
+    "changed_document_ids": [
+      "1215186538",
+      "1219426855",
+      "1219792633",
+      "1219840508",
+      "1219879687",
+      "1220087244",
+      "1221006100"
+    ],
+    "target_numeric_distribution": {
+      "1215186538": 3,
+      "1219426855": 3,
+      "1219792633": 3,
+      "1219840508": 3,
+      "1219879687": 3,
+      "1220087244": 3,
+      "1221006100": 3
+    },
+    "target_concept_distribution": {
+      "TOTAL_ASSETS": 7,
+      "TOTAL_LIABILITIES": 7,
+      "TOTAL_EQUITY": 7
+    },
+    "split_equity_pattern": "SPLIT_LABEL_1_BEFORE_1_AFTER_AMOUNT",
+    "all_current_identity_residuals_zero": true,
+    "all_prior_identity_residuals_zero": true,
+    "accounting_tolerance": "0.005"
+  },
+  "geometry_closure": {
+    "initial_run": 31309637804,
+    "initial_result": "FAIL_CLOSED",
+    "initial_blocker": "The first exact target did not match the before-only split-label assumption.",
+    "diagnostic_target": "1215186538",
+    "observed_exact_sequence": [
+      "所有者权益（或股东权",
+      "EXACT_TWO_COLUMN_EQUITY_AMOUNTS",
+      "益）合计"
+    ],
+    "accepted_v2_rule": "Join only immediately adjacent text-only label fragments around the exact amount row, require the exact complete equity label, bounded positive row gaps, and one identical formal GROUP event for every participating row.",
+    "fuzzy_matching_added": false,
+    "global_geometry_tolerance_changed": false
+  },
+  "output_hashes": {
+    "candidate_documents_gzip_sha256": "343ef55dc8bcf0eb53e8eda2d77f58ddfc48c5c6d13011d02a12d00bd836179e",
+    "candidate_values_gzip_sha256": "31479f232fa2708b411730aa0e0513892a0e42359f0a0e80f4325af3f8b9de2a",
+    "candidate_safety_report_sha256": "f0eaf3a6529eeba4b6347e2f046fb66ca497a118aa6faaa84b4b7e989307c059",
+    "output_sha256_json_sha256": "6ed1124a4be6864dbf29eba7d4ed90687aab7a06b585696ac086e3a5fb2c8416",
+    "output_sha256_txt_sha256": "060be2a0e79ce0dce134c0879a47ab36679a91649f0332f75da06dd51a2fdd55"
+  },
+  "deterministic_repeat": {
+    "prior_success_run": 31309996060,
+    "prior_success_head": "5ceaaade50c6d0a076557548a5110b38dafdf23e",
+    "prior_artifact_id": 9037128407,
+    "prior_transport_digest": "sha256:d9a8220bed0c42d4266dd847dfb9497baf60cb9bd4a3b64709ee5c8c224481f0",
+    "final_transport_digest": "sha256:fc8ff09522b67df8e8209f7e5d88a0d768ef68987201dbb8087df2b6424bb99c",
+    "internal_candidate_files_byte_identical": true,
+    "transport_digest_is_not_semantic_identity": true
+  },
+  "independent_verification": {
+    "final_artifact_downloaded_and_inspected": true,
+    "github_artifact_digest_matches_downloaded_archive": true,
+    "documents_streamed_row_by_row": true,
+    "document_differences_exactly_target_ids": true,
+    "non_target_document_difference_count": 0,
+    "numeric_ledgers_streamed_row_by_row": true,
+    "existing_numeric_difference_count": 0,
+    "appended_target_numeric_rows": 21,
+    "target_values_and_pages_rechecked": true,
+    "output_file_hashes_rechecked": true,
+    "review_threads": 0,
+    "review_submissions": 0,
+    "errors": []
+  },
+  "authorization_boundary": {
+    "candidate_implementation_machine_accepted": true,
+    "candidate_full_basis_non_regression_pass": true,
+    "candidate_runtime_promotion_authorized": false,
+    "production_promotion_experiment_eligible_after_governance": true,
+    "formal_runtime_changed": false,
+    "runtime_authority_changed": false,
+    "production_data_changed": false,
+    "trained_model_changed": false,
+    "live_configuration_changed": false,
+    "ocr_enabled": false,
+    "equity_inferred_as_assets_minus_liabilities": false,
+    "fuzzy_alias_matching_enabled": false,
+    "source_policy_relaxed": false,
+    "point_in_time_policy_relaxed": false,
+    "issuer_gate_relaxed": false,
+    "accounting_tolerance_changed": false,
+    "stage3_status": "NOT_READY",
+    "s3g1j_data_verdict": "FAIL_CLOSED",
+    "stage4_alpha_live_locked": true,
+    "main_changed": false,
+    "merge_to_main_authorized": false
+  },
+  "next_gate": "Register this candidate acceptance evidence on integration, close PR #105 without merge, then create a separate production-promotion safety experiment that wraps formal V17.28 and proves the accepted seven-target behavior without changing any other full-basis output before runtime promotion can even be considered."
+}

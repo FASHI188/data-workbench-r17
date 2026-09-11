@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "status": "PREREGISTERED_DEVELOPMENT_LABEL_MATERIALIZATION_ONLY",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "6ac17734a3a53cfa8dd80deeea020f9acdffa0e4552546e0855056c4b099caf8",
+  "fingerprint_basis": {
+    "contract_id": "STAGE4_ALPHA_V1_DEVELOPMENT_LABELS_AND_SPLIT_SEAL",
+    "version": "V1.0",
+    "effective_preregistration": {
+      "version": "V1.2",
+      "fingerprint": "b73f9b55efb04fac5416f6fdd39c17780b3f9e46c82d0da6b111547e3d258cf8"
+    },
+    "inputs": {
+      "feature_matrix": {"artifact_id": 9168728086, "artifact_zip_sha256": "a4d3a10165bf3b369c77c7b4f77e97663bc3125f506d9203388e6f63198bda4a", "matrix_sha256": "c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c"},
+      "historical_ohlcv": {"artifact_id": 8651700277, "artifact_zip_sha256": "bf977d4f379d421bd198865b90df90caef7ba6cfb5d6d1af96e5487300c1a2f8", "max_source_date_exclusive": "2023-01-03"},
+      "historical_g5_adjustment": {"artifact_id": 8651976824, "artifact_zip_sha256": "acbeaaca9fc849acbef213dbd9b50df034f28e36acd352e625acb44e536cbe22"},
+      "historical_lifecycle": {"artifact_id": 8651477081, "artifact_zip_sha256": "652193c9ce18ad9e4cc93b8050910a1fb8b91c849bfdd990e9ee5f860ac147dd"}
+    },
+    "development": {
+      "decision_start": "2015-01-05",
+      "nominal_decision_end": "2022-12-30",
+      "latest_primary_20d_labelable_decision": "2022-12-02",
+      "latest_secondary_5d_labelable_decision": "2022-12-23",
+      "next_sealed_partition_start": "2023-01-03"
+    },
+    "label_semantics": {
+      "decision_key": ["trade_date", "exchange", "code"],
+      "entry": "NEXT_GLOBAL_MARKET_SESSION_OPEN",
+      "exit_5d": "FIFTH_GLOBAL_MARKET_SESSION_COUNTING_ENTRY_AS_ONE_CLOSE",
+      "exit_20d": "TWENTIETH_GLOBAL_MARKET_SESSION_COUNTING_ENTRY_AS_ONE_CLOSE",
+      "total_return_adjustment": "RAW_PRICE_TIMES_LATEST_G5_CUMULATIVE_BACK_ADJUST_MULTIPLIER_AS_OF_PRICE_DATE",
+      "benchmark": "EQUAL_WEIGHT_MEAN_OF_VALID_SAME_DECISION_DAY_ELIGIBLE_UNIVERSE_STOCK_RETURNS_FOR_IDENTICAL_HORIZON",
+      "benchmark_invalid_rows_excluded_from_denominator": true,
+      "excess_return": "STOCK_TOTAL_RETURN_MINUS_BENCHMARK_RETURN",
+      "no_forward_fill": true,
+      "feature_matrix_immutable": true,
+      "labels_separate_artifact": true
+    },
+    "censoring": {
+      "missing_entry": "MISSING_ENTRY_OPEN",
+      "missing_exit": "MISSING_EXIT_CLOSE",
+      "crosses_known_code_transition": "CODE_TRANSITION_HORIZON_CENSOR",
+      "delisting_without_verified_terminal_value": "DELISTING_HORIZON_CENSOR_NO_TERMINAL_IMPUTATION",
+      "incomplete_boundary": "PARTITION_BOUNDARY_INCOMPLETE_HORIZON",
+      "known_code_transitions": [
+        {"exchange": "SSE", "old_code": "601313", "new_code": "601360", "effective_date": "2018-02-28"},
+        {"exchange": "SZSE", "old_code": "000022", "new_code": "001872", "effective_date": "2018-12-26"},
+        {"exchange": "SZSE", "old_code": "000043", "new_code": "001914", "effective_date": "2019-12-16"}
+      ]
+    },
+    "split_seal": {
+      "method": "ANCHORED_PURGED_EXPANDING_WINDOW_BLOCK_CV",
+      "calendar_blocks": 6,
+      "evaluation_splits": 5,
+      "block_population": "GLOBAL_MARKET_DECISION_SESSIONS_FROM_DEVELOPMENT_START_THROUGH_LATEST_PRIMARY_LABELABLE_DECISION",
+      "block_allocation": "CONTIGUOUS_BALANCED_BY_SESSION_COUNT_DETERMINISTIC",
+      "train_rule": "ALL_BLOCKS_STRICTLY_BEFORE_TEST_BLOCK",
+      "test_rule": "SINGLE_NEXT_BLOCK",
+      "purge_sessions_before_test": 20,
+      "post_test_embargo_sessions": 20,
+      "future_train_to_past_test_forbidden": true,
+      "label_value_blind": true,
+      "exact_boundaries_frozen_in_output_before_fit": true
+    },
+    "outputs": {
+      "labels_file": "development_labels.parquet",
+      "censoring_report": "development_label_censoring.json",
+      "split_seal_file": "development_split_seal.json",
+      "materialization_audit": "materialization_audit.json",
+      "independent_audit": "independent_audit.json",
+      "execution_manifest": "execution_manifest.json"
+    },
+    "permissions": {
+      "development_label_materialization_allowed": true,
+      "model_fit_allowed": false,
+      "oos_label_access_allowed": false,
+      "lockbox_label_access_allowed": false,
+      "live_signal_allowed": false,
+      "main_merge_allowed": false
+    }
+  }
+}
