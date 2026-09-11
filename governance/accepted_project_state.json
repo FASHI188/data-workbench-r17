@@ -1,5 +1,5 @@
 {
-  "schema_version": 9,
+  "schema_version": 10,
   "status": "RESEARCH_ONLY",
   "integration_ref": "agent/stage3-clean-integration",
   "live_integration_sha_source": "READ_GITHUB_REF_AT_RUNTIME",
@@ -23,6 +23,7 @@
     "oos_validation_authorization_v1": "MERGED_ACCEPTED_CONSUMED_PR157_RUN_34454575970_AUTH_D260F117",
     "oos_validation_execution_v1": "CONSUMED_INCOMPLETE_NO_PROMOTION_PR157_RUN_34454575970",
     "oos_consumed_incomplete_acceptance_v1": "MERGED_ACCEPTED_PR160_NO_PROMOTION",
+    "oos_label_completion_prereg_v1_3": "MERGED_ACCEPTED_PR162_FP_0E9B79A4_NO_NEW_AUTHORITY",
     "continuity_control_plane_v3": "COMPLETE_V3_3_CONTEXT_BUDGET_CHAT_LIFECYCLE",
     "research_method_core_v1": "ACTIVE_STABLE_ON_DEMAND_MIGRATED_TRADER26_29"
   },
@@ -37,10 +38,11 @@
     "oos_validation_authorization_audit_v1": "governance/stage4_alpha_v1_oos_validation_authorization_audit.json",
     "oos_validation_execution_v1": "governance/stage4_alpha_v1_oos_validation_consumed_incomplete_evidence.json",
     "oos_consumed_incomplete_acceptance_v1": "governance/stage4_alpha_v1_oos_validation_consumed_incomplete_evidence.json",
+    "oos_label_completion_prereg_v1_3": "governance/stage4_alpha_v1_oos_label_completion_preregistration_v1_3_supersession.json",
     "research_method_core_v1": "governance/INVESTMENT_RESEARCH_METHOD_CORE_V1.md"
   },
   "active_business_pr": null,
-  "next_business_gate": "Only a separate superseding preregistration/governance decision may reopen research after the consumed-incomplete OOS execution. It must explicitly preserve Run 34454575970, the immutable prediction artifact and the incomplete failure, must not erase or reinterpret the failure as an Alpha result, and must establish any new authority before any further OOS label access. Until such a new authority is separately accepted, OOS execution and OOS label access remain forbidden and FINAL_LOCKBOX_V1 remains sealed.",
+  "next_business_gate": "Create a separate OOS label-completion implementation PR under accepted preregistration V1.3 fingerprint 0e9b79a406e3a7789ade5b93878cd4276c5f424b0f0e9e4906048b9254e4cac3. That PR must be static/synthetic and label-blind, must not download OOS artifacts or read OOS market/label values, must not load the model or recompute predictions, and must preserve immutable prediction artifact 10142949262 and physical-boundary artifact 10142948546. A separate label-completion authorization is required after implementation acceptance before any OOS access. FINAL_LOCKBOX_V1 remains sealed.",
   "permissions": {
     "model_fit_allowed": false,
     "model_fit_scope": "NONE",
@@ -53,5 +55,5 @@
     "main_merge_allowed": false,
     "authoritative_model_output_allowed": false
   },
-  "authority_note": "Live integration SHA must be read from GitHub at runtime. Development-CV authorization 2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c and C007 final-refit authorization 7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295 are consumed and non-reusable. Frozen C007 model SHA256 remains e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c. OOS authorization d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d was consumed by Run 34454575970 at exact execution head 3b91203693fb1dcc4c6e649747f89b1ca7be622e when the first OOS prediction computation occurred. Immutable predictions were produced, but the frozen execution implementation then failed during label materialization with a DuckDB parser error before Alpha or Runtime Veto could be evaluated. PR160 accepted the immutable consumed-incomplete evidence with NO_PROMOTION and merged it into integration at 71f11c8c713f0a5836ad532b07c8b383f1804ea9. Therefore no promotion is established, no rerun is permitted under the consumed authorization, and the failure must not be erased by retuning or reselection. FINAL_LOCKBOX_V1 starting 2025-01-02 remains sealed. No fit/retraining, candidate reselection, hyperparameter search, live signals, main merge, authoritative model output, additional OOS execution, or OOS label access is allowed under the current authority."
+  "authority_note": "Live integration SHA must be read from GitHub at runtime. Development-CV authorization 2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c and C007 final-refit authorization 7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295 are consumed and non-reusable. Frozen C007 model SHA256 remains e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c. OOS authorization d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d was consumed by Run 34454575970 at exact execution head 3b91203693fb1dcc4c6e649747f89b1ca7be622e when the first OOS prediction computation occurred. Immutable predictions were produced, but the frozen execution implementation then failed during label materialization before Alpha or Runtime Veto could be evaluated. PR160 accepted that consumed-incomplete evidence with NO_PROMOTION; PR162 accepted preregistration V1.3 fingerprint 0e9b79a406e3a7789ade5b93878cd4276c5f424b0f0e9e4906048b9254e4cac3, which freezes any future completion to the immutable predictions and immutable physical boundary and grants no new authority. No rerun, prediction recomputation, model load, fit/retraining, candidate reselection, hyperparameter search, live signals, main merge, authoritative output, additional OOS execution, or OOS label access is allowed under the current authority. FINAL_LOCKBOX_V1 starting 2025-01-02 remains sealed."
 }
