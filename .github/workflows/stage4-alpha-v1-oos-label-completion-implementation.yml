@@ -1,0 +1,136 @@
+name: Stage4 Alpha V1 OOS Label Completion Implementation V1
+
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - 'governance/stage4_alpha_v1_oos_label_completion_implementation_contract_v1.json'
+      - 'governance/stage4_alpha_v1_oos_physical_boundary_contract.json'
+      - 'governance/stage4_alpha_v1_runtime_veto_contract_v1_1.json'
+      - 'scripts/audit_stage4_alpha_v1_oos_label_completion_implementation.py'
+      - 'scripts/audit_stage4_alpha_v1_runtime_veto_v1_1.py'
+      - 'scripts/run_stage4_alpha_v1_oos_label_completion.py'
+      - 'scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py'
+      - 'scripts/stage4_alpha_v1_alpha_evaluation.py'
+      - 'scripts/stage4_alpha_v1_label_materialization.py'
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-implementation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  OMP_NUM_THREADS: '1'
+  MKL_NUM_THREADS: '1'
+  OPENBLAS_NUM_THREADS: '1'
+  NUMEXPR_NUM_THREADS: '1'
+
+jobs:
+  static-and-synthetic-label-blind:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+
+      - name: Audit frozen implementation contract and source
+        run: python scripts/audit_stage4_alpha_v1_oos_label_completion_implementation.py
+
+      - name: Static parse and forbidden API guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          for p in [
+              Path('scripts/run_stage4_alpha_v1_oos_label_completion.py'),
+              Path('scripts/stage4_alpha_v1_label_materialization.py'),
+              Path('scripts/stage4_alpha_v1_alpha_evaluation.py'),
+              Path('scripts/audit_stage4_alpha_v1_oos_label_completion_implementation.py'),
+              Path('scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py'),
+              Path('scripts/audit_stage4_alpha_v1_runtime_veto_v1_1.py'),
+          ]:
+              ast.parse(p.read_text(encoding='utf-8'), filename=str(p))
+          print('AST_PARSE_PASS')
+          PY
+          ! grep -n -E 'model[[:space:]]*\.[[:space:]]*predict[[:space:]]*\(|predict_proba[s:space:]]*\(|pickle[[:space:]]*\.[[:space:]]*load[[:space:]]*\(|joblib|\.fit[[:space:]]*\(|fit_predict[[:space:]]*\(|partial_fit[[:space:]]*\(' \
+            scripts/run_stage4_alpha_v1_oos_label_completion.py \
+            scripts/stage4_alpha_v1_label_materialization.py \
+            scripts/stage4_alpha_v1_alpha_evaluation.py
+          grep -F 'CAST("open" AS DOUBLE) AS open_px' scripts/stage4_alpha_v1_label_materialization.py
+          grep -F 'CAST("close" AS DOUBLE) AS close_px' scripts/stage4_alpha_v1_label_materialization.py
+          ! grep -n -E 'CAST\(open AS DOUBLE\)|CAST\(close AS DOUBLE\)' scripts/stage4_alpha_v1_label_materialization.py
+
+      - name: Install frozen synthetic runtime
+        run: >-
+          python -m pip install --disable-pip-version-check
+          numpy==2.5.1 scipy==1.17.0 pyarrow==25.0.0 duckdb==1.3.2 pandas==3.0.5
+
+      - name: Run end-to-end synthetic implementation test
+        run: python scripts/run_stage4_alpha_v1_oos_label_completion.py --synthetic-self-test
+
+      - name: Prove CI remained non-consuming
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e build/oos
+          test ! -e build/oos-work
+          test ! -e build/model
+          test ! -e build/runtime-veto
+          test ! -e build/oos-boundary
+          test ! -e label_completion_consumption.json
+          test "$(grep -c -- '--synthetic-self-test' .github/workflows/stage4-alpha-v1-oos-label-completion-implementation.yml)" -eq 1
+
+      - name: Prove PR scope is exactly the implementation file set
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed.txt
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/stage4-alpha-v1-oos-label-completion-implementation.yml
+          governance/stage4_alpha_v1_oos_label_completion_implementation_contract_v1.json
+          governance/stage4_alpha_v1_oos_physical_boundary_contract.json
+          governance/stage4_alpha_v1_runtime_veto_contract_v1_1.json
+          scripts/audit_stage4_alpha_v1_oos_label_completion_implementation.py
+          scripts/audit_stage4_alpha_v1_runtime_veto_v1_1.py
+          scripts/run_stage4_alpha_v1_oos_label_completion.py
+          scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py
+          scripts/stage4_alpha_v1_alpha_evaluation.py
+          scripts/stage4_alpha_v1_label_materialization.py
+          EOF
+          sort -o /tmp/expected.txt /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/changed.txt
+
+      - name: Prove accepted authority and consumed evidence are untouched
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden="$(git diff --name-only "$BASE_SHA" HEAD -- \
+            governance/accepted_project_state.json \
+            governance/stage4_alpha_v1_oos_validation_authorization.json \
+            governance/stage4_alpha_v1_oos_validation_consumed_incomplete_evidence.json \
+            governance/stage4_alpha_v1_oos_label_completion_preregistration_v1_3_supersession.json \
+            data/stage2_final \
+            data/stage3_final \
+            config/stage3_final_lock.json \
+            models)"
+          if [ -n "$forbidden" ]; then
+            echo 'Implementation PR modified frozen authority/evidence/data paths:' >&2
+            echo "$forbidden" >&2
+            exit 1
+          fi
