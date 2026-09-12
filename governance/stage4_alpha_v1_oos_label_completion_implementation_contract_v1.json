@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_STATIC_SYNTHETIC_LABEL_COMPLETION_IMPLEMENTATION_V1_NO_OOS_ACCESS",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "a9addd6eefc82737e5a39c7828dc9b68a5d4336e2ee3e8ebeaeee1d628014045",
+  "fingerprint_basis": {
+    "implementation_id": "STAGE4_ALPHA_V1_OOS_LABEL_COMPLETION_IMPLEMENTATION",
+    "version": "V1.0",
+    "integration_base_sha": "3490e15122d8a717581ce0012dd0a4c1bacac09e",
+    "effective_preregistration_fingerprint": "0e9b79a406e3a7789ade5b93878cd4276c5f424b0f0e9e4906048b9254e4cac3",
+    "historical_execution_contract_fingerprint": "224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177",
+    "historical_runtime_veto_v1_1_fingerprint": "727e5d1496f1a79240d5c4f874e6b956a9539b80c104169268b9c80d26d45676",
+    "historical_physical_boundary_contract_fingerprint": "67e8555d3a9212a003a8293dc381cce0f7294917ef72875fed3218f240e0c255",
+    "consumed_failure": {
+      "workflow_run_id": 34454575970,
+      "execution_head": "3b91203693fb1dcc4c6e649747f89b1ca7be622e",
+      "original_authorization_fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
+      "original_authorization_consumed": true,
+      "original_authorization_reusable": false,
+      "failure_stage": "POST_PREDICTION_LABEL_MATERIALIZATION",
+      "failure_root_cause_class": "FROZEN_EXECUTION_IMPLEMENTATION_SQL_PARSER_ERROR",
+      "failure_must_remain_recorded": true,
+      "original_run_rerun_forbidden": true
+    },
+    "immutable_prediction_input": {
+      "artifact_id": 10142949262,
+      "artifact_name": "stage4-alpha-v1-recovery-v2-oos-validation-single-use",
+      "artifact_digest": "sha256:068b451ecc21b05557334569e3af957e106087bf0839a3df01cbcf838536fe4c",
+      "predictions_file": "oos_predictions.parquet",
+      "predictions_sha256": "66a039aa76e4b1962049e3e0d41a43fb1f6c626d934a552f871f91bd27fe01da",
+      "prediction_rows": 1515811,
+      "prediction_date_start": "2023-01-03",
+      "prediction_date_end": "2024-12-31",
+      "sole_score_input": true
+    },
+    "immutable_physical_boundary_input": {
+      "artifact_id": 10142948546,
+      "artifact_name": "stage4-alpha-v1-recovery-v2-oos-physical-boundary",
+      "artifact_digest": "sha256:76711c8bd5277bfe569868a0be7bba5dd074cac92fde88c92e4c0ce7e127a86c",
+      "implementation": "V1_2_LIFECYCLE_AWARE_CANDIDATE_READINESS",
+      "candidate_rows": 1453359,
+      "entry_lifecycle_inactive_rows": 52,
+      "exit_lifecycle_inactive_rows": 1217,
+      "active_lifecycle_integrity_failures": 0,
+      "post_oos_rows_observed": 0,
+      "files": {
+        "market": "oos_market.parquet",
+        "execution_state": "oos_execution_state.parquet",
+        "lifecycle": "oos_lifecycle.parquet",
+        "manifest": "oos_physical_boundary_manifest.json",
+        "independent_audit": "oos_physical_boundary_independent_audit.json",
+        "hashes": "artifact_hashes.json"
+      },
+      "broad_source_redownload_forbidden": true,
+      "physical_boundary_rebuild_forbidden": true
+    },
+    "parser_repair": {
+      "allowed_repair_class": "LABEL_MATERIALIZATION_SYNTAX_OR_EQUIVALENT_NON_SEMANTIC_WIRING_ONLY",
+      "source_identifiers_open_close_must_be_identifier_safe": true,
+      "implementation": "CAST(\"open\" AS DOUBLE) AS open_px_AND_CAST(\"close\" AS DOUBLE) AS close_px",
+      "label_formula_change": false
+    },
+    "preserved_partition": {
+      "decision_start": "2023-01-03",
+      "decision_end": "2024-12-31",
+      "latest_valid_20d_decision": "2024-12-03",
+      "final_lockbox_start": "2025-01-02",
+      "primary_horizon_sessions": 20
+    },
+    "preserved_label_semantics": {
+      "join_key": [
+        "trade_date",
+        "exchange",
+        "code"
+      ],
+      "decision_information_cut": "SESSION_T_CLOSE",
+      "entry_reference": "NEXT_TRADING_SESSION_OPEN",
+      "exit_reference": "CLOSE_OF_20TH_MARKET_SESSION_COUNTING_ENTRY_SESSION_AS_1",
+      "primary_target": "excess_return_20d",
+      "secondary_target": "excess_return_5d_DIAGNOSTIC_ONLY",
+      "ic_evaluation_population": "ROWS_WITH_VALID_LABEL_20D_ONLY",
+      "economic_selection_population": "ALL_PREDICTED_ROWS_ON_REBALANCE_DATE_BEFORE_ANY_LABEL_VALIDITY_FILTER"
+    },
+    "preserved_metric_semantics": {
+      "daily_ic_20d": "SCIPY_SPEARMANR_PREDICTION_VS_EXCESS_RETURN_20D_BY_DECISION_DATE_MIN20_VARIATION_REQUIRED",
+      "daily_ic_aggregate": "ARITHMETIC_MEAN_VALID_DAYS",
+      "bootstrap": {
+        "method": "MOVING_BLOCK_BOOTSTRAP",
+        "block_length_sessions": 20,
+        "resamples": 10000,
+        "rng": "NUMPY_GENERATOR_PCG64",
+        "seed": 20260817,
+        "ci": "PERCENTILE_2_5_97_5"
+      },
+      "expected_quarters": [
+        "2023Q1",
+        "2023Q2",
+        "2023Q3",
+        "2023Q4",
+        "2024Q1",
+        "2024Q2",
+        "2024Q3",
+        "2024Q4"
+      ],
+      "coverage": [
+        0.05,
+        0.1,
+        0.2
+      ],
+      "bucket_order": "PREDICTION_DESC_THEN_EXCHANGE_ASC_CODE_ASC",
+      "bucket_size": "CEIL_COVERAGE_TIMES_ALL_PREDICTION_ROWS_ON_REBALANCE_DATE",
+      "rebalance_sessions": 20,
+      "rebalance_anchor": "2023-01-03",
+      "selected_label_censoring": "ANY_SELECTED_ROW_WITHOUT_VALID_20D_LABEL_INVALIDATES_THAT_COVERAGE_FAIL_CLOSED_NO_BACKFILL_NO_POST_SELECTION_DROP",
+      "implementation_shortfall_each_side": 0.0015,
+      "handling_fee_before_2023_08_28": 4.87e-05,
+      "handling_fee_from_2023_08_28": 3.41e-05,
+      "stamp_duty_sell_before_2023_08_28": 0.001,
+      "stamp_duty_sell_from_2023_08_28": 0.0005
+    },
+    "preserved_gate": {
+      "all_required_must_pass": true,
+      "mean_daily_ic_gt_0": true,
+      "bootstrap_ci_lower_gt_0": true,
+      "positive_quarters_at_least": 6,
+      "top10_net_excess_gt_0": true,
+      "top05_net_excess_ge_0": true,
+      "top20_net_excess_ge_0": true,
+      "pbo_carried": 0.11904761904761904,
+      "pbo_max": 0.2,
+      "dsr_carried": 0.9999989891602007,
+      "dsr_min": 0.95
+    },
+    "runtime_veto_v1_1_semantics": {
+      "selection_population": "FROZEN_OOS_PREDICTIONS_NO_SCORE_FILTER",
+      "ordering": "PREDICTION_DESC_THEN_EXCHANGE_ASC_CODE_ASC",
+      "backfill_forbidden": true,
+      "replacement_forbidden": true,
+      "post_selection_drop_forbidden": true,
+      "score_filtering_forbidden": true,
+      "lifecycle_inactive_entry_role": "EXPLICIT_HARD_ENTRY_VETO_NO_STATE_OR_PRICE_IMPUTATION",
+      "lifecycle_inactive_exit_role": "EXPLICIT_HARD_EXIT_VETO_NO_STATE_OR_PRICE_IMPUTATION",
+      "missing_g4_state_while_lifecycle_active": "FAIL_CLOSED_INTEGRITY_ERROR",
+      "missing_market_while_lifecycle_active_and_tradable": "FAIL_CLOSED_INTEGRITY_ERROR",
+      "risk_warning_role": "DIAGNOSTIC_ONLY_NOT_A_HARD_VETO",
+      "decision_low_price_lt2_role": "DIAGNOSTIC_ONLY_NOT_A_HARD_VETO",
+      "entry_one_price_limit_down_role": "DIAGNOSTIC_ONLY_FOR_LONG_ENTRY_NOT_A_HARD_VETO",
+      "exit_one_price_limit_up_role": "DIAGNOSTIC_ONLY_FOR_LONG_EXIT_NOT_A_HARD_VETO",
+      "runtime_veto_cannot_rescue_alpha_failure": true
+    },
+    "future_authorization_interface": {
+      "separate_authorization_required": true,
+      "authorization_status": "AUTHORIZED_SINGLE_USE_OOS_LABEL_COMPLETION_V1",
+      "max_label_completion_runs": 1,
+      "consumption_event": "FIRST_SUCCESSFUL_READ_OF_ANY_OOS_MARKET_VALUE_USED_FOR_LABEL_MATERIALIZATION_OR_FIRST_SUCCESSFUL_READ_OF_ANY_OOS_LABEL_VALUE_WHICHEVER_OCCURS_FIRST",
+      "after_consumption_reexecution_forbidden": true,
+      "prediction_computation_allowed": false,
+      "model_load_allowed": false,
+      "fit_retrain_tune_reselect_allowed": false
+    },
+    "implementation_pr_scope": {
+      "static_and_synthetic_only": true,
+      "oos_artifact_download": false,
+      "oos_market_value_read": false,
+      "oos_label_value_read": false,
+      "prediction_computation": false,
+      "model_download": false,
+      "model_load": false,
+      "fit_retraining_tuning_reselection": false,
+      "final_lockbox_access": false,
+      "live_signal": false,
+      "authoritative_output": false,
+      "main_merge": false
+    },
+    "outcome_semantics": {
+      "combined_business_gate": "ALPHA_OOS_GATE_PASS_AND_RUNTIME_VETO_V1_1_PASS",
+      "both_pass_does_not_auto_promote": true,
+      "separate_post_result_governance_acceptance_required": true,
+      "failure_action": "NO_PROMOTION_NO_RETUNING_ON_OOS",
+      "final_lockbox_remains_sealed": true
+    },
+    "frozen_runtime_dependencies": {
+      "scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py": "26c7371fa886cc5031dddf031c7317c4ad9bdc57",
+      "scripts/audit_stage4_alpha_v1_runtime_veto_v1_1.py": "35f6b388564993241e364ea3b332a9d16eca19c5",
+      "governance/stage4_alpha_v1_runtime_veto_contract_v1_1.json": "b6668800143249ccf29d15a7f5c87f1a21905b98",
+      "governance/stage4_alpha_v1_oos_physical_boundary_contract.json": "6b4e85cf495ff2f43b076309b10d100b369af140"
+    },
+    "implementation_files": [
+      ".github/workflows/stage4-alpha-v1-oos-label-completion-implementation.yml",
+      "governance/stage4_alpha_v1_oos_label_completion_implementation_contract_v1.json",
+      "governance/stage4_alpha_v1_oos_physical_boundary_contract.json",
+      "governance/stage4_alpha_v1_runtime_veto_contract_v1_1.json",
+      "scripts/audit_stage4_alpha_v1_oos_label_completion_implementation.py",
+      "scripts/audit_stage4_alpha_v1_runtime_veto_v1_1.py",
+      "scripts/run_stage4_alpha_v1_oos_label_completion.py",
+      "scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py",
+      "scripts/stage4_alpha_v1_alpha_evaluation.py",
+      "scripts/stage4_alpha_v1_label_materialization.py"
+    ]
+  },
+  "next_gate": "IMPLEMENTATION_PR_ACCEPTANCE_THEN_SEPARATE_SINGLE_USE_LABEL_COMPLETION_AUTHORIZATION_NO_PREDICTION_COMPUTATION",
+  "implementation_sources": {
+    "scripts/run_stage4_alpha_v1_oos_label_completion.py": "7fe790864be6d324f4571f57ed23213920605a48d9b4415849e12c37cdb8f2d6",
+    "scripts/stage4_alpha_v1_label_materialization.py": "f1cfd8d47d1df7778f5ea98211d39a36774fa270e129b86beb769afb31373557",
+    "scripts/stage4_alpha_v1_alpha_evaluation.py": "4c4e7e1674ef64dd6e68fde65ba58d3954f2b4262e476863a21ac600fa8b68a3"
+  },
+  "frozen_git_blobs": {
+    "scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py": "26c7371fa886cc5031dddf031c7317c4ad9bdc57",
+    "scripts/audit_stage4_alpha_v1_runtime_veto_v1_1.py": "35f6b388564993241e364ea3b332a9d16eca19c5",
+    "governance/stage4_alpha_v1_runtime_veto_contract_v1_1.json": "b6668800143249ccf29d15a7f5c87f1a21905b98",
+    "governance/stage4_alpha_v1_oos_physical_boundary_contract.json": "6b4e85cf495ff2f43b076309b10d100b369af140"
+  }
+}
