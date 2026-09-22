@@ -45,6 +45,7 @@ def main():
     ck("state_sensitive_closed",p["model_fit_allowed"] is False and p["lockbox_label_access_allowed"] is False and p["live_signal_allowed"] is False and p["main_merge_allowed"] is False and p["authoritative_model_output_allowed"] is False)
     mod=next(x for x in modules["modules"] if x["id"]=="OOS_LABEL_COMPLETION_V1")
     ck("module_index",modules["index_version"]=="V1.10" and mod["authorization_reservation_fingerprint"]==FP and mod["status"]=="AUTHORIZATION_RESERVED_V1_1_UNARMED_NO_OOS_ACCESS" and mod["authorized_execution_head"] is None and mod["armed_runs_remaining"]==0)
+    ck("retired_v1_pr_gate","pull_request:" not in (R/".github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation.yml").read_text(encoding="utf-8"))
     ck("audit_manifest",audit["authorization_fingerprint_expected"]==FP and audit["status"]=="PASS_FOR_GOVERNANCE_ACCEPTANCE_UNARMED_NO_OOS_ACCESS")
     failed=[k for k,v in checks.items() if not v]
     out={"gate":"STAGE4_ALPHA_V1_OOS_LABEL_COMPLETION_AUTHORIZATION_RESERVATION_V1_1","pass":not failed,"fingerprint":FP,"checks":checks,"failed_checks":failed,"oos_artifact_download_executed":False,"oos_market_value_read":False,"oos_label_value_read":False,"prediction_computation_executed":False,"model_loaded":False,"authorization_armed":False,"armed_runs_remaining":0,"final_lockbox_accessed":False,"next_gate":new["next_gate"]}

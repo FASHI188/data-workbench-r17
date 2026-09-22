@@ -49,6 +49,7 @@ jobs:
           git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed.txt
           cat > /tmp/expected.txt <<'EOF'
           .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation-v1-1.yml
+          .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation.yml
           governance/accepted_project_state.json
           governance/project_module_index.json
           governance/stage4_alpha_v1_oos_label_completion_authorization_reservation_v1_1_audit.json
