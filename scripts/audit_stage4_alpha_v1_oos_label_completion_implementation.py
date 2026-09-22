@@ -47,7 +47,7 @@ def main():
  mat=(R/'scripts/stage4_alpha_v1_label_materialization.py').read_text(encoding='utf-8'); new='\n'.join((R/k).read_text(encoding='utf-8') for k in SRC)
  ck('parser_fix','CAST("open" AS DOUBLE) AS open_px' in mat and 'CAST("close" AS DOUBLE) AS close_px' in mat and re.search(r'CAST\(open AS DOUBLE\)|CAST\(close AS DOUBLE\)',mat) is None)
  ck('no_model_api',re.search(r'model\s*\.\s*predict\s*\(|predict_proba\s*\(|pickle\s*\.\s*load\s*\(|joblib|\.fit\s*\(|fit_predict\s*\(|partial_fit\s*\(',new) is None)
- ck('selection_guards','PREDICTION_DESC_THEN_EXCHANGE_ASC_CODE_ASC' in new and 'FAIL_CLOSED_NO_BACKFILL_NO_POST_SELECTION_DROP' in new and 'NO_PROMOTION_NO_RETUNING_ON_OOS' in new)
+ ck('selection_guards','sort_values(["prediction", "exchange", "code"], ascending=[False, True, True]' in new and 'math.ceil(cov * len(g))' in new and 'FAIL_CLOSED_NO_BACKFILL_NO_POST_SELECTION_DROP' in new and 'NO_PROMOTION_NO_RETUNING_ON_OOS' in new)
  w=(R/'.github/workflows/stage4-alpha-v1-oos-label-completion-implementation.yml').read_text(encoding='utf-8')
  calls=[x.strip() for x in w.splitlines() if 'python scripts/run_stage4_alpha_v1_oos_label_completion.py' in x]
  ck('workflow_synthetic_only',calls==['run: python scripts/run_stage4_alpha_v1_oos_label_completion.py --synthetic-self-test'])
