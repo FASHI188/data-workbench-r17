@@ -38,8 +38,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ! grep -n -E 'download-artifact|curl|wget|gh[[:space:]]+api|urllib|requests' .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation.yml
-          ! grep -n -E 'run_stage4_alpha_v1_oos_label_completion.py[[:space:]]+--authorization|workflow_dispatch.*oos|artifact_id.*10142949262|artifact_id.*10142948546' .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation.yml
+          ! grep -n -E 'download-artifact|curl|wget|gh[[:space:]]+api|urllib|requests' .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation.yml | grep -v 'grep -n -E'
+          ! grep -n -E 'run_stage4_alpha_v1_oos_label_completion.py[[:space:]]+--authorization|workflow_dispatch.*oos|artifact_id.*10142949262|artifact_id.*10142948546' .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation.yml | grep -v 'grep -n -E'
 
       - name: Prove PR scope is exact governance reservation set
         if: github.event_name == 'pull_request'
