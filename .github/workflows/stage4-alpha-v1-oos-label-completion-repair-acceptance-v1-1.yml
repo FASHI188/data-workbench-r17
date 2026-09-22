@@ -23,10 +23,40 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
           fetch-depth: 0
+
+      - name: Detect V1.2 reservation successor
+        id: reservation
+        shell: bash
+        run: |
+          if test -f governance/stage4_alpha_v1_oos_label_completion_authorization_reservation_v1_2.json; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify V1.2 reservation handoff
+        if: steps.reservation.outputs.present == 'true'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('governance/stage4_alpha_v1_oos_label_completion_authorization_reservation_v1_2.json').read_text())
+          a=json.loads(Path('governance/stage4_alpha_v1_oos_label_completion_implementation_repair_acceptance_v1_1.json').read_text())
+          s=json.loads(Path('governance/accepted_project_state.json').read_text())
+          assert r['fingerprint']=='f038c7857da733207be7cb9c3df76bd0e189054b6763b3d3c70aca017afda889'
+          assert r['fingerprint_basis']['repair_implementation_acceptance_fingerprint']==a['fingerprint']=='1b6e05dd16911f9234c1ed4ee19918d30c37943dbb4be6b6490adb24b099849b'
+          assert r['fingerprint_basis']['authorization_armed'] is False
+          assert r['fingerprint_basis']['armed_runs_remaining']==0
+          assert s['permissions']['oos_execution_pr_creation_allowed'] is True
+          assert s['permissions']['oos_label_access_allowed'] is False
+          assert s['permissions']['oos_label_bearing_execution_runs_remaining']==0
+          PY
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12.13'
       - name: Audit repair acceptance
+        if: steps.reservation.outputs.present != 'true'
         run: python scripts/audit_stage4_alpha_v1_oos_label_completion_implementation_repair_acceptance_v1_1.py
       - name: Prove acceptance PR is governance-only
         shell: bash
@@ -36,6 +66,7 @@ jobs:
           test ! -e build/model
           ! grep -n -E 'download-artifact|curl|wget|gh[[:space:]]+api|read_parquet\(' .github/workflows/stage4-alpha-v1-oos-label-completion-repair-acceptance-v1-1.yml | grep -v 'grep -n -E'
       - name: Prove exact acceptance scope
+        if: steps.reservation.outputs.present != 'true'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         shell: bash
