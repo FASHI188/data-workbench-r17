@@ -1,0 +1,77 @@
+name: Stage4 Alpha V1 OOS Label Completion Authorization Reservation V1.1
+
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - 'governance/stage4_alpha_v1_oos_label_completion_authorization_reservation_v1_1_supersession.json'
+      - 'governance/stage4_alpha_v1_oos_label_completion_authorization_reservation_v1_1_audit.json'
+      - 'governance/accepted_project_state.json'
+      - 'governance/project_module_index.json'
+      - 'scripts/audit_stage4_alpha_v1_oos_label_completion_authorization_reservation_v1_1.py'
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation-v1-1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-transport-supersession:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Audit V1.1 reservation supersession
+        run: python scripts/audit_stage4_alpha_v1_oos_label_completion_authorization_reservation_v1_1.py
+      - name: Prove this gate has no OOS execution surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e build/oos
+          test ! -e build/oos-boundary
+          test ! -e label_completion_consumption.json
+          ! grep -n -E 'download-artifact|curl|wget|gh[[:space:]]+api|urllib|requests|run_stage4_alpha_v1_oos_label_completion.py[[:space:]]+--authorization' .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation-v1-1.yml | grep -v 'grep -n -E'
+      - name: Prove exact PR scope
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed.txt
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation-v1-1.yml
+          governance/accepted_project_state.json
+          governance/project_module_index.json
+          governance/stage4_alpha_v1_oos_label_completion_authorization_reservation_v1_1_audit.json
+          governance/stage4_alpha_v1_oos_label_completion_authorization_reservation_v1_1_supersession.json
+          scripts/audit_stage4_alpha_v1_oos_label_completion_authorization_reservation_v1_1.py
+          EOF
+          sort -o /tmp/expected.txt /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/changed.txt
+      - name: Prove statistical and execution implementation are untouched
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden="$(git diff --name-only "$BASE_SHA" HEAD -- \
+            governance/stage4_alpha_v1_oos_label_completion_preregistration_v1_3_supersession.json \
+            governance/stage4_alpha_v1_oos_label_completion_implementation_contract_v1.json \
+            governance/stage4_alpha_v1_oos_label_completion_implementation_acceptance.json \
+            governance/stage4_alpha_v1_oos_validation_consumed_incomplete_evidence.json \
+            scripts/run_stage4_alpha_v1_oos_label_completion.py \
+            scripts/stage4_alpha_v1_label_materialization.py \
+            scripts/stage4_alpha_v1_alpha_evaluation.py \
+            scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py \
+            models data/stage2_final data/stage3_final config/stage3_final_lock.json)"
+          test -z "$forbidden"
