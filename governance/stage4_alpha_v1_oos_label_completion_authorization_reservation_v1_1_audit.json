@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "evidence_id": "STAGE4_ALPHA_V1_OOS_LABEL_COMPLETION_AUTHORIZATION_RESERVATION_V1_1_AUDIT",
+  "status": "PASS_FOR_GOVERNANCE_ACCEPTANCE_UNARMED_NO_OOS_ACCESS",
+  "authorization_contract": "governance/stage4_alpha_v1_oos_label_completion_authorization_reservation_v1_1_supersession.json",
+  "authorization_fingerprint_expected": "964a023e675dd04c0f8df312da373a2b5c1058512105599bf7acb2803152dd6e",
+  "audited_integration_base_sha": "7ea95218e67a0deec0bbb4dc4cbbdf21563e23f0",
+  "checks": {
+    "v1_reservation_bound": true,
+    "github_default_branch_main_verified": true,
+    "workflow_dispatch_default_branch_constraint_verified": true,
+    "project_main_merge_forbidden_preserved": true,
+    "transport_only_supersession": true,
+    "accepted_preregistration_bound": true,
+    "accepted_implementation_bound": true,
+    "consumed_original_authorization_preserved": true,
+    "immutable_predictions_bound": true,
+    "immutable_physical_boundary_bound": true,
+    "single_future_completion_run_max": true,
+    "exact_consumption_event_preserved": true,
+    "prediction_recomputation_forbidden": true,
+    "model_load_forbidden": true,
+    "fit_retrain_tune_reselect_forbidden": true,
+    "authorization_unarmed": true,
+    "armed_runs_remaining_zero": true,
+    "oos_access_in_this_gate_forbidden": true,
+    "pull_request_label_bearing_execution_forbidden": true,
+    "exact_trigger_commit_precomputed_before_arming": true,
+    "trigger_ref_update_before_arming_forbidden": true,
+    "final_lockbox_sealed": true,
+    "live_main_authoritative_forbidden": true
+  },
+  "audit_conclusion": {
+    "supersession_is_fail_closed": true,
+    "semantics_changed": "EXECUTION_TRANSPORT_ONLY",
+    "statistical_semantics_changed": false,
+    "model_or_prediction_semantics_changed": false,
+    "next_allowed_action": "CREATE_SEPARATE_STATIC_EXECUTION_PR_AND_PRECOMPUTE_TRIGGER_COMMIT_WITHOUT_UPDATING_BRANCH_REF"
+  }
+}
