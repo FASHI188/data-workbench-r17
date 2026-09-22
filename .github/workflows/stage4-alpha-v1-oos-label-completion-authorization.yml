@@ -1,0 +1,74 @@
+name: Stage4 Alpha V1 OOS Label Completion Authorization V1
+
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-authorization.yml'
+      - 'governance/accepted_project_state.json'
+      - 'governance/project_module_index.json'
+      - 'governance/stage4_alpha_v1_oos_label_completion_authorization_v1.json'
+      - 'governance/stage4_alpha_v1_oos_label_completion_authorization_audit_v1.json'
+      - 'scripts/audit_stage4_alpha_v1_oos_label_completion_authorization_v1.py'
+
+permissions:
+  contents: read
+
+jobs:
+  static-arming-governance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Audit single-use arming
+        run: python scripts/audit_stage4_alpha_v1_oos_label_completion_authorization_v1.py
+      - name: Prove no OOS execution surface in arming PR
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e build/oos
+          test ! -e build/out
+          ! grep -n -E 'download-artifact|curl|wget|gh[[:space:]]+api|run_stage4_alpha_v1_oos_label_completion.py[[:space:]]+--authorization' .github/workflows/stage4-alpha-v1-oos-label-completion-authorization.yml | grep -v 'grep -n -E'
+      - name: Prove PR scope is exact arming governance set
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed.txt
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation.yml
+          .github/workflows/stage4-alpha-v1-oos-label-completion-authorization.yml
+          governance/accepted_project_state.json
+          governance/project_module_index.json
+          governance/stage4_alpha_v1_oos_label_completion_authorization_audit_v1.json
+          governance/stage4_alpha_v1_oos_label_completion_authorization_v1.json
+          scripts/audit_stage4_alpha_v1_oos_label_completion_authorization_v1.py
+          EOF
+          sort -o /tmp/expected.txt /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/changed.txt
+      - name: Prove execution carrier and consumed history are untouched
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden="$(git diff --name-only "$BASE_SHA" HEAD -- \
+            .github/workflows/stage4-alpha-v1-oos-label-completion-execution.yml \
+            governance/stage4_alpha_v1_oos_label_completion_execution_contract_v1.json \
+            scripts/run_stage4_alpha_v1_oos_label_completion_execution_carrier_v1.py \
+            scripts/run_stage4_alpha_v1_oos_label_completion.py \
+            scripts/stage4_alpha_v1_label_materialization.py \
+            scripts/stage4_alpha_v1_alpha_evaluation.py \
+            governance/stage4_alpha_v1_oos_validation_consumed_incomplete_evidence.json \
+            governance/stage4_alpha_v1_oos_validation_authorization.json \
+            data/stage2_final data/stage3_final models)"
+          test -z "$forbidden"
