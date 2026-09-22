@@ -25,10 +25,41 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
           fetch-depth: 0
+
+      - name: Detect consumed-incomplete successor
+        id: consumed
+        shell: bash
+        run: |
+          if test -f governance/stage4_alpha_v1_oos_label_completion_consumed_incomplete_evidence.json; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify consumed-incomplete handoff
+        if: steps.consumed.outputs.present == 'true'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          ev=json.loads(Path('governance/stage4_alpha_v1_oos_label_completion_consumed_incomplete_evidence.json').read_text())
+          auth=json.loads(Path('governance/stage4_alpha_v1_oos_label_completion_authorization_v1.json').read_text())
+          state=json.loads(Path('governance/accepted_project_state.json').read_text())
+          b=ev['fingerprint_basis']
+          assert ev['status']=='CONSUMED_INCOMPLETE_EXECUTION_NO_PROMOTION'
+          assert b['authorization_fingerprint']==auth['fingerprint']=='b6413b67ace2601bb03f2d45e7656ab3776ee3b9e90ecfe3ed32b92626eba16b'
+          assert b['authorization_consumed'] is True and b['authorization_reusable'] is False
+          assert b['authorization_runs_remaining_after_event']==0
+          assert state['schema_version']==14
+          assert state['permissions']['oos_label_bearing_execution_runs_remaining']==0
+          assert state['permissions']['oos_label_access_allowed'] is False
+          PY
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12.13'
       - name: Audit single-use arming
+        if: steps.consumed.outputs.present != 'true'
         run: python scripts/audit_stage4_alpha_v1_oos_label_completion_authorization_v1.py
       - name: Prove no OOS execution surface in arming PR
         shell: bash
@@ -38,6 +69,7 @@ jobs:
           test ! -e build/out
           ! grep -n -E 'download-artifact|curl|wget|gh[[:space:]]+api|run_stage4_alpha_v1_oos_label_completion.py[[:space:]]+--authorization' .github/workflows/stage4-alpha-v1-oos-label-completion-authorization.yml | grep -v 'grep -n -E'
       - name: Prove PR scope is exact arming governance set
+        if: steps.consumed.outputs.present != 'true'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         shell: bash
