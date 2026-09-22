@@ -2,7 +2,7 @@
   "schema_version": 1,
   "status": "FROZEN_SUPERSEDING_PREREGISTRATION_V1_4_NO_OOS_ACCESS_NO_NEW_AUTHORITY",
   "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
-  "fingerprint": "54df66be089af76a206bd52ee5f6892af505e742632329d7c8a8846a571b337f",
+  "fingerprint": "e6f6fac81f6f1b3394b84a93bb5f41c67782b2e7dae9f6e37f7aa8eb11e29394",
   "fingerprint_basis": {
     "supersession_id": "STAGE4_ALPHA_V1_OOS_LABEL_COMPLETION_PREREGISTRATION",
     "version": "V1.4",
