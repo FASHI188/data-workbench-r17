@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "status": "ACCEPTED_STATIC_SYNTHETIC_IMPLEMENTATION_NO_NEW_AUTHORITY",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "60522faad23985ffd5aa643be8af528673b6db8026874ef0565d2a8d30fcdaa3",
+  "fingerprint_basis": {
+    "acceptance_id": "STAGE4_ALPHA_V1_OOS_LABEL_COMPLETION_IMPLEMENTATION_ACCEPTANCE_V1",
+    "accepted_pr": 164,
+    "implementation_merge_sha": "c5ef6b92b6da86373c930f14d8760c2dc6698bb4",
+    "accepted_implementation_head_sha": "9b513c01a88e9c8411d54981e0cc935052ded3c8",
+    "effective_preregistration_fingerprint": "0e9b79a406e3a7789ade5b93878cd4276c5f424b0f0e9e4906048b9254e4cac3",
+    "implementation_contract_fingerprint": "a9addd6eefc82737e5a39c7828dc9b68a5d4336e2ee3e8ebeaeee1d628014045",
+    "immutable_prediction_artifact_id": 10142949262,
+    "predictions_sha256": "66a039aa76e4b1962049e3e0d41a43fb1f6c626d934a552f871f91bd27fe01da",
+    "physical_boundary_artifact_id": 10142948546,
+    "physical_boundary_contract_fingerprint": "67e8555d3a9212a003a8293dc381cce0f7294917ef72875fed3218f240e0c255",
+    "runtime_veto_v1_1_fingerprint": "727e5d1496f1a79240d5c4f874e6b956a9539b80c104169268b9c80d26d45676",
+    "ci": {
+      "implementation": {
+        "run_id": 35691714007,
+        "conclusion": "success",
+        "head_sha": "9b513c01a88e9c8411d54981e0cc935052ded3c8"
+      },
+      "repository_safety": {
+        "run_id": 35691713879,
+        "conclusion": "success",
+        "head_sha": "9b513c01a88e9c8411d54981e0cc935052ded3c8"
+      },
+      "runtime_reproducibility": {
+        "run_id": 35691713884,
+        "conclusion": "success",
+        "head_sha": "9b513c01a88e9c8411d54981e0cc935052ded3c8"
+      }
+    },
+    "static_synthetic_evidence": {
+      "end_to_end_synthetic_pass": true,
+      "oos_artifact_download_executed": false,
+      "oos_market_value_read": false,
+      "oos_label_value_read": false,
+      "prediction_computation_executed": false,
+      "model_loaded": false,
+      "fit_retrain_tune_reselect_executed": false,
+      "final_lockbox_accessed": false
+    },
+    "acceptance_effect": {
+      "implementation_accepted": true,
+      "grants_oos_label_access": false,
+      "grants_label_bearing_execution": false,
+      "authorized_label_completion_runs": 0,
+      "final_lockbox_remains_sealed": true,
+      "next_gate": "SEPARATE_SINGLE_USE_OOS_LABEL_COMPLETION_AUTHORIZATION_NO_PREDICTION_COMPUTATION"
+    }
+  },
+  "next_gate": "SEPARATE_SINGLE_USE_OOS_LABEL_COMPLETION_AUTHORIZATION_NO_PREDICTION_COMPUTATION"
+}
