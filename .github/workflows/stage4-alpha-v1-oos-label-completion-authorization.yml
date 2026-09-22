@@ -45,6 +45,7 @@ jobs:
           set -euo pipefail
           git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed.txt
           cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation.yml
           .github/workflows/stage4-alpha-v1-oos-label-completion-authorization.yml
           governance/accepted_project_state.json
           governance/project_module_index.json
