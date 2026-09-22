@@ -1,0 +1,52 @@
+name: Stage4 Alpha V1 OOS Label Completion Repair Acceptance V1.1
+
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-repair-acceptance-v1-1.yml'
+      - 'governance/accepted_project_state.json'
+      - 'governance/stage4_alpha_v1_oos_label_completion_implementation_repair_acceptance_v1_1.json'
+      - 'scripts/audit_stage4_alpha_v1_oos_label_completion_implementation_repair_acceptance_v1_1.py'
+
+permissions:
+  contents: read
+
+jobs:
+  static-acceptance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Audit repair acceptance
+        run: python scripts/audit_stage4_alpha_v1_oos_label_completion_implementation_repair_acceptance_v1_1.py
+      - name: Prove acceptance PR is governance-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e build/oos
+          test ! -e build/model
+          ! grep -n -E 'download-artifact|curl|wget|gh[[:space:]]+api|read_parquet\(' .github/workflows/stage4-alpha-v1-oos-label-completion-repair-acceptance-v1-1.yml | grep -v 'grep -n -E'
+      - name: Prove exact acceptance scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed.txt
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/stage4-alpha-v1-oos-label-completion-repair-acceptance-v1-1.yml
+          governance/accepted_project_state.json
+          governance/stage4_alpha_v1_oos_label_completion_implementation_repair_acceptance_v1_1.json
+          scripts/audit_stage4_alpha_v1_oos_label_completion_implementation_repair_acceptance_v1_1.py
+          EOF
+          sort -o /tmp/expected.txt /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/changed.txt
