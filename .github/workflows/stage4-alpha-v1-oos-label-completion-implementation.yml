@@ -88,7 +88,7 @@ jobs:
           test ! -e build/runtime-veto
           test ! -e build/oos-boundary
           test ! -e label_completion_consumption.json
-          test "$(grep -Ec '^[[:space:]]+run: python scripts/run_stage4_alpha_v1_oos_label_completion.py --synthetic-self-test
+          test "$(grep -F 'run: python scripts/run_stage4_alpha_v1_oos_label_completion.py --synthetic-self-test' .github/workflows/stage4-alpha-v1-oos-label-completion-implementation.yml | grep -v 'grep -F' | wc -l)" -eq 1
 
       - name: Prove PR scope is exactly the implementation file set
         if: github.event_name == 'pull_request'
