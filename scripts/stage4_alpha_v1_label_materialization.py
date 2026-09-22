@@ -38,12 +38,12 @@ def validate_prediction_input(predictions: Path, synthetic: bool = False) -> dic
     con = duckdb.connect()
     stat = one(
         con,
-        f"SELECT count(*)::BIGINT rows,count(DISTINCT (CAST(trade_date AS DATE),upper(CAST(exchange AS VARCHAR)),lpad(CAST(code AS VARCHAR),6,'0')))::BIGINT unique_keys,min(CAST(trade_date AS DATE)) min_date,max(CAST(trade_date AS DATE)) max_date,count(*) FILTER(WHERE prediction IS NULL OR NOT isfinite(CAST(prediction AS DOUBLE)))::BIGINT invalid_predictions FROM read_parquet({q(str(predictions))})",
+        f"SELECT count(*)::BIGINT row_count,count(DISTINCT (CAST(trade_date AS DATE),upper(CAST(exchange AS VARCHAR)),lpad(CAST(code AS VARCHAR),6,'0')))::BIGINT unique_keys,min(CAST(trade_date AS DATE)) min_date,max(CAST(trade_date AS DATE)) max_date,count(*) FILTER(WHERE prediction IS NULL OR NOT isfinite(CAST(prediction AS DOUBLE)))::BIGINT invalid_predictions FROM read_parquet({q(str(predictions))})",
     )
-    if int(stat["rows"]) <= 0 or int(stat["rows"]) != int(stat["unique_keys"]) or int(stat["invalid_predictions"]) != 0:
+    if int(stat["row_count"]) <= 0 or int(stat["row_count"]) != int(stat["unique_keys"]) or int(stat["invalid_predictions"]) != 0:
         raise ValueError("prediction population invalid")
     if not synthetic:
-        if int(stat["rows"]) != PRED_ROWS or str(stat["min_date"]) != OOS_START or str(stat["max_date"]) != OOS_END:
+        if int(stat["row_count"]) != PRED_ROWS or str(stat["min_date"]) != OOS_START or str(stat["max_date"]) != OOS_END:
             raise ValueError("immutable prediction identity mismatch")
     return stat
 

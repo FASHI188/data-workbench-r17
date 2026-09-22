@@ -8,7 +8,7 @@ IMPLFP='a9addd6eefc82737e5a39c7828dc9b68a5d4336e2ee3e8ebeaeee1d628014045'
 PRED='66a039aa76e4b1962049e3e0d41a43fb1f6c626d934a552f871f91bd27fe01da'
 SRC={
  'scripts/run_stage4_alpha_v1_oos_label_completion.py':'7fe790864be6d324f4571f57ed23213920605a48d9b4415849e12c37cdb8f2d6',
- 'scripts/stage4_alpha_v1_label_materialization.py':'f1cfd8d47d1df7778f5ea98211d39a36774fa270e129b86beb769afb31373557',
+ 'scripts/stage4_alpha_v1_label_materialization.py':'97442670c4f5e86e541c4730549c454c07507d38459d56c742211cc4c2103ab0',
  'scripts/stage4_alpha_v1_alpha_evaluation.py':'4c4e7e1674ef64dd6e68fde65ba58d3954f2b4262e476863a21ac600fa8b68a3'}
 BLOBS={
  'scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py':'26c7371fa886cc5031dddf031c7317c4ad9bdc57',
@@ -45,7 +45,7 @@ def main():
  ck('source_hashes',c['implementation_sources']==SRC and all(sha(k)==v for k,v in SRC.items()))
  ck('frozen_blobs',c['frozen_git_blobs']==BLOBS and b['frozen_runtime_dependencies']==BLOBS and all(blob(k)==v for k,v in BLOBS.items()))
  mat=(R/'scripts/stage4_alpha_v1_label_materialization.py').read_text(encoding='utf-8'); new='\n'.join((R/k).read_text(encoding='utf-8') for k in SRC)
- ck('parser_fix','CAST("open" AS DOUBLE) AS open_px' in mat and 'CAST("close" AS DOUBLE) AS close_px' in mat and re.search(r'CAST\(open AS DOUBLE\)|CAST\(close AS DOUBLE\)',mat) is None)
+ ck('parser_fix','CAST("open" AS DOUBLE) AS open_px' in mat and 'CAST("close" AS DOUBLE) AS close_px' in mat and '::BIGINT row_count' in mat and '::BIGINT rows' not in mat and re.search(r'CAST\(open AS DOUBLE\)|CAST\(close AS DOUBLE\)',mat) is None)
  ck('no_model_api',re.search(r'model\s*\.\s*predict\s*\(|predict_proba\s*\(|pickle\s*\.\s*load\s*\(|joblib|\.fit\s*\(|fit_predict\s*\(|partial_fit\s*\(',new) is None)
  ck('selection_guards','sort_values(["prediction", "exchange", "code"], ascending=[False, True, True]' in new and 'math.ceil(cov * len(g))' in new and 'FAIL_CLOSED_NO_BACKFILL_NO_POST_SELECTION_DROP' in new and 'NO_PROMOTION_NO_RETUNING_ON_OOS' in new)
  w=(R/'.github/workflows/stage4-alpha-v1-oos-label-completion-implementation.yml').read_text(encoding='utf-8')

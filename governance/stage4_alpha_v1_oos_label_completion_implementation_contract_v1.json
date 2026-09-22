@@ -201,7 +201,7 @@
   "next_gate": "IMPLEMENTATION_PR_ACCEPTANCE_THEN_SEPARATE_SINGLE_USE_LABEL_COMPLETION_AUTHORIZATION_NO_PREDICTION_COMPUTATION",
   "implementation_sources": {
     "scripts/run_stage4_alpha_v1_oos_label_completion.py": "7fe790864be6d324f4571f57ed23213920605a48d9b4415849e12c37cdb8f2d6",
-    "scripts/stage4_alpha_v1_label_materialization.py": "f1cfd8d47d1df7778f5ea98211d39a36774fa270e129b86beb769afb31373557",
+    "scripts/stage4_alpha_v1_label_materialization.py": "97442670c4f5e86e541c4730549c454c07507d38459d56c742211cc4c2103ab0",
     "scripts/stage4_alpha_v1_alpha_evaluation.py": "4c4e7e1674ef64dd6e68fde65ba58d3954f2b4262e476863a21ac600fa8b68a3"
   },
   "frozen_git_blobs": {
