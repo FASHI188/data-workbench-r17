@@ -5,12 +5,13 @@ from datetime import datetime,timezone
 from pathlib import Path
 from typing import Any
 
-PREREG_FP="0e9b79a406e3a7789ade5b93878cd4276c5f424b0f0e9e4906048b9254e4cac3"
+PREREG_FP="e6f6fac81f6f1b3394b84a93bb5f41c67782b2e7dae9f6e37f7aa8eb11e29394"
 BOUNDARY_FP="67e8555d3a9212a003a8293dc381cce0f7294917ef72875fed3218f240e0c255"
 PRED_SHA256="66a039aa76e4b1962049e3e0d41a43fb1f6c626d934a552f871f91bd27fe01da"
 PRED_ROWS=1515811
 OOS_START="2023-01-03";OOS_END="2024-12-31";LATEST_VALID20="2024-12-03";LOCKBOX_START="2025-01-02"
-IMPLEMENTATION_FP="a9addd6eefc82737e5a39c7828dc9b68a5d4336e2ee3e8ebeaeee1d628014045"
+IMPLEMENTATION_FP="45d25e1627b3c1b8d95371fd49997dc8c818e086915f85850274986d1a08adfd"
+CONSUMPTION_EVENT="FIRST_SUCCESSFUL_READ_OF_ANY_OOS_MARKET_VALUE_USED_FOR_LABEL_MATERIALIZATION_OR_FIRST_SUCCESSFUL_READ_OF_ANY_OOS_LABEL_VALUE_WHICHEVER_OCCURS_FIRST"
 BOUNDARY_FILES={"market":"oos_market.parquet","execution_state":"oos_execution_state.parquet","lifecycle":"oos_lifecycle.parquet","manifest":"oos_physical_boundary_manifest.json","independent_audit":"oos_physical_boundary_independent_audit.json","hashes":"artifact_hashes.json"}
 
 def canonical_hash(obj: Any) -> str:

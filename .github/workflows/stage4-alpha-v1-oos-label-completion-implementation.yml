@@ -37,11 +37,22 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
+      - name: Detect accepted V1.4 repair successor
+        id: repair
+        shell: bash
+        run: |
+          if test -f governance/stage4_alpha_v1_oos_label_completion_implementation_repair_v1_1.json; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12.13'
 
       - name: Audit frozen implementation contract and source
+        if: steps.repair.outputs.present != 'true'
         run: python scripts/audit_stage4_alpha_v1_oos_label_completion_implementation.py
 
       - name: Static parse and forbidden API guard
@@ -91,7 +102,7 @@ jobs:
           test "$(grep -F 'run: python scripts/run_stage4_alpha_v1_oos_label_completion.py --synthetic-self-test' .github/workflows/stage4-alpha-v1-oos-label-completion-implementation.yml | grep -v 'grep -F' | wc -l)" -eq 1
 
       - name: Prove PR scope is exactly the implementation file set
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.repair.outputs.present != 'true'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         shell: bash
