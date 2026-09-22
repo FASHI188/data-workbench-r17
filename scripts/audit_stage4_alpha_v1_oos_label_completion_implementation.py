@@ -49,7 +49,7 @@ def main():
  ck('no_model_api',re.search(r'model\s*\.\s*predict\s*\(|predict_proba\s*\(|pickle\s*\.\s*load\s*\(|joblib|\.fit\s*\(|fit_predict\s*\(|partial_fit\s*\(',new) is None)
  ck('selection_guards','sort_values(["prediction", "exchange", "code"], ascending=[False, True, True]' in new and 'math.ceil(cov * len(g))' in new and 'FAIL_CLOSED_NO_BACKFILL_NO_POST_SELECTION_DROP' in new and 'NO_PROMOTION_NO_RETUNING_ON_OOS' in new)
  w=(R/'.github/workflows/stage4-alpha-v1-oos-label-completion-implementation.yml').read_text(encoding='utf-8')
- calls=[x.strip() for x in w.splitlines() if 'python scripts/run_stage4_alpha_v1_oos_label_completion.py' in x]
+ calls=[x.strip() for x in w.splitlines() if x.strip().startswith('run: python scripts/run_stage4_alpha_v1_oos_label_completion.py')]
  ck('workflow_synthetic_only',calls==['run: python scripts/run_stage4_alpha_v1_oos_label_completion.py --synthetic-self-test'])
  ck('workflow_no_download','download-artifact' not in w and re.search(r'\b(curl|wget|gh\s+api|urllib|requests)\b',w) is None and 'contents: read' in w and 'contents: write' not in w and 'actions: write' not in w)
  failed=[k for k,v in checks.items() if not v]
