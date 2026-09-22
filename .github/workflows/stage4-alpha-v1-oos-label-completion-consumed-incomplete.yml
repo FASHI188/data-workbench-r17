@@ -44,10 +44,41 @@ jobs:
               assert d['fingerprint']=='e6f6fac81f6f1b3394b84a93bb5f41c67782b2e7dae9f6e37f7aa8eb11e29394'
               assert d['status']=='FROZEN_SUPERSEDING_PREREGISTRATION_V1_4_NO_OOS_ACCESS_NO_NEW_AUTHORITY'
           PY
+
+      - name: Detect V1.2 reservation successor
+        id: reservation_v12
+        shell: bash
+        run: |
+          if test -f governance/stage4_alpha_v1_oos_label_completion_authorization_reservation_v1_2.json; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify V1.2 reservation keeps consumed closure intact
+        if: steps.reservation_v12.outputs.present == 'true'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          ev=json.loads(Path('governance/stage4_alpha_v1_oos_label_completion_consumed_incomplete_evidence.json').read_text())
+          r=json.loads(Path('governance/stage4_alpha_v1_oos_label_completion_authorization_reservation_v1_2.json').read_text())
+          s=json.loads(Path('governance/accepted_project_state.json').read_text())
+          assert ev['status']=='CONSUMED_INCOMPLETE_EXECUTION_NO_PROMOTION'
+          assert ev['fingerprint']=='2d41c39d4400b80bdd8d3f3cd6c6e0e85838b0531878cc0e10baf25070b993b6'
+          assert r['fingerprint']=='f038c7857da733207be7cb9c3df76bd0e189054b6763b3d3c70aca017afda889'
+          assert r['fingerprint_basis']['authorization_armed'] is False
+          assert r['fingerprint_basis']['armed_runs_remaining']==0
+          assert s['permissions']['oos_execution_pr_creation_allowed'] is True
+          assert s['permissions']['oos_label_access_allowed'] is False
+          assert s['permissions']['oos_label_bearing_execution_runs_remaining']==0
+          PY
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12.13'
       - name: Audit consumed-incomplete evidence and closed state
+        if: steps.reservation_v12.outputs.present != 'true'
         run: python scripts/audit_stage4_alpha_v1_oos_label_completion_consumed_incomplete.py
       - name: Prove no OOS execution in governance closure
         shell: bash

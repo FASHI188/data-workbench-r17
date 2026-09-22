@@ -45,6 +45,7 @@ jobs:
           set -euo pipefail
           git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed.txt
           cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/stage4-alpha-v1-oos-label-completion-consumed-incomplete.yml
           .github/workflows/stage4-alpha-v1-oos-label-completion-repair-acceptance-v1-1.yml
           .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation-v1-2.yml
           governance/accepted_project_state.json
