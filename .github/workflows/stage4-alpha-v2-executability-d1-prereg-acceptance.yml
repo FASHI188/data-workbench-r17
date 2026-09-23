@@ -1,0 +1,48 @@
+name: Stage4 Alpha V2 Executability D1 Prereg Acceptance
+on:
+  pull_request:
+    branches: [agent/stage3-clean-integration]
+    paths:
+      - '.github/workflows/stage4-alpha-v2-executability-d1-prereg-acceptance.yml'
+      - 'governance/stage4_alpha_v2_executability_d1_preregistration_acceptance.json'
+      - 'governance/accepted_project_state.json'
+      - 'governance/project_module_index.json'
+      - 'scripts/audit_stage4_alpha_v2_executability_d1_preregistration_acceptance.py'
+permissions:
+  contents: read
+jobs:
+  static-acceptance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Audit D1 prereg acceptance
+        run: python scripts/audit_stage4_alpha_v2_executability_d1_preregistration_acceptance.py
+      - name: Prove governance-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -n -E 'download-artifact|curl|wget|gh[[:space:]]+api|read_parquet\(|\.fit\(|\.predict\('             .github/workflows/stage4-alpha-v2-executability-d1-prereg-acceptance.yml             scripts/audit_stage4_alpha_v2_executability_d1_preregistration_acceptance.py | grep -v 'grep -n -E'
+      - name: Prove exact acceptance scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed.txt
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/stage4-alpha-v2-executability-d1-prereg-acceptance.yml
+          governance/accepted_project_state.json
+          governance/project_module_index.json
+          governance/stage4_alpha_v2_executability_d1_preregistration_acceptance.json
+          scripts/audit_stage4_alpha_v2_executability_d1_preregistration_acceptance.py
+          EOF
+          sort -o /tmp/expected.txt /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/changed.txt
