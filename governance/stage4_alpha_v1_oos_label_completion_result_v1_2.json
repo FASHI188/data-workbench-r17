@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "status": "ALPHA_FAIL_RUNTIME_VETO_INCOMPLETE_NO_PROMOTION_AUTHORIZATION_CONSUMED",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "12ab8b1386bf6d3dfe59ab5d0e354736bfc90846f1aeb1e9f6983ab0d2c37d4b",
+  "fingerprint_basis": {
+    "evidence_id": "STAGE4_ALPHA_V1_OOS_LABEL_COMPLETION_V1_2_EXECUTION_RESULT",
+    "workflow_run_id": 35819638146,
+    "workflow_run_attempt": 1,
+    "workflow_conclusion": "failure",
+    "workflow_event": "workflow_dispatch",
+    "workflow_name": "Stage4 Alpha V1 OOS Label Completion Single-Use Execution V1.2",
+    "execution_head": "303dcc9bbfbef5dcbbf1027ebc8aff442f14fc18",
+    "arming_merge_sha": "4b1701d3ddf073d7a6eb751c05855768034e6eee",
+    "authorization": {
+      "fingerprint": "0a7c2e5ed7777bc84ad4db22b91c5e84da5dc819a186d743d19bb603b158f10a",
+      "status": "CONSUMED_NON_REUSABLE",
+      "consumed": true,
+      "reusable": false,
+      "runs_remaining_after_event": 0,
+      "consumption_event": "FIRST_SUCCESSFUL_READ_OF_ANY_OOS_MARKET_VALUE_USED_FOR_LABEL_MATERIALIZATION_OR_FIRST_SUCCESSFUL_READ_OF_ANY_OOS_LABEL_VALUE_WHICHEVER_OCCURS_FIRST",
+      "consumed_at_utc": "2026-09-23T04:46:10.461561+00:00",
+      "marker_persisted": true,
+      "marker_sha256": "93db05055d149296031328950ca76552affd8381707d97fc19e14122362461ee"
+    },
+    "immutable_inputs": {
+      "prediction_artifact_id": 10142949262,
+      "prediction_artifact_digest": "sha256:068b451ecc21b05557334569e3af957e106087bf0839a3df01cbcf838536fe4c",
+      "predictions_sha256": "66a039aa76e4b1962049e3e0d41a43fb1f6c626d934a552f871f91bd27fe01da",
+      "physical_boundary_artifact_id": 10142948546,
+      "physical_boundary_artifact_digest": "sha256:76711c8bd5277bfe569868a0be7bba5dd074cac92fde88c92e4c0ce7e127a86c",
+      "prediction_recomputed": false,
+      "model_loaded": false,
+      "fit_retraining_tuning_reselection_executed": false,
+      "final_lockbox_accessed": false
+    },
+    "alpha": {
+      "evaluated": true,
+      "status": "FAIL",
+      "gate_logic": "ALL_REQUIRED_MUST_PASS",
+      "mean_daily_ic_20d": 0.10141523730897006,
+      "bootstrap_95pct_ci_lower": 0.05852136717656244,
+      "bootstrap_95pct_ci_upper": 0.14729419252033152,
+      "positive_quarters": 8,
+      "checks": {
+        "mean_daily_spearman_ic_20d_gt_0": true,
+        "block_bootstrap_95pct_ci_lower_bound_mean_daily_ic_20d_gt_0": true,
+        "positive_mean_ic_in_at_least_6_of_8_calendar_quarters": true,
+        "top_10pct_net_excess_return_20d_at_15bps_per_side_gt_0": false,
+        "no_sign_inversion_5pct_or_20pct_coverage": false,
+        "pbo_le_0_20_carried_from_development": true,
+        "dsr_ge_0_95_carried_from_development": true
+      },
+      "coverage_fail_closed": {
+        "05pct": {
+          "coverage_valid": false,
+          "invalid_cohorts": 7,
+          "selected_invalid_20d_rows": 16
+        },
+        "10pct": {
+          "coverage_valid": false,
+          "invalid_cohorts": 8,
+          "selected_invalid_20d_rows": 17
+        },
+        "20pct": {
+          "coverage_valid": false,
+          "invalid_cohorts": 12,
+          "selected_invalid_20d_rows": 23
+        }
+      },
+      "failure_action": "NO_PROMOTION_NO_RETUNING_ON_OOS"
+    },
+    "runtime_veto": {
+      "evaluated": false,
+      "status": "NOT_EVALUATED_EXECUTION_INCOMPLETE",
+      "failure_stage": "RUNTIME_VETO_V1_1_INPUT_VALIDATION",
+      "exception": "duckdb.duckdb.ParserException",
+      "message": "Parser Error: syntax error at or near \"rows\"",
+      "failing_file": "scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py",
+      "failing_line": 53,
+      "failing_sql_fragment": "SELECT count(*)::BIGINT rows,... FROM p",
+      "implementation_failure_after_alpha_result": true
+    },
+    "output_artifact": {
+      "artifact_id": 10733115772,
+      "name": "stage4-alpha-v1-oos-label-completion-single-use-result-v1-2",
+      "digest": "sha256:cfa98c34b0331eeceb2f1722d67b98f1ae99a658b4eba434646b6d2eee031179",
+      "size_bytes": 59990433,
+      "files": {
+        "out/oos_gate_result.json": "ce0f0881b630d5af277d619051a871a7ec63a463929adc09374f16614f48a764",
+        "out/oos_economic_metrics.json": "28d547a185d8106365215c1d0864a8f49a5030c791e955e0bb2212f0e7b3bfe5",
+        "out/oos_quarter_metrics.json": "118c04c44cf5556aaa378c5e0f3fb20072dab18d86b07fbb41544de0f406f6c6",
+        "out/oos_daily_metrics.parquet": "017ae47fb28984e514f5c4d0b945deadce603bbb5ddaaf1d865223680b2a4f76",
+        "out/oos_evaluation_rows.parquet": "cd3f23997f02719f34d4dd946c44b58f80ce08db45bfaca9e72eb768a22a1bda",
+        "out/oos_all_economic_rows.parquet": "d394ef7bad567bb06ec78d6d81aaac543996458d77c35050c5b423d4e81812fb"
+      }
+    },
+    "disposition": {
+      "alpha_gate_status": "FAIL",
+      "runtime_veto_gate_status": "NOT_EVALUATED_EXECUTION_INCOMPLETE",
+      "combined_promotion_status": "NO_PROMOTION_ALPHA_FAIL_FAIL_CLOSED",
+      "authorization_status": "CONSUMED_NON_REUSABLE",
+      "current_authorization_runs_remaining": 0,
+      "reexecution_under_current_authorization": "FORBIDDEN",
+      "runtime_veto_completion_required_for_promotion": false,
+      "reason_runtime_veto_cannot_rescue": "ALPHA_ALL_REQUIRED_GATE_ALREADY_FAILED",
+      "retuning_on_oos_forbidden": true,
+      "final_lockbox_open_allowed": false
+    }
+  },
+  "next_gate": "CLOSE_STAGE4_ALPHA_V1_NO_PROMOTION_NO_RETUNING_NO_FURTHER_OOS_AUTHORIZATION_FINAL_LOCKBOX_SEALED"
+}
