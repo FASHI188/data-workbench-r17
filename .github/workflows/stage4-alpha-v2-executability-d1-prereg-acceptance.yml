@@ -4,6 +4,7 @@ on:
     branches: [agent/stage3-clean-integration]
     paths:
       - '.github/workflows/stage4-alpha-v2-executability-d1-prereg-acceptance.yml'
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-result-v1-2.yml'
       - 'governance/stage4_alpha_v2_executability_d1_preregistration_acceptance.json'
       - 'governance/accepted_project_state.json'
       - 'governance/project_module_index.json'
@@ -38,6 +39,7 @@ jobs:
           set -euo pipefail
           git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed.txt
           cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/stage4-alpha-v1-oos-label-completion-result-v1-2.yml
           .github/workflows/stage4-alpha-v2-executability-d1-prereg-acceptance.yml
           governance/accepted_project_state.json
           governance/project_module_index.json
