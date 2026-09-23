@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "status": "ACCEPTED_PREREGISTRATION_NO_EXECUTION_AUTHORITY",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "6cf8b17249cff6889de8c6bff5952f5293987ed16cfc203e1cf8f55924b48dd5",
+  "fingerprint_basis": {
+    "acceptance_id": "STAGE4_ALPHA_V2_EXECUTABILITY_D1_PREREGISTRATION_ACCEPTANCE",
+    "version": "V1.0",
+    "preregistration_fingerprint": "a469999d0bcee95bcc140ebf72727e36efc449ca048d693063ecc9bfb8e87c8d",
+    "preregistration_pr": 179,
+    "preregistration_head": "1b8ffe291f415294ebe45f6f6a4a697d83e5756b",
+    "preregistration_merge_sha": "46e92973767e23a6f7e23df907e0896a929d1584",
+    "ci": {
+      "preregistration_run_id": 35838702686,
+      "repository_safety_run_id": 35838702660,
+      "runtime_reproducibility_run_id": 35838702798,
+      "all_success": true
+    },
+    "authority_granted": {
+      "model_fit": false,
+      "development_data_execution": false,
+      "oos_access": false,
+      "final_lockbox_access": false,
+      "live_signal": false,
+      "main_merge": false,
+      "authoritative_output": false
+    },
+    "accepted_next_gate": "STATIC_D1_REPLAY_IMPLEMENTATION_REVIEW_THEN_SEPARATE_EXACT_HEAD_DEVELOPMENT_ONLY_EXECUTION_AUTHORIZATION"
+  },
+  "next_gate": "STATIC_D1_REPLAY_IMPLEMENTATION_REVIEW_NO_DATA_EXECUTION"
+}
