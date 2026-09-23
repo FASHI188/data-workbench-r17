@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "feature_set_id": "STAGE4_ALPHA_V1_FEATURE_SET",
+  "feature_set_version": "V1.2",
+  "status": "FROZEN_PRETRAINING_CONTRACT",
+  "supersedes_feature_set_version": "V1.1",
+  "supersession_ref": "governance/stage4_v1_feature_set_v1_1_supersession.json",
+  "frozen_scope": "STAGE4_ALPHA_V1_INPUTS_ONLY",
+  "feature_set_fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "feature_set_fingerprint": "d319ea1c236d580d0d032a055e4cdc07bf45e586ecbef664c6f4b3a8be98f9ff",
+  "fingerprint_basis": {
+    "feature_set_id": "STAGE4_ALPHA_V1_FEATURE_SET",
+    "feature_set_version": "V1.2",
+    "stage2": {
+      "version": "V3.2.25-stage2-final-freeze",
+      "fingerprint": "f17f7ab63f4532dda635eb7366e7df7bf5497a5ce814410105312bccb53125bb"
+    },
+    "stage3": {
+      "version": "V3.3.17-stage3-historical-final-freeze",
+      "fingerprint": "36bfbe0ae703a923ce2575f111a8c68a64c89177c71eeee2cfd9e1ec47bf535f"
+    },
+    "freshness": {
+      "gate": "FRESHNESS_V2_FOUR_FAMILY_HARD_GATE",
+      "run_id": 31660697554,
+      "head_sha": "274d2b221e164f92970b0c3fbebe88841ba12497",
+      "artifact_id": 9166063671,
+      "artifact_digest": "sha256:1134a8acdfab286e634eb13e802020145ec9f3cc31ed82df93f83cea0523230d",
+      "target_session": "2026-08-12"
+    },
+    "feature_families": [
+      {
+        "family_id": "UNIVERSE_ELIGIBILITY_PIT",
+        "disposition": "IN_GATE_ONLY",
+        "authorities": ["stage2:G1/G2/G4", "stage3:S3GU"],
+        "model_visible": false
+      },
+      {
+        "family_id": "PRICE_VOLUME_TECHNICAL_PIT",
+        "disposition": "IN",
+        "authorities": ["stage2:G3", "stage2:G5", "freshness:phase2"],
+        "model_visible": true,
+        "features": [
+          "close_unadjusted",
+          "total_return_1d",
+          "total_return_5d",
+          "total_return_20d",
+          "realized_volatility_20d",
+          "amount_ratio_5d_20d",
+          "volume_ratio_5d_20d",
+          "relative_strength_vs_market_20d"
+        ]
+      },
+      {
+        "family_id": "CORPORATE_ACTION_ADJUSTMENT_PIT",
+        "disposition": "IN_SUPPORT_ONLY",
+        "authorities": ["stage2:G5", "freshness:phase3"],
+        "model_visible": false
+      },
+      {
+        "family_id": "FINANCIAL_STATEMENT_PIT",
+        "disposition": "IN",
+        "authorities": ["stage3:S3G1E", "stage3:S3G1G", "stage3:S3G1J", "freshness:phase4"],
+        "model_visible": true,
+        "features": [
+          "frozen_s3g1j_canonical_numeric_concepts_wide",
+          "financial_concept_missing_indicators",
+          "financial_report_age_sessions"
+        ]
+      },
+      {
+        "family_id": "EARNINGS_GUIDANCE_SURPRISE_PIT",
+        "disposition": "IN",
+        "authorities": ["stage3:S3G4"],
+        "model_visible": true,
+        "activation": "SURPRISE_ECONOMIC_DATE_EQUALS_CURRENT_LATEST_FINANCIAL_ECONOMIC_DATE",
+        "features": [
+          "official_guidance_surprise",
+          "official_guidance_surprise_missing",
+          "guidance_age_sessions"
+        ]
+      },
+      {
+        "family_id": "INDUSTRY_IDENTITY_PIT",
+        "disposition": "OUT_PENDING_NORMALIZATION_PLUGIN",
+        "authorities": ["stage3:S3G3B"],
+        "model_visible": false
+      },
+      {
+        "family_id": "MARKET_REGIME_V1",
+        "disposition": "IN",
+        "authorities": ["extension:market_regime_v1"],
+        "model_visible": true,
+        "features": [
+          "regime_state",
+          "advance_ratio",
+          "net_breadth",
+          "ew_return_5d",
+          "ew_return_20d",
+          "net_breadth_5d_mean",
+          "ew_return_vol_20d",
+          "cross_sectional_return_std_1d",
+          "amount_ratio_5d_20d"
+        ]
+      }
+    ],
+    "explicit_out": [
+      "GENERAL_WEB_NEWS",
+      "SOCIAL_MEDIA",
+      "RUMOR_OR_UNVERIFIED_SUPPLY_CHAIN",
+      "ETF_PRIMARY_FLOW_WITHOUT_STRICT_PIT",
+      "GENERIC_ANNOUNCEMENT_TITLE_SENTIMENT_OR_SCALAR_INFERENCE",
+      "CURRENT_INDUSTRY_BACKFILL",
+      "INDUSTRY_IDENTITY_UNTIL_NORMALIZED_PIT_PLUGIN",
+      "TURNOVER_RATE_WITHOUT_PIT_SHARE_DENOMINATOR",
+      "VALUATION_WITHOUT_PIT_DENOMINATOR",
+      "INDUSTRY_RELATIVE_STRENGTH_OR_DIFFUSION_UNTIL_SEPARATE_TESTED_PLUGIN",
+      "MARKET_REGIME_INTERNAL_QUANTILE_THRESHOLDS",
+      "MARKET_REGIME_STATE_REASON_TEXT"
+    ],
+    "pit_policy": {
+      "decision_cut": "SESSION_T_CLOSE_INFORMATION_ONLY_EFFECTIVE_NEXT_TRADING_SESSION",
+      "date_only_disclosure_uses_next_session": true,
+      "financial_values_require_available_at_before_effective_session": true,
+      "surprise_expectation_strictly_prior": true,
+      "earnings_surprise_requires_current_financial_economic_date_match": true,
+      "market_regime_thresholds_use_only_t_minus_1_history": true,
+      "future_backfill_forbidden": true
+    },
+    "missing_policy": {
+      "s3g1j_retained_errors_and_ties_are_missing_not_numeric_truth": true,
+      "zero_fill_for_missing_forbidden": true,
+      "missing_indicators_allowed": true,
+      "coverage_and_missingness_report_required_per_feature": true,
+      "unknown_identity_or_time_semantics_fail_closed": true,
+      "industry_missingness_cannot_be_repaired_by_unvalidated_forward_fill": true,
+      "surprise_from_noncurrent_financial_economic_period_treated_missing": true
+    },
+    "permissions": {
+      "feature_set_frozen": true,
+      "stage4_feature_materialization_allowed": true,
+      "market_regime_requires_ACCEPTED_before_materialization": true,
+      "market_regime_acceptance_satisfied": true,
+      "alpha_training_allowed": false,
+      "live_signal_allowed": false,
+      "authoritative_model_output": false
+    }
+  },
+  "source_facts": {
+    "stage2_manifest": "data/stage2_final/manifest.json",
+    "stage3_manifest": "data/stage3_final/manifest.json",
+    "market_regime_manifest": "governance/market_regime_v1_module_manifest.json",
+    "market_regime_tested_promotion": "governance/stage4_market_regime_v1_tested_promotion.json",
+    "market_regime_accepted_promotion": "governance/stage4_market_regime_v1_accepted_promotion.json",
+    "freshness_hard_gate_artifact": "GitHub Actions artifact 9166063671",
+    "freshness_hard_gate_gate_sha256": "8571bc1896cc1d770178c19556cd0385b162e47bd5510701f13764016dcdd769",
+    "industry_artifact": {
+      "run_id": 30331243641,
+      "head_sha": "40dcab6df468bbf2d47dd48ac77ea150190c279b",
+      "artifact_id": 8678162835,
+      "artifact_digest": "sha256:f1da814c71fa698f3f10ce5dc7019bb86770f9d4e15ed7d7823a93a085adc872",
+      "ledger_rows": 94171,
+      "normalized_primary_code_rows": 19048,
+      "csrc_2012_rows": 75124,
+      "csrc_2012_normalized_primary_code_rows": 1,
+      "capco_2023_rows": 19047,
+      "capco_2023_normalized_primary_code_rows": 19047
+    },
+    "surprise_semantic_diagnostics": {
+      "v1_1_matrix_artifact_id": 9168438550,
+      "v1_1_matrix_sha256": "1818f9cdaf86c965e45c07cd1d261ece0eb782a6aa0aa6846d18701bd8699feb",
+      "r1_artifact_id": 9168512355,
+      "r2_artifact_id": 9168558250,
+      "all_asof_surprise_rows": 5733019,
+      "current_report_match_rows": 1756064,
+      "prior_period_stale_rows": 3976955,
+      "current_report_match_age_p50_sessions": 41,
+      "current_report_match_age_gt_252_rows": 2064
+    }
+  },
+  "invariants": {
+    "stage2_frozen_history_unchanged": true,
+    "stage3_frozen_history_unchanged": true,
+    "freshness_forward_evidence_does_not_promote_frozen_stage2_or_stage3": true,
+    "generic_announcement_text_not_used_as_numeric_signal": true,
+    "financial_retained_residuals_not_numeric_truth": true,
+    "unvalidated_industry_forward_fill_forbidden": true,
+    "industry_identity_model_input_disabled_until_separate_normalization_plugin_is_tested_and_accepted": true,
+    "surprise_from_prior_financial_economic_period_is_missing": true,
+    "market_regime_current_lifecycle_expected": "ACCEPTED",
+    "market_regime_acceptance_is_separate_gate": true,
+    "market_regime_acceptance_satisfied": true,
+    "no_alpha_training_in_this_contract": true,
+    "no_live_signal_in_this_contract": true
+  },
+  "next_gate": "MATERIALIZE_STAGE4_V1_2_FEATURE_MATRIX_WITH_PIT_COVERAGE_MISSINGNESS_NON_LEAKAGE_AND_SURPRISE_SEMANTIC_AUDIT"
+}

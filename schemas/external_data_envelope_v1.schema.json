@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-workbench-r17.local/schemas/external_data_envelope_v1.schema.json",
+  "title": "External Data Envelope V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "idempotency_key",
+    "event_time",
+    "source",
+    "source_ref",
+    "published_at",
+    "available_at",
+    "collected_at",
+    "source_sha256",
+    "schema_version",
+    "adapter_version",
+    "parser_version",
+    "transform_version",
+    "run_id",
+    "upstream_fingerprint",
+    "revision",
+    "data_status",
+    "payload"
+  ],
+  "properties": {
+    "event_id": {"type": "string", "minLength": 1},
+    "idempotency_key": {"type": "string", "minLength": 1},
+    "event_time": {"type": "string", "format": "date-time"},
+    "source": {"type": "string", "minLength": 1},
+    "source_ref": {"type": "string", "minLength": 1},
+    "source_uri": {"type": ["string", "null"]},
+    "published_at": {"type": "string", "format": "date-time"},
+    "available_at": {"type": "string", "format": "date-time"},
+    "collected_at": {"type": "string", "format": "date-time"},
+    "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "schema_version": {"type": "string", "minLength": 1},
+    "adapter_version": {"type": "string", "minLength": 1},
+    "parser_version": {"type": "string", "minLength": 1},
+    "transform_version": {"type": "string", "minLength": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": ["string", "null"]},
+    "trace_id": {"type": ["string", "null"]},
+    "upstream_fingerprint": {"type": "string", "minLength": 1},
+    "entity_id": {"type": ["string", "null"]},
+    "instrument_id": {"type": ["string", "null"]},
+    "revision": {"type": "integer", "minimum": 1},
+    "supersedes_event_id": {"type": ["string", "null"]},
+    "data_status": {
+      "enum": [
+        "AVAILABLE",
+        "NOT_AVAILABLE",
+        "NOT_APPLICABLE",
+        "STALE",
+        "INVALID",
+        "ERROR_FAIL_CLOSED"
+      ]
+    },
+    "payload": {"type": "object"}
+  }
+}

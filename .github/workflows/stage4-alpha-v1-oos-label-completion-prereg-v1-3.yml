@@ -1,0 +1,85 @@
+name: Stage4 Alpha V1 OOS Label Completion Preregistration V1.3
+
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - 'governance/stage4_alpha_v1_oos_label_completion_preregistration_v1_3_supersession.json'
+      - 'scripts/audit_stage4_alpha_v1_oos_label_completion_preregistration_v1_3.py'
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-prereg-v1-3.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preregistration-v1-3-static:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+
+      - name: Audit V1.3 superseding preregistration
+        run: python scripts/audit_stage4_alpha_v1_oos_label_completion_preregistration_v1_3.py
+
+      - name: Prove this gate is governance-only and non-consuming
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e build/oos
+          test ! -e build/oos-work
+          test ! -e build/model
+          test ! -e build/runtime-veto
+          test ! -e build/oos-boundary
+          ! grep -n -E '(^|[[:space:]])(import|from)[[:space:]]+(urllib|requests|subprocess|duckdb|pyarrow|pandas)([[:space:].]|$)|read_parquet\(|[d]ownload-artifact@|model\.predict\(|predict_proba\(|pickle\.load\(' \
+            scripts/audit_stage4_alpha_v1_oos_label_completion_preregistration_v1_3.py \
+            .github/workflows/stage4-alpha-v1-oos-label-completion-prereg-v1-3.yml
+
+      - name: Prove PR scope is exactly the V1.3 governance triplet
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed.txt
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/stage4-alpha-v1-oos-label-completion-prereg-v1-3.yml
+          governance/stage4_alpha_v1_oos_label_completion_preregistration_v1_3_supersession.json
+          scripts/audit_stage4_alpha_v1_oos_label_completion_preregistration_v1_3.py
+          EOF
+          sort -o /tmp/expected.txt /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/changed.txt
+
+      - name: Prove frozen authority and execution paths are untouched
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden="$(git diff --name-only "$BASE_SHA" HEAD -- \
+            governance/accepted_project_state.json \
+            governance/stage4_alpha_v1_oos_validation_authorization.json \
+            governance/stage4_alpha_v1_oos_validation_consumed_incomplete_evidence.json \
+            governance/stage4_alpha_v1_preregistration_v1_2_supersession.json \
+            data/stage2_final \
+            data/stage3_final \
+            config/stage3_final_lock.json \
+            models \
+            scripts/run_stage4_alpha_v1_oos_validation_core.py)"
+          if [ -n "$forbidden" ]; then
+            echo 'V1.3 preregistration PR modified frozen authority or execution paths:' >&2
+            echo "$forbidden" >&2
+            exit 1
+          fi

@@ -1,0 +1,161 @@
+name: Stage3 S3G1J V17.29 Exact Source Safety Evidence Contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'governance/stage3_s3g1j_v17_29_exact_source_safety.json'
+      - 'tests/test_stage3_v17_29_exact_source_safety_evidence.py'
+      - '.github/workflows/stage3-s3g1j-v17-29-exact-source-safety-evidence-contract.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  DIAGNOSTIC_PR: '103'
+  DIAGNOSTIC_HEAD: '2fa1ae921059350d20c29bd8c31a3a2a48b4abf5'
+  ACCEPTED_RUN: '31113755244'
+  ACCEPTED_ARTIFACT_ID: '8972793068'
+  ACCEPTED_ARTIFACT: 'stage3-s3g1j-v17-29-exact-source-safety-v1'
+  ACCEPTED_DIGEST: 'sha256:8fa30957758fcbc94fa77214a4a52f3a97335fbf27dda3d44e89afb81c2abf6d'
+
+jobs:
+  exact-source-safety-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Lock unmerged diagnostic PR and accepted artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh pr view "$DIAGNOSTIC_PR" -R "$GITHUB_REPOSITORY" --json headRefOid,state,isDraft,mergedAt)
+          test "$(jq -r '.headRefOid' <<<"$pr")" = "$DIAGNOSTIC_HEAD"
+          test "$(jq -r '.state' <<<"$pr")" = OPEN
+          test "$(jq -r '.isDraft' <<<"$pr")" = true
+          test "$(jq -r '.mergedAt // ""' <<<"$pr")" = ""
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ACCEPTED_RUN")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.head_sha' <<<"$run")" = "$DIAGNOSTIC_HEAD"
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ACCEPTED_RUN/artifacts?per_page=100")
+          test "$(jq -r --arg name "$ACCEPTED_ARTIFACT" '[.artifacts[] | select(.name==$name)] | length' <<<"$artifacts")" = 1
+          test "$(jq -r --arg name "$ACCEPTED_ARTIFACT" '.artifacts[] | select(.name==$name) | .id' <<<"$artifacts")" = "$ACCEPTED_ARTIFACT_ID"
+          test "$(jq -r --arg name "$ACCEPTED_ARTIFACT" '.artifacts[] | select(.name==$name) | .digest' <<<"$artifacts")" = "$ACCEPTED_DIGEST"
+          test "$(jq -r --arg name "$ACCEPTED_ARTIFACT" '.artifacts[] | select(.name==$name) | .workflow_run.head_sha' <<<"$artifacts")" = "$DIAGNOSTIC_HEAD"
+          test "$(jq -r --arg name "$ACCEPTED_ARTIFACT" '.artifacts[] | select(.name==$name) | .expired' <<<"$artifacts")" = false
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-29-exact-source-safety-v1
+          path: accepted
+          repository: FASHI188/data-workbench-r17
+          run-id: 31113755244
+          github-token: ${{ github.token }}
+      - name: Verify downloaded full-population routing evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import csv,gzip,hashlib,json
+          from pathlib import Path
+          root=Path('accepted')
+          paths={p.name:p for p in root.rglob('*') if p.is_file()}
+          expected={
+            'stage3_s3g1j_v17_29_exact_source_safety_targets.csv.gz':'1621f7ee78056cebc04c435a267205ced088fcb6163ace7d485991d57fdc9470',
+            'stage3_s3g1j_v17_29_exact_source_safety_contract.json':'b8ed3394953c3ae9e8cfe111cb0e9ef57514a80c86940b0becb873404ac9cfc2',
+            'stage3_s3g1j_v17_29_exact_source_safety_summary.json':'7505ac47be1d83335842fd04768393389917e6ce380539fc5779bf796d2348b8',
+          }
+          for name,digest in expected.items():
+              assert name in paths,name
+              assert hashlib.sha256(paths[name].read_bytes()).hexdigest()==digest,name
+          summary=json.loads(paths['stage3_s3g1j_v17_29_exact_source_safety_summary.json'].read_text(encoding='utf-8'))
+          contract=json.loads(paths['stage3_s3g1j_v17_29_exact_source_safety_contract.json'].read_text(encoding='utf-8'))
+          with gzip.open(paths['stage3_s3g1j_v17_29_exact_source_safety_targets.csv.gz'],'rt',encoding='utf-8',newline='') as handle:
+              rows=list(csv.DictReader(handle))
+          ids=['1215186538','1219426855','1219792633','1219840508','1219879687','1220087244','1221006100']
+          assert summary['full_population_document_rows']==121354
+          assert summary['full_population_candidate_rows']==121985
+          assert summary['route_counts']=={
+              'DELEGATE_FORMAL_V17_28_UNCHANGED':121347,
+              'V17_29_PRE_CANDIDATE_EXACT_SOURCE_DIAGNOSTIC':7,
+          }
+          assert summary['routing_semantic_sha256']=='1fcc01726482afc7a5d08e33b68013140d7344a24b93b2b8953c7475c8e2cc1c'
+          assert summary['target_population_match_count']==7
+          assert summary['all_target_population_matches_unique'] is True
+          assert summary['all_non_targets_delegate_formal_v17_28_unchanged'] is True
+          assert summary['negative_route_counts']=={
+              'MUTATED_SHA_DELEGATED':7,
+              'WRONG_BYTES_DELEGATED':7,
+              'WRONG_DATE_DELEGATED':7,
+          }
+          assert summary['target_ledger_plaintext_sha256']=='2066886c7eb032d8dd7752d5cc94d06ef78bd435e4ca9a76b863e5e4e8750056'
+          assert summary['candidate_experiment_eligible'] is True
+          assert summary['candidate_parser_implementation_authorized'] is False
+          assert summary['parser_implemented'] is False
+          assert summary['pass'] is True and summary['errors']==[]
+          assert [row['announcement_id'] for row in rows]==ids
+          assert all(row['population_match_count']=='1' for row in rows)
+          assert all(row['candidate_experiment_eligible']=='True' for row in rows)
+          assert all(row['candidate_parser_implementation_authorized']=='False' for row in rows)
+          assert contract['target_announcement_ids']==ids
+          assert contract['activation_identity']==['source_sha256','source_bytes','economic_date']
+          assert contract['activation_rule_scope']=='EXACT_ALLOWLIST_ONLY'
+          assert contract['non_target_behavior']=='RETURN_FORMAL_V17_28_OBJECT_UNCHANGED'
+          assert contract['formal_existing_target_overlap_count']==0
+          assert contract['candidate_experiment_eligible'] is True
+          assert contract['candidate_parser_implementation_authorized'] is False
+          assert contract['candidate_parser_promotion_authorized'] is False
+          print('S3G1J_V17_29_EXACT_SOURCE_SAFETY_DOWNLOADED_EVIDENCE_PASS')
+          PY
+      - name: Verify committed immutable evidence
+        run: python -m unittest tests.test_stage3_v17_29_exact_source_safety_evidence -v
+      - name: Assert diagnostic execution did not enter integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e scripts/diagnose_stage3_s3g1j_v17_29_exact_source_split_equity_safety.py
+          test ! -e tests/test_stage3_v17_29_exact_source_split_equity_safety.py
+          test ! -e .github/workflows/stage3-s3g1j-v17-29-exact-source-safety.yml
+      - name: Assert project and authorization boundaries remain locked
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          evidence=json.load(open('governance/stage3_s3g1j_v17_29_exact_source_safety.json',encoding='utf-8'))
+          project=json.load(open('data/project_status.json',encoding='utf-8'))
+          lock=json.load(open('config/stage3_final_lock.json',encoding='utf-8'))
+          auth=evidence['authorization_boundary']
+          boundary=evidence['hard_boundaries']
+          assert auth['candidate_experiment_eligible'] is True
+          assert auth['candidate_parser_implementation_authorized'] is False
+          assert auth['candidate_parser_promotion_authorized'] is False
+          assert auth['parser_implemented'] is False
+          assert boundary['formal_parser_changed'] is False
+          assert boundary['runtime_authority_changed'] is False
+          assert boundary['production_data_changed'] is False
+          assert boundary['pdf_binaries_redownloaded'] is False
+          assert boundary['ocr_enabled'] is False
+          assert boundary['equity_inference_enabled'] is False
+          assert boundary['source_policy_changed'] is False
+          assert boundary['point_in_time_policy_changed'] is False
+          assert boundary['issuer_gate_changed'] is False
+          assert boundary['accounting_tolerance_changed'] is False
+          assert boundary['main_changed'] is False
+          assert boundary['merge_to_main_authorized'] is False
+          assert project['stage3']['status']=='NOT_READY'
+          assert project['stage3']['s3g1j']['data_verdict']=='FAIL_CLOSED'
+          assert project['stage3']['s3g1j']['final_gate_pass'] is False
+          assert project['stage4_unlocked'] is False
+          assert project['alpha_training_allowed'] is False
+          assert project['live_signal_allowed'] is False
+          assert lock['status']=='NOT_READY'
+          assert 'S3G1J_FINANCIAL_RAW_VALUES' in lock['remaining_unlocked_gates']
+          print('S3G1J_V17_29_EXACT_SOURCE_SAFETY_GOVERNANCE_BOUNDARY_PASS')
+          PY

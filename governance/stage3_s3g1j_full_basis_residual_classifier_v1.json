@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "gate": "S3G1J_FULL_BASIS_RESIDUAL_CLASSIFICATION_V1",
+  "status": "MACHINE_ACCEPTED_DIAGNOSTIC_EVIDENCE_NOT_PRODUCTION_FINAL",
+  "source": {
+    "run": 30649251360,
+    "head_sha": "6b274dbd32734ab0af6a75a6d595925278dd8973",
+    "artifact": "stage3-s3g1j-v17-21-full-final",
+    "artifact_digest": "sha256:7faff72949a6e0a98f49088bce99bc2df37c7cbcb0259b39d1b2655fc02f6086",
+    "documents_plain_sha256": "7fdb1205ff31b8d814f041d6fe55c5e4045454783d4d29779c37042792480400",
+    "documents_gzip_sha256": "de31e148abd19f866b863135d0361ab2728e97577a8e584b7572fdbcbcaa06d8",
+    "runtime_generation": "V17.21",
+    "verdict": "FAIL_CLOSED"
+  },
+  "accepted_classifier": {
+    "run": 30687393120,
+    "head_sha": "2837fc4d4de85c100f920a3ec847330016c77870",
+    "artifact_id": 8814417402,
+    "artifact": "stage3-s3g1j-full-basis-residual-classification-v1",
+    "artifact_digest": "sha256:3451a94bb70758bbb93d3be4600ad7e0d8d65de618928b1c635f8a29686f7052",
+    "workflow": ".github/workflows/stage3-s3g1j-full-basis-residual-classifier-v1.yml",
+    "workflow_status": "SUCCESS_AND_RETIRED_AFTER_ACCEPTANCE",
+    "input_document_rows": 121354,
+    "pass_document_rows": 119974,
+    "residual_document_rows": 1380,
+    "classification_ledger_plain_sha256": "c7625542e4aada5cc90b0316f5ab71beb4534e752628dbc611749da704f08558",
+    "classification_ledger_gzip_sha256": "11ef25f4bc3b08b20b55ac7cfa47d2e9495f4383415b66191f61217ca3cee49e",
+    "p0_ledger_plain_sha256": "73a9f191d1e0613033a40dc4624fcb73568891cea4c219591272e92dce2d1d30",
+    "p0_ledger_gzip_sha256": "6b66c8a43df0359d1cbf2fd6e7e8188f3c841bbe59657b6b8773b6f2a9919142",
+    "gzip_mtime": 0,
+    "gzip_embedded_filename": "",
+    "pass": true,
+    "errors": []
+  },
+  "class_counts": {
+    "CANONICAL_PDF_ISSUER_MISMATCH": 83,
+    "MULTI_CANDIDATE_SOURCE_INCOMPLETE_2_CANDIDATES": 85,
+    "MULTI_CANDIDATE_SOURCE_INCOMPLETE_3_CANDIDATES": 2,
+    "MULTI_CANDIDATE_VALUE_CONFLICT": 14,
+    "SINGLE_CANONICAL_IDENTITY_MISMATCH_TIER2_2": 12,
+    "SINGLE_CANONICAL_IDENTITY_MISMATCH_TIER2_3": 71,
+    "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_0": 550,
+    "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_1": 421,
+    "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_2": 119,
+    "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_3": 23
+  },
+  "priority_counts": {
+    "P0_SAFE_NEAR_COMPLETE_NO_IDENTITY_CONFLICT": 23,
+    "P1_IDENTITY_CONFLICT_TIER2_3": 71,
+    "P2_SAFE_PARTIAL_TIER2_2": 119,
+    "P3_IDENTITY_CONFLICT_LOWER_EVIDENCE": 12,
+    "P3_SAFE_PARTIAL_TIER2_1": 421,
+    "P3_SOURCE_COMPLETENESS_REVIEW": 87,
+    "P4_ISSUER_AUTHORITY_REVIEW": 83,
+    "P4_SAFE_PARTIAL_TIER2_0": 550,
+    "P4_SOURCE_VALUE_CONFLICT_REVIEW": 14
+  },
+  "p0_source_basis_announcement_ids": [
+    "1200907104",
+    "1201708762",
+    "1202195310",
+    "1202774611",
+    "1202799494",
+    "1203358200",
+    "1204077386",
+    "1205543437",
+    "1207035181",
+    "1207621057",
+    "1209806910",
+    "1209825769",
+    "1215186538",
+    "1219426855",
+    "1219792633",
+    "1219834247",
+    "1219840508",
+    "1219879687",
+    "1220087244",
+    "1221006100",
+    "1221568845",
+    "1223407043",
+    "1223347318"
+  ],
+  "v17_24_adjustment": {
+    "accepted_runtime_run": 30685830808,
+    "accepted_incremental_recovery_announcement_ids": [
+      "1221568845"
+    ],
+    "p0_source_basis_already_recovered_count": 1,
+    "p0_source_basis_already_recovered_announcement_ids": [
+      "1221568845"
+    ],
+    "next_p0_diagnostic_count": 22,
+    "full_basis_residual_count_after_v17_24": "NOT_ASSERTED_UNTIL_NEW_64_SHARD_FINAL_RUN"
+  },
+  "next_action": {
+    "scope": "Run source-locked current-V17.24 diagnostics on the remaining 22 P0 documents only; preserve the 71 tier2=3 identity-conflict documents as a separate accounting-conflict review population.",
+    "identity_conflict_auto_recovery_forbidden": true,
+    "global_accounting_tolerance_change_forbidden": true,
+    "source_authority_change_forbidden": true
+  },
+  "production_data_changed": false,
+  "parser_changed": false,
+  "stage3_status": "NOT_READY",
+  "stage4_alpha_live_locked": true
+}

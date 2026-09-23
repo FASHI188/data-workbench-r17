@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_EXACT_HEAD_EXECUTION_CARRIER_V1_2_STATIC_PR_ONLY_UNTIL_SEPARATE_ARMING",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "1ca647475bf57ca544b68aa535456fecb0469fcd8a999a58a3288f699f8cc469",
+  "fingerprint_basis": {
+    "execution_contract_id": "STAGE4_ALPHA_V1_OOS_LABEL_COMPLETION_EXECUTION_CARRIER",
+    "version": "V1.2",
+    "integration_base_sha": "6ad96d58c500d45f10d11de2447f5f019a21ba43",
+    "authorization_reservation_fingerprint": "f038c7857da733207be7cb9c3df76bd0e189054b6763b3d3c70aca017afda889",
+    "preregistration_fingerprint": "e6f6fac81f6f1b3394b84a93bb5f41c67782b2e7dae9f6e37f7aa8eb11e29394",
+    "implementation_fingerprint": "45d25e1627b3c1b8d95371fd49997dc8c818e086915f85850274986d1a08adfd",
+    "implementation_acceptance_fingerprint": "1b6e05dd16911f9234c1ed4ee19918d30c37943dbb4be6b6490adb24b099849b",
+    "consumed_authorizations": [
+      {
+        "sequence": 1,
+        "fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
+        "run_id": 34454575970,
+        "reusable": false
+      },
+      {
+        "sequence": 2,
+        "fingerprint": "b6413b67ace2601bb03f2d45e7656ab3776ee3b9e90ecfe3ed32b92626eba16b",
+        "run_id": 35736766602,
+        "reusable": false,
+        "evidence_fingerprint": "2d41c39d4400b80bdd8d3f3cd6c6e0e85838b0531878cc0e10baf25070b993b6"
+      }
+    ],
+    "immutable_prediction_artifact": {
+      "artifact_id": 10142949262,
+      "artifact_digest": "sha256:068b451ecc21b05557334569e3af957e106087bf0839a3df01cbcf838536fe4c",
+      "files_exact": [
+        "authorization_consumption.json",
+        "oos_predictions.parquet"
+      ],
+      "predictions_file": "oos_predictions.parquet",
+      "predictions_sha256": "66a039aa76e4b1962049e3e0d41a43fb1f6c626d934a552f871f91bd27fe01da",
+      "prediction_rows": 1515811,
+      "sole_score_input": true
+    },
+    "immutable_physical_boundary_artifact": {
+      "artifact_id": 10142948546,
+      "artifact_digest": "sha256:76711c8bd5277bfe569868a0be7bba5dd074cac92fde88c92e4c0ce7e127a86c",
+      "candidate_rows": 1453359,
+      "post_oos_rows_observed": 0,
+      "broad_source_redownload_forbidden": true,
+      "physical_boundary_rebuild_forbidden": true
+    },
+    "accepted_runner_sources": {
+      "scripts/run_stage4_alpha_v1_oos_label_completion.py": "7fe790864be6d324f4571f57ed23213920605a48d9b4415849e12c37cdb8f2d6",
+      "scripts/stage4_alpha_v1_label_materialization.py": "07481bb2c20837b945b8a6deba06b76459c363d0c91e054b8a1029476881c18a",
+      "scripts/stage4_alpha_v1_alpha_evaluation.py": "4c4e7e1674ef64dd6e68fde65ba58d3954f2b4262e476863a21ac600fa8b68a3"
+    },
+    "frozen_runtime_git_blobs": {
+      "scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py": "26c7371fa886cc5031dddf031c7317c4ad9bdc57",
+      "scripts/audit_stage4_alpha_v1_runtime_veto_v1_1.py": "35f6b388564993241e364ea3b332a9d16eca19c5",
+      "governance/stage4_alpha_v1_runtime_veto_contract_v1_1.json": "b6668800143249ccf29d15a7f5c87f1a21905b98",
+      "governance/stage4_alpha_v1_oos_physical_boundary_contract.json": "6b4e85cf495ff2f43b076309b10d100b369af140"
+    },
+    "final_authorization_interface": {
+      "authorization_path": "governance/stage4_alpha_v1_oos_label_completion_authorization_v1_2.json",
+      "status": "AUTHORIZED_SINGLE_USE_OOS_LABEL_COMPLETION_V1",
+      "version": "V1.2",
+      "exact_execution_head_required": true,
+      "arming_commit_must_be_ancestor_of_live_integration": true,
+      "accepted_state_at_arming_commit_must_record_armed_authority": true,
+      "max_label_completion_runs": 1,
+      "consumption_event": "FIRST_SUCCESSFUL_READ_OF_ANY_OOS_MARKET_VALUE_USED_FOR_LABEL_MATERIALIZATION_OR_FIRST_SUCCESSFUL_READ_OF_ANY_OOS_LABEL_VALUE_WHICHEVER_OCCURS_FIRST",
+      "after_consumption_reexecution_forbidden": true,
+      "future_prediction_computation_allowed": false,
+      "model_load_allowed": false,
+      "fit_retrain_tune_reselect_allowed": false,
+      "final_lockbox_access_allowed": false,
+      "live_signal_allowed": false,
+      "main_merge_allowed": false,
+      "authoritative_output_allowed": false
+    },
+    "workflow": {
+      "path": ".github/workflows/stage4-alpha-v1-oos-label-completion-execution-v1-2.yml",
+      "pull_request_behavior": "STATIC_ONLY_NO_OOS_ARTIFACT_DOWNLOAD_NO_OOS_VALUE_READ",
+      "label_bearing_trigger": "workflow_dispatch",
+      "automatic_pull_request_execution_forbidden": true,
+      "dispatch_inputs_exact": [
+        "execution_head",
+        "arming_merge_sha",
+        "confirmation"
+      ],
+      "confirmation": "CONSUME_SINGLE_USE_OOS_LABEL_COMPLETION_V1_2",
+      "checkout_exact_execution_head": true,
+      "authorization_fetched_from_exact_arming_merge_sha": true,
+      "durable_owner_rule": "CURRENT_RUN_MUST_BE_FIRST_WORKFLOW_DISPATCH_RUN_FOR_THIS_V1_2_WORKFLOW",
+      "pre_access_failure_retry": "FORBIDDEN_WITHOUT_SEPARATE_GOVERNANCE_ACKNOWLEDGEMENT",
+      "artifact_download_after_arming_and_owner_validation_only": true,
+      "contents_permission": "read",
+      "actions_permission": "read",
+      "repository_write_forbidden": true,
+      "fresh_workflow_namespace_required_due_prior_v1_dispatch_consumed": true
+    },
+    "output": {
+      "result_artifact_name": "stage4-alpha-v1-oos-label-completion-single-use-result-v1-2",
+      "research_only": true,
+      "auto_promotion": false,
+      "separate_post_result_governance_acceptance_required": true,
+      "final_lockbox_remains_sealed": true
+    }
+  },
+  "next_gate": "STATIC_ACCEPT_V1_2_EXECUTION_PR_THEN_SEPARATE_GOVERNANCE_ARMING_OF_EXACT_EXECUTION_HEAD_NO_DISPATCH_YET"
+}

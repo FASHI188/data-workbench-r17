@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-workbench-r17.local/schemas/stage4_market_regime_v1_input.schema.json",
+  "title": "Stage4 Market Regime V1 OHLCV Input Row",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["exchange", "code", "trade_date", "open", "high", "low", "close", "volume_shares", "amount_cny"],
+  "properties": {
+    "exchange": {"enum": ["SSE", "SZSE"]},
+    "code": {"type": "string", "pattern": "^[0-9]{6}$"},
+    "trade_date": {"type": "string", "format": "date"},
+    "open": {"type": ["string", "number"]},
+    "high": {"type": ["string", "number"]},
+    "low": {"type": ["string", "number"]},
+    "close": {"type": ["string", "number"]},
+    "volume_shares": {"type": ["string", "integer"]},
+    "amount_cny": {"type": ["string", "integer"]}
+  }
+}

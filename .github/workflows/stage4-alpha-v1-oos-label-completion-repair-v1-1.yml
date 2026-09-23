@@ -1,0 +1,82 @@
+name: Stage4 Alpha V1 OOS Label Completion Repair V1.1
+
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-repair-v1-1.yml'
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-implementation.yml'
+      - 'governance/stage4_alpha_v1_oos_label_completion_implementation_repair_v1_1.json'
+      - 'scripts/audit_stage4_alpha_v1_oos_label_completion_implementation_repair_v1_1.py'
+      - 'scripts/stage4_alpha_v1_label_materialization.py'
+
+permissions:
+  contents: read
+
+env:
+  OMP_NUM_THREADS: '1'
+  MKL_NUM_THREADS: '1'
+  OPENBLAS_NUM_THREADS: '1'
+  NUMEXPR_NUM_THREADS: '1'
+
+jobs:
+  static-and-synthetic-repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Audit repair and execute production marker synthetic path
+        run: python scripts/audit_stage4_alpha_v1_oos_label_completion_implementation_repair_v1_1.py
+      - name: Static parse and forbidden API guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/stage4_alpha_v1_label_materialization.py scripts/audit_stage4_alpha_v1_oos_label_completion_implementation_repair_v1_1.py
+          ! grep -n -E 'model[[:space:]]*\.[[:space:]]*predict[[:space:]]*\(|predict_proba[[:space:]]*\(|pickle[[:space:]]*\.[[:space:]]*load[[:space:]]*\(|joblib|\.fit[[:space:]]*\(' scripts/stage4_alpha_v1_label_materialization.py
+      - name: Install frozen synthetic runtime
+        run: >-
+          python -m pip install --disable-pip-version-check
+          numpy==2.5.1 scipy==1.17.0 pyarrow==25.0.0 duckdb==1.3.2 pandas==3.0.5
+      - name: Run unchanged end-to-end synthetic completion
+        run: python scripts/run_stage4_alpha_v1_oos_label_completion.py --synthetic-self-test
+      - name: Prove repair CI is non-consuming
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e build/oos
+          test ! -e build/model
+          test ! -e build/runtime-veto
+          test ! -e label_completion_consumption.json
+          ! grep -n -E 'download-artifact|curl|wget|gh[[:space:]]+api' .github/workflows/stage4-alpha-v1-oos-label-completion-repair-v1-1.yml | grep -v 'grep -n -E'
+      - name: Prove exact repair scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed.txt
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/stage4-alpha-v1-oos-label-completion-implementation.yml
+          .github/workflows/stage4-alpha-v1-oos-label-completion-repair-v1-1.yml
+          governance/stage4_alpha_v1_oos_label_completion_implementation_repair_v1_1.json
+          scripts/audit_stage4_alpha_v1_oos_label_completion_implementation_repair_v1_1.py
+          scripts/stage4_alpha_v1_label_materialization.py
+          EOF
+          sort -o /tmp/expected.txt /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/changed.txt
+      - name: Prove frozen evidence/data/runner/evaluator untouched
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden="$(git diff --name-only "$BASE_SHA" HEAD --             governance/accepted_project_state.json             governance/stage4_alpha_v1_oos_validation_consumed_incomplete_evidence.json             governance/stage4_alpha_v1_oos_label_completion_consumed_incomplete_evidence.json             governance/stage4_alpha_v1_oos_label_completion_authorization_v1.json             scripts/run_stage4_alpha_v1_oos_label_completion.py             scripts/stage4_alpha_v1_alpha_evaluation.py             scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py             data/stage2_final data/stage3_final models)"
+          test -z "$forbidden"

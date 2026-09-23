@@ -1,0 +1,26 @@
+name: Stage3 S3G1J V17.30 Finalizer CLI Prep
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'tests/test_stage3_v17_30_finalizer_cli_contract.py'
+      - '.github/workflows/stage3-s3g1j-v17-30-finalizer-cli-prep.yml'
+
+permissions:
+  contents: read
+
+env:
+  PYTHONPATH: scripts
+
+jobs:
+  finalizer-cli:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Validate generic finalizer interface before source acceptance
+        run: python -m unittest tests.test_stage3_v17_30_finalizer_cli_contract -v

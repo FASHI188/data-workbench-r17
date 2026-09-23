@@ -12,6 +12,8 @@ on:
       - 'scripts/audit_security_history.py'
       - 'tests/test_fetch_exchange_master.py'
       - 'config/stage2_hard_gates.json'
+      - 'requirements/constraints-verified.txt'
+      - '.python-version'
       - '.github/workflows/stage2-g1.yml'
   pull_request:
     branches: [main]
@@ -23,10 +25,12 @@ on:
       - 'scripts/audit_security_history.py'
       - 'tests/test_fetch_exchange_master.py'
       - 'config/stage2_hard_gates.json'
+      - 'requirements/constraints-verified.txt'
+      - '.python-version'
       - '.github/workflows/stage2-g1.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-current-master:
@@ -35,62 +39,58 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-
-      - name: Install test/runtime dependencies
-        run: python -m pip install --disable-pip-version-check requests pytest openpyxl
-
+          python-version: '3.12.13'
+      - name: Install verified test/runtime dependencies
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pytest openpyxl
       - name: Regression tests
         run: pytest -q
-
       - name: Probe exchange-owned candidate sources
         shell: bash
         run: |
           mkdir -p data
           python scripts/probe_exchange_sources.py > data/source_probe_stdout.log 2> data/source_probe_stderr.log || true
           cat data/source_probe.json || true
-
       - name: Fetch current official exchange master candidate
+        id: fetch
         shell: bash
         run: |
-          mkdir -p data
           set +e
+          mkdir -p data
           python scripts/fetch_exchange_master.py --allow-derived-szse-board > data/fetch_stdout.log 2> data/fetch_stderr.log
           code=$?
-          echo "fetch_exit_code=$code" >> "$GITHUB_ENV"
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           cat data/fetch_stdout.log || true
           cat data/fetch_stderr.log || true
           exit 0
-
       - name: Reconcile against independent exchange-owned controls
-        if: env.fetch_exit_code == '0'
+        id: reconcile
+        if: steps.fetch.outputs.exit_code == '0'
         shell: bash
         run: |
           set +e
           python scripts/reconcile_current_master.py > data/reconcile_stdout.log 2> data/reconcile_stderr.log
           code=$?
-          echo "reconcile_exit_code=$code" >> "$GITHUB_ENV"
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           cat data/reconcile_stdout.log || true
           cat data/reconcile_stderr.log || true
           exit 0
-
       - name: Run fail-closed Stage2 audit
+        id: audit
         shell: bash
         run: |
-          mkdir -p data
           set +e
+          mkdir -p data
           python scripts/audit_stage2.py > data/stage2_audit.json 2> data/audit_stderr.log
           code=$?
-          echo "audit_exit_code=$code" >> "$GITHUB_ENV"
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           cat data/stage2_audit.json || true
           cat data/audit_stderr.log || true
           exit 0
-
       - name: Upload candidate and audit evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: stage2-g1-evidence
@@ -106,24 +106,9 @@ jobs:
             data/reconcile_stderr.log
             data/audit_stderr.log
           if-no-files-found: warn
-          retention-days: 7
-
-      - name: Commit frozen candidate and audit evidence
-        if: github.event_name == 'push' && env.fetch_exit_code == '0'
-        shell: bash
+          retention-days: 90
+      - name: Preserve fail-closed G1 status after evidence upload
+        if: steps.fetch.outputs.exit_code != '0' || steps.reconcile.outputs.exit_code != '0' || steps.audit.outputs.exit_code != '0'
         run: |
-          git config user.name "stage2-bot"
-          git config user.email "stage2-bot@users.noreply.github.com"
-          git add data/current_master data/stage2_audit.json data/source_probe.json
-          if git diff --cached --quiet; then
-            echo "No data change"
-            exit 0
-          fi
-          git commit -m "stage2: freeze official current-master candidate [skip ci]"
-          git push
-
-      - name: Mark G1 acquisition or reconciliation failure after evidence upload
-        if: env.fetch_exit_code != '0' || env.reconcile_exit_code != '0'
-        run: |
-          echo "G1 official acquisition/reconciliation failed; evidence artifact was uploaded."
+          echo "G1 acquisition, reconciliation, or audit failed; evidence artifact was preserved."
           exit 1

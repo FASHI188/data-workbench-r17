@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "evidence_id": "STAGE4_ALPHA_V1_C007_FINAL_DEVELOPMENT_REFIT_AUTHORIZATION",
+  "status": "COMPLETE_IMMUTABLE_EVIDENCE",
+  "authorization_fingerprint": "7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295",
+  "authorization_contract": "governance/stage4_alpha_v1_c007_final_refit_authorization.json",
+  "authorization_pr": 149,
+  "authorization_head": "e9037d559050e30aed5ddc3642897d2a02013971",
+  "integration_merge_sha": "67f6a67692182f552f8265b2ac0cb7d2eb44c7b5",
+  "workflow": {
+    "run_id": 31900769965,
+    "conclusion": "success",
+    "artifact_id": 9251016237,
+    "artifact_name": "stage4-alpha-v1-c007-final-refit-authorization-audit",
+    "artifact_digest": "sha256:e8a7dcff14efd44368d3e8463c739dcf84a190b28c64d87af06da088a3ab299c",
+    "exact_pr_head_confirmed": true
+  },
+  "authorization_scope": {
+    "selected_candidate": "C007",
+    "candidate_family": "HIST_GRADIENT_BOOSTING_V1",
+    "fit_population": "DEVELOPMENT_ONLY_VALID_LABEL_20D",
+    "expected_fit_rows": 5103016,
+    "fit_count_exact": 1,
+    "candidate_reselection_allowed": false,
+    "hyperparameter_search_allowed": false,
+    "authorization_single_use": true,
+    "execution_must_be_separate_exact_head_pr": true,
+    "research_model_weights_allowed_in_execution": true,
+    "model_output_status": "RESEARCH_ONLY_NON_AUTHORITATIVE"
+  },
+  "independent_authorization_audit": {
+    "pass": true,
+    "failed_checks": [],
+    "model_fit_executed": false,
+    "oos_accessed": false,
+    "lockbox_accessed": false,
+    "live_signal_allowed": false,
+    "authoritative_model_output": false
+  },
+  "immutable_source_revalidation": {
+    "development_cv_aggregate_artifact_id": 9250847700,
+    "development_cv_aggregate_artifact_digest": "sha256:01eb4bd2e5e2a461e6cef09e4576b4b189622f52a70b210cee8b87887f2c80e1",
+    "candidate_selection_sha256": "1c6ea217913b28dcb5c84eed5862dff8d2cc05b7c344b90993afb31091e1418f",
+    "pbo_sha256": "da2815d0490cf4dc984505b1939225318d7e85a112edbb2030c0f486f9e43ba8",
+    "dsr_sha256": "912e59c0ec5eb1d814d91aa92da2556a9f094cbcb803c61b65c52646a5dab8cf",
+    "aggregate_audit_sha256": "5e14e489c1935276aa6ff01f04d1d622f3691796c2f04a54a1e54ebd98d190ed",
+    "development_labels_artifact_id": 9216418323,
+    "development_labels_artifact_digest": "sha256:c4c8c475d79e964265dceec66da1673f9327469edc33531d6a21df8b61627e88",
+    "development_labels_sha256": "092061da5666215dcc1f4fa75ec0b1cdbcc43969560755e7cdae6de55e64d673",
+    "all_revalidated": true
+  },
+  "hard_boundaries": {
+    "authorization_pr_model_fit_executed": false,
+    "oos_label_access_allowed": false,
+    "lockbox_label_access_allowed": false,
+    "live_signal_allowed": false,
+    "main_merge_allowed": false,
+    "authoritative_model_output_allowed": false,
+    "current_champion_unchanged": true
+  },
+  "next_gate": "SEPARATE_EXACT_HEAD_C007_FINAL_DEVELOPMENT_REFIT_EXECUTION_PR"
+}

@@ -21,4 +21,10 @@ Current formal state:
 
 `data/stage2_audit.json` is a superseded legacy placeholder and is not an authoritative readiness source.
 
+## Public data boundary
+
+See `DATA_DISTRIBUTION_POLICY.md`. Third-party source URLs, identifiers and cryptographic evidence may be recorded for auditability, but public availability of this repository does not grant redistribution rights for exchange, CNINFO, BaoStock, or other source datasets. Credentials and restricted raw datasets must not be committed.
+
+No software license has been selected by this document; repository licensing should be decided separately by the owner.
+
 Status: active development / research only.

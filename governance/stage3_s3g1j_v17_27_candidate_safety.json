@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "gate": "S3G1J_V17_27_NORMAL_EQUITY_IDENTITY_CANDIDATE_SAFETY_ACCEPTED",
+  "status": "ACCEPTED_FOR_RUNTIME_PROMOTION_PENDING_FULL_BASIS_EXECUTION",
+  "candidate_only": true,
+  "formal_runtime_at_execution": "V17.26",
+  "candidate_generation": "V17.27",
+  "accepted_run": {
+    "run": 30747664549,
+    "head_sha": "ae9e80d90e227772cca88cc3b7ebadd2c6cfb7ca",
+    "artifact_id": 8833408494,
+    "artifact": "stage3-s3g1j-v17-27-normal-equity-candidate-safety",
+    "artifact_digest": "sha256:d279df39e62f4f0f4fd655267788473dd34945113f677635563ce38f3af88513",
+    "candidate_documents_sha256": "4cd36e2d9a64f30c118ef725d9d28b70d6d7df43e4716244754ca275127d6a1d",
+    "candidate_values_sha256": "88dba9662b541a39e2579ccfde25c2b4b15f0185801a3121283ef2f9ce3648ae",
+    "safety_report_sha256": "3076fc4459a597d101754fa6a1a56085cdd6d001acbb87d0a949311e1f3bcb51",
+    "execution_pass": true,
+    "independent_artifact_recheck_pass": true
+  },
+  "machine_checks": {
+    "repository_safety_run": 30747664548,
+    "runtime_reproducibility_run": 30747664550,
+    "s3g1j_runtime_contract_run": 30747664553,
+    "candidate_safety_run": 30747664549,
+    "all_exact_head_success": true
+  },
+  "accepted_full_basis_input": {
+    "generation": "V17.26",
+    "run": 30733013665,
+    "head_sha": "ed81a8f167c7b158167a8bdafa1799b7047666af",
+    "artifact_id": 8828600783,
+    "artifact": "stage3-s3g1j-v17-26-full-final",
+    "artifact_digest": "sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b",
+    "document_rows": 121354,
+    "numeric_rows": 1051778,
+    "document_errors": 1378,
+    "unresolved_ties": 1295,
+    "data_verdict": "FAIL_CLOSED"
+  },
+  "result": {
+    "source_document_rows": 121354,
+    "candidate_document_rows": 121354,
+    "source_numeric_rows": 1051778,
+    "candidate_numeric_rows": 1051793,
+    "source_document_errors": 1378,
+    "candidate_document_errors": 1373,
+    "document_error_reduction": 5,
+    "target_document_count": 5,
+    "target_numeric_rows": 15,
+    "non_target_document_rows": 121349,
+    "non_target_document_exact_equal": true,
+    "existing_numeric_rows_exact_equal": true,
+    "existing_numeric_semantic_sha256": "1ac6089451427bbf38dc07e83e9f43a80bbffe6b288096d91019ff107516ed0a",
+    "non_balance_values_promoted": false,
+    "unexpected_regression_count": 0,
+    "candidate_data_verdict": "FAIL_CLOSED"
+  },
+  "allowed_concepts": [
+    "TOTAL_ASSETS",
+    "TOTAL_LIABILITIES",
+    "TOTAL_EQUITY"
+  ],
+  "exact_source_targets": {
+    "1200907104": {
+      "source_code": "000708",
+      "economic_date": "2015-03-31",
+      "source_sha256": "87a313e900dd74ec976e2c6e5c0eeb0e7c7cfd5e68c31e9ede3ae8c01c7e9d49",
+      "statement_anchor_page": 8,
+      "pages": {"TOTAL_ASSETS": 9, "TOTAL_LIABILITIES": 10, "TOTAL_EQUITY": 11},
+      "values": {"TOTAL_ASSETS": "4888152213.85", "TOTAL_LIABILITIES": "1510781556.82", "TOTAL_EQUITY": "3377370657.03"},
+      "identity_residual_cny": "0.00"
+    },
+    "1201708762": {
+      "source_code": "000708",
+      "economic_date": "2015-09-30",
+      "source_sha256": "e7af0c09c31f0be1e83fdb118c603a141c094739767de01b90f57680ce9596a8",
+      "statement_anchor_page": 8,
+      "pages": {"TOTAL_ASSETS": 9, "TOTAL_LIABILITIES": 10, "TOTAL_EQUITY": 11},
+      "values": {"TOTAL_ASSETS": "4874736170.10", "TOTAL_LIABILITIES": "1441408971.22", "TOTAL_EQUITY": "3433327198.88"},
+      "identity_residual_cny": "0.00"
+    },
+    "1202195310": {
+      "source_code": "000708",
+      "economic_date": "2016-03-31",
+      "source_sha256": "04b84b49ce4e36a4c9089e13cd46f717ef27c7d93c141533d7d7ff2299513925",
+      "statement_anchor_page": 8,
+      "pages": {"TOTAL_ASSETS": 9, "TOTAL_LIABILITIES": 10, "TOTAL_EQUITY": 11},
+      "values": {"TOTAL_ASSETS": "5097002228.22", "TOTAL_LIABILITIES": "1542170536.28", "TOTAL_EQUITY": "3554831691.94"},
+      "identity_residual_cny": "0.00"
+    },
+    "1202774611": {
+      "source_code": "000708",
+      "economic_date": "2016-09-30",
+      "source_sha256": "eb0c9e0b559e1960316f3844ac32e7299cf31391fec1d83ee6b4fb2fe37aef14",
+      "statement_anchor_page": 8,
+      "pages": {"TOTAL_ASSETS": 9, "TOTAL_LIABILITIES": 10, "TOTAL_EQUITY": 11},
+      "values": {"TOTAL_ASSETS": "5482906412.71", "TOTAL_LIABILITIES": "1838330886.91", "TOTAL_EQUITY": "3644575525.80"},
+      "identity_residual_cny": "0.00"
+    },
+    "1203358200": {
+      "source_code": "000708",
+      "economic_date": "2017-03-31",
+      "source_sha256": "3d009555c7acb24c7d9cc0cb52ec3d5e43c473379b0c02c5bc832d6a3d773c82",
+      "statement_anchor_page": 8,
+      "pages": {"TOTAL_ASSETS": 9, "TOTAL_LIABILITIES": 10, "TOTAL_EQUITY": 11},
+      "values": {"TOTAL_ASSETS": "5755203586.29", "TOTAL_LIABILITIES": "1966640135.46", "TOTAL_EQUITY": "3788563450.83"},
+      "identity_residual_cny": "0.00"
+    }
+  },
+  "candidate_contract": {
+    "normal_equity_alias": "所有者权益合计",
+    "damaged_equity_alias_required": false,
+    "generic_group_witness_required": true,
+    "role_local_unit_required": true,
+    "frozen_economic_date_required": true,
+    "dual_aligned_amount_columns_required_when_header_missing": true,
+    "current_and_prior_columns_each_require_a_equals_l_plus_e": true,
+    "accounting_identity_tolerance": "0.005",
+    "e_equals_a_minus_l_inference": false,
+    "source_sha_allowlist_required": true
+  },
+  "excluded_fail_closed_documents": {
+    "1204077386": "EXPECTED_PERIOD_OR_ROLE_GATE_REMOVED_ALE_CANDIDATES",
+    "1205543437": "EXPECTED_PERIOD_OR_ROLE_GATE_REMOVED_ALE_CANDIDATES"
+  },
+  "promotion_boundaries": {
+    "runtime_promotion_authorized": true,
+    "full_basis_v17_27_execution_completed": false,
+    "committed_production_data_changed": false,
+    "trained_model_changed": false,
+    "main_changed": false,
+    "stage3_status": "NOT_READY",
+    "stage4_alpha_live_locked": true,
+    "final_data_verdict": "FAIL_CLOSED"
+  }
+}

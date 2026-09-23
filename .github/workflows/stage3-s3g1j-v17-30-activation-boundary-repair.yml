@@ -1,0 +1,50 @@
+name: Stage3 S3G1J V17.30 Activation Boundary Repair
+
+# One-shot repair verifier. The exact machine-generated activation manifest was
+# written back on the PR branch; this workflow is read-only from this point on.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Generate narrowly repaired activation manifest
+        run: python scripts/repair_stage3_v17_30_activation_boundary.py
+      - name: Validate repaired boundary remains fail-closed
+        run: |
+          python - <<'PY'
+          import json
+          p='build/v17_30_activation_boundary_repair/stage3_workflow_activation_manifest.json'
+          x=json.load(open(p,encoding='utf-8'))
+          b=x['hard_boundaries']; c=x['accepted_production_runtime']; r=x['retained_evidence']
+          assert c['generation']=='V17.30' and c['last_completed_full_basis_run']==31518370789
+          assert c['full_basis_execution_pending'] is False and c['data_verdict']=='FAIL_CLOSED'
+          assert b['v17_30_full_basis_execution_pending'] is False
+          assert b['v17_30_full_basis_execution_started'] is True
+          assert b['remaining_document_errors_last_completed_basis']==1362
+          assert b['remaining_unresolved_ties_last_completed_basis']==1279
+          assert not any(k.startswith('expected_v17_30_') for k in b)
+          assert r['v17_29_full_basis_final']['last_completed_full_basis'] is False
+          assert r['v17_30_runtime_wrapper']['full_basis_execution_pending'] is False
+          assert r['v17_30_runtime_wrapper']['full_basis_execution_accepted'] is True
+          assert r['v17_30_full_basis_final']['run']==31518370789
+          assert r['v17_30_full_basis_final']['last_completed_full_basis'] is True
+          assert b['stage3_status']=='NOT_READY' and b['stage4_alpha_live_locked'] is True
+          assert b['committed_production_data_changed'] is False and b['trained_model_changed'] is False and b['main_changed'] is False
+          print('V17_30_ACTIVATION_BOUNDARY_REPAIR_VALIDATE_PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-30-activation-boundary-repair
+          path: build/v17_30_activation_boundary_repair/
+          if-no-files-found: error
+          retention-days: 30

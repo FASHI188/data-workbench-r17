@@ -1,0 +1,179 @@
+name: Stage4 Alpha V1 C007 Final Development Refit Authorization
+
+on:
+  push:
+    branches:
+      - agent/stage4-alpha-v1-c007-final-refit-auth
+    paths:
+      - 'governance/stage4_alpha_v1_c007_final_refit_authorization.json'
+      - 'scripts/audit_stage4_alpha_v1_c007_final_refit_authorization.py'
+      - '.github/workflows/stage4-alpha-v1-c007-final-refit-authorization.yml'
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - 'governance/stage4_alpha_v1_c007_final_refit_authorization.json'
+      - 'scripts/audit_stage4_alpha_v1_c007_final_refit_authorization.py'
+      - '.github/workflows/stage4-alpha-v1-c007-final-refit-authorization.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  AUTH_FP: '7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295'
+  EXECUTION_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+  CV_AGG_AID: '9250847700'
+  CV_AGG_ZIP_SHA: '01eb4bd2e5e2a461e6cef09e4576b4b189622f52a70b210cee8b87887f2c80e1'
+  CANDIDATE_SELECTION_SHA: '1c6ea217913b28dcb5c84eed5862dff8d2cc05b7c344b90993afb31091e1418f'
+  PBO_SHA: 'da2815d0490cf4dc984505b1939225318d7e85a112edbb2030c0f486f9e43ba8'
+  DSR_SHA: '912e59c0ec5eb1d814d91aa92da2556a9f094cbcb803c61b65c52646a5dab8cf'
+  AGG_AUDIT_SHA: '5e14e489c1935276aa6ff01f04d1d622f3691796c2f04a54a1e54ebd98d190ed'
+  LABEL_AID: '9216418323'
+  LABEL_ZIP_SHA: 'c4c8c475d79e964265dceec66da1673f9327469edc33531d6a21df8b61627e88'
+  LABEL_SHA: '092061da5666215dcc1f4fa75ec0b1cdbcc43969560755e7cdae6de55e64d673'
+  OMP_NUM_THREADS: '1'
+  MKL_NUM_THREADS: '1'
+  OPENBLAS_NUM_THREADS: '1'
+  NUMEXPR_NUM_THREADS: '1'
+
+jobs:
+  authorization-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXECUTION_HEAD }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+
+      - name: Install exact frozen runtime
+        run: |
+          python -m pip install --disable-pip-version-check \
+            numpy==2.5.1 scipy==1.17.0 scikit-learn==1.9.0 pyarrow==25.0.0 duckdb==1.3.2
+
+      - name: Verify exact PR head and authorization contract
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXECUTION_HEAD"
+          python scripts/audit_stage4_alpha_v1_c007_final_refit_authorization.py | tee final_refit_authorization_audit.json
+          python - <<'PY'
+          import hashlib,json
+          p='governance/stage4_alpha_v1_c007_final_refit_authorization.json'
+          a=json.load(open(p,encoding='utf-8'))
+          fp=hashlib.sha256(json.dumps(a['fingerprint_basis'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          assert fp==a['fingerprint']=='7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295'
+          assert a['fingerprint_basis']['hard_boundaries']['no_fit_in_authorization_gate'] is True
+          print(json.dumps({'authorization_fingerprint':fp,'model_fit_executed':False}))
+          PY
+
+      - name: Verify exact C007 constructor without fitting
+        run: |
+          python - <<'PY'
+          import json,duckdb,numpy,pyarrow,scipy,sklearn
+          from sklearn.ensemble import HistGradientBoostingRegressor
+          a=json.load(open('governance/stage4_alpha_v1_c007_final_refit_authorization.json',encoding='utf-8'))
+          r=a['fingerprint_basis']['runtime']; p=a['fingerprint_basis']['selected_candidate']['params']
+          assert numpy.__version__==r['numpy'] and scipy.__version__==r['scipy']
+          assert sklearn.__version__==r['scikit_learn'] and pyarrow.__version__==r['pyarrow'] and duckdb.__version__==r['duckdb']
+          m=HistGradientBoostingRegressor(**p)
+          got=m.get_params()
+          for k,v in p.items(): assert got[k]==v, (k,got[k],v)
+          assert a['fingerprint_basis']['fit_execution']['fit_count_exact']==1
+          print(json.dumps({'candidate_id':'C007','constructor_exact':True,'model_fit_executed':False}))
+          PY
+
+      - name: Re-download and hash accepted development-CV aggregate evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/cv-aggregate
+          curl --fail --location --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${CV_AGG_AID}/zip" \
+            -o build/cv-aggregate.zip
+          echo "${CV_AGG_ZIP_SHA}  build/cv-aggregate.zip" | sha256sum -c -
+          unzip -q build/cv-aggregate.zip -d build/cv-aggregate
+          echo "${CANDIDATE_SELECTION_SHA}  build/cv-aggregate/candidate_selection.json" | sha256sum -c -
+          echo "${PBO_SHA}  build/cv-aggregate/pbo_diagnostic.json" | sha256sum -c -
+          echo "${DSR_SHA}  build/cv-aggregate/dsr_diagnostic.json" | sha256sum -c -
+          echo "${AGG_AUDIT_SHA}  build/cv-aggregate/aggregate_independent_audit.json" | sha256sum -c -
+          python - <<'PY'
+          import json
+          p='build/cv-aggregate/'
+          x=json.load(open(p+'execution_manifest.json',encoding='utf-8'))
+          s=json.load(open(p+'candidate_selection.json',encoding='utf-8'))
+          b=json.load(open(p+'pbo_diagnostic.json',encoding='utf-8'))
+          d=json.load(open(p+'dsr_diagnostic.json',encoding='utf-8'))
+          a=json.load(open(p+'aggregate_independent_audit.json',encoding='utf-8'))
+          assert x['execution_head']=='c733d455d1f61723f0783c1809aa52ec4b0078b3'
+          assert x['candidate_count']==11 and x['trial_records']==55 and x['successful_trial_records']==55
+          assert x['selected_candidate']==s['selected_candidate']=='C007'
+          assert b['score_weighting']=='DAILY_OBSERVATION_WEIGHTED_ACROSS_SELECTED_BLOCKS'
+          assert b['pass'] is True and abs(b['pbo']-0.11904761904761904)<1e-15
+          assert d['pass'] is True and abs(d['dsr_probability']-0.9999989891602007)<1e-15
+          assert a['pass'] is True and a['failed_checks']==[]
+          assert x['final_development_refit_executed'] is False
+          assert x['oos_accessed'] is False and x['lockbox_accessed'] is False
+          assert x['live_signal_allowed'] is False and x['authoritative_model_output'] is False
+          PY
+
+      - name: Re-download and hash immutable development labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/dev-labels
+          curl --fail --location --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${LABEL_AID}/zip" \
+            -o build/dev-labels.zip
+          echo "${LABEL_ZIP_SHA}  build/dev-labels.zip" | sha256sum -c -
+          unzip -q build/dev-labels.zip -d build/dev-labels
+          echo "${LABEL_SHA}  build/dev-labels/development_labels.parquet" | sha256sum -c -
+          python - <<'PY'
+          import json,os
+          p='build/dev-labels/'
+          m=json.load(open(p+'execution_manifest.json',encoding='utf-8'))
+          a=json.load(open(p+'independent_audit.json',encoding='utf-8'))
+          assert m['label_rows']==5197648 and m['valid_20d_rows']==5103016
+          assert m['labels_sha256']==os.environ['LABEL_SHA']
+          assert m['independent_audit_pass'] is True
+          assert m['oos_labels_materialized'] is False and m['lockbox_labels_materialized'] is False
+          assert a['pass'] is True and a['failed_checks']==[]
+          assert a['checks']['physical_market_source_guard'] is True
+          assert a['checks']['no_future_market_rows_read'] is True
+          assert a['labels_sha256']==os.environ['LABEL_SHA']
+          assert a['model_fit_allowed'] is False and a['oos_label_access_allowed'] is False and a['lockbox_label_access_allowed'] is False
+          PY
+
+      - name: Prove authorization gate has no trainer fit or model weights
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -n -E '\.fit\(|fit_predict\(|partial_fit\(' scripts/audit_stage4_alpha_v1_c007_final_refit_authorization.py
+          test ! -e scripts/run_stage4_alpha_v1_c007_final_refit.py
+          test ! -e models/stage4_alpha_v1_c007
+          test ! -e artifacts/stage4_alpha_v1_c007_final_refit
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            changed="$(git diff --name-only '${{ github.event.pull_request.base.sha }}' HEAD)"
+            forbidden="$(printf '%s\n' "$changed" | grep -E '^(data/stage2_final/|data/stage3_final/|models/|artifacts/)' || true)"
+            test -z "$forbidden" || { echo "$forbidden"; exit 1; }
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage4-alpha-v1-c007-final-refit-authorization-audit
+          path: final_refit_authorization_audit.json
+          retention-days: 90

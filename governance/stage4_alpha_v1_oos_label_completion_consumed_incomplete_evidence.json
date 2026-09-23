@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "status": "CONSUMED_INCOMPLETE_EXECUTION_NO_PROMOTION",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "2d41c39d4400b80bdd8d3f3cd6c6e0e85838b0531878cc0e10baf25070b993b6",
+  "fingerprint_basis": {
+    "evidence_id": "STAGE4_ALPHA_V1_OOS_LABEL_COMPLETION_CONSUMED_INCOMPLETE_V1",
+    "authorization_fingerprint": "b6413b67ace2601bb03f2d45e7656ab3776ee3b9e90ecfe3ed32b92626eba16b",
+    "authorization_single_use": true,
+    "authorization_consumed": true,
+    "authorization_reusable": false,
+    "authorization_runs_remaining_after_event": 0,
+    "consumption_event": "FIRST_SUCCESSFUL_READ_OF_ANY_OOS_MARKET_VALUE_USED_FOR_LABEL_MATERIALIZATION_OR_FIRST_SUCCESSFUL_READ_OF_ANY_OOS_LABEL_VALUE_WHICHEVER_OCCURS_FIRST",
+    "consumption_proof": {
+      "source_file": "scripts/stage4_alpha_v1_label_materialization.py",
+      "source_git_blob": "de4780f99f65539292284c3d186502c7d194aeed",
+      "accepted_source_sha256": "97442670c4f5e86e541c4730549c454c07507d38459d56c742211cc4c2103ab0",
+      "probe_sql": "SELECT CAST(\"close\" AS DOUBLE) FROM read_parquet(market) LIMIT 1",
+      "code_order": [
+        "EXECUTE_OOS_MARKET_VALUE_PROBE_AND_FETCHONE",
+        "FAIL_IF_PROBE_RETURNED_NO_ROW",
+        "CALL_CONSUME_CALLBACK",
+        "CREATE_TEMP_MARKET_TABLE"
+      ],
+      "callback_was_entered": true,
+      "logical_proof": "STACK_TRACE_ENTERED_consume_once_FROM_materialize_labels_LINE_127;_THEREFORE_probe_fetchone_SUCCEEDED_AND_DID_NOT_RETURN_NONE_BEFORE_CALLBACK",
+      "exact_consumed_at_timestamp_available": false,
+      "consumption_time_window_utc": {
+        "lower_bound": "2026-09-22T13:56:20.4468234Z",
+        "upper_bound": "2026-09-22T13:56:27.8961386Z"
+      },
+      "marker_persisted": false,
+      "marker_failure_does_not_reverse_consumption": true
+    },
+    "execution": {
+      "workflow_run_id": 35736766602,
+      "workflow_event": "workflow_dispatch",
+      "workflow_name": "Stage4 Alpha V1 OOS Label Completion Single-Use Execution",
+      "run_attempt": 1,
+      "workflow_dispatch_ref": "agent/stage3-clean-integration",
+      "workflow_dispatch_ref_sha": "36c24fdef7841e74e500fb54d9759890095316e7",
+      "authorized_execution_head": "f5eb7df2e287d1a6b922eac7d4ef60f6bb08fdc0",
+      "arming_merge_sha": "36c24fdef7841e74e500fb54d9759890095316e7",
+      "execution_pr": 168,
+      "arming_pr": 169,
+      "conclusion": "failure",
+      "preflight_pass": true,
+      "unique_first_durable_workflow_dispatch_owner": true,
+      "rerun_allowed": false
+    },
+    "frozen_identity": {
+      "preregistration_fingerprint": "0e9b79a406e3a7789ade5b93878cd4276c5f424b0f0e9e4906048b9254e4cac3",
+      "implementation_fingerprint": "a9addd6eefc82737e5a39c7828dc9b68a5d4336e2ee3e8ebeaeee1d628014045",
+      "implementation_acceptance_fingerprint": "60522faad23985ffd5aa643be8af528673b6db8026874ef0565d2a8d30fcdaa3",
+      "authorization_reservation_fingerprint": "4c91f96fee0970a25ecaef673419a7c5e02c02b72591e2aafeac6ee594f38558",
+      "execution_contract_fingerprint": "a1795f38cea7254924dd0d3ae4e905f40e7660f0c3eee5c7ad7857b5f95c760f",
+      "physical_boundary_contract_fingerprint": "67e8555d3a9212a003a8293dc381cce0f7294917ef72875fed3218f240e0c255",
+      "runtime_veto_v1_1_fingerprint": "727e5d1496f1a79240d5c4f874e6b956a9539b80c104169268b9c80d26d45676"
+    },
+    "immutable_inputs": {
+      "prediction_artifact_id": 10142949262,
+      "prediction_artifact_digest": "sha256:068b451ecc21b05557334569e3af957e106087bf0839a3df01cbcf838536fe4c",
+      "predictions_sha256": "66a039aa76e4b1962049e3e0d41a43fb1f6c626d934a552f871f91bd27fe01da",
+      "prediction_rows": 1515811,
+      "prediction_recomputed": false,
+      "physical_boundary_artifact_id": 10142948546,
+      "physical_boundary_artifact_digest": "sha256:76711c8bd5277bfe569868a0be7bba5dd074cac92fde88c92e4c0ce7e127a86c",
+      "artifacts_downloaded_and_verified_before_runner": true,
+      "broad_source_redownload": false,
+      "physical_boundary_rebuild": false
+    },
+    "failure": {
+      "stage": "POST_FIRST_OOS_MARKET_VALUE_READ_DURING_CONSUMPTION_MARKER_WRITE",
+      "root_cause_class": "FROZEN_LABEL_COMPLETION_IMPLEMENTATION_NAME_ERROR",
+      "exception": "NameError",
+      "message": "name 'CONSUMPTION_EVENT' is not defined",
+      "undefined_symbol": "CONSUMPTION_EVENT",
+      "failing_file": "scripts/stage4_alpha_v1_label_materialization.py",
+      "failing_function": "write_consumption_marker",
+      "failing_source_line": 91,
+      "marker_write_completed": false,
+      "label_materialization_completed": false,
+      "alpha_gate_evaluated": false,
+      "runtime_veto_evaluated": false,
+      "combined_promotion_established": false
+    },
+    "run_output_evidence": {
+      "result_artifact_id": 10697048461,
+      "artifact_name": "stage4-alpha-v1-oos-label-completion-single-use-result",
+      "artifact_digest": "sha256:e32cbde7269803f11697a0364ca546ec883979f24ca6ed29877aff7aac53578b",
+      "artifact_size_bytes": 1723,
+      "uploaded_files_count": 2,
+      "completion_result_created": false,
+      "runtime_veto_result_created": false
+    },
+    "hard_boundaries": {
+      "model_loaded": false,
+      "fit_executed": false,
+      "retraining_executed": false,
+      "tuning_executed": false,
+      "candidate_reselection_executed": false,
+      "prediction_recomputation_executed": false,
+      "final_lockbox_accessed": false,
+      "live_signal_allowed": false,
+      "main_merge_allowed": false,
+      "authoritative_output_allowed": false,
+      "auto_promotion": false
+    },
+    "disposition": {
+      "alpha_gate_status": "NOT_EVALUATED_EXECUTION_INCOMPLETE",
+      "runtime_veto_gate_status": "NOT_EVALUATED_EXECUTION_INCOMPLETE",
+      "combined_promotion_status": "NO_PROMOTION_NOT_ESTABLISHED_FAIL_CLOSED",
+      "authorization_status": "CONSUMED_NON_REUSABLE",
+      "current_authorization_runs_remaining": 0,
+      "reexecution_under_current_authorization": "FORBIDDEN",
+      "final_lockbox_open_allowed": false,
+      "research_may_continue_only_via": "SEPARATE_SUPERSEDING_PREREGISTRATION_AND_GOVERNANCE_DECISION_PRESERVING_THIS_CONSUMED_FAILURE"
+    }
+  },
+  "next_gate": "GOVERNANCE_ACCEPT_THIS_CONSUMED_INCOMPLETE_EVIDENCE_CLOSE_AUTHORIZATION_NO_RERUN"
+}

@@ -1,0 +1,184 @@
+name: Stage4 Alpha V1 Development Labels and Causal Split Seal
+
+on:
+  push:
+    branches:
+      - agent/stage4-alpha-v1-development-labels
+    paths:
+      - 'governance/stage4_alpha_v1_development_labels_contract.json'
+      - 'scripts/build_stage4_alpha_v1_development_labels.py'
+      - 'scripts/audit_stage4_alpha_v1_development_labels.py'
+      - '.github/workflows/stage4-alpha-v1-development-labels.yml'
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - 'governance/stage4_alpha_v1_development_labels_contract.json'
+      - 'scripts/build_stage4_alpha_v1_development_labels.py'
+      - 'scripts/audit_stage4_alpha_v1_development_labels.py'
+      - '.github/workflows/stage4-alpha-v1-development-labels.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  MATRIX_AID: '9168728086'
+  MATRIX_ZIP_SHA: 'a4d3a10165bf3b369c77c7b4f77e97663bc3125f506d9203388e6f63198bda4a'
+  MATRIX_SHA: 'c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c'
+  G3_AID: '8651700277'
+  G3_ZIP_SHA: 'bf977d4f379d421bd198865b90df90caef7ba6cfb5d6d1af96e5487300c1a2f8'
+  G5_AID: '8651976824'
+  G5_ZIP_SHA: 'acbeaaca9fc849acbef213dbd9b50df034f28e36acd352e625acb44e536cbe22'
+  G2_AID: '8651477081'
+  G2_ZIP_SHA: '652193c9ce18ad9e4cc93b8050910a1fb8b91c849bfdd990e9ee5f860ac147dd'
+
+jobs:
+  materialize-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check duckdb==1.3.2
+
+      - name: Static contract and permission guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json
+          c=json.load(open('governance/stage4_alpha_v1_development_labels_contract.json',encoding='utf-8'))
+          p=json.load(open('governance/stage4_alpha_v1_preregistration_v1_2_supersession.json',encoding='utf-8'))
+          fp=hashlib.sha256(json.dumps(c['fingerprint_basis'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          assert fp==c['fingerprint']=='6ac17734a3a53cfa8dd80deeea020f9acdffa0e4552546e0855056c4b099caf8'
+          assert p['fingerprint']==c['fingerprint_basis']['effective_preregistration']['fingerprint']=='b73f9b55efb04fac5416f6fdd39c17780b3f9e46c82d0da6b111547e3d258cf8'
+          perms=c['fingerprint_basis']['permissions']
+          assert perms['development_label_materialization_allowed'] is True
+          assert perms['model_fit_allowed'] is False
+          assert perms['oos_label_access_allowed'] is False
+          assert perms['lockbox_label_access_allowed'] is False
+          assert perms['live_signal_allowed'] is False
+          assert perms['main_merge_allowed'] is False
+          PY
+          ! grep -R --line-number -E 'fit\(|fit_predict\(|partial_fit\(' \
+            scripts/build_stage4_alpha_v1_development_labels.py \
+            scripts/audit_stage4_alpha_v1_development_labels.py
+
+      - name: Download exact frozen inputs only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/matrix build/g3 build/g5 build/g2 build/duckdb-tmp build/duckdb-audit-tmp
+          download() {
+            aid="$1"; sha="$2"; zip="$3"; dir="$4"
+            curl --fail --location --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${aid}/zip" -o "$zip"
+            echo "${sha}  ${zip}" | sha256sum -c -
+            unzip -q "$zip" -d "$dir"
+          }
+          download "$MATRIX_AID" "$MATRIX_ZIP_SHA" build/matrix.zip build/matrix
+          download "$G3_AID" "$G3_ZIP_SHA" build/g3.zip build/g3
+          download "$G5_AID" "$G5_ZIP_SHA" build/g5.zip build/g5
+          download "$G2_AID" "$G2_ZIP_SHA" build/g2.zip build/g2
+          echo "${MATRIX_SHA}  build/matrix/stage4_v1_2_feature_matrix.parquet" | sha256sum -c -
+          test -f build/g3/frozen-g3/build/g3/sse/sse_2015_shard00.csv.gz
+          test -f build/g3/frozen-g3/build/g3/szse/szse_2022.csv.gz
+          test -f build/g5/g5_adjustment_chain.csv.gz
+          test -f build/g2/security_intervals.csv
+          python - <<'PY'
+          import json
+          a=json.load(open('build/g5/g5_adjustment_audit.json',encoding='utf-8'))
+          assert a['pass'] is True and a['adjustment_event_count']==25914
+          PY
+
+      - name: Materialize development-only labels and causal split seal
+        run: |
+          python scripts/build_stage4_alpha_v1_development_labels.py \
+            --matrix build/matrix/stage4_v1_2_feature_matrix.parquet \
+            --g3-root build/g3/frozen-g3/build/g3 \
+            --g5-chain build/g5/g5_adjustment_chain.csv.gz \
+            --g2-intervals build/g2/security_intervals.csv \
+            --contract governance/stage4_alpha_v1_development_labels_contract.json \
+            --prereg-v12 governance/stage4_alpha_v1_preregistration_v1_2_supersession.json \
+            --out build/dev-labels
+
+      - name: Independent label and split audit
+        run: |
+          python scripts/audit_stage4_alpha_v1_development_labels.py \
+            --labels build/dev-labels/development_labels.parquet \
+            --matrix build/matrix/stage4_v1_2_feature_matrix.parquet \
+            --g3-root build/g3/frozen-g3/build/g3 \
+            --contract governance/stage4_alpha_v1_development_labels_contract.json \
+            --prereg-v12 governance/stage4_alpha_v1_preregistration_v1_2_supersession.json \
+            --materialization-audit build/dev-labels/materialization_audit.json \
+            --split-seal build/dev-labels/development_split_seal.json \
+            --censoring build/dev-labels/development_label_censoring.json \
+            --out build/dev-labels/independent_audit.json
+
+      - name: Lock exact-head execution manifest
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          r=Path('build/dev-labels')
+          m=json.load(open(r/'materialization_audit.json',encoding='utf-8'))
+          a=json.load(open(r/'independent_audit.json',encoding='utf-8'))
+          assert m['pass'] is True and a['pass'] is True
+          def h(n): return hashlib.sha256((r/n).read_bytes()).hexdigest()
+          out={
+            'schema_version':1,
+            'gate':'STAGE4_ALPHA_V1_DEVELOPMENT_LABELS_AND_CAUSAL_SPLIT_SEAL_EXACT_HEAD',
+            'execution_head':'${{ github.sha }}',
+            'effective_preregistration_version':'V1.2',
+            'effective_preregistration_fingerprint':'b73f9b55efb04fac5416f6fdd39c17780b3f9e46c82d0da6b111547e3d258cf8',
+            'label_contract_fingerprint':'6ac17734a3a53cfa8dd80deeea020f9acdffa0e4552546e0855056c4b099caf8',
+            'feature_matrix_artifact_id':int('${{ env.MATRIX_AID }}'),
+            'historical_ohlcv_artifact_id':int('${{ env.G3_AID }}'),
+            'historical_g5_artifact_id':int('${{ env.G5_AID }}'),
+            'historical_lifecycle_artifact_id':int('${{ env.G2_AID }}'),
+            'label_rows':a['label_rows'],
+            'valid_5d_rows':a['valid_5d_rows'],
+            'valid_20d_rows':a['valid_20d_rows'],
+            'labels_sha256':h('development_labels.parquet'),
+            'censoring_sha256':h('development_label_censoring.json'),
+            'split_seal_sha256':h('development_split_seal.json'),
+            'materialization_audit_sha256':h('materialization_audit.json'),
+            'independent_audit_sha256':h('independent_audit.json'),
+            'independent_audit_pass':True,
+            'oos_labels_materialized':False,
+            'lockbox_labels_materialized':False,
+            'model_fit_allowed':False,
+            'live_signal_allowed':False,
+            'authoritative_model_output':False,
+            'next_gate':'SEPARATE_ALPHA_V1_DEVELOPMENT_TRAINING_EXECUTION_AUTHORIZATION'
+          }
+          (r/'execution_manifest.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Prove output is label-only and contains no model artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e build/dev-labels/model.pkl
+          test ! -e build/dev-labels/model.joblib
+          test ! -e build/dev-labels/weights.json
+          find build/dev-labels -maxdepth 1 -type f -printf '%f\n' | sort
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage4-alpha-v1-development-labels-v1
+          path: build/dev-labels
+          compression-level: 0
+          retention-days: 90

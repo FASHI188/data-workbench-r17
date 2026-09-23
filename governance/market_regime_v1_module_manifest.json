@@ -1,0 +1,20 @@
+{
+  "module_id": "market_regime_v1",
+  "module_version": "V1",
+  "contract_version": "V1",
+  "kind": "FEATURE_PLUGIN",
+  "lifecycle": "ACCEPTED",
+  "enabled": false,
+  "input_schema": "schemas/stage4_market_regime_v1_input.schema.json",
+  "output_schema": "schemas/stage4_market_regime_v1_output.schema.json",
+  "dependencies": ["stage2_g3_frozen_ohlcv", "freshness_v2_forward_ohlcv"],
+  "training_allowed": false,
+  "live_allowed": false,
+  "failure_policy": "ISOLATE_FAIL_CLOSED",
+  "fallback_behavior": "BASELINE_UNCHANGED",
+  "timeout_seconds": 1800,
+  "max_retries": 0,
+  "acceptance_ref": "governance/stage4_market_regime_v1_accepted_promotion.json",
+  "rollback_target_module_version": "V1",
+  "rollback_target_module_set_fingerprint": "19568c012959f821a8efe94df5999f6066b612aecb4eba5412a38d4ba35695b2"
+}

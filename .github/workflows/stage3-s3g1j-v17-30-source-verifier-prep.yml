@@ -1,0 +1,29 @@
+name: Stage3 S3G1J V17.30 Source Verifier Prep
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/verify_stage3_s3g1j_v17_30_source_shards.py'
+      - 'tests/test_stage3_v17_30_source_shard_verifier.py'
+      - '.github/workflows/stage3-s3g1j-v17-30-source-verifier-prep.yml'
+
+permissions:
+  contents: read
+
+env:
+  PYTHONPATH: scripts
+
+jobs:
+  verifier-prep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Compile and test independent shard verifier
+        run: |
+          python -m py_compile scripts/verify_stage3_s3g1j_v17_30_source_shards.py
+          python -m unittest tests.test_stage3_v17_30_source_shard_verifier -v

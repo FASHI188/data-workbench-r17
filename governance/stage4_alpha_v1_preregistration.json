@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "preregistration_id": "STAGE4_ALPHA_V1_PREREGISTRATION",
+  "version": "V1.0",
+  "status": "FROZEN_NO_LABEL_ACCESS_NO_TRAINING",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "9cac700cd1043ee153bbc224de67725be3ce357dd9d25d6da02978c98a088589",
+  "fingerprint_basis": {
+    "preregistration_id": "STAGE4_ALPHA_V1_PREREGISTRATION",
+    "version": "V1.0",
+    "authority": {
+      "integration_base_sha": "ed8119f6033e57ef0195ea82c88b4e987ee13a47",
+      "feature_set_version": "V1.2",
+      "feature_set_fingerprint": "d319ea1c236d580d0d032a055e4cdc07bf45e586ecbef664c6f4b3a8be98f9ff",
+      "feature_matrix_artifact_id": 9168728086,
+      "feature_matrix_artifact_digest": "sha256:a4d3a10165bf3b369c77c7b4f77e97663bc3125f506d9203388e6f63198bda4a",
+      "feature_matrix_sha256": "c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c",
+      "feature_matrix_rows": 7924181,
+      "trade_date_min": "2015-01-05",
+      "trade_date_max": "2026-08-12"
+    },
+    "label_specification": {
+      "decision_information_cut": "SESSION_T_CLOSE",
+      "entry_reference": "NEXT_TRADING_SESSION_OPEN",
+      "horizons_sessions": [5, 20],
+      "primary_horizon_sessions": 20,
+      "exit_reference": "CLOSE_OF_H_TH_MARKET_SESSION_COUNTING_ENTRY_SESSION_AS_1",
+      "stock_return": "TOTAL_RETURN_ADJUSTED_ENTRY_OPEN_TO_EXIT_CLOSE_USING_ACCEPTED_G5_CHAIN",
+      "benchmark_return": "EQUAL_WEIGHT_RETURN_OF_SAME_DAY_ELIGIBLE_UNIVERSE_OVER_IDENTICAL_ENTRY_EXIT_INTERVAL",
+      "primary_target": "STOCK_TOTAL_RETURN_MINUS_ELIGIBLE_UNIVERSE_EQUAL_WEIGHT_RETURN",
+      "secondary_target": "STOCK_TOTAL_RETURN",
+      "label_feature_separation": "LABELS_MUST_BE_MATERIALIZED_IN_A_SEPARATE_ARTIFACT_AND_NEVER_JOINED_BACK_INTO_THE_ACCEPTED_FEATURE_MATRIX",
+      "future_data_is_label_only": true,
+      "missing_entry_or_exit": "MISSING_FAIL_CLOSED",
+      "suspension_or_incomplete_horizon": "MISSING_WITH_CENSORING_REASON_REQUIRED",
+      "delisting_without_VERIFIED_terminal_value": "MISSING_WITH_DELISTING_CENSOR_FLAG_NO_IMPUTED_TERMINAL_RETURN",
+      "censoring_report_required": true,
+      "no_forward_fill": true
+    },
+    "time_partitions": {
+      "development": {"start": "2015-01-05", "end": "2022-12-30", "purpose": "MODEL_FAMILY_AND_HYPERPARAMETER_SELECTION_ONLY"},
+      "oos_validation": {"start": "2023-01-03", "end": "2024-12-31", "purpose": "SEALED_OOS_VALIDATION_OPEN_ONCE_AFTER_DEVELOPMENT_SELECTION_FROZEN"},
+      "final_lockbox": {"start": "2025-01-02", "end": "2026-08-12", "purpose": "SEALED_FINAL_LOCKBOX_OPEN_ONCE_AFTER_MODEL_CODE_HYPERPARAMETERS_AND_PROMOTION_RULES_FROZEN"},
+      "max_label_horizon_sessions": 20,
+      "boundary_purge_sessions": 20,
+      "boundary_embargo_sessions": 20,
+      "latest_rows_without_full_horizon": "LABEL_MISSING_NOT_DROPPED_FROM_FEATURE_AUDIT"
+    },
+    "development_cross_validation": {
+      "method": "COMBINATORIAL_PURGED_BLOCK_CV",
+      "calendar_blocks": 6,
+      "test_blocks_per_split": 2,
+      "expected_combinations": 15,
+      "purge_sessions": 20,
+      "embargo_sessions": 20,
+      "time_order_preserved": true,
+      "random_kfold_forbidden": true,
+      "future_train_to_past_test_forbidden": true,
+      "all_candidate_trials_logged": true
+    },
+    "model_search_budget": {
+      "candidate_families": [
+        {"id": "RIDGE_V1", "role": "LINEAR_BASELINE_CHALLENGER", "hyperparameters": {"alpha": [1.0, 10.0, 100.0]}, "candidate_count": 3},
+        {"id": "HIST_GRADIENT_BOOSTING_V1", "role": "NONLINEAR_CHALLENGER", "fixed": {"max_iter": 200, "early_stopping": false, "random_state": 20260813}, "hyperparameters": {"learning_rate": [0.03, 0.07], "max_leaf_nodes": [15, 31], "l2_regularization": [1.0, 10.0]}, "candidate_count": 8}
+      ],
+      "total_candidate_configurations": 11,
+      "candidate_budget_hard_cap": 11,
+      "posthoc_grid_expansion_forbidden": true,
+      "new_candidate_requires_preregistration_supersession": true
+    },
+    "preprocessing": {
+      "fit_on_training_partition_only": true,
+      "financial_absolute_cny_transform": "SIGNED_LOG1P",
+      "continuous_clip": "TRAINING_ONLY_QUANTILES_0_001_AND_0_999",
+      "ridge_missing": "TRAINING_MEDIAN_IMPUTATION_WITH_EXISTING_MISSING_INDICATORS_RETAINED",
+      "ridge_scaling": "TRAINING_ONLY_STANDARD_SCALER",
+      "hist_gradient_boosting_missing": "NATIVE_MISSING_VALUES",
+      "regime_state": "ONE_HOT_FIT_ON_TRAINING_LEVELS_UNKNOWN_TO_ALL_ZERO_WITH_UNKNOWN_FLAG",
+      "dynamic_feature_selection_forbidden": true,
+      "oos_fitted_preprocessor_forbidden": true
+    },
+    "selection_metric": {
+      "primary": "MEDIAN_ACROSS_CV_SPLITS_OF_MEAN_DAILY_CROSS_SECTIONAL_SPEARMAN_IC_20D",
+      "tie_breakers": ["HIGHER_WORST_SPLIT_MEAN_DAILY_SPEARMAN_IC_20D", "LOWER_MODEL_COMPLEXITY", "LOWER_CANDIDATE_ORDINAL"],
+      "secondary_diagnostics": ["MEAN_DAILY_SPEARMAN_IC_5D", "IC_INFORMATION_RATIO_20D", "TOP_DECILE_MINUS_UNIVERSE_EXCESS_RETURN_20D", "DECILE_MONOTONICITY_20D"],
+      "oos_metrics_must_not_change_selection": true
+    },
+    "abstention_and_coverage": {
+      "operational_default_top_score_coverage": 0.10,
+      "sensitivity_coverages": [0.05, 0.20],
+      "sensitivity_may_not_be_selected_posthoc": true,
+      "score_quantile_cut_is_cross_sectional_each_decision_day": true
+    },
+    "economic_diagnostics": {
+      "portfolio": "EQUAL_WEIGHT_LONG_ONLY_TOP_SCORE_BUCKET",
+      "rebalance_frequency_sessions": {"5d": 5, "20d": 20},
+      "costs_not_used_for_model_selection": true,
+      "implementation_shortfall_stress_bps_per_side": [5, 15, 30],
+      "statutory_fee_schedule_required_by_trade_date": true,
+      "stamp_duty_change_2023_08_28": "SELL_SIDE_RATE_HALVED_FROM_PRIOR_RATE",
+      "exchange_handling_fee_change_2023_08_28": {"pre_rate_pct_each_side": 0.00487, "post_rate_pct_each_side": 0.00341},
+      "broker_commission_user_specific": "NOT_ASSUMED_AS_FACT_USE_STRESS_OVERLAY"
+    },
+    "overfit_controls": {
+      "probability_of_backtest_overfitting_required": true,
+      "pbo_scope": "ALL_11_PREREGISTERED_CANDIDATE_CONFIGURATIONS_ON_DEVELOPMENT_CV_PATHS",
+      "pbo_promotion_ceiling": 0.20,
+      "deflated_sharpe_ratio_required": true,
+      "dsr_scope": "PREREGISTERED_10_PERCENT_LONG_ONLY_20D_ECONOMIC_DIAGNOSTIC",
+      "dsr_probability_floor": 0.95,
+      "trial_count_must_include_failed_or_discarded_configs": true,
+      "trial_deletion_forbidden": true
+    },
+    "oos_validation_gate": {
+      "open_once": true,
+      "model_and_hyperparameters_frozen_before_open": true,
+      "required": [
+        "MEAN_DAILY_SPEARMAN_IC_20D_GT_0",
+        "BLOCK_BOOTSTRAP_95PCT_CI_LOWER_BOUND_FOR_MEAN_DAILY_IC_20D_GT_0",
+        "POSITIVE_MEAN_IC_IN_AT_LEAST_6_OF_8_CALENDAR_QUARTERS",
+        "PREREGISTERED_10_PERCENT_TOP_BUCKET_NET_EXCESS_RETURN_GT_0_AT_15_BPS_PER_SIDE_STRESS",
+        "NO_SIGN_INVERSION_IN_5_PERCENT_OR_20_PERCENT_COVERAGE_SENSITIVITY",
+        "PBO_LE_0_20",
+        "DSR_GE_0_95"
+      ],
+      "failure_action": "NO_PROMOTION_NO_RETUNING_ON_OOS_CREATE_SUPERSEDING_PREREGISTRATION_IF_RESEARCH_CONTINUES"
+    },
+    "final_lockbox_gate": {
+      "open_once": true,
+      "opened_only_after_oos_gate_pass_and_candidate_frozen": true,
+      "required": [
+        "MEAN_DAILY_SPEARMAN_IC_20D_GT_0",
+        "POSITIVE_PREREGISTERED_10_PERCENT_TOP_BUCKET_NET_EXCESS_RETURN_AT_15_BPS_PER_SIDE_STRESS",
+        "NO_CATASTROPHIC_SIGN_INVERSION_VS_OOS_VALIDATION",
+        "MODEL_OUTPUT_SCHEMA_AND_FEATURE_FINGERPRINT_EXACT"
+      ],
+      "failure_action": "NO_PROMOTION_LOCKBOX_CONSUMED_NO_RETUNING"
+    },
+    "promotion_and_permissions": {
+      "current_champion_unchanged": true,
+      "challenger_only": true,
+      "label_materialization_allowed": false,
+      "alpha_training_allowed": false,
+      "oos_label_access_allowed": false,
+      "final_lockbox_access_allowed": false,
+      "live_signal_allowed": false,
+      "authoritative_model_output": false,
+      "promotion_requires_separate_governance_acceptance": true,
+      "rollback_required": true
+    },
+    "external_methodology_sources": [
+      {"id": "PBO", "source": "Bailey et al. The Probability of Backtest Overfitting", "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2326253"},
+      {"id": "DSR", "source": "Bailey & Lopez de Prado. The Deflated Sharpe Ratio", "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2460551"},
+      {"id": "TIME_GAP", "source": "scikit-learn TimeSeriesSplit gap documentation", "url": "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html"},
+      {"id": "CN_STAMP_2023", "source": "MOF/STA Announcement 2023 No.39", "url": "https://fgk.chinatax.gov.cn/zcfgk/c102416/c5211343/content.html"},
+      {"id": "SSE_FEE_2023", "source": "SSE fee guidance", "url": "https://www.sse.com.cn/lawandrules/sselawsrules2025/charge/c/c_20250610_10781461.shtml"},
+      {"id": "SZSE_FEE_2023", "source": "SZSE fee notice", "url": "https://www.szse.cn/disclosure/notice/t20230818_602805.html"}
+    ]
+  },
+  "invariants": {
+    "no_real_labels_in_this_preregistration": true,
+    "no_training_results_in_this_preregistration": true,
+    "feature_matrix_immutable": true,
+    "oos_validation_sealed": true,
+    "final_lockbox_sealed": true,
+    "candidate_count_cannot_expand_without_supersession": true,
+    "failed_candidates_remain_in_trial_count": true,
+    "main_unchanged": true
+  },
+  "next_gate": "SEPARATE_ALPHA_V1_LABEL_MATERIALIZATION_AND_SPLIT_SEAL_WITHOUT_MODEL_FIT"
+}

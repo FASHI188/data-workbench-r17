@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "evidence_id": "STAGE4_ALPHA_V1_OOS_VALIDATION_CONSUMED_INCOMPLETE_V1",
+  "status": "CONSUMED_INCOMPLETE_EXECUTION_NO_PROMOTION",
+  "authorization": {
+    "fingerprint": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
+    "single_use": true,
+    "consumed": true,
+    "reusable": false,
+    "consumption_event": "FIRST_OOS_PREDICTION_COMPUTATION",
+    "consumed_at_utc": "2026-09-10T08:20:52.717508+00:00",
+    "after_consumption_reexecution_forbidden": true
+  },
+  "execution": {
+    "implementation_pr": 157,
+    "workflow_run_id": 34454575970,
+    "workflow_event": "push",
+    "workflow_name": "Stage4 Alpha V1 Single-Use OOS Auto-Push Recovery V2",
+    "execution_head": "3b91203693fb1dcc4c6e649747f89b1ca7be622e",
+    "run_attempt": 1,
+    "conclusion": "failure",
+    "recovery_reservation_owner": true,
+    "rerun_allowed": false
+  },
+  "frozen_identity": {
+    "candidate_id": "C007",
+    "model_sha256": "e85aabf694799a16f8c5a1dea017e3489a9025ecf3d484d7a4f3fd931b0d702c",
+    "preprocess_sha256": "4b7833e4c4bdba9b956dba190f7337003ae944a624b59ddad7654b1457608330",
+    "execution_contract_fingerprint": "224d9144d1989f021c29bb17ce13a6d2644b2d8992d604738b4e596a6907d177",
+    "physical_boundary_contract_fingerprint": "67e8555d3a9212a003a8293dc381cce0f7294917ef72875fed3218f240e0c255",
+    "runtime_veto_v1_1_fingerprint": "727e5d1496f1a79240d5c4f874e6b956a9539b80c104169268b9c80d26d45676",
+    "frozen_core_git_blob": "19134bc8960b6c9c825ea2708aa1aac14ce914af"
+  },
+  "pre_access_evidence": {
+    "exact_head": "e0433a0ce4917487bdf4c56a2717971f17620c13",
+    "runtime_reproducibility_run_id": 34454260184,
+    "repository_safety_run_id": 34454260190,
+    "branch_dispatch_carrier_run_id": 34454260472,
+    "lifecycle_diagnostic_run_id": 34454260276,
+    "legacy_auto_push_static_run_id": 34454260294,
+    "recovery_v2_dryrun_run_id": 34454260236,
+    "recovery_v2_dryrun_artifact_id": 10142824440,
+    "recovery_v2_dryrun_artifact_digest": "sha256:35815bf56167371e58399fb21660e6628d4ad80ff8bea94eba0bc8e0654b33ea",
+    "all_required_pre_access_runs_success": true,
+    "dryrun_model_loaded": false,
+    "dryrun_oos_prediction_executed": false,
+    "dryrun_oos_label_value_read": false,
+    "dryrun_authorization_consumed": false,
+    "dryrun_final_lockbox_accessed": false
+  },
+  "physical_boundary": {
+    "artifact_id": 10142948546,
+    "artifact_name": "stage4-alpha-v1-recovery-v2-oos-physical-boundary",
+    "artifact_digest": "sha256:76711c8bd5277bfe569868a0be7bba5dd074cac92fde88c92e4c0ce7e127a86c",
+    "implementation": "V1_2_LIFECYCLE_AWARE_CANDIDATE_READINESS",
+    "candidate_rows": 1453359,
+    "entry_lifecycle_inactive_rows": 52,
+    "exit_lifecycle_inactive_rows": 1217,
+    "active_lifecycle_integrity_failures": 0,
+    "post_oos_rows_observed": 0,
+    "independent_audit_pass": true
+  },
+  "partial_oos_output": {
+    "artifact_id": 10142949262,
+    "artifact_name": "stage4-alpha-v1-recovery-v2-oos-validation-single-use",
+    "artifact_digest": "sha256:068b451ecc21b05557334569e3af957e106087bf0839a3df01cbcf838536fe4c",
+    "files_exact": ["authorization_consumption.json", "oos_predictions.parquet"],
+    "authorization_consumption_json_sha256": "9c31ae395a7e4d441c95b0df7274c833121def80c3fef909d69d5ab2e861c3e2",
+    "oos_predictions_parquet_sha256": "66a039aa76e4b1962049e3e0d41a43fb1f6c626d934a552f871f91bd27fe01da",
+    "oos_predictions_rows_from_parquet_footer": 1515811,
+    "prediction_population_date_start": "2023-01-03",
+    "prediction_population_date_end": "2024-12-31",
+    "prediction_population_unique_key_precondition_passed_before_model_loop": true,
+    "lockbox_predictions_present": false
+  },
+  "failure": {
+    "stage": "POST_PREDICTION_LABEL_MATERIALIZATION",
+    "root_cause_class": "FROZEN_EXECUTION_IMPLEMENTATION_SQL_PARSER_ERROR",
+    "exception": "duckdb.duckdb.ParserException",
+    "message": "Parser Error: syntax error at or near close",
+    "failing_operation": "materialize_labels CREATE TEMP TABLE market with unquoted close identifier under frozen DuckDB 1.3.2 runtime",
+    "prediction_completed_before_failure": true,
+    "label_materialization_completed": false,
+    "alpha_gate_evaluated": false,
+    "runtime_veto_evaluated": false,
+    "runtime_veto_artifact_created": false
+  },
+  "hard_boundaries": {
+    "fit_executed": false,
+    "retraining_executed": false,
+    "tuning_executed": false,
+    "candidate_reselection_executed": false,
+    "prediction_ranking_modified": false,
+    "backfill_executed": false,
+    "replacement_executed": false,
+    "final_lockbox_accessed": false,
+    "live_signal_allowed": false,
+    "authoritative_model_output_allowed": false,
+    "main_merge_allowed": false
+  },
+  "disposition": {
+    "alpha_gate_status": "NOT_EVALUATED_EXECUTION_INCOMPLETE",
+    "runtime_veto_gate_status": "NOT_EVALUATED_EXECUTION_INCOMPLETE",
+    "combined_promotion_status": "NO_PROMOTION_NOT_ESTABLISHED_FAIL_CLOSED",
+    "current_authorization_runs_remaining": 0,
+    "reexecution_under_current_authorization": "FORBIDDEN",
+    "post_consumption_label_bearing_followup_under_current_authorization": "FORBIDDEN",
+    "final_lockbox_open_allowed": false,
+    "research_may_continue_only_via": "SUPERSEDING_PREREGISTRATION_WITH_OOS_CONSUMED_AND_NO_ERASURE_OF_THIS_FAILURE"
+  },
+  "next_gate": "SEPARATE_GOVERNANCE_ACCEPTANCE_OF_CONSUMED_INCOMPLETE_OOS_EVIDENCE;_NO_RERUN_AND_NO_PROMOTION"
+}

@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "evidence_id": "STAGE4_ALPHA_V1_DEVELOPMENT_TRAINING_EXECUTION_AUTHORIZATION",
+  "status": "ACCEPTED_NO_FIT_EXECUTED_IN_AUTHORIZATION_GATE",
+  "authorization_fingerprint": "2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c",
+  "authorization_contract": "governance/stage4_alpha_v1_training_execution_authorization.json",
+  "pr": 145,
+  "pr_head": "2d5ff13b2576de297d6e38121144a3294ed00937",
+  "integration_merge_sha": "df82aacbdd8584769c0280208e4de16ca5744658",
+  "workflow": {
+    "run_id": 31794373297,
+    "conclusion": "success",
+    "artifact_id": 9216763771,
+    "artifact_digest": "sha256:74ad51380593dd03c7bd607235d49a89136cb84fe4bb5957b241b2bd3a04088c"
+  },
+  "authorized_scope": {
+    "feature_count": 39,
+    "candidate_count": 11,
+    "causal_split_count": 5,
+    "required_candidate_split_trials": 55,
+    "fit_scope": "RESEARCH_ONLY_DEVELOPMENT_CV_EXACT_AUTHORIZATION",
+    "final_development_refit_allowed": false,
+    "oos_label_access_allowed": false,
+    "lockbox_label_access_allowed": false,
+    "live_signal_allowed": false,
+    "main_merge_allowed": false
+  },
+  "runtime_verified": {
+    "python": "3.12.13",
+    "numpy": "2.5.1",
+    "scipy": "1.17.0",
+    "scikit_learn": "1.9.0",
+    "pyarrow": "25.0.0",
+    "duckdb": "1.3.2",
+    "model_constructors_verified_without_fit": true
+  },
+  "input_evidence_reverified": {
+    "development_labels_artifact_id": 9216418323,
+    "development_labels_artifact_digest": "sha256:c4c8c475d79e964265dceec66da1673f9327469edc33531d6a21df8b61627e88",
+    "development_labels_sha256": "092061da5666215dcc1f4fa75ec0b1cdbcc43969560755e7cdae6de55e64d673",
+    "development_split_seal_sha256": "98579c8d1b73a63bf18ee47a5cea94b730037d37979d7e38d0a98405efc2df72",
+    "independent_label_audit_pass": true
+  },
+  "authorization_gate_created_model_weights": false,
+  "authorization_gate_executed_model_fit": false,
+  "next_gate": "EXACT_AUTHORIZED_RESEARCH_ONLY_11_CANDIDATE_X_5_SPLIT_DEVELOPMENT_CV_EXECUTION"
+}

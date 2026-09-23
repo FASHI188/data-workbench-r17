@@ -1,0 +1,99 @@
+name: Stage4 Alpha V1 OOS Label Completion Authorization V1.2
+on:
+  pull_request:
+    branches: [agent/stage3-clean-integration]
+    paths:
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-authorization-v1-2.yml'
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation-v1-2.yml'
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-repair-acceptance-v1-1.yml'
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-consumed-incomplete.yml'
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-authorization.yml'
+      - 'governance/accepted_project_state.json'
+      - 'governance/project_module_index.json'
+      - 'governance/stage4_alpha_v1_oos_label_completion_authorization_v1_2.json'
+      - 'governance/stage4_alpha_v1_oos_label_completion_authorization_audit_v1_2.json'
+      - 'scripts/audit_stage4_alpha_v1_oos_label_completion_authorization_v1_2.py'
+permissions:
+  contents: read
+jobs:
+  static-arming-governance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Detect V1.2 terminal result
+        id: result_v12
+        shell: bash
+        run: |
+          if test -f governance/stage4_alpha_v1_oos_label_completion_result_v1_2.json; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Verify V1.2 terminal result successor
+        if: steps.result_v12.outputs.present == 'true'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          e=json.loads(Path('governance/stage4_alpha_v1_oos_label_completion_result_v1_2.json').read_text())
+          s=json.loads(Path('governance/accepted_project_state.json').read_text())
+          b=e['fingerprint_basis']
+          assert e['fingerprint']=='12ab8b1386bf6d3dfe59ab5d0e354736bfc90846f1aeb1e9f6983ab0d2c37d4b'
+          assert e['status']=='ALPHA_FAIL_RUNTIME_VETO_INCOMPLETE_NO_PROMOTION_AUTHORIZATION_CONSUMED'
+          assert b['authorization']['consumed'] is True and b['authorization']['reusable'] is False
+          assert b['alpha']['evaluated'] is True and b['alpha']['status']=='FAIL'
+          assert b['runtime_veto']['evaluated'] is False
+          assert b['disposition']['combined_promotion_status']=='NO_PROMOTION_ALPHA_FAIL_FAIL_CLOSED'
+          assert s['permissions']['oos_label_access_allowed'] is False
+          assert s['permissions']['oos_label_bearing_execution_runs_remaining']==0
+          PY
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Audit V1.2 single-use arming
+        if: steps.result_v12.outputs.present != 'true'
+        run: python scripts/audit_stage4_alpha_v1_oos_label_completion_authorization_v1_2.py
+      - name: Prove arming PR is non-consuming
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e build/oos
+          test ! -e build/out
+          ! grep -n -E 'download-artifact|curl|wget|gh[[:space:]]+api|read_parquet\(|run_stage4_alpha_v1_oos_label_completion.py[[:space:]]+--authorization' .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-v1-2.yml | grep -v 'grep -n -E'
+      - name: Prove exact V1.2 arming scope
+        if: steps.result_v12.outputs.present != 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed.txt
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation-v1-2.yml
+          .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-v1-2.yml
+          .github/workflows/stage4-alpha-v1-oos-label-completion-authorization.yml
+          .github/workflows/stage4-alpha-v1-oos-label-completion-consumed-incomplete.yml
+          .github/workflows/stage4-alpha-v1-oos-label-completion-repair-acceptance-v1-1.yml
+          governance/accepted_project_state.json
+          governance/project_module_index.json
+          governance/stage4_alpha_v1_oos_label_completion_authorization_audit_v1_2.json
+          governance/stage4_alpha_v1_oos_label_completion_authorization_v1_2.json
+          scripts/audit_stage4_alpha_v1_oos_label_completion_authorization_v1_2.py
+          EOF
+          sort -o /tmp/expected.txt /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/changed.txt
+      - name: Prove execution and accepted implementation untouched
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden="$(git diff --name-only "$BASE_SHA" HEAD --             .github/workflows/stage4-alpha-v1-oos-label-completion-execution-v1-2.yml             governance/stage4_alpha_v1_oos_label_completion_execution_contract_v1_2.json             scripts/run_stage4_alpha_v1_oos_label_completion_execution_carrier_v1_2.py             scripts/run_stage4_alpha_v1_oos_label_completion.py             scripts/stage4_alpha_v1_label_materialization.py             scripts/stage4_alpha_v1_alpha_evaluation.py             governance/stage4_alpha_v1_oos_validation_consumed_incomplete_evidence.json             governance/stage4_alpha_v1_oos_label_completion_consumed_incomplete_evidence.json             data/stage2_final data/stage3_final models)"
+          test -z "$forbidden"

@@ -1,0 +1,105 @@
+name: Stage4 Alpha V1 OOS Label Completion Result V1.2
+on:
+  pull_request:
+    branches: [agent/stage3-clean-integration]
+    paths:
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-result-v1-2.yml'
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation-v1-2.yml'
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-authorization-v1-2.yml'
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-authorization.yml'
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-consumed-incomplete.yml'
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-repair-acceptance-v1-1.yml'
+      - 'governance/accepted_project_state.json'
+      - 'governance/project_module_index.json'
+      - 'governance/stage4_alpha_v1_oos_label_completion_result_v1_2.json'
+      - 'scripts/audit_stage4_alpha_v1_oos_label_completion_result_v1_2.py'
+permissions:
+  contents: read
+jobs:
+  result-closure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Detect accepted Stage4 Alpha V2 D1 successor
+        id: v2_d1
+        shell: bash
+        run: |
+          if test -f governance/stage4_alpha_v2_executability_d1_preregistration_acceptance.json; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Verify V2 D1 successor preserves terminal V1 result
+        if: steps.v2_d1.outputs.present == 'true'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          v1=json.loads(Path('governance/stage4_alpha_v1_oos_label_completion_result_v1_2.json').read_text())
+          p=json.loads(Path('governance/stage4_alpha_v2_executability_d1_preregistration.json').read_text())
+          a=json.loads(Path('governance/stage4_alpha_v2_executability_d1_preregistration_acceptance.json').read_text())
+          s=json.loads(Path('governance/accepted_project_state.json').read_text())
+          assert v1['fingerprint']=='12ab8b1386bf6d3dfe59ab5d0e354736bfc90846f1aeb1e9f6983ab0d2c37d4b'
+          assert v1['fingerprint_basis']['disposition']['alpha_gate_status']=='FAIL'
+          assert v1['fingerprint_basis']['disposition']['combined_promotion_status']=='NO_PROMOTION_ALPHA_FAIL_FAIL_CLOSED'
+          assert p['fingerprint']=='a469999d0bcee95bcc140ebf72727e36efc449ca048d693063ecc9bfb8e87c8d'
+          assert a['fingerprint']=='6cf8b17249cff6889de8c6bff5952f5293987ed16cfc203e1cf8f55924b48dd5'
+          assert a['status']=='ACCEPTED_PREREGISTRATION_NO_EXECUTION_AUTHORITY'
+          perm=s['permissions']
+          assert perm['model_fit_allowed'] is False
+          assert perm['oos_label_access_allowed'] is False
+          assert perm['oos_label_bearing_execution_runs_remaining']==0
+          assert perm['lockbox_label_access_allowed'] is False
+          assert perm['live_signal_allowed'] is False
+          assert perm['main_merge_allowed'] is False
+          assert perm['authoritative_model_output_allowed'] is False
+          PY
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Audit terminal V1.2 result
+        if: steps.v2_d1.outputs.present != 'true'
+        run: python scripts/audit_stage4_alpha_v1_oos_label_completion_result_v1_2.py
+      - name: Prove governance-only closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e build/oos
+          test ! -e build/out
+          ! grep -n -E 'download-artifact|curl|wget|gh[[:space:]]+api|read_parquet\(|workflow_dispatch|run_stage4_alpha_v1_oos_label_completion.py[[:space:]]+--authorization' .github/workflows/stage4-alpha-v1-oos-label-completion-result-v1-2.yml | grep -v 'grep -n -E'
+      - name: Prove exact closure scope
+        if: steps.v2_d1.outputs.present != 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed.txt
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-reservation-v1-2.yml
+          .github/workflows/stage4-alpha-v1-oos-label-completion-authorization-v1-2.yml
+          .github/workflows/stage4-alpha-v1-oos-label-completion-authorization.yml
+          .github/workflows/stage4-alpha-v1-oos-label-completion-consumed-incomplete.yml
+          .github/workflows/stage4-alpha-v1-oos-label-completion-repair-acceptance-v1-1.yml
+          .github/workflows/stage4-alpha-v1-oos-label-completion-result-v1-2.yml
+          governance/accepted_project_state.json
+          governance/project_module_index.json
+          governance/stage4_alpha_v1_oos_label_completion_result_v1_2.json
+          scripts/audit_stage4_alpha_v1_oos_label_completion_result_v1_2.py
+          EOF
+          sort -o /tmp/expected.txt /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/changed.txt
+      - name: Prove frozen execution, inputs and model untouched
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden="$(git diff --name-only "$BASE_SHA" HEAD --             .github/workflows/stage4-alpha-v1-oos-label-completion-execution-v1-2.yml             governance/stage4_alpha_v1_oos_label_completion_execution_contract_v1_2.json             governance/stage4_alpha_v1_oos_label_completion_authorization_v1_2.json             scripts/run_stage4_alpha_v1_oos_label_completion_execution_carrier_v1_2.py             scripts/run_stage4_alpha_v1_oos_label_completion.py             scripts/stage4_alpha_v1_label_materialization.py             scripts/stage4_alpha_v1_alpha_evaluation.py             scripts/run_stage4_alpha_v1_runtime_veto_v1_1.py             data/stage2_final data/stage3_final models)"
+          test -z "$forbidden"

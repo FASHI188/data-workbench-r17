@@ -1,0 +1,84 @@
+name: Freshness V2 - Four Family Hard Gate
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/freshness-v2-execution-20260812]
+    paths:
+      - '.github/workflows/freshness-v2-four-family-hard-gate.yml'
+permissions:
+  contents: read
+  actions: read
+env:
+  PHASE1_ARTIFACT: '9149393864'
+  PHASE1_DIGEST: '0caf22ac24c81edba7fe63ad7d445b193218b96d37436dbceb435a2736c899e2'
+  PHASE2_ARTIFACT: '9150060738'
+  PHASE2_DIGEST: '1eaa0c0e588c95f835a9e576659616bb8e68d0c19c9712b9821ea88c90451ba9'
+  PHASE3_ARTIFACT: '9150398642'
+  PHASE3_DIGEST: '8e26469a5a6cd1537eb57bcbe787eadd48f54b56b3b209f618a74567278742a5'
+  PHASE4_ARTIFACT: '9166040064'
+  PHASE4_DIGEST: '89c3bc8a25db8801c1a8ed89dfc76d8ae25a0ac01b416cd71f2b72109e4b8b0b'
+  TARGET_SESSION: '2026-08-12'
+concurrency:
+  group: freshness-v2-four-family-hard-gate-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  hard-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Materialize exact four-family evidence anchors
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for spec in "p1:${PHASE1_ARTIFACT}:${PHASE1_DIGEST}" "p2:${PHASE2_ARTIFACT}:${PHASE2_DIGEST}" "p3:${PHASE3_ARTIFACT}:${PHASE3_DIGEST}" "p4:${PHASE4_ARTIFACT}:${PHASE4_DIGEST}"; do
+            IFS=: read -r name aid digest <<< "$spec"
+            mkdir -p "build/${name}"
+            curl --fail --location --silent --show-error -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${GH_TOKEN}" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${aid}/zip" -o "build/${name}.zip"
+            echo "${digest}  build/${name}.zip" | sha256sum -c -
+            unzip -q "build/${name}.zip" -d "build/${name}"
+          done
+      - name: Execute fail-closed freshness hard gate
+        run: |
+          python scripts/audit_forward_freshness_hard_gate.py \
+            --phase1 build/p1/build/freshness-phase1/summary.json \
+            --phase2 build/p2/manifest.json \
+            --phase3 build/p3/manifest.json \
+            --phase4 build/p4/manifest.json \
+            --policy config/data_freshness_policy.json \
+            --target-session "${TARGET_SESSION}" \
+            --out build/freshness-v2-hard-gate/freshness_v2_four_family_hard_gate.json
+      - name: Write execution manifest
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          p=Path('build/freshness-v2-hard-gate/freshness_v2_four_family_hard_gate.json'); g=json.loads(p.read_text())
+          out={
+            'schema_version':1,
+            'execution_head':'${{ github.sha }}',
+            'target_session':'${{ env.TARGET_SESSION }}',
+            'phase1_artifact':int('${{ env.PHASE1_ARTIFACT }}'),'phase1_digest':'sha256:${{ env.PHASE1_DIGEST }}',
+            'phase2_artifact':int('${{ env.PHASE2_ARTIFACT }}'),'phase2_digest':'sha256:${{ env.PHASE2_DIGEST }}',
+            'phase3_artifact':int('${{ env.PHASE3_ARTIFACT }}'),'phase3_digest':'sha256:${{ env.PHASE3_DIGEST }}',
+            'phase4_artifact':int('${{ env.PHASE4_ARTIFACT }}'),'phase4_digest':'sha256:${{ env.PHASE4_DIGEST }}',
+            'gate_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
+            'freshness_pass':g.get('pass') is True,
+            'stage4_research_unlocked':g.get('stage4_research_unlocked') is True,
+            'alpha_training_allowed':False,
+            'live_signal_allowed':False,
+            'authoritative':False,
+            'meaning':'Pinned forward-evidence aggregate gate only. Frozen Stage2/Stage3 remain unchanged. PASS permits Market Regime + Stage4 V1 feature research, not Alpha training or live signals.'
+          }
+          Path('build/freshness-v2-hard-gate/manifest.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freshness-v2-four-family-hard-gate
+          path: build/freshness-v2-hard-gate
+          compression-level: 0
+          retention-days: 90

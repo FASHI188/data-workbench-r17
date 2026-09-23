@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "status": "MACHINE_ACCEPTED_DIAGNOSTIC_ONLY",
+  "gate": "S3G1J_V17_28_SPLIT_EQUITY_DIAGNOSTIC_V1",
+  "evidence_pr": {
+    "number": 90,
+    "head_sha": "5c3bfff81a7518c6427030677bd1d4b288104e1e",
+    "merge_authorized": false,
+    "disposition": "CLOSE_WITHOUT_MERGE_AFTER_GOVERNANCE_REGISTRATION"
+  },
+  "accepted_run": {
+    "run_id": 30824927082,
+    "workflow_name": "Stage3 S3G1J V17.28 Split Equity Diagnostic",
+    "head_sha": "5c3bfff81a7518c6427030677bd1d4b288104e1e",
+    "conclusion": "SUCCESS",
+    "artifact_id": 8860412443,
+    "artifact_name": "stage3-s3g1j-v17-28-split-equity-diagnostic",
+    "artifact_digest": "sha256:287d37e2d5972e0d8cdfb36fd987a7c7cbf239b32d6fdabd96e26da27064565d",
+    "report_sha256": "5b2610f67f3f15113a62c2172eccbbf8df362d75263ac6049cd335aae5bc49d6",
+    "artifact_retention_expires_at": "2026-09-02T14:54:49Z"
+  },
+  "failed_contract_iteration": {
+    "run_id": 30824605254,
+    "head_sha": "d11e701358579396752d7986a0ce22a15c11cd40",
+    "conclusion": "FAILURE",
+    "reason": "The diagnostic contract incorrectly required exactly one expected-date text object. Both PDFs expose the exact statement date twice in the text layer.",
+    "data_or_parser_failure": false,
+    "correction": "Permit duplicate objects only for the exact expected date while keeping the nearest date and CNY unit witnesses role-local to the formal GROUP title."
+  },
+  "locked_source_authority": {
+    "runtime_generation": "V17.27",
+    "full_basis_run": 30806818977,
+    "full_basis_head_sha": "fa77d30a2ccdd3664beab01fd7ff7b5d16761726",
+    "full_basis_artifact_id": 8854139999,
+    "full_basis_artifact": "stage3-s3g1j-v17-27-full-final",
+    "full_basis_artifact_digest": "sha256:410e257d7a3ada353926970f806abc3e970e5638f55c1dec7b47c71c57777721",
+    "documents_gzip_sha256": "c2abe07baaa76efb80a30cfdd4e762ad07814f6aa795a92b9c0504f7944ab99a"
+  },
+  "diagnostic_population": {
+    "target_count": 2,
+    "target_announcement_ids": [
+      "1207621057",
+      "1209825769"
+    ],
+    "non_target_documents_authorized": false
+  },
+  "targets": {
+    "1207621057": {
+      "source_code": "603995",
+      "economic_date": "2020-03-31",
+      "source_url": "https://static.cninfo.com.cn/finalpage/2020-04-27/1207621057.PDF",
+      "source_sha256": "b2aa4afa67e2b02010d5ba708d4e5fe02138623ff4bc48718c03029111a64568",
+      "source_bytes": 477621,
+      "formal_group_anchor_page": 7,
+      "asset_page": 8,
+      "liability_page": 9,
+      "equity_page": 10,
+      "split_pattern": "LABEL_AND_AMOUNTS_THEN_CONTINUATION",
+      "values": {
+        "TOTAL_ASSETS": ["5470381065.66", "5189894320.88"],
+        "TOTAL_LIABILITIES": ["2220814468.73", "2026096822.42"],
+        "TOTAL_EQUITY": ["3249566596.93", "3163797498.46"]
+      },
+      "expected_date_text_object_count": 2,
+      "expected_unit_text_object_count": 1,
+      "asset_equity_column_x0_drift": ["0E-13", "0E-14"],
+      "identity_residual_current": "0.00",
+      "identity_residual_prior": "0.00",
+      "diagnostic_candidate_pass": true
+    },
+    "1209825769": {
+      "source_code": "603757",
+      "economic_date": "2021-03-31",
+      "source_url": "https://static.cninfo.com.cn/finalpage/2021-04-28/1209825769.PDF",
+      "source_sha256": "0bd1da8bdac0aff2a3e99b83adc29e7b60e959c99dd29b8ab88cbda1344b441c",
+      "source_bytes": 633887,
+      "formal_group_anchor_page": 8,
+      "asset_page": 10,
+      "liability_page": 10,
+      "equity_page": 11,
+      "split_pattern": "LABEL_THEN_AMOUNTS_THEN_CONTINUATION",
+      "values": {
+        "TOTAL_ASSETS": ["1615699540.62", "1595907051.24"],
+        "TOTAL_LIABILITIES": ["312375993.81", "334336378.51"],
+        "TOTAL_EQUITY": ["1303323546.81", "1261570672.73"]
+      },
+      "expected_date_text_object_count": 2,
+      "expected_unit_text_object_count": 1,
+      "asset_equity_column_x0_drift": ["0E-13", "0E-12"],
+      "identity_residual_current": "0.00",
+      "identity_residual_prior": "0.00",
+      "diagnostic_candidate_pass": true
+    }
+  },
+  "diagnostic_contract": {
+    "formal_runtime_recovered_before_diagnostic": false,
+    "existing_spatial_candidate_counts_each": {
+      "TOTAL_ASSETS": 3,
+      "TOTAL_LIABILITIES": 1,
+      "TOTAL_EQUITY": 0
+    },
+    "existing_spatial_recovered": false,
+    "formal_group_role_required": true,
+    "expected_period_required": true,
+    "role_local_cny_unit_required": true,
+    "explicit_pdf_equity_required": true,
+    "current_and_prior_columns_required": true,
+    "asset_equity_column_alignment_required": true,
+    "current_and_prior_identity_each_required": true,
+    "identity_tolerance": "0.005",
+    "equity_value_inferred_as_assets_minus_liabilities": false,
+    "duplicate_exact_expected_date_objects_allowed": true,
+    "missing_continuation_fail_closed": true,
+    "amount_row_extra_text_fail_closed": true,
+    "parent_role_fail_closed": true,
+    "single_column_fail_closed": true,
+    "non_target_fail_closed": true
+  },
+  "independent_verification": {
+    "artifact_downloaded_and_inspected": true,
+    "report_sha256_recomputed": true,
+    "target_count_recomputed": true,
+    "source_identity_recomputed": true,
+    "row_geometry_inspected": true,
+    "column_alignment_inspected": true,
+    "identity_residuals_recomputed": true,
+    "errors": []
+  },
+  "hard_boundaries": {
+    "candidate_generation": "V17.28_DIAGNOSTIC_ONLY",
+    "formal_parser_changed": false,
+    "runtime_authority_changed": false,
+    "production_data_changed": false,
+    "trained_model_changed": false,
+    "source_policy_changed": false,
+    "point_in_time_policy_changed": false,
+    "issuer_gate_changed": false,
+    "accounting_tolerance_changed": false,
+    "ocr_enabled": false,
+    "fuzzy_alias_matching_enabled": false,
+    "equity_inference_enabled": false,
+    "automatic_recovery_authorized": false,
+    "candidate_parser_implementation_authorized": false,
+    "stage3_status": "NOT_READY",
+    "stage4_alpha_live_locked": true,
+    "main_changed": false
+  },
+  "next_gate": "Implement a separate exact-source-bounded V17.28 candidate parser for only these two source SHAs, then prove target recovery and complete V17.27 non-target non-regression before any runtime promotion."
+}
