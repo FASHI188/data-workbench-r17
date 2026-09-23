@@ -1,6 +1,6 @@
 {
   "index_version": "V2.3",
-  "index_version": "V2.2",
+  "index_version": "V2.3",
   "modules": [
     {"id":"STAGE2_PIT","aliases":["Stage2","历史PIT"],"status":"COMPLETE_FROZEN","depends_on":[],"evidence":["data/stage2_final/manifest.json"]},
     {"id":"STAGE3_PIT","aliases":["Stage3","财务PIT","S3G1J","S3G4"],"status":"COMPLETE_FROZEN_HISTORICAL","depends_on":["STAGE2_PIT"],"evidence":["data/stage3_final/manifest.json"]},
