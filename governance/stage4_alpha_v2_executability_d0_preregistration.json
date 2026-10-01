@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_DEVELOPMENT_LABEL_STRUCTURE_DIAGNOSTIC_NO_EXECUTION_AUTHORITY",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "5407c8293c678287596abe2bc6cced8c83d6a2f997eb6ff8720b7790d59c8e6a",
+  "fingerprint_basis": {
+    "preregistration_id": "STAGE4_ALPHA_V2_EXECUTABILITY_D0_LABEL_CENSOR_DIAGNOSTIC",
+    "version": "V1.0",
+    "research_line": "STAGE4_ALPHA_V2_EXECUTABILITY",
+    "authority": {
+      "integration_base_sha": "7ad210844615531532a1f00af482e523028c8055",
+      "d1_preregistration_fingerprint": "a469999d0bcee95bcc140ebf72727e36efc449ca048d693063ecc9bfb8e87c8d",
+      "d1_acceptance_fingerprint": "6cf8b17249cff6889de8c6bff5952f5293987ed16cfc203e1cf8f55924b48dd5",
+      "v1_terminal_result_fingerprint": "12ab8b1386bf6d3dfe59ab5d0e354736bfc90846f1aeb1e9f6983ab0d2c37d4b",
+      "development_labels": {
+        "artifact_id": 9216418323,
+        "artifact_digest": "sha256:c4c8c475d79e964265dceec66da1673f9327469edc33531d6a21df8b61627e88",
+        "labels_sha256": "092061da5666215dcc1f4fa75ec0b1cdbcc43969560755e7cdae6de55e64d673",
+        "censoring_sha256": "3c963bc0d485aa51eebbc10b0a5ee76d1ad60f49dfe1ddb07bde9424b62389e6",
+        "split_seal_sha256": "98579c8d1b73a63bf18ee47a5cea94b730037d37979d7e38d0a98405efc2df72",
+        "rows": 5197648,
+        "valid_20d_rows": 5103016,
+        "latest_valid_20d_decision": "2022-12-02"
+      },
+      "expired_development_prepared_artifact": {
+        "artifact_id": 9250579694,
+        "historical_zip_digest": "sha256:dcea508a9d5fb2421b5086bae618dafc5d3d829567c666be47d2b5e027e9c602",
+        "current_download_status": "NOT_FOUND_EXPIRED",
+        "consequence": "D1_FULL_TEST_PREDICTION_REPLAY_BLOCKED_UNTIL_NEW_PHYSICAL_DEVELOPMENT_FEATURE_BOUNDARY_EXISTS"
+      }
+    },
+    "scope": {
+      "development_only": true,
+      "decision_start": "2015-01-05",
+      "nominal_decision_end": "2022-12-30",
+      "fields_allowed": [
+        "trade_date",
+        "exchange",
+        "code",
+        "entry_date",
+        "exit_date_20d",
+        "valid_label_20d",
+        "censor_reason_20d",
+        "known_code_transition_security",
+        "finite_lifecycle_interval"
+      ],
+      "forbidden_input_fields": [
+        "stock_total_return_5d",
+        "benchmark_return_5d",
+        "excess_return_5d",
+        "stock_total_return_20d",
+        "benchmark_return_20d",
+        "excess_return_20d"
+      ],
+      "model_fit_forbidden": true,
+      "prediction_forbidden": true,
+      "feature_matrix_access_forbidden": true,
+      "oos_access_forbidden": true,
+      "final_lockbox_access_forbidden": true
+    },
+    "required_diagnostics": {
+      "overall": [
+        "ROW_COUNT",
+        "VALID_20D_COUNT",
+        "INVALID_20D_COUNT",
+        "INVALID_20D_RATE",
+        "CENSOR_REASON_20D_COUNTS"
+      ],
+      "by_time": [
+        "YEAR",
+        "CALENDAR_QUARTER",
+        "DECISION_MONTH",
+        "DECISION_DATE"
+      ],
+      "by_entity": [
+        "EXCHANGE"
+      ],
+      "flags": [
+        "KNOWN_CODE_TRANSITION_SECURITY",
+        "FINITE_LIFECYCLE_INTERVAL"
+      ],
+      "boundary_separation": {
+        "partition_boundary_reason": "PARTITION_BOUNDARY_INCOMPLETE_HORIZON",
+        "report_boundary_and_nonboundary_separately": true
+      },
+      "invalid_cohort_definition": "A_DECISION_DATE_WITH_AT_LEAST_ONE_INVALID_20D_ROW",
+      "no_return_metric": true,
+      "no_prediction_rank": true,
+      "no_policy_score": true,
+      "no_threshold_selection": true,
+      "no_candidate_comparison": true
+    },
+    "interpretation_rules": {
+      "purpose": "MEASURE_BASE_RATE_AND_CAUSE_STRUCTURE_OF_20D_UNEVALUABLE_ROWS_IN_DEVELOPMENT_ONLY",
+      "d0_may_not_estimate_c007_selection_bias": true,
+      "d0_may_not_change_v1_result": true,
+      "d0_may_not_define_v2_execution_policy": true,
+      "d0_result_can_only_inform_whether_A_SEPARATE_PHYSICAL_DEVELOPMENT_FEATURE_BOUNDARY_AND_D1_REPLAY_IS_JUSTIFIED": true,
+      "v1_oos_counts_and_return_metrics_may_not_be_used_as_threshold_inputs": true
+    },
+    "permissions": {
+      "this_preregistration_grants_development_label_execution": false,
+      "separate_exact_head_d0_execution_authorization_required": true,
+      "model_fit_allowed": false,
+      "oos_access_allowed": false,
+      "final_lockbox_access_allowed": false,
+      "live_signal_allowed": false,
+      "main_merge_allowed": false,
+      "authoritative_output_allowed": false
+    },
+    "next_gate": "STATIC_D0_IMPLEMENTATION_REVIEW_THEN_SEPARATE_EXACT_HEAD_DEVELOPMENT_LABEL_DIAGNOSTIC_AUTHORIZATION"
+  },
+  "next_gate": "STATIC_D0_IMPLEMENTATION_REVIEW_THEN_SEPARATE_EXACT_HEAD_DEVELOPMENT_LABEL_DIAGNOSTIC_AUTHORIZATION"
+}
