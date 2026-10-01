@@ -1,0 +1,37 @@
+name: Stage4 Alpha V2 Executability D0 Preregistration
+on:
+  pull_request:
+    branches: [agent/stage3-clean-integration]
+    paths:
+      - '.github/workflows/stage4-alpha-v2-executability-d0-prereg.yml'
+      - 'governance/stage4_alpha_v2_executability_d0_preregistration.json'
+      - 'scripts/audit_stage4_alpha_v2_executability_d0_preregistration.py'
+permissions:
+  contents: read
+jobs:
+  static-preregistration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12.13'}
+      - name: Audit D0 preregistration
+        run: python scripts/audit_stage4_alpha_v2_executability_d0_preregistration.py
+      - name: Prove governance-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -n -E 'download-artifact|curl|wget|gh[[:space:]]+api|read_parquet\(|\.fit\(|\.predict\('             .github/workflows/stage4-alpha-v2-executability-d0-prereg.yml             scripts/audit_stage4_alpha_v2_executability_d0_preregistration.py | grep -v 'grep -n -E'
+      - name: Prove exact scope
+        env: {BASE_SHA: ${{ github.event.pull_request.base.sha }}}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed
+          printf '%s\n'             .github/workflows/stage4-alpha-v2-executability-d0-prereg.yml             governance/stage4_alpha_v2_executability_d0_preregistration.json             scripts/audit_stage4_alpha_v2_executability_d0_preregistration.py | sort > /tmp/expected
+          diff -u /tmp/expected /tmp/changed
