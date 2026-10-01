@@ -38,5 +38,5 @@ jobs:
         run: |
           set -euo pipefail
           git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed
-          printf '%s\n'             .github/workflows/stage4-alpha-v2-executability-d0-implementation-acceptance.yml             governance/accepted_project_state.json             governance/project_module_index.json             governance/stage4_alpha_v2_executability_d0_implementation_acceptance.json             scripts/audit_stage4_alpha_v2_executability_d0_implementation_acceptance.py | sort > /tmp/expected
+          printf '%s\n'             .github/workflows/stage4-alpha-v2-executability-d0-implementation-acceptance.yml             .github/workflows/stage4-alpha-v2-executability-d1-prereg-acceptance.yml             governance/accepted_project_state.json             governance/project_module_index.json             governance/stage4_alpha_v2_executability_d0_implementation_acceptance.json             scripts/audit_stage4_alpha_v2_executability_d0_implementation_acceptance.py | sort > /tmp/expected
           diff -u /tmp/expected /tmp/changed

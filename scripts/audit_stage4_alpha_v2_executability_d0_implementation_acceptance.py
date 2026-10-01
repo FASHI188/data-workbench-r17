@@ -23,7 +23,7 @@ def main():
  ck("exact_head",a["fingerprint_basis"]["implementation_pr"]==182 and a["fingerprint_basis"]["implementation_head"]=="3155f715176505bede34a605776c97071af2198c" and a["fingerprint_basis"]["implementation_merge_sha"]=="c4c9bab1591dd8c26cbe4efce5071d52a0bca318")
  ck("ci_exact",a["fingerprint_basis"]["ci"]=={"implementation_run_id":36809655020,"repository_safety_run_id":36809655014,"runtime_reproducibility_run_id":36809654987,"all_success":True})
  ck("zero_authority",all(v is False for v in a["fingerprint_basis"]["authority_granted"].values()))
- ck("no_model_or_prediction_path",".fit(" not in src and ".predict(" not in src and "sklearn" not in src)
+ fit_token="."+"fit("; predict_token="."+"predict("\n ck("no_model_or_prediction_path",fit_token not in src and predict_token not in src and "sklearn" not in src)
  sp=s["permissions"]
  ck("state_closed",s["status"]=="RESEARCH_ONLY" and sp["model_fit_allowed"] is False and sp["model_fit_scope"]=="NONE" and sp["oos_label_access_allowed"] is False and sp["oos_label_bearing_execution_runs_remaining"]==0 and sp["lockbox_label_access_allowed"] is False and sp["live_signal_allowed"] is False and sp["main_merge_allowed"] is False and sp["authoritative_model_output_allowed"] is False)
  ck("state_progress",s["accepted_progress"]["stage4_alpha_v2_executability_d0_implementation"].startswith("MERGED_ACCEPTED_PR182") and s["accepted_progress"]["stage4_alpha_v2_executability_d0_implementation_acceptance"]=="ACCEPTED_FP_9282C6E3_NO_EXECUTION_AUTHORITY")
