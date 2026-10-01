@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "status": "AUTHORIZED_SINGLE_USE_DEVELOPMENT_LABEL_STRUCTURE_DIAGNOSTIC",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "119b5fe4016c001e0fdaf4fa68b40cbf4ece92c2e37de5c4ee3d5d57ddfee27b",
+  "fingerprint_basis": {
+    "authorization_id": "STAGE4_ALPHA_V2_EXECUTABILITY_D0_DEVELOPMENT_LABEL_DIAGNOSTIC_EXECUTION",
+    "version": "V1.0",
+    "integration_base_sha": "3c95c88ecbad2bc6e8853a6ef968cff7c239239f",
+    "preregistration_fingerprint": "5407c8293c678287596abe2bc6cced8c83d6a2f997eb6ff8720b7790d59c8e6a",
+    "implementation_fingerprint": "33e142142a2a5b3f225f2ef831186eb476eed4ceb7cecbf23159ccd22d76546f",
+    "implementation_acceptance_fingerprint": "9282c6e34235e93a07b8c4ee35d84dee99ae4748c2d112dd1a3690374c92402f",
+    "implementation_pr": 182,
+    "authorized_execution_head": "3155f715176505bede34a605776c97071af2198c",
+    "implementation_merge_sha": "c4c9bab1591dd8c26cbe4efce5071d52a0bca318",
+    "implementation_acceptance_merge_sha": "3c95c88ecbad2bc6e8853a6ef968cff7c239239f",
+    "source_git_blob": "5141cb5282519d42397e1ca28396044fd5757193",
+    "input": {
+      "development_labels_artifact_id": 9216418323,
+      "artifact_digest": "sha256:c4c8c475d79e964265dceec66da1673f9327469edc33531d6a21df8b61627e88",
+      "artifact_file": "development_labels.parquet",
+      "labels_sha256": "092061da5666215dcc1f4fa75ec0b1cdbcc43969560755e7cdae6de55e64d673",
+      "expected_rows": 5197648,
+      "expected_valid_20d_rows": 5103016,
+      "date_min": "2015-01-05",
+      "date_max": "2022-12-30"
+    },
+    "allowed_value_fields": [
+      "trade_date",
+      "exchange",
+      "code",
+      "entry_date",
+      "exit_date_20d",
+      "valid_label_20d",
+      "censor_reason_20d",
+      "known_code_transition_security",
+      "finite_lifecycle_interval"
+    ],
+    "forbidden_value_fields": [
+      "stock_total_return_5d",
+      "benchmark_return_5d",
+      "excess_return_5d",
+      "stock_total_return_20d",
+      "benchmark_return_20d",
+      "excess_return_20d"
+    ],
+    "single_use": {
+      "max_runs": 1,
+      "armed_runs_remaining": 1,
+      "consumption_event": "FIRST_SUCCESSFUL_DOWNLOAD_AND_DIGEST_VERIFICATION_OF_DEVELOPMENT_LABELS_ARTIFACT_FOR_D0",
+      "after_consumption_reexecution_forbidden": true,
+      "pre_consumption_retry_allowed_only_with_separate_governance_acknowledgement": true
+    },
+    "workflow": {
+      "path": ".github/workflows/stage4-alpha-v2-executability-d0-execution.yml",
+      "trigger": "workflow_dispatch",
+      "dispatch_inputs_exact": [
+        "execution_head",
+        "authorization_merge_sha",
+        "confirmation"
+      ],
+      "confirmation": "RUN_STAGE4_ALPHA_V2_D0_DEVELOPMENT_LABEL_DIAGNOSTIC_V1",
+      "checkout_exact_execution_head": true,
+      "authorization_fetched_from_exact_merge_sha": true,
+      "durable_owner_rule": "CURRENT_RUN_MUST_BE_FIRST_WORKFLOW_DISPATCH_RUN_FOR_THIS_D0_WORKFLOW"
+    },
+    "permissions": {
+      "development_label_structural_diagnostic_allowed": true,
+      "model_fit_allowed": false,
+      "prediction_allowed": false,
+      "feature_matrix_access_allowed": false,
+      "return_value_read_allowed": false,
+      "oos_access_allowed": false,
+      "final_lockbox_access_allowed": false,
+      "live_signal_allowed": false,
+      "main_merge_allowed": false,
+      "authoritative_output_allowed": false
+    },
+    "output": {
+      "artifact_name": "stage4-alpha-v2-executability-d0-result",
+      "research_only": true,
+      "policy_selection_allowed": false,
+      "threshold_selection_allowed": false,
+      "promotion_allowed": false,
+      "separate_result_acceptance_required": true
+    }
+  },
+  "next_gate": "MANUAL_WORKFLOW_DISPATCH_EXACT_HEAD_D0_STRUCTURE_DIAGNOSTIC_ONLY"
+}

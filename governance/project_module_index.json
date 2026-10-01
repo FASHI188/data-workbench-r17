@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "index_version": "V2.6",
+  "index_version": "V2.7",
   "modules": [
     {
       "id": "STAGE2_PIT",
@@ -335,7 +335,7 @@
         "标签删失结构诊断",
         "label censor diagnostic"
       ],
-      "status": "IMPLEMENTATION_ACCEPTED_EXECUTION_NOT_AUTHORIZED",
+      "status": "AUTHORIZATION_ARMED_SINGLE_USE_EXECUTION_NOT_STARTED",
       "depends_on": [
         "STAGE4_ALPHA_V2_EXECUTABILITY_D1",
         "DEV_LABELS_V1"
@@ -345,7 +345,9 @@
         "PR182",
         "governance/stage4_alpha_v2_executability_d0_preregistration.json",
         "governance/stage4_alpha_v2_executability_d0_implementation_contract.json",
-        "governance/stage4_alpha_v2_executability_d0_implementation_acceptance.json"
+        "governance/stage4_alpha_v2_executability_d0_implementation_acceptance.json",
+        "PR184",
+        "governance/stage4_alpha_v2_executability_d0_execution_authorization.json"
       ],
       "preregistration_fingerprint": "5407c8293c678287596abe2bc6cced8c83d6a2f997eb6ff8720b7790d59c8e6a",
       "implementation_fingerprint": "33e142142a2a5b3f225f2ef831186eb476eed4ceb7cecbf23159ccd22d76546f",
@@ -357,7 +359,10 @@
       "prediction_allowed": false,
       "oos_access_allowed": false,
       "final_lockbox_status": "SEALED_NO_ACCESS",
-      "next": "separate exact-head D0 development-label diagnostic execution authorization"
+      "next": "await explicit manual D0 workflow_dispatch; artifact verification consumes authorization permanently; no return values/model/OOS/lockbox",
+      "authorization_fingerprint": "119b5fe4016c001e0fdaf4fa68b40cbf4ece92c2e37de5c4ee3d5d57ddfee27b",
+      "authorized_execution_head": "3155f715176505bede34a605776c97071af2198c",
+      "armed_runs_remaining": 1
     },
     {
       "id": "FINAL_LOCKBOX_V1",
