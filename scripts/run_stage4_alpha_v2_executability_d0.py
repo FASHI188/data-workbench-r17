@@ -72,12 +72,12 @@ def main()->int:
  write_json(out/"d0_overall.json",overall)
  con.execute(f"""
    COPY (
-     SELECT trade_date,count(*) rows,
-            count(*) FILTER(WHERE valid_label_20d) valid_20d_rows,
-            count(*) FILTER(WHERE NOT valid_label_20d) invalid_20d_rows,
-            count(*) FILTER(WHERE NOT valid_label_20d)::DOUBLE/count(*) invalid_20d_rate,
-            count(*) FILTER(WHERE NOT valid_label_20d AND censor_reason_20d={q(BOUNDARY)}) boundary_invalid_rows,
-            count(*) FILTER(WHERE NOT valid_label_20d AND censor_reason_20d<>{q(BOUNDARY)}) nonboundary_invalid_rows
+     SELECT trade_date,count(*) AS row_count,
+            count(*) FILTER(WHERE valid_label_20d) AS valid_20d_rows,
+            count(*) FILTER(WHERE NOT valid_label_20d) AS invalid_20d_rows,
+            count(*) FILTER(WHERE NOT valid_label_20d)::DOUBLE/count(*) AS invalid_20d_rate,
+            count(*) FILTER(WHERE NOT valid_label_20d AND censor_reason_20d={q(BOUNDARY)}) AS boundary_invalid_rows,
+            count(*) FILTER(WHERE NOT valid_label_20d AND censor_reason_20d<>{q(BOUNDARY)}) AS nonboundary_invalid_rows
      FROM d0 GROUP BY trade_date ORDER BY trade_date
    ) TO {q(str(out/"d0_by_date.parquet"))} (FORMAT PARQUET,COMPRESSION ZSTD)
  """)
@@ -85,16 +85,16 @@ def main()->int:
   cur=con.execute(sql); names=[x[0] for x in cur.description]
   return [dict(zip(names,r)) for r in cur.fetchall()]
  by_time={
-   "year":rows_json("SELECT year(trade_date) year,count(*) rows,count(*) FILTER(WHERE NOT valid_label_20d) invalid_20d_rows FROM d0 GROUP BY 1 ORDER BY 1"),
-   "quarter":rows_json("SELECT year(trade_date) year,quarter(trade_date) quarter,count(*) rows,count(*) FILTER(WHERE NOT valid_label_20d) invalid_20d_rows FROM d0 GROUP BY 1,2 ORDER BY 1,2"),
-   "month":rows_json("SELECT strftime(trade_date,'%Y-%m') month,count(*) rows,count(*) FILTER(WHERE NOT valid_label_20d) invalid_20d_rows FROM d0 GROUP BY 1 ORDER BY 1")
+   "year":rows_json("SELECT year(trade_date) AS year,count(*) AS row_count,count(*) FILTER(WHERE NOT valid_label_20d) AS invalid_20d_rows FROM d0 GROUP BY 1 ORDER BY 1"),
+   "quarter":rows_json("SELECT year(trade_date) AS year,quarter(trade_date) AS quarter,count(*) AS row_count,count(*) FILTER(WHERE NOT valid_label_20d) AS invalid_20d_rows FROM d0 GROUP BY 1,2 ORDER BY 1,2"),
+   "month":rows_json("SELECT strftime(trade_date,'%Y-%m') AS month,count(*) AS row_count,count(*) FILTER(WHERE NOT valid_label_20d) AS invalid_20d_rows FROM d0 GROUP BY 1 ORDER BY 1")
  }
  write_json(out/"d0_by_time.json",by_time)
- write_json(out/"d0_by_exchange.json",rows_json("SELECT exchange,count(*) rows,count(*) FILTER(WHERE NOT valid_label_20d) invalid_20d_rows FROM d0 GROUP BY exchange ORDER BY exchange"))
- write_json(out/"d0_by_censor_reason.json",rows_json("SELECT censor_reason_20d,count(*) rows FROM d0 GROUP BY censor_reason_20d ORDER BY censor_reason_20d"))
+ write_json(out/"d0_by_exchange.json",rows_json("SELECT exchange,count(*) AS row_count,count(*) FILTER(WHERE NOT valid_label_20d) AS invalid_20d_rows FROM d0 GROUP BY exchange ORDER BY exchange"))
+ write_json(out/"d0_by_censor_reason.json",rows_json("SELECT censor_reason_20d,count(*) AS row_count FROM d0 GROUP BY censor_reason_20d ORDER BY censor_reason_20d"))
  write_json(out/"d0_by_flags.json",{
-   "known_code_transition_security":rows_json("SELECT known_code_transition_security,count(*) rows,count(*) FILTER(WHERE NOT valid_label_20d) invalid_20d_rows FROM d0 GROUP BY 1 ORDER BY 1"),
-   "finite_lifecycle_interval":rows_json("SELECT finite_lifecycle_interval,count(*) rows,count(*) FILTER(WHERE NOT valid_label_20d) invalid_20d_rows FROM d0 GROUP BY 1 ORDER BY 1")
+   "known_code_transition_security":rows_json("SELECT known_code_transition_security,count(*) AS row_count,count(*) FILTER(WHERE NOT valid_label_20d) AS invalid_20d_rows FROM d0 GROUP BY 1 ORDER BY 1"),
+   "finite_lifecycle_interval":rows_json("SELECT finite_lifecycle_interval,count(*) AS row_count,count(*) FILTER(WHERE NOT valid_label_20d) AS invalid_20d_rows FROM d0 GROUP BY 1 ORDER BY 1")
  })
  manifest={
    "schema_version":1,"gate":"STAGE4_ALPHA_V2_EXECUTABILITY_D0",
