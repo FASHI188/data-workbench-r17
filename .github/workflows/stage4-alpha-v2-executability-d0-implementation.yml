@@ -1,0 +1,98 @@
+name: Stage4 Alpha V2 Executability D0 Implementation
+
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - '.github/workflows/stage4-alpha-v2-executability-d0-implementation.yml'
+      - 'governance/stage4_alpha_v2_executability_d0_implementation_contract.json'
+      - 'scripts/run_stage4_alpha_v2_executability_d0.py'
+      - 'scripts/audit_stage4_alpha_v2_executability_d0_implementation.py'
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-production-path:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check duckdb==1.3.2
+      - name: Static implementation audit
+        run: python scripts/audit_stage4_alpha_v2_executability_d0_implementation.py
+      - name: Build synthetic labels with forbidden sentinel return columns
+        shell: bash
+        run: |
+          mkdir -p build/synth build/out
+          python - <<'PY'
+          import duckdb
+          con=duckdb.connect()
+          con.execute("""
+          CREATE TABLE x(
+            trade_date DATE,exchange VARCHAR,code VARCHAR,entry_date DATE,exit_date_20d DATE,
+            valid_label_20d BOOLEAN,censor_reason_20d VARCHAR,
+            known_code_transition_security BOOLEAN,finite_lifecycle_interval BOOLEAN,
+            stock_total_return_5d DOUBLE,benchmark_return_5d DOUBLE,excess_return_5d DOUBLE,
+            stock_total_return_20d DOUBLE,benchmark_return_20d DOUBLE,excess_return_20d DOUBLE
+          )
+          """)
+          rows=[
+          ("2020-01-02","SSE","600001","2020-01-03","2020-02-07",True,"VALID",False,False),
+          ("2020-01-02","SSE","600002","2020-01-03","2020-02-07",False,"MISSING_ENTRY_OPEN",False,False),
+          ("2020-01-03","SZSE","000001","2020-01-06","2020-02-10",False,"MISSING_EXIT_CLOSE",False,False),
+          ("2020-01-03","SZSE","000002","2020-01-06","2020-02-10",False,"CODE_TRANSITION_HORIZON_CENSOR",True,False),
+          ("2020-04-01","SSE","600003","2020-04-02","2020-05-06",False,"DELISTING_HORIZON_CENSOR_NO_TERMINAL_IMPUTATION",False,True),
+          ("2020-04-01","SSE","600004","2020-04-02","2020-05-06",True,"VALID",False,False),
+          ("2020-12-01","SZSE","000003","2020-12-02","2020-12-29",False,"PARTITION_BOUNDARY_INCOMPLETE_HORIZON",False,False),
+          ("2020-12-01","SZSE","000004","2020-12-02","2020-12-29",True,"VALID",False,False)
+          ]
+          for r in rows:
+            con.execute("INSERT INTO x VALUES (?,?,?,?,?,?,?,?,?,987654321.123,987654321.123,987654321.123,987654321.123,987654321.123,987654321.123)",r)
+          con.execute("COPY x TO 'build/synth/development_labels.parquet' (FORMAT PARQUET)")
+          PY
+      - name: Execute same D0 aggregation path on synthetic input
+        run: |
+          python scripts/run_stage4_alpha_v2_executability_d0.py             --labels build/synth/development_labels.parquet             --prereg governance/stage4_alpha_v2_executability_d0_preregistration.json             --out build/out             --synthetic
+      - name: Audit synthetic outputs
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,duckdb
+          from pathlib import Path
+          o=json.loads(Path('build/out/d0_overall.json').read_text())
+          m=json.loads(Path('build/out/d0_manifest.json').read_text())
+          assert o['rows']==8 and o['valid_20d_rows']==3 and o['invalid_20d_rows']==5
+          assert o['boundary_invalid_rows']==1 and o['nonboundary_invalid_rows']==4
+          assert o['invalid_cohort_count']==4
+          assert m['model_fit_executed'] is False and m['prediction_executed'] is False
+          assert m['return_metric_computed'] is False and m['policy_selected'] is False
+          forbidden=['stock_total_return_5d','benchmark_return_5d','excess_return_5d','stock_total_return_20d','benchmark_return_20d','excess_return_20d','987654321.123']
+          for p in Path('build/out').glob('*.json'):
+            txt=p.read_text()
+            assert not any(x in txt for x in forbidden), (p,txt)
+          cols=[r[0] for r in duckdb.connect().execute("DESCRIBE SELECT * FROM read_parquet('build/out/d0_by_date.parquet')").fetchall()]
+          assert not any(x in cols for x in forbidden)
+          PY
+      - name: Prove no real data execution or model path
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -n -E '9216418323|download-artifact|actions/artifacts/.*/zip|\.fit\(|\.predict\(' .github/workflows/stage4-alpha-v2-executability-d0-implementation.yml | grep -v 'grep -n -E'
+      - name: Prove exact implementation scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed
+          printf '%s\n'             .github/workflows/stage4-alpha-v2-executability-d0-implementation.yml             governance/stage4_alpha_v2_executability_d0_implementation_contract.json             scripts/audit_stage4_alpha_v2_executability_d0_implementation.py             scripts/run_stage4_alpha_v2_executability_d0.py | sort > /tmp/expected
+          diff -u /tmp/expected /tmp/changed
