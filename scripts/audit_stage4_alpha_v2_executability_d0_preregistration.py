@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib,json
 from pathlib import Path
 R=Path(__file__).resolve().parents[1]
-FP="d9d2d6093b2b3153eaf223de71eff6a1515a34ea5f35b733662d852d6990bf89"
+FP="5407c8293c678287596abe2bc6cced8c83d6a2f997eb6ff8720b7790d59c8e6a"
 def load(p): return json.loads((R/p).read_text(encoding="utf-8"))
 def canon(x): return hashlib.sha256(json.dumps(x,sort_keys=True,separators=(",",":"),ensure_ascii=False).encode()).hexdigest()
 def main():

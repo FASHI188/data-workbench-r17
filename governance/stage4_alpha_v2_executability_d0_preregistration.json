@@ -2,7 +2,7 @@
   "schema_version": 1,
   "status": "FROZEN_DEVELOPMENT_LABEL_STRUCTURE_DIAGNOSTIC_NO_EXECUTION_AUTHORITY",
   "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
-  "fingerprint": "d9d2d6093b2b3153eaf223de71eff6a1515a34ea5f35b733662d852d6990bf89",
+  "fingerprint": "5407c8293c678287596abe2bc6cced8c83d6a2f997eb6ff8720b7790d59c8e6a",
   "fingerprint_basis": {
     "preregistration_id": "STAGE4_ALPHA_V2_EXECUTABILITY_D0_LABEL_CENSOR_DIAGNOSTIC",
     "version": "V1.0",
