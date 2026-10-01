@@ -1,0 +1,195 @@
+name: Stage4 Development Physical Boundary V1
+
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - '.github/workflows/stage4-development-physical-boundary-v1.yml'
+      - 'governance/stage4_development_physical_boundary_v1.json'
+      - 'scripts/build_stage4_development_physical_boundary_v1.py'
+      - 'scripts/audit_stage4_development_physical_boundary_v1.py'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  compile-and-audit-development-boundary:
+    if: github.head_ref == 'agent/stage4-development-physical-boundary-v1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      NUMEXPR_NUM_THREADS: '1'
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+
+      - name: Install pinned boundary runtime
+        run: |
+          python -m pip install --disable-pip-version-check duckdb==1.3.2
+
+      - name: Static fail-closed boundary guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            scripts/build_stage4_development_physical_boundary_v1.py \
+            scripts/audit_stage4_development_physical_boundary_v1.py
+          ! grep -n -E 'pickle|joblib|model\.predict|predict_proba|\.fit\(|fit_predict\(|partial_fit\(' \
+            scripts/build_stage4_development_physical_boundary_v1.py \
+            scripts/audit_stage4_development_physical_boundary_v1.py
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path('governance/stage4_development_physical_boundary_v1.json')
+          c=json.loads(p.read_text(encoding='utf-8'))
+          fp=hashlib.sha256(json.dumps(c['fingerprint_basis'],sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
+          assert fp==c['fingerprint']
+          assert c['status']=='BOUNDARY_COMPILER_DEVELOPMENT_ONLY_NON_EVALUATION'
+          s=c['fingerprint_basis']['scope']
+          assert s['development_start']=='2015-01-05'
+          assert s['development_end']=='2022-12-30'
+          assert s['oos_prediction_forbidden'] is True
+          assert s['oos_label_access_forbidden'] is True
+          assert s['model_load_forbidden'] is True
+          assert s['fit_retrain_tune_reselect_forbidden'] is True
+          assert s['final_lockbox_evaluation_forbidden'] is True
+          assert s['business_metrics_forbidden'] is True
+          print(json.dumps({'contract_fingerprint':fp,'development_end':s['development_end'],'evaluation_authority':False}))
+          PY
+
+      - name: Download exact immutable source archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/source-zips inputs/oof inputs/g3 inputs/g4 build/package build/work
+          download() {
+            aid="$1"; zip="$2"; dir="$3"
+            curl --fail --location --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${aid}/zip" \
+              -o "$zip"
+            unzip -q "$zip" -d "$dir"
+          }
+          download 9250719606 build/source-zips/c007_oof.zip inputs/oof
+          download 8651700277 build/source-zips/stage2_g3.zip inputs/g3
+          download 8651786270 build/source-zips/stage2_g4.zip inputs/g4
+
+      - name: Verify source archive bytes before boundary compilation
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          contract=json.load(open('governance/stage4_development_physical_boundary_v1.json',encoding='utf-8'))
+          inputs=contract['fingerprint_basis']['inputs']
+          files={
+            'c007_oof':Path('build/source-zips/c007_oof.zip'),
+            'stage2_g3':Path('build/source-zips/stage2_g3.zip'),
+            'stage2_g4':Path('build/source-zips/stage2_g4.zip'),
+          }
+          def sha(p):
+            h=hashlib.sha256()
+            with p.open('rb') as f:
+              for b in iter(lambda:f.read(1024*1024),b''): h.update(b)
+            return h.hexdigest()
+          observed={}
+          for key,path in files.items():
+            actual=sha(path)
+            expected=inputs[key]['artifact_digest'].removeprefix('sha256:')
+            assert actual==expected,(key,actual,expected)
+            observed[key]={
+              'artifact_id':inputs[key]['artifact_id'],
+              'artifact_name':inputs[key]['artifact_name'],
+              'archive_digest':'sha256:'+actual,
+              'verified':True,
+            }
+          out={'schema_version':1,'status':'VERIFIED','boundary_contract_fingerprint':contract['fingerprint'],'artifacts':observed}
+          Path('build/source_archive_verification.json').write_text(json.dumps(out,sort_keys=True,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(out,indent=2))
+          PY
+
+      - name: Compile physically development-only package
+        run: |
+          python scripts/build_stage4_development_physical_boundary_v1.py \
+            --contract governance/stage4_development_physical_boundary_v1.json \
+            --oof-root inputs/oof \
+            --g3-root inputs/g3 \
+            --g4-root inputs/g4 \
+            --work-dir build/work \
+            --out build/package
+          cp build/source_archive_verification.json build/package/source_archive_verification.json
+
+      - name: Independently audit only the physically bounded outputs
+        run: |
+          python scripts/audit_stage4_development_physical_boundary_v1.py \
+            --contract governance/stage4_development_physical_boundary_v1.json \
+            --package-dir build/package \
+            --source-verification build/package/source_archive_verification.json \
+            --out build/package/development_physical_boundary_independent_audit.json
+
+      - name: Seal exact package file set and final hashes
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('build/package')
+          contract=json.load(open('governance/stage4_development_physical_boundary_v1.json',encoding='utf-8'))
+          outputs=contract['fingerprint_basis']['outputs']
+          expected={outputs[k] for k in ['g3','g4','c007_oof','manifest','hashes','source_verification','independent_audit']}
+          have={p.name for p in root.iterdir() if p.is_file()}
+          assert have==expected,(have,expected)
+          audit=json.load(open(root/outputs['independent_audit'],encoding='utf-8'))
+          manifest=json.load(open(root/outputs['manifest'],encoding='utf-8'))
+          source=json.load(open(root/outputs['source_verification'],encoding='utf-8'))
+          assert audit['pass'] is True and audit['failed_checks']==[]
+          assert audit['post_development_rows_observed']==0
+          assert manifest['status']=='PHYSICALLY_DEVELOPMENT_ONLY'
+          assert manifest['physical_guards']['post_2022_output_rows']==0
+          assert source['status']=='VERIFIED'
+          def sha(p):
+            h=hashlib.sha256()
+            with p.open('rb') as f:
+              for b in iter(lambda:f.read(1024*1024),b''): h.update(b)
+            return h.hexdigest()
+          final_hashes={p.name:sha(p) for p in sorted(root.iterdir()) if p.is_file() and p.name!=outputs['hashes']}
+          (root/outputs['hashes']).write_text(json.dumps(final_hashes,sort_keys=True,indent=2)+'\n',encoding='utf-8')
+          assert set(final_hashes)==expected-{outputs['hashes']}
+          print(json.dumps({
+            'status':'SEALED_DEVELOPMENT_PHYSICAL_BOUNDARY',
+            'contract_fingerprint':contract['fingerprint'],
+            'post_development_rows_observed':0,
+            'development_universe_rows':audit['development_universe_rows'],
+            'c007_oof_rows':audit['c007_oof']['rows'],
+            'final_hashes':final_hashes,
+            'oos_prediction_executed':False,
+            'oos_label_accessed':False,
+            'final_lockbox_evaluation_executed':False,
+          },indent=2,default=str))
+          PY
+
+      - name: Upload immutable physical-boundary evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage4-development-physical-boundary-v1
+          path: build/package
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 90
