@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "status": "REVIEW_ONLY_DISPATCH_BRIDGE_NO_EXECUTION_AUTHORITY",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "d76ae08d493f8a0c6746a9c90120399ccbfb16919550cfc25d3ad7f0a1c64de9",
+  "fingerprint_basis": {
+    "bridge_contract_id": "STAGE4_ALPHA_V2_D0_DISPATCH_BRIDGE",
+    "version": "V1.0",
+    "purpose": "DEFAULT_BRANCH_WORKFLOW_IDENTITY_BRIDGE_WITHOUT_MAIN_MODIFICATION",
+    "integration_base_sha": "c46d5dfb7207eb1f5b61cf59e74517d1b63c5301",
+    "default_branch": "main",
+    "default_branch_workflow_path": ".github/workflows/stage2-baostock-all-stock-probe.yml",
+    "default_branch_workflow_blob_sha": "b4d067aaaa995daf98b8019634c2bce50e7b8559",
+    "bridge_ref": "agent/stage4-alpha-v2-d0-dispatch-bridge-v1",
+    "bridge_workflow_path": ".github/workflows/stage2-baostock-all-stock-probe.yml",
+    "bridge_workflow_blob_sha": "ce761c8c152a07fcd07fd39afb26224fdd9b97fe",
+    "bridge_merge_policy": "REVIEWED_BRANCH_ONLY_DO_NOT_MERGE_TO_INTEGRATION_OR_MAIN",
+    "main_modified": false,
+    "integration_stage2_workflow_modified": false,
+    "dispatch_semantics": {
+      "trigger": "workflow_dispatch",
+      "default_branch_identity_requirement_satisfied_by_existing_stage2_path": true,
+      "branch_ref_required": "agent/stage4-alpha-v2-d0-dispatch-bridge-v1",
+      "no_dispatch_inputs": true,
+      "exact_bridge_head_must_be_authorized_later": true,
+      "current_run_must_be_unique_first_dispatch_for_exact_bridge_ref_and_head": true
+    },
+    "d0_binding": {
+      "preregistration_fingerprint": "5407c8293c678287596abe2bc6cced8c83d6a2f997eb6ff8720b7790d59c8e6a",
+      "implementation_fingerprint": "33e142142a2a5b3f225f2ef831186eb476eed4ceb7cecbf23159ccd22d76546f",
+      "implementation_acceptance_fingerprint": "9282c6e34235e93a07b8c4ee35d84dee99ae4748c2d112dd1a3690374c92402f",
+      "implementation_runner_blob": "5141cb5282519d42397e1ca28396044fd5757193",
+      "current_authorization_fingerprint_to_be_superseded": "119b5fe4016c001e0fdaf4fa68b40cbf4ece92c2e37de5c4ee3d5d57ddfee27b",
+      "current_authorization_consumed": false
+    },
+    "permissions": {
+      "this_bridge_review_grants_execution_authority": false,
+      "development_label_access_allowed": false,
+      "return_value_read_allowed": false,
+      "model_fit_allowed": false,
+      "prediction_allowed": false,
+      "feature_matrix_access_allowed": false,
+      "oos_access_allowed": false,
+      "final_lockbox_access_allowed": false,
+      "live_signal_allowed": false,
+      "main_merge_allowed": false,
+      "authoritative_output_allowed": false
+    },
+    "next_gate": "STATIC_REVIEW_BRIDGE_HEAD_THEN_SEPARATE_SUPERSEDING_D0_AUTHORIZATION_V1_1_BOUND_TO_EXACT_BRIDGE_HEAD"
+  },
+  "next_gate": "STATIC_REVIEW_BRIDGE_HEAD_THEN_SEPARATE_SUPERSEDING_D0_AUTHORIZATION_V1_1_BOUND_TO_EXACT_BRIDGE_HEAD"
+}
