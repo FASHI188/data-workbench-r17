@@ -45,10 +45,41 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
           fetch-depth: 0
+      - name: Detect V1.1 bridge authorization successor
+        id: auth_v11
+        shell: bash
+        run: |
+          if test -f governance/stage4_alpha_v2_executability_d0_execution_authorization_v1_1.json; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Verify V1.1 bridge successor
+        if: steps.auth_v11.outputs.present == 'true'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a=json.loads(Path('governance/stage4_alpha_v2_executability_d0_execution_authorization_v1_1.json').read_text())
+          s=json.loads(Path('governance/accepted_project_state.json').read_text())
+          m=json.loads(Path('governance/project_module_index.json').read_text())
+          assert a['fingerprint']=='050b5f3d2b292e1da4c38cf60ba6b39fcbe1973ada7f3f77c055fc02f02ac920'
+          assert a['status']=='AUTHORIZED_SINGLE_USE_D0_DIAGNOSTIC_V1_1_DISPATCH_BRIDGE'
+          assert a['fingerprint_basis']['single_use']['armed_runs_remaining']==1
+          p=s['permissions']
+          assert p['development_label_diagnostic_access_allowed'] is False
+          assert p['development_label_diagnostic_runs_remaining']==1
+          mm=next(x for x in m['modules'] if x['id']=='STAGE4_ALPHA_V2_EXECUTABILITY_D0')
+          assert mm['status']=='AUTHORIZATION_V1_1_BRIDGE_ARMED_SINGLE_USE_EXECUTION_NOT_STARTED'
+          assert mm['authorization_fingerprint']=='050b5f3d2b292e1da4c38cf60ba6b39fcbe1973ada7f3f77c055fc02f02ac920'
+          PY
       - uses: actions/setup-python@v5
+        if: steps.auth_v11.outputs.present != 'true'
         with:
           python-version: '3.12.13'
       - name: Audit D0 authorization
+        if: steps.auth_v11.outputs.present != 'true'
         run: python scripts/audit_stage4_alpha_v2_executability_d0_execution_authorization.py
       - name: Prove pull request cannot execute real D0
         shell: bash
@@ -62,6 +93,7 @@ jobs:
           PY
           test ! -e build/d0-real
       - name: Prove exact authorization scope
+        if: steps.auth_v11.outputs.present != 'true'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         shell: bash

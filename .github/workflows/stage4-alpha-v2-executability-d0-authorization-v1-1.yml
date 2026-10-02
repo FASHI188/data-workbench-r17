@@ -1,0 +1,49 @@
+name: Stage4 Alpha V2 D0 Authorization V1.1 Dispatch Bridge
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - '.github/workflows/stage4-alpha-v2-executability-d0-authorization-v1-1.yml'
+      - '.github/workflows/stage4-alpha-v2-executability-d0-execution.yml'
+      - '.github/workflows/stage4-alpha-v2-executability-d0-implementation-acceptance.yml'
+      - 'governance/stage4_alpha_v2_executability_d0_execution_authorization_v1_1.json'
+      - 'governance/accepted_project_state.json'
+      - 'governance/project_module_index.json'
+      - 'scripts/audit_stage4_alpha_v2_executability_d0_execution_authorization_v1_1.py'
+permissions:
+  contents: read
+jobs:
+  static-authorization:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Fetch reviewed bridge and default branch identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin agent/stage4-alpha-v2-d0-dispatch-bridge-v1 main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Audit V1.1 bridge authorization
+        run: python scripts/audit_stage4_alpha_v2_executability_d0_execution_authorization_v1_1.py
+      - name: Prove governance-only authorization PR
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e build/d0-real
+      - name: Prove exact V1.1 scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed
+          printf '%s\n'             .github/workflows/stage4-alpha-v2-executability-d0-authorization-v1-1.yml             .github/workflows/stage4-alpha-v2-executability-d0-execution.yml             .github/workflows/stage4-alpha-v2-executability-d0-implementation-acceptance.yml             governance/accepted_project_state.json             governance/project_module_index.json             governance/stage4_alpha_v2_executability_d0_execution_authorization_v1_1.json             scripts/audit_stage4_alpha_v2_executability_d0_execution_authorization_v1_1.py | sort > /tmp/expected
+          diff -u /tmp/expected /tmp/changed
