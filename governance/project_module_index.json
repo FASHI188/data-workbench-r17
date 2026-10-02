@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "index_version": "V2.7",
+  "index_version": "V2.8",
   "modules": [
     {
       "id": "STAGE2_PIT",
@@ -335,7 +335,7 @@
         "标签删失结构诊断",
         "label censor diagnostic"
       ],
-      "status": "AUTHORIZATION_ARMED_SINGLE_USE_EXECUTION_NOT_STARTED",
+      "status": "AUTHORIZATION_V1_1_BRIDGE_ARMED_SINGLE_USE_EXECUTION_NOT_STARTED",
       "depends_on": [
         "STAGE4_ALPHA_V2_EXECUTABILITY_D1",
         "DEV_LABELS_V1"
@@ -347,7 +347,11 @@
         "governance/stage4_alpha_v2_executability_d0_implementation_contract.json",
         "governance/stage4_alpha_v2_executability_d0_implementation_acceptance.json",
         "PR184",
-        "governance/stage4_alpha_v2_executability_d0_execution_authorization.json"
+        "governance/stage4_alpha_v2_executability_d0_execution_authorization.json",
+        "PR185",
+        "PR186",
+        "bridge-contract:d76ae08d493f8a0c6746a9c90120399ccbfb16919550cfc25d3ad7f0a1c64de9",
+        "governance/stage4_alpha_v2_executability_d0_execution_authorization_v1_1.json"
       ],
       "preregistration_fingerprint": "5407c8293c678287596abe2bc6cced8c83d6a2f997eb6ff8720b7790d59c8e6a",
       "implementation_fingerprint": "33e142142a2a5b3f225f2ef831186eb476eed4ceb7cecbf23159ccd22d76546f",
@@ -359,10 +363,16 @@
       "prediction_allowed": false,
       "oos_access_allowed": false,
       "final_lockbox_status": "SEALED_NO_ACCESS",
-      "next": "await explicit manual D0 workflow_dispatch; artifact verification consumes authorization permanently; no return values/model/OOS/lockbox",
-      "authorization_fingerprint": "119b5fe4016c001e0fdaf4fa68b40cbf4ece92c2e37de5c4ee3d5d57ddfee27b",
+      "next": "manual workflow_dispatch via existing default-branch Stage2 BaoStock workflow identity selecting exact bridge ref; no inputs; single use",
+      "authorization_fingerprint": "050b5f3d2b292e1da4c38cf60ba6b39fcbe1973ada7f3f77c055fc02f02ac920",
       "authorized_execution_head": "3155f715176505bede34a605776c97071af2198c",
-      "armed_runs_remaining": 1
+      "armed_runs_remaining": 1,
+      "prior_authorization_fingerprint": "119b5fe4016c001e0fdaf4fa68b40cbf4ece92c2e37de5c4ee3d5d57ddfee27b",
+      "prior_authorization_status": "SUPERSEDED_UNCONSUMED_INFRASTRUCTURE_BLOCKED",
+      "bridge_contract_fingerprint": "d76ae08d493f8a0c6746a9c90120399ccbfb16919550cfc25d3ad7f0a1c64de9",
+      "authorized_bridge_head": "a1bea4c3d6983761ff28fe840b28c990d97d8572",
+      "authorized_bridge_ref": "agent/stage4-alpha-v2-d0-dispatch-bridge-v1",
+      "bridge_workflow_path": ".github/workflows/stage2-baostock-all-stock-probe.yml"
     },
     {
       "id": "FINAL_LOCKBOX_V1",

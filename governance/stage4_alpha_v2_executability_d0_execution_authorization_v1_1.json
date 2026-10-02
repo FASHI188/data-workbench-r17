@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "status": "AUTHORIZED_SINGLE_USE_D0_DIAGNOSTIC_V1_1_DISPATCH_BRIDGE",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "050b5f3d2b292e1da4c38cf60ba6b39fcbe1973ada7f3f77c055fc02f02ac920",
+  "fingerprint_basis": {
+    "authorization_id": "STAGE4_ALPHA_V2_EXECUTABILITY_D0_DEVELOPMENT_LABEL_DIAGNOSTIC_EXECUTION",
+    "version": "V1.1_DISPATCH_BRIDGE",
+    "integration_base_sha": "c46d5dfb7207eb1f5b61cf59e74517d1b63c5301",
+    "supersedes_authorization_fingerprint": "119b5fe4016c001e0fdaf4fa68b40cbf4ece92c2e37de5c4ee3d5d57ddfee27b",
+    "superseded_authorization_state": "ARMED_UNCONSUMED_INFRASTRUCTURE_BLOCKED_NON_DEFAULT_WORKFLOW_IDENTITY",
+    "superseded_authorization_dispatch_count": 0,
+    "single_use_authority_transfer": {
+      "from_v1_runs_remaining": 1,
+      "to_v1_1_runs_remaining": 1,
+      "additive_authority": false,
+      "parallel_authority_forbidden": true
+    },
+    "bridge": {
+      "contract_fingerprint": "d76ae08d493f8a0c6746a9c90120399ccbfb16919550cfc25d3ad7f0a1c64de9",
+      "review_pr": 185,
+      "reviewed_head": "a1bea4c3d6983761ff28fe840b28c990d97d8572",
+      "reviewed_branch": "agent/stage4-alpha-v2-d0-dispatch-bridge-v1",
+      "workflow_path": ".github/workflows/stage2-baostock-all-stock-probe.yml",
+      "default_branch": "main",
+      "default_branch_workflow_blob_sha": "b4d067aaaa995daf98b8019634c2bce50e7b8559",
+      "bridge_workflow_blob_sha": "ce761c8c152a07fcd07fd39afb26224fdd9b97fe",
+      "main_modified": false,
+      "integration_stage2_workflow_modified": false,
+      "bridge_pr_must_remain_unmerged": true,
+      "ci": {
+        "bridge_static_review_run_id": 36981602785,
+        "repository_safety_run_id": 36981602801,
+        "runtime_reproducibility_run_id": 36981602708,
+        "all_success": true
+      }
+    },
+    "d0_chain": {
+      "preregistration_fingerprint": "5407c8293c678287596abe2bc6cced8c83d6a2f997eb6ff8720b7790d59c8e6a",
+      "implementation_fingerprint": "33e142142a2a5b3f225f2ef831186eb476eed4ceb7cecbf23159ccd22d76546f",
+      "implementation_acceptance_fingerprint": "9282c6e34235e93a07b8c4ee35d84dee99ae4748c2d112dd1a3690374c92402f",
+      "implementation_runner_blob": "5141cb5282519d42397e1ca28396044fd5757193"
+    },
+    "input": {
+      "development_labels_artifact_id": 9216418323,
+      "artifact_digest": "sha256:c4c8c475d79e964265dceec66da1673f9327469edc33531d6a21df8b61627e88",
+      "artifact_file": "development_labels.parquet",
+      "labels_sha256": "092061da5666215dcc1f4fa75ec0b1cdbcc43969560755e7cdae6de55e64d673",
+      "expected_rows": 5197648,
+      "expected_valid_20d_rows": 5103016,
+      "date_min": "2015-01-05",
+      "date_max": "2022-12-30"
+    },
+    "single_use": {
+      "max_runs": 1,
+      "armed_runs_remaining": 1,
+      "consumption_event": "FIRST_SUCCESSFUL_DOWNLOAD_AND_DIGEST_VERIFICATION_OF_DEVELOPMENT_LABELS_ARTIFACT_FOR_D0",
+      "after_consumption_reexecution_forbidden": true,
+      "pre_consumption_retry_allowed_only_with_separate_governance_acknowledgement": true
+    },
+    "workflow": {
+      "identity_path_on_default_branch": ".github/workflows/stage2-baostock-all-stock-probe.yml",
+      "dispatch_ref": "agent/stage4-alpha-v2-d0-dispatch-bridge-v1",
+      "dispatch_inputs": [],
+      "workflow_dispatch_only": true,
+      "exact_bridge_head_required": "a1bea4c3d6983761ff28fe840b28c990d97d8572",
+      "durable_owner_rule": "CURRENT_RUN_MUST_BE_UNIQUE_FIRST_WORKFLOW_DISPATCH_FOR_EXACT_BRIDGE_REF_AND_HEAD"
+    },
+    "permissions": {
+      "development_label_structural_diagnostic_allowed": true,
+      "return_value_read_allowed": false,
+      "model_fit_allowed": false,
+      "prediction_allowed": false,
+      "feature_matrix_access_allowed": false,
+      "oos_access_allowed": false,
+      "final_lockbox_access_allowed": false,
+      "live_signal_allowed": false,
+      "main_merge_allowed": false,
+      "authoritative_output_allowed": false
+    },
+    "output": {
+      "artifact_name": "stage4-alpha-v2-executability-d0-result-v1-1-bridge",
+      "research_only": true,
+      "policy_selection_allowed": false,
+      "threshold_selection_allowed": false,
+      "promotion_allowed": false,
+      "separate_result_acceptance_required": true
+    }
+  },
+  "next_gate": "MANUAL_WORKFLOW_DISPATCH_ON_DEFAULT_IDENTITY_SELECT_EXACT_BRIDGE_REF_NO_INPUTS"
+}
