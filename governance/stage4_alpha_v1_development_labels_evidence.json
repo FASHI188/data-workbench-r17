@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "evidence_id": "STAGE4_ALPHA_V1_DEVELOPMENT_LABELS_AND_CAUSAL_SPLIT_SEAL",
+  "status": "COMPLETE_IMMUTABLE_EVIDENCE",
+  "effective_preregistration": {
+    "version": "V1.2",
+    "fingerprint": "b73f9b55efb04fac5416f6fdd39c17780b3f9e46c82d0da6b111547e3d258cf8",
+    "pr": 142
+  },
+  "implementation_pr": 143,
+  "implementation_head": "cd88076c8da8ce418751ee2af9c38987507c902c",
+  "integration_merge_sha": "03c3167ca259a3809c003f66082bc417cb1f1bb6",
+  "workflow": {
+    "run_id": 31793450104,
+    "conclusion": "success",
+    "artifact_id": 9216418323,
+    "artifact_name": "stage4-alpha-v1-development-labels-v1",
+    "artifact_digest": "sha256:c4c8c475d79e964265dceec66da1673f9327469edc33531d6a21df8b61627e88"
+  },
+  "inputs": {
+    "feature_matrix_artifact_id": 9168728086,
+    "historical_ohlcv_artifact_id": 8651700277,
+    "historical_g5_adjustment_artifact_id": 8651976824,
+    "historical_lifecycle_artifact_id": 8651477081
+  },
+  "population": {
+    "label_rows": 5197648,
+    "unique_label_keys": 5197648,
+    "valid_5d_rows": 5167120,
+    "valid_20d_rows": 5103016,
+    "latest_valid_5d_decision": "2022-12-23",
+    "latest_valid_20d_decision": "2022-12-02",
+    "market_source_max_date": "2022-12-30"
+  },
+  "hashes": {
+    "development_labels_sha256": "092061da5666215dcc1f4fa75ec0b1cdbcc43969560755e7cdae6de55e64d673",
+    "censoring_sha256": "3c963bc0d485aa51eebbc10b0a5ee76d1ad60f49dfe1ddb07bde9424b62389e6",
+    "split_seal_sha256": "98579c8d1b73a63bf18ee47a5cea94b730037d37979d7e38d0a98405efc2df72",
+    "materialization_audit_sha256": "41dc63d774f93850debc3eac221f3d668fc5a6e17b3387a0c1046c890d340d46",
+    "independent_audit_sha256": "8fda49cf4f014c09566750e367adce3ed492bd4da33c33a4775a59bbf1a09863"
+  },
+  "independent_audit": {
+    "pass": true,
+    "future_market_rows_read": 0,
+    "benchmark_5d_max_abs_error": 3.885780586188048e-16,
+    "benchmark_20d_max_abs_error": 9.43689570931383e-16,
+    "excess_5d_max_abs_error": 0.0,
+    "excess_20d_max_abs_error": 0.0,
+    "causal_split_count": 5,
+    "future_train_to_past_test": false
+  },
+  "permissions": {
+    "model_fit_allowed": false,
+    "oos_label_access_allowed": false,
+    "lockbox_label_access_allowed": false,
+    "live_signal_allowed": false,
+    "authoritative_model_output": false
+  },
+  "next_gate": "SEPARATE_ALPHA_V1_DEVELOPMENT_TRAINING_EXECUTION_AUTHORIZATION"
+}

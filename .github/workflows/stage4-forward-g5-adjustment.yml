@@ -1,0 +1,140 @@
+name: Stage4 Forward G5 Adjustment - Exact Control
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/stage4-v1-feature-set]
+    paths:
+      - '.github/workflows/stage4-forward-g5-adjustment.yml'
+      - 'scripts/build_stage4_forward_g5_adjustment.py'
+      - 'tests/test_stage4_forward_g5_adjustment.py'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  HISTORICAL_G3_ARTIFACT: '8651700277'
+  HISTORICAL_G3_DIGEST: 'bf977d4f379d421bd198865b90df90caef7ba6cfb5d6d1af96e5487300c1a2f8'
+  HISTORICAL_G5_ARTIFACT: '8651976824'
+  HISTORICAL_G5_DIGEST: 'acbeaaca9fc849acbef213dbd9b50df034f28e36acd352e625acb44e536cbe22'
+  FORWARD_OHLCV_ARTIFACT: '9150060738'
+  FORWARD_OHLCV_DIGEST: '1eaa0c0e588c95f835a9e576659616bb8e68d0c19c9712b9821ea88c90451ba9'
+  FORWARD_ACTION_ARTIFACT: '9150398642'
+  FORWARD_ACTION_DIGEST: '8e26469a5a6cd1537eb57bcbe787eadd48f54b56b3b209f618a74567278742a5'
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check pytest
+      - run: pytest -q tests/test_stage4_forward_g5_adjustment.py tests/test_g5_semantics.py
+
+  build-forward-g5:
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt baostock
+      - name: Download pinned evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for spec in \
+            "g3:${HISTORICAL_G3_ARTIFACT}:${HISTORICAL_G3_DIGEST}" \
+            "g5:${HISTORICAL_G5_ARTIFACT}:${HISTORICAL_G5_DIGEST}" \
+            "forward-ohlcv:${FORWARD_OHLCV_ARTIFACT}:${FORWARD_OHLCV_DIGEST}" \
+            "forward-actions:${FORWARD_ACTION_ARTIFACT}:${FORWARD_ACTION_DIGEST}"; do
+            IFS=: read -r name aid digest <<< "$spec"
+            mkdir -p "build/${name}"
+            curl --fail --location --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${aid}/zip" \
+              -o "build/${name}.zip"
+            echo "${digest}  build/${name}.zip" | sha256sum -c -
+            unzip -q "build/${name}.zip" -d "build/${name}"
+          done
+          test -f build/forward-actions/forward_corporate_actions.csv.gz
+          test -f build/g5/g5_adjustment_chain.csv.gz
+          test -d build/g3/frozen-g3/build/g3
+
+      - name: Build 2026-07-25 through 2026-08-12 forward G5 extension
+        run: |
+          python scripts/build_stage4_forward_g5_adjustment.py \
+            --actions build/forward-actions/forward_corporate_actions.csv.gz \
+            --historical-g5 build/g5/g5_adjustment_chain.csv.gz \
+            --historical-ohlcv-root build/g3/frozen-g3/build/g3 \
+            --forward-ohlcv-root build/forward-ohlcv \
+            --target-session 2026-08-12 \
+            --out build/stage4-forward-g5
+
+      - name: Verify support-only boundary
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('build/stage4-forward-g5/forward_g5_adjustment_audit.json')
+          a=json.loads(p.read_text(encoding='utf-8'))
+          assert a['pass'] is True
+          assert a['input_action_rows']==101
+          assert a['output_adjustment_rows']==101
+          assert a['g4_control_rows']==101
+          assert a['authoritative'] is False
+          assert a['stage4_feature_support_only'] is True
+          assert a['alpha_training_allowed'] is False
+          assert a['live_signal_allowed'] is False
+          PY
+
+      - name: Lock execution manifest
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('build/stage4-forward-g5')
+          a=json.loads((root/'forward_g5_adjustment_audit.json').read_text(encoding='utf-8'))
+          out={
+            'schema_version':1,
+            'gate':'STAGE4_FORWARD_G5_ADJUSTMENT_EXTENSION',
+            'execution_head':'${{ github.sha }}',
+            'pass':a['pass'],
+            'historical_g3_artifact':int('${{ env.HISTORICAL_G3_ARTIFACT }}'),
+            'historical_g3_digest':'sha256:${{ env.HISTORICAL_G3_DIGEST }}',
+            'historical_g5_artifact':int('${{ env.HISTORICAL_G5_ARTIFACT }}'),
+            'historical_g5_digest':'sha256:${{ env.HISTORICAL_G5_DIGEST }}',
+            'forward_ohlcv_artifact':int('${{ env.FORWARD_OHLCV_ARTIFACT }}'),
+            'forward_ohlcv_digest':'sha256:${{ env.FORWARD_OHLCV_DIGEST }}',
+            'forward_action_artifact':int('${{ env.FORWARD_ACTION_ARTIFACT }}'),
+            'forward_action_digest':'sha256:${{ env.FORWARD_ACTION_DIGEST }}',
+            'data_sha256':a['data_sha256'],
+            'audit_sha256':hashlib.sha256((root/'forward_g5_adjustment_audit.json').read_bytes()).hexdigest(),
+            'action_rows':a['input_action_rows'],
+            'g4_control_rows':a['g4_control_rows'],
+            'material_share_distribution_override_count':a['material_share_distribution_override_count'],
+            'authoritative':False,
+            'stage4_feature_support_only':True,
+            'alpha_training_allowed':False,
+            'live_signal_allowed':False
+          }
+          (root/'execution_manifest.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage4-forward-g5-adjustment-extension
+          path: build/stage4-forward-g5
+          compression-level: 0
+          retention-days: 90

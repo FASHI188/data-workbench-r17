@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "integration_commit": "5483ce30fa5efca2f1047241af5b80b765eb06c7",
+  "file_count": 31,
+  "scope": "STAGE3_FOUNDATION_S3G2_S3G3_S3G4_S3GU_RUNTIME_AND_FORMAL_GATE_FILES",
+  "sources": {
+    "foundation": "stage3-point-in-time-features",
+    "s3g2_latest_repair": "stage3-s3g2-instrument-repair-v2",
+    "s3g3b": "stage3-s3g3b-validation",
+    "validation_gate_source": "stage3-validation-gates-v2"
+  },
+  "hard_invariants": {
+    "stage2_fingerprint_exact": "f17f7ab63f4532dda635eb7366e7df7bf5497a5ce814410105312bccb53125bb",
+    "stage3_status": "NOT_READY",
+    "stage4_alpha_locked": true,
+    "date_only_disclosure_uses_next_session": true,
+    "surprise_requires_strictly_prior_expectation": true,
+    "security_identity_fail_closed": true,
+    "current_industry_backfill_forbidden": true,
+    "announcement_title_scalar_inference_forbidden": true,
+    "trading_universe_main_board_only": true,
+    "price_rule": "point_in_time_unadjusted_price < 70 CNY"
+  },
+  "final_gates_passed_on_clean_integration": {
+    "S3G2_ANNOUNCEMENT_LEDGER": {
+      "run_id": 30522392946,
+      "ledger_sha256": "0eb139572865628283f86c981990e59e076d5ef2a978a5967aace90d553e30dd",
+      "deterministic_replay_count": 2,
+      "deterministic_replay_same_sha": true,
+      "artifact_digest_is_transport_only": true
+    }
+  },
+  "pending_final_gates": [
+    "S3G1J_FINANCIAL_RAW_VALUES",
+    "S3G4_EARNINGS_SURPRISE"
+  ]
+}

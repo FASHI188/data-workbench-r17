@@ -1,0 +1,197 @@
+name: Freshness Forward Phase2 - OHLCV Delta
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/freshness-v2-execution-20260812
+    paths:
+      - '.github/workflows/freshness-forward-phase2-ohlcv.yml'
+      - 'scripts/build_forward_ohlcv.py'
+      - 'scripts/audit_forward_ohlcv.py'
+      - 'tests/test_forward_ohlcv_harness.py'
+      - 'scripts/build_g3_ohlcv.py'
+      - 'data/stage2_final/manifest.json'
+      - 'requirements/constraints-verified.txt'
+      - '.python-version'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONPATH: scripts
+  PHASE1_RUN: '31616408639'
+  PHASE1_HEAD: 'bd665687d0168c7406d7e8e0269622b45bcc3915'
+  PHASE1_ARTIFACT: '9149393864'
+  PHASE1_DIGEST: '0caf22ac24c81edba7fe63ad7d445b193218b96d37436dbceb435a2736c899e2'
+  SSE_SHARDS: '8'
+
+concurrency:
+  group: freshness-forward-phase2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests openpyxl pytest
+      - run: pytest -q tests/test_build_g3_ohlcv.py tests/test_forward_ohlcv_harness.py
+
+  sse:
+    needs: tests
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests openpyxl
+      - name: Materialize exact Phase1 fresh current master
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/phase1-anchor
+          curl --fail --location --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PHASE1_ARTIFACT}/zip" \
+            -o build/phase1-anchor.zip
+          echo "${PHASE1_DIGEST}  build/phase1-anchor.zip" | sha256sum -c -
+          unzip -q build/phase1-anchor.zip -d build/phase1-anchor
+          rm -rf data/current_master
+          cp -a build/phase1-anchor/data/current_master data/current_master
+          python - <<'PY'
+          import json
+          m=json.load(open('data/current_master/manifest.json',encoding='utf-8'))
+          assert m['hard_gate_status']=='PASS_CANDIDATE'
+          assert m['szse']['as_of']=='2026-08-12'
+          PY
+      - name: Build official SSE forward shard ${{ matrix.shard }}/8
+        run: python scripts/build_forward_ohlcv.py sse-shard --shard ${{ matrix.shard }} --shards 8 --out build/freshness-phase2/sse
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freshness-phase2-sse-${{ matrix.shard }}
+          path: build/freshness-phase2/sse
+          compression-level: 0
+          retention-days: 90
+
+  szse:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests openpyxl
+      - name: Materialize exact Phase1 fresh current master
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/phase1-anchor
+          curl --fail --location --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PHASE1_ARTIFACT}/zip" \
+            -o build/phase1-anchor.zip
+          echo "${PHASE1_DIGEST}  build/phase1-anchor.zip" | sha256sum -c -
+          unzip -q build/phase1-anchor.zip -d build/phase1-anchor
+          rm -rf data/current_master
+          cp -a build/phase1-anchor/data/current_master data/current_master
+      - name: Build official SZSE forward delta
+        run: python scripts/build_forward_ohlcv.py szse-delta --out build/freshness-phase2/szse
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freshness-phase2-szse
+          path: build/freshness-phase2/szse
+          compression-level: 0
+          retention-days: 90
+
+  audit:
+    needs: [sse, szse]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Materialize exact Phase1 fresh current master
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/phase1-anchor
+          curl --fail --location --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PHASE1_ARTIFACT}/zip" \
+            -o build/phase1-anchor.zip
+          echo "${PHASE1_DIGEST}  build/phase1-anchor.zip" | sha256sum -c -
+          unzip -q build/phase1-anchor.zip -d build/phase1-anchor
+          rm -rf data/current_master
+          cp -a build/phase1-anchor/data/current_master data/current_master
+      - name: Download SSE forward shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: freshness-phase2-sse-*
+          path: build/freshness-phase2/sse
+          merge-multiple: true
+      - name: Download SZSE forward delta
+        uses: actions/download-artifact@v4
+        with:
+          name: freshness-phase2-szse
+          path: build/freshness-phase2/szse
+      - name: Fail-closed audit forward OHLCV
+        run: python scripts/audit_forward_ohlcv.py --root build/freshness-phase2 --sse-shards 8 --out build/freshness-phase2/forward_ohlcv_audit.json
+      - name: Write Phase2 evidence manifest
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path('build/freshness-phase2/forward_ohlcv_audit.json')
+          a=json.loads(p.read_text(encoding='utf-8'))
+          out={
+            'schema_version':1,
+            'execution_head':'${{ github.sha }}',
+            'phase1_anchor_run':int('${{ env.PHASE1_RUN }}'),
+            'phase1_anchor_head':'${{ env.PHASE1_HEAD }}',
+            'phase1_anchor_artifact':int('${{ env.PHASE1_ARTIFACT }}'),
+            'phase1_anchor_digest':'sha256:${{ env.PHASE1_DIGEST }}',
+            'forward_ohlcv_audit_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
+            'forward_ohlcv':a,
+            'phase2_pass':a.get('pass') is True,
+            'authoritative':False,
+            'purpose':'official OHLCV freshness delta only; frozen Stage2/Stage3 remain unchanged; Stage4 remains locked',
+          }
+          Path('build/freshness-phase2/manifest.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freshness-forward-phase2-ohlcv
+          path: |
+            build/freshness-phase2
+          compression-level: 0
+          retention-days: 90

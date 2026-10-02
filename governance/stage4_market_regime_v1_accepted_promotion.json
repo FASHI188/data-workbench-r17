@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "promotion_id": "STAGE4_MARKET_REGIME_V1_ACCEPTED_PROMOTION",
+  "module_id": "market_regime_v1",
+  "module_version": "V1",
+  "from_lifecycle": "TESTED",
+  "to_lifecycle": "ACCEPTED",
+  "enabled": false,
+  "evidence": {
+    "shadow_replay": {
+      "run_id": 31661405042,
+      "head_sha": "8f4460da5e78b86572f08247a16e7f50ee5e17e5",
+      "artifact_id": 9166323143,
+      "artifact_digest": "sha256:83e7c803f500b6ba4c3989826f08b47fe61ccc8f1a0974c8abd3b3fd588baf51",
+      "market_regime_data_sha256": "a915b4bb655f43fecd786554541bd1bdba1543c7da489fae68ae65d8fbacd376",
+      "audit_sha256": "b8e131cbbca502c399f84ab44a3871597d70f5ccd770675ff9217ddff6d49f1b",
+      "source_rows": 8079931,
+      "output_rows": 2821,
+      "coverage_start": "2015-01-05",
+      "coverage_end": "2026-08-12",
+      "audit_pass": true
+    },
+    "post_tested_exact_replay": {
+      "run_id": 31661638823,
+      "head_sha": "518239277a42f2e4c7a0e46c68c0d7f604264c38",
+      "conclusion": "success"
+    },
+    "governance_regression": {
+      "run_id": 31661670206,
+      "head_sha": "6030df4ba2605f2c98352f854415b0d906ba7b97",
+      "conclusion": "success"
+    },
+    "feature_set_freeze": {
+      "run_id": 31664765498,
+      "head_sha": "62c963a1598803efd446d3876c19c598f1c6ef50",
+      "artifact_id": 9167496123,
+      "artifact_digest": "sha256:7fbdb32284c87509253635b3ba491d406da08095f9fd1953c05d2b74b3d50c71",
+      "audit_sha256": "62291bb9499edd365f3beb9b75e98f2478f5fdedf59c02fe6f6075e65046cf25",
+      "feature_set_fingerprint_before_acceptance": "06838625fa8afc3df87f7e8df22007c4e780e93dcbbe7605e7ec99fe1713c738",
+      "conclusion": "success"
+    }
+  },
+  "acceptance_checks": {
+    "strict_pit_replay_pass": true,
+    "full_population_replay_pass": true,
+    "fail_closed_audit_pass": true,
+    "post_tested_exact_replay_pass": true,
+    "extension_governance_regression_pass": true,
+    "stage4_feature_set_contract_pass": true,
+    "no_stage2_or_stage3_authority_mutation": true,
+    "no_training_authorization": true,
+    "no_live_authorization": true
+  },
+  "permissions": {
+    "stage4_feature_use_allowed": true,
+    "enabled": false,
+    "alpha_training_allowed": false,
+    "live_signal_allowed": false,
+    "authoritative_model_output": false
+  },
+  "rollback": {
+    "target_lifecycle": "TESTED",
+    "target_module_version": "V1",
+    "target_module_set_fingerprint": "19568c012959f821a8efe94df5999f6066b612aecb4eba5412a38d4ba35695b2",
+    "fallback_behavior": "BASELINE_UNCHANGED"
+  },
+  "reason": "Market Regime V1 completed pinned full-history plus forward replay, fail-closed audit, post-TESTED exact replay, governance regression, and the Stage4 V1 feature-set freeze contract. ACCEPTED authorizes this feature plugin as an input to the frozen Stage4 V1 feature materialization only; it does not enable the module, Alpha training, live signals, or authoritative model output."
+}

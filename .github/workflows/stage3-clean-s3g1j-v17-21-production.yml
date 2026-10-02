@@ -1,0 +1,362 @@
+name: Stage3 Clean S3G1J V17.21 Production Acceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/stage3_financial_spatial_alias_v17_21.py'
+      - 'scripts/stage3_financial_pdf_parser_v13.py'
+      - 'scripts/extract_stage3_financial_pdf_values_v13.py'
+      - 'scripts/accept_stage3_s3g1j_v17_21_production.py'
+      - 'tests/test_stage3_v17_21_production_parser.py'
+      - '.github/workflows/stage3-clean-s3g1j-v17-21-production.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  PYTHONPATH: scripts
+  FROZEN_RUN: '30424465440'
+  FROZEN_HEAD: 'be42608b75f77af13c36620da7e7fa03c563afde'
+  FROZEN_ARTIFACT: 'stage3-s3g1j-v15-single-source-input'
+  FROZEN_DIGEST: 'sha256:272f52239adc2fc5d4343ec091495dffcd39324b425784cdf5a7491f63a2e6fd'
+  ACCEPTED_RUN: '30510347556'
+  ACCEPTED_HEAD: 'e98d26b962a58cecc5c6416214e3c798c5e8a49e'
+  ACCEPTED_ARTIFACT: 'stage3-s3g1j-v17-11-column-evidence-acceptance'
+  ACCEPTED_DIGEST: 'sha256:b1143faaf2c1a91fd64e21ef35c05e787200d957f888613fa2f2a2fc23c43ad9'
+  V17_17_COMBINED_RUN: '30551663340'
+  V17_17_COMBINED_HEAD: 'a6bff5c3b46d7715e731df16be77f9daf7e9bc29'
+  V17_17_COMBINED_ARTIFACT: 'stage3-s3g1j-v17-17-combined-production-exact-82-acceptance'
+  V17_17_COMBINED_DIGEST: 'sha256:cc73d7e1cfc35f6209176b17b37db69cb5edacb8895d1edb447effd797a89541'
+  V17_18_RUN: '30593361140'
+  V17_18_HEAD: '923fe39ea7f1b1a839f4182d717b567cc2bef9dc'
+  V17_18_ARTIFACT: 'stage3-s3g1j-v17-18-exact-80-residual-diagnostic'
+  V17_18_DIGEST: 'sha256:3713c252f8045c3e8a13133b18ab71c16336f22be636c518503f20b859d75957'
+  V17_21_CANDIDATE_RUN: '30595448576'
+  V17_21_CANDIDATE_HEAD: '3ba1c26ab6d60fc4eac11b34c7f256e87129f121'
+  V17_21_CANDIDATE_ARTIFACT: 'stage3-s3g1j-v17-21-exact-80-candidate-safety'
+  V17_21_CANDIDATE_DIGEST: 'sha256:08f1ec96e39d2faef113dd8254df134d6aa29783c03d85df820ebd7d5ce63d3e'
+
+jobs:
+  lock-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact verified runtime dependencies
+        run: python -m pip install --disable-pip-version-check --constraint requirements/constraints-verified.txt requests PyMuPDF
+      - name: Lock accepted evidence chain with rate-limit retry
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh_api_retry() {
+            endpoint="$1"
+            for attempt in 1 2 3 4 5 6; do
+              if output=$(gh api "$endpoint" 2>gh-api-error.log); then
+                printf '%s' "$output"
+                return 0
+              fi
+              cat gh-api-error.log >&2 || true
+              sleep $((attempt * 15))
+            done
+            return 1
+          }
+          lock_run_artifact() {
+            run="$1"; expected_head="$2"; artifact="$3"; expected_digest="$4"
+            run_json=$(gh_api_retry "repos/$GITHUB_REPOSITORY/actions/runs/$run")
+            test "$(jq -r '.conclusion' <<<"$run_json")" = success
+            test "$(jq -r '.head_sha' <<<"$run_json")" = "$expected_head"
+            artifact_json=$(gh_api_retry "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts")
+            actual=$(jq -r --arg artifact "$artifact" '.artifacts[] | select(.name==$artifact) | .digest' <<<"$artifact_json")
+            test -n "$actual"
+            test "$actual" = "$expected_digest"
+          }
+          lock_run_artifact "$FROZEN_RUN" "$FROZEN_HEAD" "$FROZEN_ARTIFACT" "$FROZEN_DIGEST"
+          lock_run_artifact "$ACCEPTED_RUN" "$ACCEPTED_HEAD" "$ACCEPTED_ARTIFACT" "$ACCEPTED_DIGEST"
+          lock_run_artifact "$V17_17_COMBINED_RUN" "$V17_17_COMBINED_HEAD" "$V17_17_COMBINED_ARTIFACT" "$V17_17_COMBINED_DIGEST"
+          lock_run_artifact "$V17_18_RUN" "$V17_18_HEAD" "$V17_18_ARTIFACT" "$V17_18_DIGEST"
+          lock_run_artifact "$V17_21_CANDIDATE_RUN" "$V17_21_CANDIDATE_HEAD" "$V17_21_CANDIDATE_ARTIFACT" "$V17_21_CANDIDATE_DIGEST"
+      - name: Run V17.21 production parser contracts
+        run: python -m unittest tests.test_stage3_v17_21_production_parser -v
+      - name: Import V17.21 production runtime and formal extractor
+        run: |
+          python - <<'PY'
+          import extract_stage3_financial_pdf_values_v13 as extractor
+          import stage3_financial_pdf_parser_v13 as parser
+          import stage3_financial_spatial_alias_v17_21 as candidate
+          assert parser.METHOD=='V17_21_EXACT_REVERSE_ADJACENT_ASSET_TOTAL_FINAL_FALLBACK'
+          assert extractor.METHOD.endswith('V17_21_EXACT_REVERSE_ADJACENT_ASSET_TOTAL_FINAL_FALLBACK')
+          assert extractor.METHODOLOGY_VERSION=='V3.3.3-V17.21'
+          assert callable(extractor.write_deterministic_csv_gz)
+          assert callable(candidate.diagnose_spatial_balance_sheet_v17_21)
+          print('S3G1J_V17_21_PRODUCTION_RUNTIME_IMPORT_PASS')
+          PY
+
+  exact80:
+    needs: lock-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0, 1, 7, 9]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact verified runtime dependencies
+        run: python -m pip install --disable-pip-version-check --constraint requirements/constraints-verified.txt requests PyMuPDF
+      - name: Restore exact-80 production inputs with retry
+        shell: bash
+        run: |
+          set -euo pipefail
+          download_retry() {
+            run="$1"; artifact="$2"; destination="$3"
+            for attempt in 1 2 3 4 5 6; do
+              rm -rf "$destination"
+              if gh run download "$run" -R "$GITHUB_REPOSITORY" -n "$artifact" -D "$destination" 2>gh-download-error.log; then
+                return 0
+              fi
+              cat gh-download-error.log >&2 || true
+              sleep $((attempt * 15))
+            done
+            return 1
+          }
+          rm -rf prepared accepted v1718 build/v17-21-production-exact80
+          download_retry "$FROZEN_RUN" "$FROZEN_ARTIFACT" prepared
+          download_retry "$ACCEPTED_RUN" "$ACCEPTED_ARTIFACT" accepted
+          download_retry "$V17_18_RUN" "$V17_18_ARTIFACT" v1718
+          test -f prepared/single_source_residual_versions.csv.gz
+          test -f accepted/v17_11_column_evidence_acceptance.json
+          test -f v1718/candidate/shard0.json
+      - name: Run V17.21 production parser over exact current 80
+        shell: bash
+        run: |
+          set +e
+          out="build/v17-21-production-exact80/shard${{ matrix.shard }}.json"
+          mkdir -p "$(dirname "$out")"
+          python scripts/accept_stage3_s3g1j_v17_21_production.py \
+            --mode exact80 \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --v17-11-acceptance accepted/v17_11_column_evidence_acceptance.json \
+            --v17-18-candidate-root v1718/candidate \
+            --shard ${{ matrix.shard }} --shards 64 --out "$out" \
+            > "${out%.json}.stdout.log" 2> "${out%.json}.stderr.log"
+          code=$?
+          echo "ACCEPT_EXIT=$code" >> "$GITHUB_ENV"
+          cat "${out%.json}.stdout.log" || true
+          tail -100 "${out%.json}.stderr.log" || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-21-production-exact80-${{ matrix.shard }}
+          path: build/v17-21-production-exact80
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve exact-80 production failure
+        if: env.ACCEPT_EXIT != '0'
+        run: exit 1
+
+  exact80-summary:
+    needs: exact80
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g1j-v17-21-production-exact80-*
+          path: candidate
+          merge-multiple: true
+      - name: Require exact V17.21 production recovery and 79 fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import glob,json,os
+          reports=[json.load(open(path,encoding='utf-8')) for path in sorted(glob.glob('candidate/shard*.json'))]
+          reports.sort(key=lambda row:row['shard'])
+          assert [row['shard'] for row in reports]==[0,1,7,9]
+          assert all(row.get('pass') is True for row in reports), [row.get('execution_failures') for row in reports]
+          assert sum(row['input_count'] for row in reports)==80
+          assert sum(row['processed_count'] for row in reports)==80
+          assert sum(row['source_sha_match_count'] for row in reports)==80
+          rows=[item for report in reports for item in report['results']]
+          recovered=sorted(row['announcement_id'] for row in rows if row['production_balance_sheet_recovered'])
+          assert recovered==['1219311356'], recovered
+          target=next(row for row in rows if row['announcement_id']=='1219311356')
+          block=target['balance_sheet_block']
+          assert block['arbitration']=='V17_21_GROUP_PERIOD_FROZEN_DATE_A_EQUALS_L_PLUS_E_EXACT_REVERSE_ASSET_TOTAL'
+          assert block['reverse_asset_total_alias']=='资产总计'
+          assert block['reverse_asset_total_y_delta']=='5.87994384765625'
+          assert block['reverse_asset_total_amount_column_count']==2
+          assert block['e_equals_a_minus_l_inference'] is False
+          report={
+              'gate':'S3G1J_V17_21_PRODUCTION_EXACT_80_ACCEPTANCE',
+              'pass':True,
+              'input_count':80,
+              'source_sha_match_count':80,
+              'production_recovered_count':1,
+              'production_recovered_announcement_ids':recovered,
+              'remaining_fail_closed_count':79,
+              'accounting_tolerance':'0.005',
+              'global_row_tolerance_changed':False,
+              'source_policy_changed':False,
+              'stage4_alpha_locked':True,
+              'target_result':target,
+              'per_shard':[
+                  {key:row[key] for key in ('shard','input_count','processed_count','source_sha_match_count','recovered_announcement_ids')}
+                  for row in reports
+              ],
+              'errors':[],
+          }
+          os.makedirs('summary',exist_ok=True)
+          json.dump(report,open('summary/s3g1j_v17_21_production_exact_80_acceptance.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-21-production-exact-80-acceptance
+          path: |
+            summary
+            candidate
+          retention-days: 90
+          compression-level: 0
+
+  exact82:
+    needs: exact80-summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0, 1, 7, 9]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact verified runtime dependencies
+        run: python -m pip install --disable-pip-version-check --constraint requirements/constraints-verified.txt requests PyMuPDF
+      - name: Restore exact-82 source inputs with retry
+        shell: bash
+        run: |
+          set -euo pipefail
+          download_retry() {
+            run="$1"; artifact="$2"; destination="$3"
+            for attempt in 1 2 3 4 5 6; do
+              rm -rf "$destination"
+              if gh run download "$run" -R "$GITHUB_REPOSITORY" -n "$artifact" -D "$destination" 2>gh-download-error.log; then
+                return 0
+              fi
+              cat gh-download-error.log >&2 || true
+              sleep $((attempt * 15))
+            done
+            return 1
+          }
+          rm -rf prepared accepted build/v17-21-production-exact82
+          download_retry "$FROZEN_RUN" "$FROZEN_ARTIFACT" prepared
+          download_retry "$ACCEPTED_RUN" "$ACCEPTED_ARTIFACT" accepted
+          test -f prepared/single_source_residual_versions.csv.gz
+          test -f accepted/v17_11_column_evidence_acceptance.json
+      - name: Run V17.21 production parser over accepted exact 82
+        shell: bash
+        run: |
+          set +e
+          out="build/v17-21-production-exact82/shard${{ matrix.shard }}.json"
+          mkdir -p "$(dirname "$out")"
+          python scripts/accept_stage3_s3g1j_v17_21_production.py \
+            --mode exact82 \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --v17-11-acceptance accepted/v17_11_column_evidence_acceptance.json \
+            --shard ${{ matrix.shard }} --shards 64 --out "$out" \
+            > "${out%.json}.stdout.log" 2> "${out%.json}.stderr.log"
+          code=$?
+          echo "ACCEPT_EXIT=$code" >> "$GITHUB_ENV"
+          cat "${out%.json}.stdout.log" || true
+          tail -100 "${out%.json}.stderr.log" || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-21-production-exact82-${{ matrix.shard }}
+          path: build/v17-21-production-exact82
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve exact-82 production failure
+        if: env.ACCEPT_EXIT != '0'
+        run: exit 1
+
+  exact82-summary:
+    needs: exact82
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g1j-v17-21-production-exact82-*
+          path: candidate
+          merge-multiple: true
+      - name: Require exact combined production recovery set
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import glob,json,os
+          reports=[json.load(open(path,encoding='utf-8')) for path in sorted(glob.glob('candidate/shard*.json'))]
+          reports.sort(key=lambda row:row['shard'])
+          assert [row['shard'] for row in reports]==[0,1,7,9]
+          assert all(row.get('pass') is True for row in reports), [row.get('execution_failures') for row in reports]
+          assert sum(row['input_count'] for row in reports)==82
+          assert sum(row['processed_count'] for row in reports)==82
+          assert sum(row['source_sha_match_count'] for row in reports)==82
+          rows=[item for report in reports for item in report['results']]
+          recovered=sorted(row['announcement_id'] for row in rows if row['production_balance_sheet_recovered'])
+          expected=['1212731093','1219311356','1225153907']
+          assert recovered==expected, recovered
+          arbitrations={row['announcement_id']:row['balance_sheet_block']['arbitration'] for row in rows if row['production_balance_sheet_recovered']}
+          assert arbitrations=={
+              '1212731093':'V17_17_GROUP_PERIOD_STRICT_PAIRED_HEADER_A_EQUALS_L_PLUS_E_EXPLICIT_TOTAL_EQUITY',
+              '1219311356':'V17_21_GROUP_PERIOD_FROZEN_DATE_A_EQUALS_L_PLUS_E_EXACT_REVERSE_ASSET_TOTAL',
+              '1225153907':'V17_15_GROUP_PERIOD_FROZEN_DATE_COLUMN_A_EQUALS_L_PLUS_E_STRICT_ADJACENT_ROW',
+          }
+          report={
+              'gate':'S3G1J_V17_21_COMBINED_PRODUCTION_EXACT_82_ACCEPTANCE',
+              'pass':True,
+              'input_count':82,
+              'source_sha_match_count':82,
+              'production_recovered_count':3,
+              'production_recovered_announcement_ids':recovered,
+              'remaining_fail_closed_count':79,
+              'arbitrations':arbitrations,
+              'accounting_tolerance':'0.005',
+              'global_row_tolerance_changed':False,
+              'source_policy_changed':False,
+              'e_equals_a_minus_l_inference':False,
+              'stage4_alpha_locked':True,
+              'per_shard':[
+                  {key:row[key] for key in ('shard','input_count','processed_count','source_sha_match_count','recovered_announcement_ids')}
+                  for row in reports
+              ],
+              'errors':[],
+          }
+          os.makedirs('summary',exist_ok=True)
+          json.dump(report,open('summary/s3g1j_v17_21_combined_production_exact_82_acceptance.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-21-combined-production-exact-82-acceptance
+          path: |
+            summary
+            candidate
+          retention-days: 90
+          compression-level: 0

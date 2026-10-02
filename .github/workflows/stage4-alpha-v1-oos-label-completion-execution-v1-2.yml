@@ -1,0 +1,109 @@
+name: Stage4 Alpha V1 OOS Label Completion Single-Use Execution V1.2
+
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-execution-v1-2.yml'
+      - 'governance/stage4_alpha_v1_oos_label_completion_execution_contract_v1_2.json'
+      - 'scripts/run_stage4_alpha_v1_oos_label_completion_execution_carrier_v1_2.py'
+  workflow_dispatch:
+    inputs:
+      execution_head:
+        description: 'Frozen reviewed execution PR head SHA'
+        required: true
+        type: string
+      arming_merge_sha:
+        description: 'Exact integration merge SHA that contains the armed authorization'
+        required: true
+        type: string
+      confirmation:
+        description: 'Must equal CONSUME_SINGLE_USE_OOS_LABEL_COMPLETION_V1_2'
+        required: true
+        type: string
+
+concurrency:
+  group: stage4-alpha-v1-oos-label-completion-single-use-v1-2
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  OMP_NUM_THREADS: '1'
+  MKL_NUM_THREADS: '1'
+  OPENBLAS_NUM_THREADS: '1'
+  NUMEXPR_NUM_THREADS: '1'
+
+jobs:
+  static-execution-carrier:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Static carrier audit only
+        run: |
+          python -m py_compile scripts/run_stage4_alpha_v1_oos_label_completion_execution_carrier_v1_2.py
+          python scripts/run_stage4_alpha_v1_oos_label_completion_execution_carrier_v1_2.py --mode static
+      - name: Prove PR event cannot enter label-bearing path
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ github.event_name }}" = "pull_request"
+          test ! -e build/pre-access
+          test ! -e build/prediction-artifact
+          test ! -e build/physical-boundary
+          test ! -e build/out
+
+  label-completion-execution:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.execution_head }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Preflight armed authorization and durable owner
+        run: >-
+          python scripts/run_stage4_alpha_v1_oos_label_completion_execution_carrier_v1_2.py
+          --mode preflight
+          --execution-head "${{ inputs.execution_head }}"
+          --arming-merge-sha "${{ inputs.arming_merge_sha }}"
+          --confirmation "${{ inputs.confirmation }}"
+      - name: Install frozen completion runtime
+        run: >-
+          python -m pip install --disable-pip-version-check
+          numpy==2.5.1 scipy==1.17.0 pyarrow==25.0.0 duckdb==1.3.2 pandas==3.0.5
+      - name: Execute immutable-prediction label completion once
+        run: >-
+          python scripts/run_stage4_alpha_v1_oos_label_completion_execution_carrier_v1_2.py
+          --mode execute
+          --execution-head "${{ inputs.execution_head }}"
+          --arming-merge-sha "${{ inputs.arming_merge_sha }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage4-alpha-v1-oos-label-completion-single-use-result-v1-2
+          path: |
+            build/pre-access
+            build/out
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 90

@@ -1,0 +1,145 @@
+name: Stage4 V1.2 Feature Matrix - Surprise Semantic Hard Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/stage4-v1-feature-set]
+    paths:
+      - '.github/workflows/stage4-v1-2-feature-matrix.yml'
+      - 'governance/stage4_v1_feature_set_contract.json'
+      - 'governance/stage4_v1_feature_set_v1_1_supersession.json'
+      - 'config/stage4_v1_feature_matrix_contract.json'
+      - 'scripts/materialize_stage4_v1_2_surprise_semantics.py'
+      - 'scripts/audit_stage4_v1_2_feature_matrix.py'
+      - 'scripts/audit_stage4_v1_feature_set_contract.py'
+      - 'tests/test_stage4_v1_feature_set_contract.py'
+      - 'tests/test_stage4_v1_feature_matrix_contract.py'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  BASE_MATRIX_AID: '9168438550'
+  BASE_MATRIX_DIGEST: '813ae234c149fb30f725895cd67bcfbe404b1050cba9f915c9c4c0f5a1392a42'
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check pytest
+      - name: Run V1.2 contracts
+        run: pytest -q tests/test_stage4_v1_feature_set_contract.py tests/test_stage4_v1_feature_matrix_contract.py tests/test_extension_foundation.py tests/test_stage4_market_regime_v1.py
+      - name: Run fail-closed V1.2 feature set audit
+        run: python scripts/audit_stage4_v1_feature_set_contract.py | tee feature_set_v1_2_audit.json
+
+  materialize-audit:
+    needs: contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check duckdb==1.3.2
+      - name: Download and verify V1.1 audited base matrix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p build/base
+          curl --fail --location --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${BASE_MATRIX_AID}/zip" \
+            -o build/base.zip
+          echo "${BASE_MATRIX_DIGEST}  build/base.zip" | sha256sum -c -
+          unzip -q build/base.zip -d build/base
+          test -f build/base/stage4-v1-matrix/stage4_v1_feature_matrix.parquet
+          test -f build/base/stage4-v1-matrix/independent_audit.json
+          test -f build/base/stage4-v1-matrix/execution_manifest.json
+          python - <<'PY'
+          import json,hashlib
+          from pathlib import Path
+          root=Path('build/base/stage4-v1-matrix')
+          e=json.loads((root/'execution_manifest.json').read_text(encoding='utf-8'))
+          a=json.loads((root/'independent_audit.json').read_text(encoding='utf-8'))
+          assert e['independent_audit_pass'] is True and a['pass'] is True
+          assert e['matrix_rows']==7924181
+          assert e['matrix_sha256']=='1818f9cdaf86c965e45c07cd1d261ece0eb782a6aa0aa6846d18701bd8699feb'
+          h=hashlib.sha256((root/'stage4_v1_feature_matrix.parquet').read_bytes()).hexdigest()
+          assert h==e['matrix_sha256']
+          PY
+
+      - name: Materialize V1.2 current-period Surprise semantics
+        run: |
+          python scripts/materialize_stage4_v1_2_surprise_semantics.py \
+            --base-matrix build/base/stage4-v1-matrix/stage4_v1_feature_matrix.parquet \
+            --feature-set-contract governance/stage4_v1_feature_set_contract.json \
+            --matrix-contract config/stage4_v1_feature_matrix_contract.json \
+            --out build/v1-2
+
+      - name: Independent equivalence PIT and Surprise semantic audit
+        run: |
+          python scripts/audit_stage4_v1_2_feature_matrix.py \
+            --base-matrix build/base/stage4-v1-matrix/stage4_v1_feature_matrix.parquet \
+            --matrix build/v1-2/stage4_v1_2_feature_matrix.parquet \
+            --base-independent-audit build/base/stage4-v1-matrix/independent_audit.json \
+            --base-execution-manifest build/base/stage4-v1-matrix/execution_manifest.json \
+            --materialization-audit build/v1-2/materialization_audit.json \
+            --manifest build/v1-2/manifest.json \
+            --feature-set-contract governance/stage4_v1_feature_set_contract.json \
+            --matrix-contract config/stage4_v1_feature_matrix_contract.json \
+            --out build/v1-2/independent_audit.json
+
+      - name: Lock exact-head V1.2 execution manifest
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('build/v1-2')
+          m=json.loads((root/'manifest.json').read_text(encoding='utf-8'))
+          a=json.loads((root/'independent_audit.json').read_text(encoding='utf-8'))
+          mat=json.loads((root/'materialization_audit.json').read_text(encoding='utf-8'))
+          assert a['pass'] is True and mat['pass'] is True
+          out={
+            'schema_version':1,
+            'gate':'STAGE4_V1_2_FEATURE_MATRIX_EXACT_HEAD_EVIDENCE',
+            'execution_head':'${{ github.sha }}',
+            'base_matrix_artifact_id':int('${{ env.BASE_MATRIX_AID }}'),
+            'base_matrix_artifact_digest':'sha256:${{ env.BASE_MATRIX_DIGEST }}',
+            'feature_set_version':'V1.2',
+            'feature_set_fingerprint':m['feature_set_fingerprint'],
+            'matrix_rows':m['row_count'],
+            'matrix_sha256':m['matrix_sha256'],
+            'coverage_sha256':m['coverage_sha256'],
+            'materialization_audit_sha256':hashlib.sha256((root/'materialization_audit.json').read_bytes()).hexdigest(),
+            'independent_audit_sha256':hashlib.sha256((root/'independent_audit.json').read_bytes()).hexdigest(),
+            'independent_audit_pass':True,
+            'active_current_period_surprise_rows':a['active_current_period_surprise_rows'],
+            'prior_period_surprise_rows_removed':a['prior_period_surprise_rows_removed'],
+            'unaffected_column_mismatches':a['unaffected_column_mismatches'],
+            'transformed_column_mismatches':a['transformed_column_mismatches'],
+            'alpha_labels_present':False,
+            'industry_identity_in_matrix':False,
+            'alpha_training_allowed':False,
+            'live_signal_allowed':False,
+            'authoritative_model_output':False,
+            'next_gate':'SEPARATE_STAGE4_ALPHA_V1_TRAINING_PREREGISTRATION_AND_OOS_DESIGN'
+          }
+          (root/'execution_manifest.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage4-v1-2-feature-matrix
+          path: build/v1-2
+          compression-level: 0
+          retention-days: 90

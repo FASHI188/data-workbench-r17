@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "promotion_id": "STAGE4_MARKET_REGIME_V1_TESTED_PROMOTION",
+  "module_id": "market_regime_v1",
+  "module_version": "V1",
+  "from_lifecycle": "SHADOW",
+  "to_lifecycle": "TESTED",
+  "enabled": false,
+  "evidence": {
+    "run_id": 31661405042,
+    "head_sha": "8f4460da5e78b86572f08247a16e7f50ee5e17e5",
+    "artifact_id": 9166323143,
+    "artifact_name": "stage4-market-regime-v1-shadow-replay",
+    "artifact_digest": "sha256:83e7c803f500b6ba4c3989826f08b47fe61ccc8f1a0974c8abd3b3fd588baf51",
+    "market_regime_data_sha256": "a915b4bb655f43fecd786554541bd1bdba1543c7da489fae68ae65d8fbacd376",
+    "audit_sha256": "b8e131cbbca502c399f84ab44a3871597d70f5ccd770675ff9217ddff6d49f1b",
+    "source_rows": 8079931,
+    "output_rows": 2821,
+    "coverage_start": "2015-01-05",
+    "coverage_end": "2026-08-12",
+    "non_warmup_rows": 2682,
+    "state_counts": {"NEUTRAL": 940, "RISK_OFF_ORDERLY": 952, "RISK_OFF_STRESS": 158, "RISK_ON_BROAD": 271, "RISK_ON_SELECTIVE": 361, "WARMUP": 139},
+    "audit_pass": true,
+    "failed_checks": []
+  },
+  "permissions": {
+    "stage4_feature_use_allowed": false,
+    "alpha_training_allowed": false,
+    "live_signal_allowed": false,
+    "authoritative": false
+  },
+  "reason": "Full pinned historical+forward replay and fail-closed audit passed. TESTED records reproducibility/PIT evidence only; separate ACCEPTED promotion is still required before Stage4 feature use.",
+  "rollback": "Set lifecycle back to SHADOW or QUARANTINED; accepted baseline remains unchanged."
+}

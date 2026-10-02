@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "status": "MACHINE_ACCEPTED_CANDIDATE_SAFETY_ONLY_NO_RUNTIME_PROMOTION",
+  "gate": "S3G1J_V17_29_TWO_TARGET_CROSS_PAGE_CANDIDATE_SAFETY_V1",
+  "diagnostic_pr": {
+    "number": 119,
+    "head_sha": "ceccffd577d27ac9dad1722a8b77b2e6c891f3a2",
+    "closed_without_merge": true,
+    "merge_authorized": false
+  },
+  "accepted_run": {
+    "run_id": 31451602128,
+    "workflow_name": "Stage3 S3G1J V17.29 Cross Page Two Target Safety",
+    "head_sha": "ceccffd577d27ac9dad1722a8b77b2e6c891f3a2",
+    "conclusion": "SUCCESS",
+    "artifact_id": 9086511255,
+    "artifact_name": "stage3-s3g1j-v17-29-cross-page-two-target-safety-v1",
+    "artifact_digest": "sha256:09a74424d8fcbbe4fe29523128752fc33b0a2c937d57f0d75dceccfd8261ffe4",
+    "report_sha256": "cff12bf13793bc20094c8940065de1e4bbc8905d013f6126c1060d34425c4daf"
+  },
+  "supporting_exact_head_runs": {
+    "repository_safety": 31451602121,
+    "runtime_reproducibility": 31451602136,
+    "clean_s3g1j": 31451602129
+  },
+  "locked_authority": {
+    "formal_runtime_generation": "V17.29",
+    "full_basis_run": 31389854868,
+    "full_basis_artifact_id": 9063271903,
+    "full_basis_artifact_digest": "sha256:71a4daa6c8372f3d64080b5fa5b787914292d889da7051de699eb6610189c726",
+    "data_verdict": "FAIL_CLOSED"
+  },
+  "full_population_routing": {
+    "input_document_rows": 121354,
+    "candidate_route_count": 2,
+    "formal_v17_29_delegate_count": 121352,
+    "candidate_route_announcement_ids": ["1223347318", "1223407043"],
+    "residual_source_identity_origin": "SINGLE_CANDIDATE_EVIDENCE_JSON",
+    "wrong_sha_delegates": true,
+    "wrong_bytes_delegates": true,
+    "wrong_economic_date_delegates": true
+  },
+  "accepted_candidate_recoveries": [
+    {
+      "announcement_id": "1223347318",
+      "source_code": "605289",
+      "economic_date": "2025-03-31",
+      "source_sha256": "d765c94532cd41a496d147da72cbff392bce4ff776b41b88d95dcf3f1fb697c8",
+      "source_bytes": 492929,
+      "formal_v17_29_before_candidate": "FAIL_CLOSED_NO_VALIDATED_BALANCE_SHEET_BLOCK",
+      "equity_amount_page": 8,
+      "suffix_page": 9,
+      "equity_label_prefix": "所有者权益（或股东权益）合",
+      "next_page_exact_suffix": "计",
+      "completed_equity_alias": "所有者权益（或股东权益）合计",
+      "current": {
+        "TOTAL_ASSETS": "2250857154.79",
+        "TOTAL_LIABILITIES": "954370096.74",
+        "TOTAL_EQUITY": "1296487058.05",
+        "identity_residual_cny": "0.00"
+      },
+      "prior": {
+        "TOTAL_ASSETS": "2237673819.93",
+        "TOTAL_LIABILITIES": "961178424.14",
+        "TOTAL_EQUITY": "1276495395.79",
+        "identity_residual_cny": "0.00"
+      },
+      "next_statement_boundary": "合并利润表"
+    },
+    {
+      "announcement_id": "1223407043",
+      "source_code": "605162",
+      "economic_date": "2024-12-31",
+      "source_sha256": "7540a56179783625ac256726480ef32faf85a893549057fe9e6546abfd6ee903",
+      "source_bytes": 1367714,
+      "formal_v17_29_before_candidate": "FAIL_CLOSED_NO_VALIDATED_BALANCE_SHEET_BLOCK",
+      "equity_amount_page": 84,
+      "suffix_page": 85,
+      "equity_label_prefix": "所有者权益（或股东权",
+      "next_page_exact_suffix": "益）合计",
+      "completed_equity_alias": "所有者权益（或股东权益）合计",
+      "current": {
+        "TOTAL_ASSETS": "1885230514.78",
+        "TOTAL_LIABILITIES": "564752701.93",
+        "TOTAL_EQUITY": "1320477812.85",
+        "identity_residual_cny": "0.00"
+      },
+      "prior": {
+        "TOTAL_ASSETS": "1750850622.44",
+        "TOTAL_LIABILITIES": "490942613.17",
+        "TOTAL_EQUITY": "1259908009.27",
+        "identity_residual_cny": "0.00"
+      },
+      "next_statement_boundary": "母公司资产负债表"
+    }
+  ],
+  "safety_properties": {
+    "same_formal_group_statement_event_required": true,
+    "role_local_period_required": true,
+    "explicit_cny_unit_required": true,
+    "exact_labeled_assets_and_liabilities_required": true,
+    "exact_equity_alias_prefix_required": true,
+    "immediate_next_page_exact_suffix_required": true,
+    "exact_full_alias_after_concatenation_required": true,
+    "exact_post_suffix_liabilities_and_equity_total_required": true,
+    "column_alignment_required": true,
+    "dual_column_identity_required": true,
+    "identity_tolerance": "0.005",
+    "observed_identity_residuals_are_exact_zero": true,
+    "raw_numeric_value_uniqueness_not_used": true,
+    "ocr_used": false,
+    "fuzzy_alias_matching_used": false,
+    "equity_inferred_from_assets_minus_liabilities": false,
+    "source_policy_relaxed": false,
+    "point_in_time_policy_relaxed": false,
+    "issuer_gate_relaxed": false,
+    "accounting_tolerance_relaxed": false
+  },
+  "authorization": {
+    "candidate_safety_pass": true,
+    "production_promotion_safety_experiment_eligible": true,
+    "formal_parser_implementation_authorized": false,
+    "runtime_promotion_authorized": false,
+    "full_basis_execution_authorized": false,
+    "stage3_gate_pass": false
+  },
+  "hard_boundaries": {
+    "formal_parser_changed": false,
+    "runtime_authority_changed": false,
+    "production_data_changed": false,
+    "trained_model_changed": false,
+    "live_configuration_changed": false,
+    "stage3_status": "NOT_READY",
+    "stage4_alpha_live_locked": true,
+    "main_changed": false
+  },
+  "next_gate": "Run a separate production-promotion-safety diagnostic for these exact two SHA-bound targets, proving formal V17.29 delegation outside the two identities and target-only semantic recovery before considering any runtime wrapper or generation promotion."
+}

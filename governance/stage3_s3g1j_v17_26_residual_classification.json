@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "status": "MACHINE_ACCEPTED_DIAGNOSTIC_EVIDENCE",
+  "gate": "S3G1J_V17_26_FULL_BASIS_RESIDUAL_CLASSIFICATION_V2",
+  "accepted_run": {
+    "run_id": 30734063100,
+    "workflow_name": "Stage3 S3G1J V17.26 Residual Classification V2",
+    "head_sha": "d9dc3119cc710a46174fb9d5ce9a6f1518ea5c50",
+    "conclusion": "SUCCESS",
+    "artifact_id": 8828913247,
+    "artifact_name": "stage3-s3g1j-v17-26-residual-classification-v2",
+    "artifact_digest": "sha256:f667e5e494e6ac1456a370b5dab47677b4925d0466beedceec3e47bdeb5f16a5",
+    "artifact_retention_expires_at": "2026-10-31T05:24:15Z"
+  },
+  "locked_inputs": {
+    "v17_26_full_basis_run": 30733013665,
+    "v17_26_full_basis_head_sha": "ed81a8f167c7b158167a8bdafa1799b7047666af",
+    "v17_26_full_basis_artifact": "stage3-s3g1j-v17-26-full-final",
+    "v17_26_full_basis_artifact_digest": "sha256:7f2e707e9192af527ff0444b48caf6bebfbfa1ef7559ec2810b6f47b1790567b",
+    "v17_26_documents_gzip_sha256": "891d6e10b92e13e3aea604ab9e22bd8dd0ea66764cc485a68abdc50eb8742d68",
+    "v17_26_documents_plaintext_sha256": "98cd05e8ea3569e779080c76c3bbde55174bd919d66cbfcda84a99315be71108",
+    "previous_classifier_run": 30687393120,
+    "previous_classifier_head_sha": "2837fc4d4de85c100f920a3ec847330016c77870",
+    "previous_classifier_artifact": "stage3-s3g1j-full-basis-residual-classification-v1",
+    "previous_classifier_artifact_digest": "sha256:3451a94bb70758bbb93d3be4600ad7e0d8d65de618928b1c635f8a29686f7052",
+    "previous_ledger_gzip_sha256": "11ef25f4bc3b08b20b55ac7cfa47d2e9495f4383415b66191f61217ca3cee49e",
+    "previous_ledger_plaintext_sha256": "c7625542e4aada5cc90b0316f5ab71beb4534e752628dbc611749da704f08558"
+  },
+  "current_accounting": {
+    "input_document_rows": 121354,
+    "pass_document_rows": 119976,
+    "residual_document_rows": 1378,
+    "class_counts": {
+      "CANONICAL_PDF_ISSUER_MISMATCH": 83,
+      "MULTI_CANDIDATE_SOURCE_INCOMPLETE_2_CANDIDATES": 85,
+      "MULTI_CANDIDATE_SOURCE_INCOMPLETE_3_CANDIDATES": 2,
+      "MULTI_CANDIDATE_VALUE_CONFLICT": 14,
+      "SINGLE_CANONICAL_IDENTITY_MISMATCH_TIER2_2": 12,
+      "SINGLE_CANONICAL_IDENTITY_MISMATCH_TIER2_3": 71,
+      "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_0": 550,
+      "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_1": 421,
+      "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_2": 119,
+      "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_3": 21
+    },
+    "priority_counts": {
+      "P0_SAFE_NEAR_COMPLETE_NO_IDENTITY_CONFLICT": 21,
+      "P1_IDENTITY_CONFLICT_TIER2_3": 71,
+      "P2_SAFE_PARTIAL_TIER2_2": 119,
+      "P3_IDENTITY_CONFLICT_LOWER_EVIDENCE": 12,
+      "P3_SAFE_PARTIAL_TIER2_1": 421,
+      "P3_SOURCE_COMPLETENESS_REVIEW": 87,
+      "P4_ISSUER_AUTHORITY_REVIEW": 83,
+      "P4_SAFE_PARTIAL_TIER2_0": 550,
+      "P4_SOURCE_VALUE_CONFLICT_REVIEW": 14
+    },
+    "p0_safe_near_complete_count": 21
+  },
+  "migration_from_v17_21_classifier": {
+    "previous_residual_rows": 1380,
+    "current_residual_rows": 1378,
+    "unchanged_common_residuals": 1378,
+    "common_residual_reclassification_count": 0,
+    "new_residual_count": 0,
+    "recovered_exit_count": 2,
+    "recovered_exit_announcement_ids": [
+      "1207035181",
+      "1221568845"
+    ],
+    "recovered_exit_previous_class": "SINGLE_CANONICAL_NO_VALIDATED_BLOCK_TIER2_3",
+    "recovered_exit_previous_priority": "P0_SAFE_NEAR_COMPLETE_NO_IDENTITY_CONFLICT",
+    "p0_count_change": "23_TO_21",
+    "all_other_class_counts_unchanged": true
+  },
+  "output_hashes": {
+    "classification_ledger_plaintext_sha256": "d685467918213b5b5b333dd7f893d633aebce9dd0d7d738082241e74a3519009",
+    "classification_ledger_gzip_sha256": "e39fdc8dea8639bf00d56f80a00cfba842c6194a787736bdcf40b2ab1accea89",
+    "p0_ledger_plaintext_sha256": "3500694439fc4573b1546c001b647ecb0bee6804691df8306727255debbeef49",
+    "p0_ledger_gzip_sha256": "75f41b4576fc843b93bca6ac98f12a12e72475daaa0f00473e2a6edae5fdcf90",
+    "migration_ledger_plaintext_sha256": "275e8a25490d324bfe69e76e9945f5193199697f5661e3555aa3ed8c305319f4",
+    "migration_ledger_gzip_sha256": "88fc642649f2c6448edcc9d5b8ae09753042b4b5086b43ca9af8677aabf7aa38",
+    "gzip_mtime": 0,
+    "gzip_embedded_filename": ""
+  },
+  "verification": {
+    "machine_input_locks": "SUCCESS",
+    "classifier_unit_contracts": "SUCCESS",
+    "complete_v17_26_classification": "SUCCESS",
+    "migration_reconciliation": "SUCCESS",
+    "deterministic_hash_contracts": "SUCCESS",
+    "artifact_upload": "SUCCESS",
+    "independent_read_only_artifact_inspection": true,
+    "artifact_zip_digest_recomputed": true,
+    "output_hashes_recomputed": true,
+    "output_row_counts_recomputed": true
+  },
+  "next_research_boundary": {
+    "ordinary_parser_auto_recovery_excludes_identity_conflicts": true,
+    "p0_current_population": 21,
+    "p1_identity_conflict_tier2_3_population": 71,
+    "recommended_next_action": "Source-lock and diagnose the 21 current P0 safe-near-complete documents under V17.26 before changing any parser authority."
+  },
+  "hard_boundaries": {
+    "classification_is_diagnostic_not_production_data": true,
+    "parser_changed": false,
+    "runtime_authority_changed": false,
+    "committed_production_data_changed": false,
+    "trained_model_changed": false,
+    "stage3_status": "NOT_READY",
+    "stage4_alpha_live_locked": true,
+    "main_changed": false
+  }
+}

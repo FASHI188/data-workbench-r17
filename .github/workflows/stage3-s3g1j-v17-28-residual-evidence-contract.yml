@@ -1,0 +1,120 @@
+name: Stage3 S3G1J V17.28 Residual Evidence Contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'governance/stage3_s3g1j_v17_28_residual_classification.json'
+      - 'tests/test_stage3_v17_28_residual_classification_evidence.py'
+      - '.github/workflows/stage3-s3g1j-v17-28-residual-evidence-contract.yml'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  DIAGNOSTIC_PR: '99'
+  DIAGNOSTIC_HEAD: 'b997f7b91cb2a5fcbb5d8473f428effd26ed5bf0'
+  ACCEPTED_RUN: '31022605702'
+  ACCEPTED_ARTIFACT_ID: '8937238672'
+  ACCEPTED_ARTIFACT: 'stage3-s3g1j-v17-28-residual-classification-v1'
+  ACCEPTED_DIGEST: 'sha256:2c54496b329b719c09f299fe0c2d61ece4b05a0c8859b4a39441012abfb248ad'
+
+jobs:
+  residual-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Lock unmerged diagnostic PR and accepted artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh pr view "$DIAGNOSTIC_PR" -R "$GITHUB_REPOSITORY" --json headRefOid,state,isDraft,mergedAt)
+          test "$(jq -r '.headRefOid' <<<"$pr")" = "$DIAGNOSTIC_HEAD"
+          test "$(jq -r '.state' <<<"$pr")" = OPEN
+          test "$(jq -r '.isDraft' <<<"$pr")" = true
+          test "$(jq -r '.mergedAt // ""' <<<"$pr")" = ""
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ACCEPTED_RUN")
+          test "$(jq -r '.status' <<<"$run")" = completed
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.head_sha' <<<"$run")" = "$DIAGNOSTIC_HEAD"
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ACCEPTED_RUN/artifacts?per_page=100")
+          test "$(jq -r --arg name "$ACCEPTED_ARTIFACT" '[.artifacts[] | select(.name==$name)] | length' <<<"$artifacts")" = 1
+          test "$(jq -r --arg name "$ACCEPTED_ARTIFACT" '.artifacts[] | select(.name==$name) | .id' <<<"$artifacts")" = "$ACCEPTED_ARTIFACT_ID"
+          test "$(jq -r --arg name "$ACCEPTED_ARTIFACT" '.artifacts[] | select(.name==$name) | .digest' <<<"$artifacts")" = "$ACCEPTED_DIGEST"
+          test "$(jq -r --arg name "$ACCEPTED_ARTIFACT" '.artifacts[] | select(.name==$name) | .workflow_run.head_sha' <<<"$artifacts")" = "$DIAGNOSTIC_HEAD"
+          test "$(jq -r --arg name "$ACCEPTED_ARTIFACT" '.artifacts[] | select(.name==$name) | .expired' <<<"$artifacts")" = false
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage3-s3g1j-v17-28-residual-classification-v1
+          path: accepted
+          repository: FASHI188/data-workbench-r17
+          run-id: 31022605702
+          github-token: ${{ github.token }}
+      - name: Verify downloaded ledgers, summary and exact P0 population
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import csv,gzip,hashlib,json
+          from collections import Counter
+          from pathlib import Path
+          root=Path('accepted')
+          paths={p.name:p for p in root.rglob('*') if p.is_file()}
+          expected={
+            's3g1j_v17_28_residual_classification.csv.gz':'d1d1c40cf242e93f0a5c8f18eb7335b15238bbf780429cd3e086eb7efe0765cc',
+            's3g1j_v17_28_p0_safe_near_complete.csv.gz':'dc6cc9b10482406121e66772c38bf13e745e00ab0a80f4e324ccf9bb897bd922',
+            's3g1j_v17_26_to_v17_28_residual_migration.csv.gz':'2915b4b3d039a8e96a6cdbd60ced928b1e209c24a287ddeddb0353dce39fe114',
+            's3g1j_v17_28_residual_classification_summary.json':'7eccc3c9c14a9d67548d50b87a056c6f123c8f186633f297a3e21ae31adf8143',
+          }
+          for name,digest in expected.items():
+              assert name in paths,name
+              assert hashlib.sha256(paths[name].read_bytes()).hexdigest()==digest,name
+          def rows(name):
+              with gzip.open(paths[name],'rt',encoding='utf-8',newline='') as handle:
+                  return list(csv.DictReader(handle))
+          classification=rows('s3g1j_v17_28_residual_classification.csv.gz')
+          p0=rows('s3g1j_v17_28_p0_safe_near_complete.csv.gz')
+          migration=rows('s3g1j_v17_26_to_v17_28_residual_migration.csv.gz')
+          summary=json.loads(paths['s3g1j_v17_28_residual_classification_summary.json'].read_text(encoding='utf-8'))
+          assert len(classification)==1371
+          assert len(p0)==14
+          assert len(migration)==1378
+          assert Counter(row['migration_status'] for row in migration)=={
+              'UNCHANGED':1371,
+              'RECOVERED_EXITED_RESIDUAL':7,
+          }
+          assert sorted(row['announcement_id'] for row in p0)==[
+              '1202799494','1204077386','1205543437','1209806910',
+              '1215186538','1219426855','1219792633','1219834247',
+              '1219840508','1219879687','1220087244','1221006100',
+              '1223347318','1223407043',
+          ]
+          assert summary['residual_document_rows']==1371
+          assert summary['p0_safe_near_complete_count']==14
+          assert summary['migration_counts']=={
+              'RECOVERED_EXITED_RESIDUAL':7,
+              'UNCHANGED':1371,
+          }
+          assert summary['common_residual_reclassification_count']==0
+          assert summary['new_residual_count']==0
+          assert summary['tie_taxonomy']=={
+              'TIE_SOURCE_INCOMPLETE':1274,
+              'TIE_VALUE_CONFLICT':14,
+          }
+          assert summary['production_data_changed'] is False
+          assert summary['parser_changed'] is False
+          assert summary['runtime_authority_changed'] is False
+          assert summary['stage3_status']=='NOT_READY'
+          assert summary['stage4_alpha_locked'] is True
+          assert summary['pass'] is True and summary['errors']==[]
+          print('S3G1J_V17_28_RESIDUAL_DOWNLOADED_EVIDENCE_PASS')
+          PY
+      - name: Verify committed evidence and diagnostic boundaries
+        run: python -m unittest tests.test_stage3_v17_28_residual_classification_evidence -v

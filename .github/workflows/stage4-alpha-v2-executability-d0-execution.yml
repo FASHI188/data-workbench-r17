@@ -1,0 +1,226 @@
+name: Stage4 Alpha V2 Executability D0 Single-Use Execution
+
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - '.github/workflows/stage4-alpha-v2-executability-d0-execution.yml'
+      - '.github/workflows/stage4-alpha-v2-executability-d0-implementation-acceptance.yml'
+      - 'governance/stage4_alpha_v2_executability_d0_execution_authorization.json'
+      - 'governance/accepted_project_state.json'
+      - 'governance/project_module_index.json'
+      - 'scripts/audit_stage4_alpha_v2_executability_d0_execution_authorization.py'
+  workflow_dispatch:
+    inputs:
+      execution_head:
+        description: Exact authorized implementation head
+        required: true
+        type: string
+      authorization_merge_sha:
+        description: Exact merge SHA containing final authorization
+        required: true
+        type: string
+      confirmation:
+        description: Must equal RUN_STAGE4_ALPHA_V2_D0_DEVELOPMENT_LABEL_DIAGNOSTIC_V1
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: stage4-alpha-v2-executability-d0-single-use
+  cancel-in-progress: false
+
+jobs:
+  static-authorization:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Detect V1.1 bridge authorization successor
+        id: auth_v11
+        shell: bash
+        run: |
+          if test -f governance/stage4_alpha_v2_executability_d0_execution_authorization_v1_1.json; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Verify V1.1 bridge successor
+        if: steps.auth_v11.outputs.present == 'true'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a=json.loads(Path('governance/stage4_alpha_v2_executability_d0_execution_authorization_v1_1.json').read_text())
+          s=json.loads(Path('governance/accepted_project_state.json').read_text())
+          m=json.loads(Path('governance/project_module_index.json').read_text())
+          assert a['fingerprint']=='050b5f3d2b292e1da4c38cf60ba6b39fcbe1973ada7f3f77c055fc02f02ac920'
+          assert a['status']=='AUTHORIZED_SINGLE_USE_D0_DIAGNOSTIC_V1_1_DISPATCH_BRIDGE'
+          assert a['fingerprint_basis']['single_use']['armed_runs_remaining']==1
+          p=s['permissions']
+          assert p['development_label_diagnostic_access_allowed'] is False
+          assert p['development_label_diagnostic_runs_remaining']==1
+          mm=next(x for x in m['modules'] if x['id']=='STAGE4_ALPHA_V2_EXECUTABILITY_D0')
+          assert mm['status']=='AUTHORIZATION_V1_1_BRIDGE_ARMED_SINGLE_USE_EXECUTION_NOT_STARTED'
+          assert mm['authorization_fingerprint']=='050b5f3d2b292e1da4c38cf60ba6b39fcbe1973ada7f3f77c055fc02f02ac920'
+          PY
+      - uses: actions/setup-python@v5
+        if: steps.auth_v11.outputs.present != 'true'
+        with:
+          python-version: '3.12.13'
+      - name: Audit D0 authorization
+        if: steps.auth_v11.outputs.present != 'true'
+        run: python scripts/audit_stage4_alpha_v2_executability_d0_execution_authorization.py
+      - name: Prove pull request cannot execute real D0
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          w=Path('.github/workflows/stage4-alpha-v2-executability-d0-execution.yml').read_text()
+          assert "static-authorization:\n    if: github.event_name == 'pull_request'" in w
+          assert "d0-execution:\n    if: github.event_name == 'workflow_dispatch'" in w
+          PY
+          test ! -e build/d0-real
+      - name: Prove exact authorization scope
+        if: steps.auth_v11.outputs.present != 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed
+          printf '%s\n' \
+            .github/workflows/stage4-alpha-v2-executability-d0-execution.yml \
+            .github/workflows/stage4-alpha-v2-executability-d0-implementation-acceptance.yml \
+            governance/accepted_project_state.json \
+            governance/project_module_index.json \
+            governance/stage4_alpha_v2_executability_d0_execution_authorization.json \
+            scripts/audit_stage4_alpha_v2_executability_d0_execution_authorization.py | sort > /tmp/expected
+          diff -u /tmp/expected /tmp/changed
+
+  d0-execution:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      EXPECTED_HEAD: '3155f715176505bede34a605776c97071af2198c'
+      AUTH_FP: '119b5fe4016c001e0fdaf4fa68b40cbf4ece92c2e37de5c4ee3d5d57ddfee27b'
+      LABEL_AID: '9216418323'
+      LABEL_ZIP_SHA: 'c4c8c475d79e964265dceec66da1673f9327469edc33531d6a21df8b61627e88'
+      LABEL_FILE_SHA: '092061da5666215dcc1f4fa75ec0b1cdbcc43969560755e7cdae6de55e64d673'
+      CONFIRM: 'RUN_STAGE4_ALPHA_V2_D0_DEVELOPMENT_LABEL_DIAGNOSTIC_V1'
+    steps:
+      - name: Checkout live integration for preflight
+        uses: actions/checkout@v4
+        with:
+          ref: agent/stage3-clean-integration
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Preflight exact authorization and unique durable owner
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXECUTION_HEAD_INPUT: ${{ inputs.execution_head }}
+          AUTH_MERGE_INPUT: ${{ inputs.authorization_merge_sha }}
+          CONFIRM_INPUT: ${{ inputs.confirmation }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = 'agent/stage3-clean-integration'
+          test "$EXECUTION_HEAD_INPUT" = "$EXPECTED_HEAD"
+          test "$CONFIRM_INPUT" = "$CONFIRM"
+          test -n "$AUTH_MERGE_INPUT"
+          git merge-base --is-ancestor "$AUTH_MERGE_INPUT" HEAD
+          git show "$AUTH_MERGE_INPUT:governance/stage4_alpha_v2_executability_d0_execution_authorization.json" > /tmp/auth.json
+          python - <<'PY'
+          import json,os
+          a=json.load(open('/tmp/auth.json'))
+          assert a['fingerprint']==os.environ['AUTH_FP']
+          b=a['fingerprint_basis']
+          assert b['authorized_execution_head']==os.environ['EXPECTED_HEAD']
+          assert b['single_use']['armed_runs_remaining']==1
+          assert b['permissions']['return_value_read_allowed'] is False
+          assert b['permissions']['model_fit_allowed'] is False
+          assert b['permissions']['prediction_allowed'] is False
+          assert b['permissions']['oos_access_allowed'] is False
+          assert b['permissions']['final_lockbox_access_allowed'] is False
+          PY
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/stage4-alpha-v2-executability-d0-execution.yml/runs?event=workflow_dispatch&per_page=100"
+          curl --fail --silent --show-error -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' "$api" > /tmp/runs.json
+          python - <<'PY'
+          import json,os
+          x=json.load(open('/tmp/runs.json'))
+          ids=[int(r['id']) for r in x['workflow_runs']]
+          cur=int(os.environ['GITHUB_RUN_ID'])
+          assert ids.count(cur)==1, (cur,ids)
+          assert len(ids)==1, ids
+          PY
+      - name: Checkout exact accepted implementation head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.execution_head }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - run: python -m pip install --disable-pip-version-check duckdb==1.3.2
+      - name: Download and verify development labels; consume authorization
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/d0-real/input build/d0-real/out
+          curl --fail --location --silent --show-error \
+            -H 'Accept: application/vnd.github+json' \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${LABEL_AID}/zip" \
+            -o build/d0-real/labels.zip
+          echo "$LABEL_ZIP_SHA  build/d0-real/labels.zip" | sha256sum -c -
+          unzip -q build/d0-real/labels.zip development_labels.parquet -d build/d0-real/input
+          echo "$LABEL_FILE_SHA  build/d0-real/input/development_labels.parquet" | sha256sum -c -
+          python - <<'PY'
+          import json,datetime,os
+          x={
+            'status':'CONSUMED',
+            'authorization_fingerprint':os.environ['AUTH_FP'],
+            'consumption_event':'FIRST_SUCCESSFUL_DOWNLOAD_AND_DIGEST_VERIFICATION_OF_DEVELOPMENT_LABELS_ARTIFACT_FOR_D0',
+            'run_id':int(os.environ['GITHUB_RUN_ID']),
+            'consumed_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'artifact_id':int(os.environ['LABEL_AID']),
+            'artifact_digest':'sha256:'+os.environ['LABEL_ZIP_SHA'],
+            'labels_sha256':os.environ['LABEL_FILE_SHA'],
+            'reusable':False
+          }
+          open('build/d0-real/out/d0_authorization_consumption.json','w').write(json.dumps(x,indent=2)+'\n')
+          PY
+      - name: Execute D0 structural diagnostic only
+        run: |
+          python scripts/run_stage4_alpha_v2_executability_d0.py \
+            --labels build/d0-real/input/development_labels.parquet \
+            --prereg governance/stage4_alpha_v2_executability_d0_preregistration.json \
+            --out build/d0-real/out
+      - name: Fail closed on forbidden output vocabulary
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -E 'stock_total_return_5d|benchmark_return_5d|excess_return_5d|stock_total_return_20d|benchmark_return_20d|excess_return_20d' build/d0-real/out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage4-alpha-v2-executability-d0-result
+          path: build/d0-real/out
+          compression-level: 0
+          retention-days: 90

@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "status": "MACHINE_ACCEPTED_DIAGNOSTIC_ONLY_TWO_CROSS_PAGE_CANDIDATE_EXPERIMENT_ELIGIBLE",
+  "gate": "S3G1J_V17_29_SIX_SOURCE_LOCKED_DIAGNOSTIC_V1",
+  "diagnostic_pr": {
+    "number": 117,
+    "head_sha": "bdbd4b197956206ce56cc21768a97cb8c27eb183",
+    "closed_without_merge": true,
+    "merge_authorized": false
+  },
+  "accepted_run": {
+    "run_id": 31450849437,
+    "workflow_name": "Stage3 S3G1J V17.29 Six Source-Locked Diagnostic",
+    "head_sha": "bdbd4b197956206ce56cc21768a97cb8c27eb183",
+    "conclusion": "SUCCESS",
+    "artifact_id": 9086284056,
+    "artifact_name": "stage3-s3g1j-v17-29-six-source-diagnostic-v1",
+    "artifact_digest": "sha256:a4a3b97bf82aebe85d9f3947307224d7d18df15ccd387aeb11bbbe61d21ed411",
+    "source_identity_summary_sha256": "d406710981166b540ea8bd162dc2908699e594f1bcfb6bf378a141101893516b",
+    "six_source_diagnostic_sha256": "ae5ef66defe7228e664b7fcce874f91571cc941c5f9c6effc2039c9149782d9f",
+    "cross_page_probe_sha256": "00353bb302d5d4dd398d19d4122d01b73a05458ce8b70410287b3643f06824a0"
+  },
+  "supporting_exact_head_runs": {
+    "repository_safety": 31450849435,
+    "runtime_reproducibility": 31450849429,
+    "clean_s3g1j": 31450849436
+  },
+  "locked_authority": {
+    "formal_runtime_generation": "V17.29",
+    "full_basis_run": 31389854868,
+    "full_basis_head": "22fa37064eeb8a49ad5292dd2be48bd7b674c673",
+    "full_basis_artifact_id": 9063271903,
+    "full_basis_artifact_digest": "sha256:71a4daa6c8372f3d64080b5fa5b787914292d889da7051de699eb6610189c726",
+    "data_verdict": "FAIL_CLOSED"
+  },
+  "source_identity_result": {
+    "target_count": 6,
+    "all_exact_source_sha_and_bytes_verified": true,
+    "identity_origin": "SINGLE_CANDIDATE_EVIDENCE_JSON_FOR_ERROR_ROWS",
+    "accepted_document_ledger_mutated": false,
+    "formal_parser_remained_fail_closed_on_all_six": true,
+    "formal_parser_tier2_found": 3,
+    "formal_parser_required_error": "NO_VALIDATED_BALANCE_SHEET_BLOCK"
+  },
+  "classification_result": {
+    "diagnostic_only_no_safe_ordinary_candidate_count": 4,
+    "cross_page_exact_source_candidate_experiment_eligible_count": 2,
+    "bank_specific_do_not_promote_count": 1,
+    "candidate_parser_implementation_authorized": false,
+    "candidate_parser_promotion_authorized": false
+  },
+  "diagnostic_only_no_safe_ordinary_candidate": [
+    {
+      "announcement_id": "1202799494",
+      "source_code": "603023",
+      "economic_date": "2016-09-30",
+      "source_sha256": "157c18169d22719986395fc1085acb25c6d90b5fd6bbce3f26d5bebd45f08e68",
+      "source_bytes": 1169320,
+      "root_cause": "NO_FORMAL_GROUP_STATEMENT_ROLE_BINDING"
+    },
+    {
+      "announcement_id": "1204077386",
+      "source_code": "000708",
+      "economic_date": "2017-09-30",
+      "source_sha256": "8e10d942b870e9ee9b874d94e8a58fb00b7d55757b7fdd5774615e75cc549608",
+      "source_bytes": 409596,
+      "root_cause": "GENERIC_GROUP_WITNESS_PRESENT_BUT_ROLE_LOCAL_PERIOD_MISSING"
+    },
+    {
+      "announcement_id": "1205543437",
+      "source_code": "000985",
+      "economic_date": "2018-09-30",
+      "source_sha256": "4d87f58d20ce1b37c2d5edc129fb9b4f08769dc1614c76ff946c88f5ce8cc2de",
+      "source_bytes": 207309,
+      "root_cause": "GENERIC_GROUP_WITNESS_PRESENT_BUT_ROLE_LOCAL_PERIOD_MISSING"
+    },
+    {
+      "announcement_id": "1209806910",
+      "source_code": "600353",
+      "economic_date": "2021-03-31",
+      "source_sha256": "b72f9603f124849fcd0d7be69ab5d35e0f04f12c530324a27dce1eab20e87a7f",
+      "source_bytes": 589013,
+      "root_cause": "NO_FORMAL_GROUP_STATEMENT_ROLE_BINDING"
+    }
+  ],
+  "cross_page_exact_source_candidates": [
+    {
+      "announcement_id": "1223347318",
+      "source_code": "605289",
+      "economic_date": "2025-03-31",
+      "source_sha256": "d765c94532cd41a496d147da72cbff392bce4ff776b41b88d95dcf3f1fb697c8",
+      "source_bytes": 492929,
+      "classification": "CROSS_PAGE_EXACT_SOURCE_CANDIDATE_EXPERIMENT_ELIGIBLE",
+      "group_event_page": 6,
+      "parent_event_page": 12,
+      "asset_row_page": 7,
+      "liability_row_page": 8,
+      "equity_amount_row_page": 8,
+      "equity_label_prefix": "所有者权益（或股东权益）合",
+      "next_page_exact_suffix": "计",
+      "completed_equity_alias": "所有者权益（或股东权益）合计",
+      "current_values": {
+        "TOTAL_ASSETS": "2250857154.79",
+        "TOTAL_LIABILITIES": "954370096.74",
+        "TOTAL_EQUITY": "1296487058.05",
+        "identity_residual": "0.00"
+      },
+      "prior_values": {
+        "TOTAL_ASSETS": "2237673819.93",
+        "TOTAL_LIABILITIES": "961178424.14",
+        "TOTAL_EQUITY": "1276495395.79",
+        "identity_residual": "0.00"
+      },
+      "post_suffix_closure": "EXACT_LIABILITIES_AND_EQUITY_TOTAL_WITH_EXACT_ASSET_PAIR_BEFORE_NEXT_STATEMENT"
+    },
+    {
+      "announcement_id": "1223407043",
+      "source_code": "605162",
+      "economic_date": "2024-12-31",
+      "source_sha256": "7540a56179783625ac256726480ef32faf85a893549057fe9e6546abfd6ee903",
+      "source_bytes": 1367714,
+      "classification": "CROSS_PAGE_EXACT_SOURCE_CANDIDATE_EXPERIMENT_ELIGIBLE",
+      "group_event_page": 82,
+      "parent_event_page": 85,
+      "asset_row_page": 83,
+      "liability_row_page": 84,
+      "equity_amount_row_page": 84,
+      "equity_label_prefix": "所有者权益（或股东权",
+      "next_page_exact_suffix": "益）合计",
+      "completed_equity_alias": "所有者权益（或股东权益）合计",
+      "current_values": {
+        "TOTAL_ASSETS": "1885230514.78",
+        "TOTAL_LIABILITIES": "564752701.93",
+        "TOTAL_EQUITY": "1320477812.85",
+        "identity_residual": "0.00"
+      },
+      "prior_values": {
+        "TOTAL_ASSETS": "1750850622.44",
+        "TOTAL_LIABILITIES": "490942613.17",
+        "TOTAL_EQUITY": "1259908009.27",
+        "identity_residual": "0.00"
+      },
+      "post_suffix_closure": "EXACT_LIABILITIES_AND_EQUITY_TOTAL_WITH_EXACT_ASSET_PAIR_THEN_FORMAL_PARENT_STATEMENT"
+    }
+  ],
+  "bank_specific_isolation": {
+    "announcement_id": "1219834247",
+    "classification": "DO_NOT_PROMOTE_ORDINARY_PATH",
+    "included_in_six_source_diagnostic": false
+  },
+  "next_candidate_safety_contract": {
+    "scope": "EXACT_TWO_SHA_BOUND_TARGETS_ONLY",
+    "required_pattern": "ONE_PAGE_CROSS_PAGE_EQUITY_LABEL_CONTINUATION",
+    "requirements": [
+      "formal GROUP 合并资产负债表 event with existing role-local period and CNY unit gates",
+      "exact labeled A and L rows bound to the same GROUP event",
+      "equity amount row bound to the same GROUP event and carrying an exact proper prefix of 所有者权益（或股东权益）合计",
+      "the exact missing suffix is the first meaningful non-header non-page-number text on the immediately following page",
+      "prefix plus suffix equals the exact full alias with no fuzzy matching",
+      "the suffix is followed by the exact liabilities-and-equity-total label and exact A pair before the next statement boundary",
+      "column alignment and dual-column accounting identity pass without tolerance relaxation",
+      "wrong SHA bytes date and every non-target delegate exactly to formal V17.29"
+    ],
+    "candidate_parser_implementation_authorized": false,
+    "candidate_parser_promotion_authorized": false
+  },
+  "hard_boundaries": {
+    "diagnostic_only": true,
+    "formal_parser_changed": false,
+    "runtime_authority_changed": false,
+    "production_data_changed": false,
+    "trained_model_changed": false,
+    "live_configuration_changed": false,
+    "ocr_enabled": false,
+    "fuzzy_alias_matching_enabled": false,
+    "equity_inference_enabled": false,
+    "source_policy_relaxed": false,
+    "point_in_time_policy_relaxed": false,
+    "issuer_gate_relaxed": false,
+    "accounting_tolerance_relaxed": false,
+    "stage3_status": "NOT_READY",
+    "stage4_alpha_live_locked": true,
+    "main_changed": false
+  }
+}

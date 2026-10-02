@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "gate": "S3G1J_P0_CURRENT_V17_24_DIAGNOSTIC_V1",
+  "status": "MACHINE_ACCEPTED_DIAGNOSTIC_EVIDENCE_NOT_PRODUCTION_PROMOTION",
+  "source_classifier": {
+    "run": 30687393120,
+    "artifact": "stage3-s3g1j-full-basis-residual-classification-v1",
+    "artifact_digest": "sha256:3451a94bb70758bbb93d3be4600ad7e0d8d65de618928b1c635f8a29686f7052",
+    "p0_ledger_gzip_sha256": "6b66c8a43df0359d1cbf2fd6e7e8188f3c841bbe59657b6b8773b6f2a9919142",
+    "source_basis_p0_count": 23
+  },
+  "source_full_basis": {
+    "run": 30649251360,
+    "artifact": "stage3-s3g1j-v17-21-full-final",
+    "artifact_digest": "sha256:7faff72949a6e0a98f49088bce99bc2df37c7cbcb0259b39d1b2655fc02f6086",
+    "documents_gzip_sha256": "de31e148abd19f866b863135d0361ab2728e97577a8e584b7572fdbcbcaa06d8"
+  },
+  "current_runtime_authority": {
+    "generation": "V17.24",
+    "run": 30685830808,
+    "head_sha": "92de74e7898be36239dc163e3811c9ae3f732e60",
+    "artifact": "stage3-s3g1j-v17-24-production-acceptance-compat",
+    "artifact_digest": "sha256:4865dd03537c70208d2a4358cf8b54ab65408510fce838017a4bf77bee30a98d",
+    "excluded_already_accepted_recovery_announcement_ids": [
+      "1221568845"
+    ]
+  },
+  "accepted_diagnostic": {
+    "run": 30687837626,
+    "head_sha": "ef083b267625a4942c6f4e736d2c8178aa4a594d",
+    "artifact_id": 8814662441,
+    "artifact": "stage3-s3g1j-p0-current-v17-24-diagnostic-v1",
+    "artifact_digest": "sha256:b4e310fbb2b41d33d2c2c545589a6af53487dbfd1492dbb971d860fdcb4a14f0",
+    "report_sha256": "a3121a6a16261ed622a6b88fcc2db77fe791c317c133dddd2e45be8a523b943d",
+    "target_count": 22,
+    "processed_count": 22,
+    "source_sha_match_count": 22,
+    "v17_21_recovered_count": 0,
+    "v17_24_recovered_count": 0,
+    "v17_24_fail_closed_count": 22,
+    "execution_failures": [],
+    "pass": true
+  },
+  "diagnostic_classes": {
+    "MISSING_CANDIDATES_TOTAL_ASSETS_TOTAL_LIABILITIES_TOTAL_EQUITY": {
+      "count": 11,
+      "candidate_count_pattern": {
+        "TOTAL_ASSETS": 0,
+        "TOTAL_LIABILITIES": 0,
+        "TOTAL_EQUITY": 0
+      },
+      "formal_group_event_count_per_document": 0,
+      "announcement_ids": [
+        "1200907104",
+        "1201708762",
+        "1202195310",
+        "1202774611",
+        "1202799494",
+        "1203358200",
+        "1204077386",
+        "1205543437",
+        "1207035181",
+        "1209806910",
+        "1219834247"
+      ],
+      "interpretation": "Generic tier2 observations exist, but no validated spatial A/L/E candidate survives because no formal GROUP statement event is discovered. The next evidence task is statement-title and role discovery, not value tolerance relaxation."
+    },
+    "MISSING_CANDIDATES_TOTAL_EQUITY": {
+      "count": 11,
+      "candidate_count_pattern": {
+        "TOTAL_ASSETS": 3,
+        "TOTAL_LIABILITIES": 1,
+        "TOTAL_EQUITY": 0
+      },
+      "announcement_ids": [
+        "1207621057",
+        "1209825769",
+        "1215186538",
+        "1219426855",
+        "1219792633",
+        "1219840508",
+        "1219879687",
+        "1220087244",
+        "1221006100",
+        "1223407043",
+        "1223347318"
+      ],
+      "interpretation": "Validated GROUP asset and liability candidates exist, but no equity candidate survives GROUP role binding. Generic tier2 equity observations are present; the next evidence task must distinguish GROUP continuation rows from PARENT rows before any parser promotion."
+    }
+  },
+  "aggregate_funnel_facts": {
+    "formal_statement_events": 268,
+    "formal_group_events": 19,
+    "formal_parent_events": 12,
+    "asset_alias_rows": 171,
+    "asset_group_role": 33,
+    "liability_alias_rows": 46,
+    "liability_group_role": 11,
+    "equity_alias_rows": 25,
+    "equity_group_role": 0,
+    "corrupted_equity_candidates": 0,
+    "strict_equity_candidates": 0,
+    "reverse_asset_candidates": 0,
+    "adjacent_equity_bridge_rows": 1,
+    "adjacent_equity_bridge_bound_parent": 1
+  },
+  "next_actions": [
+    {
+      "priority": 0,
+      "population": "11 documents with A=0/L=0/E=0",
+      "task": "Capture exact balance-sheet title text, formal statement events and alias-to-event bindings to determine why GROUP events are absent."
+    },
+    {
+      "priority": 1,
+      "population": "11 documents with A=3/L=1/E=0",
+      "task": "Capture equity row text, page continuity, statement role, unit/date header and column geometry; reject any row that belongs to the parent-company statement."
+    }
+  ],
+  "accounting_tolerance_changed": false,
+  "source_policy_changed": false,
+  "parser_changed": false,
+  "production_data_changed": false,
+  "stage3_status": "NOT_READY",
+  "stage4_alpha_live_locked": true
+}

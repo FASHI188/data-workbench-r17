@@ -1,0 +1,79 @@
+{
+  "version": "V3.3.1-stage3-financial-raw-contract",
+  "family": "FINANCIAL_REPORT",
+  "status": "CONTRACT_ONLY_NOT_S3G1_PASS",
+  "depends_on": {
+    "stage2_fingerprint": "f17f7ab63f4532dda635eb7366e7df7bf5497a5ce814410105312bccb53125bb",
+    "filing_ledger_gate": "S3G1E_POINT_IN_TIME_PERIODIC_FILING_LEDGER"
+  },
+  "value_authority": {
+    "allowed": [
+      "ORIGINAL_FILING_REVISION_LEVEL_XBRL_INSTANCE_WITH_SHA256",
+      "ORIGINAL_FILING_PDF_WITH_SHA256"
+    ],
+    "cross_check_only": [
+      "CNINFO_CURRENT_F10_SYSAPI_1140_1141_1142_1143"
+    ],
+    "forbidden_as_historical_truth": [
+      "CURRENT_F10_WITHOUT_REVISION_IDENTITY",
+      "FINANCE_PORTAL_CURRENT_HISTORY",
+      "WRAPPER_LIBRARY_OUTPUT_WITHOUT_RAW_SOURCE_HASH"
+    ]
+  },
+  "observation_key": [
+    "exchange",
+    "effective_code",
+    "issuer_org_id",
+    "report_family",
+    "economic_date",
+    "announcement_id",
+    "concept"
+  ],
+  "required_fields": [
+    "exchange",
+    "source_code",
+    "effective_code",
+    "issuer_org_id",
+    "report_family",
+    "economic_date",
+    "announcement_id",
+    "revision_sequence",
+    "source_published_at",
+    "effective_session",
+    "available_at",
+    "concept",
+    "raw_value",
+    "unit",
+    "source_url",
+    "source_sha256",
+    "source_format",
+    "extraction_method",
+    "methodology_version"
+  ],
+  "baseline_concepts": [
+    "OPERATING_REVENUE",
+    "OPERATING_COST",
+    "NET_PROFIT_ATTRIBUTABLE_TO_PARENT",
+    "NET_PROFIT_EX_NONRECURRING_ATTRIBUTABLE_TO_PARENT",
+    "NET_CASH_FLOW_FROM_OPERATING_ACTIVITIES",
+    "TOTAL_ASSETS",
+    "TOTAL_LIABILITIES",
+    "EQUITY_ATTRIBUTABLE_TO_PARENT",
+    "TOTAL_EQUITY"
+  ],
+  "revision_policy": {
+    "append_only": true,
+    "overwrite_prior_revision": false,
+    "training_selection": "For each session, select the latest filing revision whose available_at is no later than the signal cutoff. Never select by economic_date alone.",
+    "current_f10_backfill": false
+  },
+  "hard_gates": {
+    "every_value_has_original_revision_source_sha256": true,
+    "every_value_maps_to_filing_ledger_announcement_id": true,
+    "every_value_inherits_filing_effective_session": true,
+    "no_current_f10_history_as_pit_truth": true,
+    "no_revision_overwrite": true,
+    "raw_units_preserved": true,
+    "derived_features_not_mixed_into_raw_layer": true
+  }
+}

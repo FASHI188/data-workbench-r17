@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "status": "ACCEPTED_STATIC_SYNTHETIC_REPAIR_V1_1_NO_NEW_AUTHORITY",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "1b6e05dd16911f9234c1ed4ee19918d30c37943dbb4be6b6490adb24b099849b",
+  "fingerprint_basis": {
+    "acceptance_id": "STAGE4_ALPHA_V1_OOS_LABEL_COMPLETION_IMPLEMENTATION_REPAIR_ACCEPTANCE",
+    "version": "V1.1",
+    "preregistration_v1_4_fingerprint": "e6f6fac81f6f1b3394b84a93bb5f41c67782b2e7dae9f6e37f7aa8eb11e29394",
+    "repair_implementation_fingerprint": "45d25e1627b3c1b8d95371fd49997dc8c818e086915f85850274986d1a08adfd",
+    "superseded_implementation_fingerprint": "a9addd6eefc82737e5a39c7828dc9b68a5d4336e2ee3e8ebeaeee1d628014045",
+    "implementation_pr": 173,
+    "accepted_implementation_head": "1c34c514a5ed33180e3d376f4988de49ffc73198",
+    "implementation_merge_sha": "446f51b9c5f8199b9289c3cbd850d7bc146cd297",
+    "ci": {
+      "repair_v1_1": {
+        "run_id": 35741070630,
+        "conclusion": "success"
+      },
+      "legacy_implementation_successor": {
+        "run_id": 35741070764,
+        "conclusion": "success"
+      },
+      "repository_safety": {
+        "run_id": 35741070408,
+        "conclusion": "success"
+      },
+      "runtime_reproducibility": {
+        "run_id": 35741070445,
+        "conclusion": "success"
+      }
+    },
+    "production_marker_synthetic_test_pass": true,
+    "unchanged_end_to_end_synthetic_completion_pass": true,
+    "source_sha256": {
+      "scripts/run_stage4_alpha_v1_oos_label_completion.py": "7fe790864be6d324f4571f57ed23213920605a48d9b4415849e12c37cdb8f2d6",
+      "scripts/stage4_alpha_v1_label_materialization.py": "07481bb2c20837b945b8a6deba06b76459c363d0c91e054b8a1029476881c18a",
+      "scripts/stage4_alpha_v1_alpha_evaluation.py": "4c4e7e1674ef64dd6e68fde65ba58d3954f2b4262e476863a21ac600fa8b68a3"
+    },
+    "consumed_failures_preserved": [
+      {
+        "run_id": 34454575970,
+        "authorization_consumed": true,
+        "reusable": false,
+        "alpha": "NOT_EVALUATED",
+        "runtime_veto": "NOT_EVALUATED"
+      },
+      {
+        "run_id": 35736766602,
+        "authorization_consumed": true,
+        "reusable": false,
+        "alpha": "NOT_EVALUATED",
+        "runtime_veto": "NOT_EVALUATED"
+      }
+    ],
+    "immutable_prediction_artifact_id": 10142949262,
+    "immutable_prediction_sha256": "66a039aa76e4b1962049e3e0d41a43fb1f6c626d934a552f871f91bd27fe01da",
+    "immutable_prediction_rows": 1515811,
+    "physical_boundary_artifact_id": 10142948546,
+    "acceptance_grants_oos_access": false,
+    "acceptance_grants_execution_authority": false,
+    "prediction_recomputation_allowed": false,
+    "model_load_allowed": false,
+    "fit_retrain_tune_reselect_allowed": false,
+    "final_lockbox_access_allowed": false,
+    "live_signal_allowed": false,
+    "main_merge_allowed": false,
+    "authoritative_output_allowed": false,
+    "next_gate": "SEPARATE_SINGLE_USE_OOS_LABEL_COMPLETION_AUTHORIZATION_RESERVATION"
+  }
+}

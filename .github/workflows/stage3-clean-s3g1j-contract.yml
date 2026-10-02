@@ -1,0 +1,200 @@
+name: Stage3 Clean S3G1J Runtime Contract
+# Current formal runtime and latest completed full-basis authority are V17.30;
+# prior accepted generations remain immutable historical evidence.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'governance/stage3_s3g1j_runtime_manifest.json'
+      - 'governance/stage3_workflow_activation_manifest.json'
+      - 'governance/stage3_s3g1j_v17_30_runtime_promotion.json'
+      - 'governance/stage3_s3g1j_v17_30_runtime_wrapper_acceptance.json'
+      - 'governance/stage3_s3g1j_v17_29_full_final.json'
+      - 'governance/stage3_s3g1j_v17_28_full_final.json'
+      - 'governance/stage3_s3g1j_v17_27_full_final.json'
+      - 'governance/stage3_s3g1j_v17_26_full_final.json'
+      - 'scripts/extract_stage3_financial_pdf_values*.py'
+      - 'scripts/stage3_financial_pdf_parser*.py'
+      - 'scripts/stage3_financial_coordinate_fallback*.py'
+      - 'scripts/stage3_financial_spatial_alias*.py'
+      - 'scripts/stage3_financial_statement_blocks*.py'
+      - 'scripts/select_stage3_financial_report_versions*.py'
+      - 'scripts/compare_stage3_financial_report_versions_v3.py'
+      - 'scripts/compare_stage3_s3g1j_v17_*.py'
+      - 'scripts/finalize_stage3_financial_pdf_values.py'
+      - 'tests/test_stage3_financial_*.py'
+      - 'tests/test_stage3_s3g1j_v17_*.py'
+      - 'tests/test_stage3_v17_*.py'
+      - '.github/workflows/stage3-clean-s3g1j-contract.yml'
+
+permissions:
+  contents: read
+
+env:
+  PYTHONPATH: scripts
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install verified Stage3 runtime
+        run: python -m pip install --disable-pip-version-check -c requirements/constraints-verified.txt requests pymupdf pytest
+      - name: Verify V17.30 runtime promotion and retained accepted history
+        run: |
+          python -m unittest \
+            tests.test_stage3_v17_30_runtime_wrapper \
+            tests.test_stage3_v17_30_runtime_promotion \
+            tests.test_stage3_v17_30_authority_state \
+            tests.test_stage3_v17_29_runtime_wrapper \
+            tests.test_stage3_v17_29_runtime_promotion \
+            tests.test_stage3_v17_29_full_final_evidence \
+            tests.test_stage3_v17_28_runtime_promotion \
+            tests.test_stage3_v17_28_runtime_wrapper \
+            tests.test_stage3_v17_28_full_final_evidence \
+            tests.test_stage3_v17_27_runtime_promotion \
+            tests.test_stage3_v17_27_full_final_evidence \
+            tests.test_stage3_v17_26_runtime_promotion \
+            tests.test_stage3_v17_26_full_final_evidence \
+            -v
+      - name: Import current V17.30 runtime and accepted V17.30 full-basis authority
+        run: |
+          python - <<'PY'
+          import json
+          import extract_stage3_financial_pdf_values_v20 as extractor
+          import stage3_financial_pdf_parser_v22 as parser
+          import finalize_stage3_financial_pdf_values as finalizer
+
+          manifest=json.load(open('governance/stage3_s3g1j_runtime_manifest.json',encoding='utf-8'))
+          activation=json.load(open('governance/stage3_workflow_activation_manifest.json',encoding='utf-8'))
+          promotion=json.load(open('governance/stage3_s3g1j_v17_30_runtime_promotion.json',encoding='utf-8'))
+          wrapper=json.load(open('governance/stage3_s3g1j_v17_30_runtime_wrapper_acceptance.json',encoding='utf-8'))
+          v29=json.load(open('governance/stage3_s3g1j_v17_29_full_final.json',encoding='utf-8'))
+
+          assert manifest['schema_version']==15
+          assert manifest['current_production_authority']['generation']=='V17.30'
+          assert manifest['formal_runtime']['runtime_generation']=='V17.30'
+          assert manifest['formal_runtime']['parser_method']==parser.METHOD
+          assert manifest['formal_runtime']['extractor_method']==extractor.METHOD
+          assert manifest['formal_runtime']['parser_git_blob']=='cc782817e5ee73fcae085d71f4896a0adc004dcd'
+          assert manifest['formal_runtime']['extractor_git_blob']=='d74a2b1f8f0ec3af8d89ce259e83392d7f8cc20c'
+          assert manifest['formal_runtime']['promotion_safety_parser_git_blob']=='1a4364d5cde7881455902f6fa1dbe5e68f3843a6'
+          latest=manifest['full_basis_last_completed_final']
+          assert latest['generation']=='V17.30'
+          assert latest['run']==31518370789
+          assert latest['artifact_id']==9112098872
+          assert latest['numeric_observations']==1051826
+          assert latest['document_error_count']==1362
+          assert latest['unresolved_tie_count']==1279
+          assert latest['execution_verdict']=='PASS'
+          assert latest['verdict']=='FAIL_CLOSED'
+          previous=manifest['previous_last_completed_full_basis_final']
+          assert previous['generation']=='V17.29' and previous['run']==31389854868
+          next_basis=manifest['next_full_basis_required']
+          assert next_basis['generation'] is None
+          assert next_basis['status']=='NONE_CURRENT_RUNTIME_ACCEPTED'
+
+          assert callable(extractor.parse_pdf_bytes)
+          assert extractor.RUNTIME_GENERATION=='V17.30'
+          assert extractor.SHARD_GATE=='S3G1J_FINANCIAL_PDF_EXTRACTION_SHARD_V17_30'
+          assert parser.METHOD=='V17_30_EXACT_SOURCE_CROSS_PAGE_GROUP_EQUITY_PRODUCTION'
+          assert len(parser.TARGETS)==2
+          assert set(parser.ALLOWED_CONCEPTS)=={'TOTAL_ASSETS','TOTAL_LIABILITIES','TOTAL_EQUITY'}
+
+          # Immutable pre-execution promotion and wrapper evidence remain historical checkpoints.
+          assert promotion['generation']=='V17.30'
+          assert promotion['governance_pr']==125
+          assert promotion['next_full_basis']['status']=='REQUIRED_NOT_STARTED'
+          assert promotion['next_full_basis']['expected_values_are_not_production_acceptance'] is True
+          assert promotion['hard_boundaries']['fresh_64_shard_execution_started'] is False
+          assert wrapper['execution_pr']['number']==123
+          assert wrapper['execution_pr']['final_head_sha']=='d26d7f543c20d717ed8c8a421e28838feecd7a03'
+          assert wrapper['accepted_run']['run_id']==31458469699
+          assert wrapper['accepted_run']['artifact_id']==9088925988
+          assert wrapper['authorization']['formal_v17_30_runtime_promotion_governance_eligible'] is True
+          assert wrapper['authorization']['v17_30_runtime_authority_activated'] is False
+          # V17.29 remains immutable previous-basis evidence, not current authority.
+          assert v29['accepted_run']['run_id']==31389854868
+          assert v29['accepted_run']['artifact_id']==9063271903
+          assert v29['full_basis_result']['numeric_observation_count']==1051820
+          assert v29['full_basis_result']['document_error_count']==1364
+          assert v29['full_basis_result']['unresolved_tie_count']==1281
+          assert v29['full_basis_result']['final_data_verdict']=='FAIL_CLOSED'
+
+          assert activation['schema_version']==17
+          current=activation['accepted_production_runtime']
+          assert current['generation']=='V17.30'
+          assert current['full_basis_execution_pending'] is False
+          assert current['last_completed_full_basis_generation']=='V17.30'
+          assert current['last_completed_full_basis_run']==31518370789
+          assert current['last_completed_full_basis_artifact_id']==9112098872
+          assert current['last_completed_numeric_observation_count']==1051826
+          assert current['last_completed_document_error_count']==1362
+          assert current['last_completed_unresolved_tie_count']==1279
+          assert current['data_verdict']=='FAIL_CLOSED'
+          assert activation['accepted_v17_29_full_basis_evidence']['last_completed_full_basis_authority'] is False
+          assert activation['accepted_v17_29_full_basis_evidence']['historical_full_basis_authority_retained'] is True
+          assert activation['accepted_v17_28_full_basis_evidence']['historical_full_basis_authority_retained'] is True
+          b=activation['hard_boundaries']
+          assert b['v17_30_full_basis_execution_pending'] is False
+          assert b['remaining_document_errors_last_completed_basis']==1362
+          assert b['remaining_unresolved_ties_last_completed_basis']==1279
+          assert b['stage3_status']=='NOT_READY' and b['stage4_alpha_live_locked'] is True
+          assert callable(finalizer._validate_shard_manifests)
+          print('S3G1J_V17_30_RUNTIME_AND_ACCEPTED_FULL_BASIS_IMPORT_PASS')
+          PY
+      - name: Run inherited pure fail-closed regression contracts
+        run: |
+          python -m unittest \
+            tests.test_stage3_financial_balance_block_v4 \
+            tests.test_stage3_financial_balance_block_v5 \
+            tests.test_stage3_financial_balance_block_v6 \
+            tests.test_stage3_financial_balance_title_v8 \
+            tests.test_stage3_financial_pdf_issuer_gate_v9 \
+            tests.test_stage3_financial_pdf_parser_v11 \
+            tests.test_stage3_financial_pdf_parser_v13 \
+            tests.test_stage3_financial_tie_resolution \
+            tests.test_stage3_unique_usable_tie_v15 \
+            tests.test_stage3_statement_blocks_v16_3 \
+            tests.test_stage3_v16_contextual_parser \
+            tests.test_stage3_v17_explicit_dual_evidence \
+            tests.test_stage3_v17_column_evidence \
+            tests.test_stage3_v17_15_adjacent_bridge \
+            tests.test_stage3_v17_15_production_parser \
+            tests.test_stage3_v17_17_production_parser \
+            -v
+      - name: Run V17.21 through V17.29 retained regressions
+        run: |
+          python -m unittest \
+            tests.test_stage3_v17_21_production_parser \
+            tests.test_stage3_v17_24_corrupted_equity \
+            tests.test_stage3_v17_24_production_parser \
+            tests.test_stage3_v17_24_acceptance_baseline \
+            tests.test_stage3_v17_25_generic_group_witness \
+            tests.test_stage3_v17_25_production_parser \
+            tests.test_stage3_v17_25_runtime_promotion \
+            tests.test_stage3_v17_26_balance_only_parser \
+            tests.test_stage3_v17_26_full_final_comparator \
+            tests.test_stage3_v17_26_full_final_evidence \
+            tests.test_stage3_v17_26_runtime_promotion \
+            tests.test_stage3_s3g1j_v17_27_normal_equity_candidate \
+            tests.test_stage3_v17_27_runtime_promotion \
+            tests.test_stage3_v17_27_full_final_evidence \
+            tests.test_stage3_v17_27_full_final_comparator \
+            tests.test_stage3_v17_27_full_final_comparator_v2 \
+            tests.test_stage3_s3g1j_v17_28_split_equity_candidate \
+            tests.test_stage3_v17_28_runtime_wrapper \
+            tests.test_stage3_v17_28_runtime_promotion \
+            tests.test_stage3_v17_28_full_final_comparator \
+            tests.test_stage3_v17_28_full_final_evidence \
+            tests.test_stage3_v17_29_runtime_wrapper \
+            tests.test_stage3_v17_29_runtime_promotion \
+            tests.test_stage3_v17_29_full_final_evidence \
+            -v
+      - name: Run official-PDF coordinate fallback regression
+        run: python -m unittest tests.test_stage3_financial_coordinate_fallback_v14_integration -v

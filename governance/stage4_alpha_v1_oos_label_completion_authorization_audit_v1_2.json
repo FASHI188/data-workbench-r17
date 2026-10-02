@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "status": "PASS_FOR_GOVERNANCE_ARMING_V1_2_NO_OOS_ACCESS_IN_THIS_PR",
+  "authorization_fingerprint_expected": "0a7c2e5ed7777bc84ad4db22b91c5e84da5dc819a186d743d19bb603b158f10a",
+  "reservation_fingerprint_expected": "f038c7857da733207be7cb9c3df76bd0e189054b6763b3d3c70aca017afda889",
+  "execution_contract_fingerprint_expected": "1ca647475bf57ca544b68aa535456fecb0469fcd8a999a58a3288f699f8cc469",
+  "authorized_execution_head_expected": "303dcc9bbfbef5dcbbf1027ebc8aff442f14fc18",
+  "execution_pr": 176,
+  "execution_merge_sha": "b068aed179bf47994296db963d9ee5d7f2787c1c",
+  "armed_runs_remaining_expected": 1,
+  "oos_artifact_downloaded": false,
+  "oos_market_value_read": false,
+  "oos_label_value_read": false,
+  "prediction_recomputed": false,
+  "model_loaded": false,
+  "final_lockbox_accessed": false
+}

@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "status": "STATIC_SYNTHETIC_IMPLEMENTATION_NO_REAL_DATA_EXECUTION_AUTHORITY",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "33e142142a2a5b3f225f2ef831186eb476eed4ceb7cecbf23159ccd22d76546f",
+  "fingerprint_basis": {
+    "implementation_contract_id": "STAGE4_ALPHA_V2_EXECUTABILITY_D0_IMPLEMENTATION",
+    "version": "V1.0",
+    "integration_base_sha": "122bc571e34d6bf7b24820f2091e83406b87db2e",
+    "preregistration_fingerprint": "5407c8293c678287596abe2bc6cced8c83d6a2f997eb6ff8720b7790d59c8e6a",
+    "input": {
+      "development_labels_artifact_id": 9216418323,
+      "artifact_digest": "sha256:c4c8c475d79e964265dceec66da1673f9327469edc33531d6a21df8b61627e88",
+      "labels_sha256": "092061da5666215dcc1f4fa75ec0b1cdbcc43969560755e7cdae6de55e64d673",
+      "expected_rows": 5197648,
+      "expected_valid_20d_rows": 5103016,
+      "development_only": true
+    },
+    "runtime": {
+      "python": "3.12.13",
+      "duckdb": "1.3.2"
+    },
+    "source_path": "scripts/run_stage4_alpha_v2_executability_d0.py",
+    "allowed_read_columns": [
+      "trade_date",
+      "exchange",
+      "code",
+      "entry_date",
+      "exit_date_20d",
+      "valid_label_20d",
+      "censor_reason_20d",
+      "known_code_transition_security",
+      "finite_lifecycle_interval"
+    ],
+    "forbidden_read_or_output_columns": [
+      "stock_total_return_5d",
+      "benchmark_return_5d",
+      "excess_return_5d",
+      "stock_total_return_20d",
+      "benchmark_return_20d",
+      "excess_return_20d"
+    ],
+    "diagnostics": {
+      "overall": true,
+      "by_date": true,
+      "by_year": true,
+      "by_quarter": true,
+      "by_month": true,
+      "by_exchange": true,
+      "by_censor_reason": true,
+      "by_code_transition_flag": true,
+      "by_finite_lifecycle_flag": true,
+      "boundary_vs_nonboundary": true,
+      "invalid_cohort_count": true,
+      "return_metrics": false,
+      "prediction_metrics": false,
+      "policy_score": false,
+      "threshold_selection": false
+    },
+    "outputs": [
+      "d0_manifest.json",
+      "d0_overall.json",
+      "d0_by_date.parquet",
+      "d0_by_time.json",
+      "d0_by_exchange.json",
+      "d0_by_censor_reason.json",
+      "d0_by_flags.json",
+      "artifact_hashes.json"
+    ],
+    "production_guards": {
+      "exact_labels_sha256_required": true,
+      "exact_row_count_required": true,
+      "exact_valid_20d_count_required": true,
+      "max_trade_date": "2022-12-30",
+      "min_trade_date": "2015-01-05",
+      "oos_date_or_later_forbidden": "2023-01-03",
+      "forbidden_output_field_scan_required": true
+    },
+    "synthetic_test": {
+      "uses_same_aggregation_function": true,
+      "must_include_valid_and_each_major_censor_class": true,
+      "must_include_forbidden_return_columns_with_sentinel_values": true,
+      "must_prove_outputs_do_not_contain_forbidden_column_names_or_values": true,
+      "must_prove_no_model_fit_or_prediction": true
+    },
+    "permissions": {
+      "this_implementation_pr_grants_development_label_execution": false,
+      "model_fit_allowed": false,
+      "oos_access_allowed": false,
+      "final_lockbox_access_allowed": false,
+      "live_signal_allowed": false,
+      "main_merge_allowed": false,
+      "authoritative_output_allowed": false
+    }
+  },
+  "next_gate": "STATIC_IMPLEMENTATION_ACCEPTANCE_THEN_SEPARATE_EXACT_HEAD_D0_DEVELOPMENT_LABEL_EXECUTION_AUTHORIZATION"
+}

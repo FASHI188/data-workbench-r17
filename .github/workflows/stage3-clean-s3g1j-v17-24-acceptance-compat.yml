@@ -1,0 +1,212 @@
+name: Stage3 Clean S3G1J V17.24 Acceptance Compatibility
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/accept_stage3_s3g1j_v17_24_production_v2.py'
+      - 'tests/test_stage3_v17_24_acceptance_baseline.py'
+      - '.github/workflows/stage3-clean-s3g1j-v17-24-acceptance-compat.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  FROZEN_RUN: '30424465440'
+  FROZEN_HEAD: 'be42608b75f77af13c36620da7e7fa03c563afde'
+  FROZEN_ARTIFACT: 'stage3-s3g1j-v15-single-source-input'
+  FROZEN_DIGEST: 'sha256:272f52239adc2fc5d4343ec091495dffcd39324b425784cdf5a7491f63a2e6fd'
+  V17_21_RUN: '30645504197'
+  V17_21_HEAD: 'ae967fda2c53796e9b886b54f1ab7b7ea69f6623'
+  V17_21_ARTIFACT: 'stage3-s3g1j-v17-21-combined-production-exact-82-acceptance'
+  V17_21_DIGEST: 'sha256:3779e0a7a6f6697ade3a58d6463a2200bf06b83855b4800a5750ebed5ca312f5'
+  V17_24_CANDIDATE_RUN: '30650516337'
+  V17_24_CANDIDATE_HEAD: 'f73c2ebd89cb4be816e626b181cec5198e01a12e'
+  V17_24_CANDIDATE_ARTIFACT: 'stage3-s3g1j-v17-24-exact-79-candidate-safety'
+  V17_24_CANDIDATE_DIGEST: 'sha256:1982c801013ac43398612d6b558abc41c9143c58f670c28523da580ec0b3368a'
+  PYTHONPATH: scripts
+
+jobs:
+  lock-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact verified production dependencies
+        run: python -m pip install --disable-pip-version-check --constraint requirements/constraints-verified.txt requests PyMuPDF
+      - name: Lock frozen and accepted evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          lock_run_artifact() {
+            run="$1"; expected_head="$2"; artifact="$3"; expected_digest="$4"
+            test "$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json conclusion,headSha --jq .conclusion)" = success
+            test "$(gh run view "$run" -R "$GITHUB_REPOSITORY" --json headSha --jq .headSha)" = "$expected_head"
+            actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq ".artifacts[] | select(.name==\"$artifact\") | .digest")
+            test -n "$actual"
+            test "$actual" = "$expected_digest"
+          }
+          lock_run_artifact "$FROZEN_RUN" "$FROZEN_HEAD" "$FROZEN_ARTIFACT" "$FROZEN_DIGEST"
+          lock_run_artifact "$V17_21_RUN" "$V17_21_HEAD" "$V17_21_ARTIFACT" "$V17_21_DIGEST"
+          lock_run_artifact "$V17_24_CANDIDATE_RUN" "$V17_24_CANDIDATE_HEAD" "$V17_24_CANDIDATE_ARTIFACT" "$V17_24_CANDIDATE_DIGEST"
+      - name: Run candidate, production and compatibility contracts
+        run: |
+          python -m unittest tests.test_stage3_v17_24_corrupted_equity -v
+          python -m unittest tests.test_stage3_v17_24_production_parser -v
+          python -m unittest tests.test_stage3_v17_24_acceptance_baseline -v
+      - name: Import compatibility acceptance runtime
+        run: |
+          python - <<'PY'
+          import accept_stage3_s3g1j_v17_24_production_v2 as acceptance
+          assert callable(acceptance._load_v17_21)
+          assert callable(acceptance._validate_recovery)
+          assert callable(acceptance.main)
+          print('S3G1J_V17_24_ACCEPTANCE_COMPAT_IMPORT_PASS')
+          PY
+
+  replay:
+    needs: lock-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0, 1, 7, 9]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Install exact verified production dependencies
+        run: python -m pip install --disable-pip-version-check --constraint requirements/constraints-verified.txt requests PyMuPDF
+      - name: Restore exact frozen versions and V17.21 production basis
+        shell: bash
+        run: |
+          set -euo pipefail
+          download_retry() {
+            run="$1"; artifact="$2"; destination="$3"
+            for attempt in 1 2 3 4 5 6; do
+              rm -rf "$destination"
+              if gh run download "$run" -R "$GITHUB_REPOSITORY" -n "$artifact" -D "$destination"; then
+                return 0
+              fi
+              sleep $((attempt * 15))
+            done
+            return 1
+          }
+          download_retry "$FROZEN_RUN" "$FROZEN_ARTIFACT" prepared
+          download_retry "$V17_21_RUN" "$V17_21_ARTIFACT" promoted
+          test -f prepared/single_source_residual_versions.csv.gz
+          test -f promoted/candidate/shard0.json
+          test -f promoted/candidate/shard1.json
+          test -f promoted/candidate/shard7.json
+          test -f promoted/candidate/shard9.json
+      - name: Replay V17.24 with authoritative legacy blocks
+        shell: bash
+        run: |
+          set +e
+          out="build/v17-24-compat/shard${{ matrix.shard }}.json"
+          mkdir -p "$(dirname "$out")"
+          python scripts/accept_stage3_s3g1j_v17_24_production_v2.py \
+            --versions prepared/single_source_residual_versions.csv.gz \
+            --v17-21-root promoted \
+            --shard ${{ matrix.shard }} --shards 64 --out "$out" \
+            > "${out%.json}.stdout.log" 2> "${out%.json}.stderr.log"
+          code=$?
+          echo "REPLAY_EXIT=$code" >> "$GITHUB_ENV"
+          cat "${out%.json}.stdout.log" || true
+          tail -100 "${out%.json}.stderr.log" || true
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-24-acceptance-compat-${{ matrix.shard }}
+          path: build/v17-24-compat
+          retention-days: 90
+          compression-level: 0
+      - name: Preserve compatibility replay failure
+        if: env.REPLAY_EXIT != '0'
+        run: exit 1
+
+  summarize:
+    needs: replay
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage3-s3g1j-v17-24-acceptance-compat-*
+          path: candidate
+          merge-multiple: true
+      - name: Enforce exact frozen production verdict
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import glob,json,os
+          paths=sorted(glob.glob('candidate/shard*.json'))
+          reports=[json.load(open(path,encoding='utf-8')) for path in paths]
+          reports.sort(key=lambda row:row['shard'])
+          assert [row['shard'] for row in reports]==[0,1,7,9]
+          assert all(row.get('pass') is True for row in reports), [row.get('execution_failures') for row in reports]
+          assert sum(row['input_count_exact82'] for row in reports)==82
+          assert sum(row['input_count_exact79'] for row in reports)==79
+          assert sum(row['processed_count'] for row in reports)==82
+          assert sum(row['source_sha_match_count'] for row in reports)==82
+          rows=[item for report in reports for item in report['results']]
+          assert len(rows)==82 and len({row['announcement_id'] for row in rows})==82
+          recovered82=sorted(row['announcement_id'] for row in rows if row['production_balance_sheet_recovered'])
+          assert recovered82==['1212731093','1219311356','1221568845','1225153907'], recovered82
+          residual79=[row for row in rows if row['was_v17_21_residual']]
+          assert len(residual79)==79
+          recovered79=sorted(row['announcement_id'] for row in residual79 if row['production_balance_sheet_recovered'])
+          assert recovered79==['1221568845'], recovered79
+          target=next(row for row in rows if row['announcement_id']=='1221568845')
+          block=target['balance_sheet_block']
+          assert block['arbitration']=='V17_24_GROUP_PERIOD_FROZEN_DATE_A_EQUALS_L_PLUS_E_EXACT_CORRUPTED_EQUITY_ALIAS'
+          assert block['candidate_only'] is False
+          assert block['production_runtime_generation']=='V17.24'
+          assert block['corrupted_equity_alias']=='所有者权益（或d股东权益）合计'
+          assert block['corrupted_equity_amount_column_count']==2
+          assert block['column_role_gate_pass'] is True
+          assert block['e_equals_a_minus_l_inference'] is False
+          assert str(block['identity_residual_cny']) in {'0','0.0','0.00'}
+          nonrecovered=[row for row in rows if not row['production_balance_sheet_recovered']]
+          assert len(nonrecovered)==78
+          assert all(row['validation_errors'] for row in nonrecovered)
+          report={
+              'gate':'S3G1J_V17_24_PRODUCTION_ACCEPTANCE_COMPAT',
+              'pass':True,
+              'input_count_exact82':82,
+              'input_count_exact79':79,
+              'production_recovered_announcement_ids':recovered82,
+              'incremental_recovery_announcement_ids':recovered79,
+              'remaining_fail_closed_count':78,
+              'legacy_blocks_required_equal_v17_21':True,
+              'new_recovery_e_equals_a_minus_l_inference':False,
+              'accounting_tolerance':'0.005',
+              'global_row_tolerance_changed':False,
+              'source_policy_changed':False,
+              'stage4_alpha_locked':True,
+              'target_result':target,
+              'errors':[],
+          }
+          os.makedirs('summary',exist_ok=True)
+          json.dump(report,open('summary/s3g1j_v17_24_production_acceptance_compat.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage3-s3g1j-v17-24-production-acceptance-compat
+          path: |
+            summary
+            candidate
+          retention-days: 90
+          compression-level: 0

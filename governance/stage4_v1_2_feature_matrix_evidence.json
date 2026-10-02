@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "evidence_id": "STAGE4_V1_2_FEATURE_MATRIX_EVIDENCE",
+  "status": "MACHINE_ACCEPTED_PRETRAINING_FEATURE_EVIDENCE",
+  "feature_set": {
+    "id": "STAGE4_ALPHA_V1_FEATURE_SET",
+    "version": "V1.2",
+    "fingerprint": "d319ea1c236d580d0d032a055e4cdc07bf45e586ecbef664c6f4b3a8be98f9ff"
+  },
+  "execution": {
+    "run_id": 31668151558,
+    "head_sha": "3b337311641ef9dc8ec14ba1a08833bbd83a3bed",
+    "artifact_id": 9168728086,
+    "artifact_name": "stage4-v1-2-feature-matrix",
+    "artifact_digest": "sha256:a4d3a10165bf3b369c77c7b4f77e97663bc3125f506d9203388e6f63198bda4a",
+    "artifact_size_bytes": 452336839,
+    "workflow": ".github/workflows/stage4-v1-2-feature-matrix.yml",
+    "conclusion": "success"
+  },
+  "matrix": {
+    "version": "V1.2",
+    "row_count": 7924181,
+    "unique_key_count": 7924181,
+    "key": ["effective_session", "exchange", "code"],
+    "trade_date_min": "2015-01-05",
+    "trade_date_max": "2026-08-12",
+    "effective_session_min": "2015-01-06",
+    "effective_session_max": "2026-08-13",
+    "matrix_sha256": "c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c",
+    "coverage_sha256": "54aad1ba178f13903b65390b715651c04015a73ff72bac034b5f5bce0412aca0"
+  },
+  "independent_audit": {
+    "pass": true,
+    "sha256": "47e5a380fb3008078064bad9b379cb78004c313b3aa2b1d105573ce8183bec48",
+    "unaffected_column_mismatches": 0,
+    "transformed_column_mismatches": 0,
+    "active_current_period_surprise_rows": 1756064,
+    "active_surprise_period_mismatch_rows": 0,
+    "prior_period_surprise_rows_removed": 3976955,
+    "surprise_missing_indicator_mismatches": 0,
+    "negative_guidance_age_rows": 0,
+    "future_surprise_source_rows": 0,
+    "prohibited_columns": []
+  },
+  "materialization_audit": {
+    "pass": true,
+    "sha256": "1087a9d6f7411fed1e6da581f458ccd96d938489787b2c94423c64367b06d5a2",
+    "base_matrix_rows": 7924181,
+    "base_surprise_nonnull_rows": 5733019,
+    "base_current_period_surprise_rows": 1756064,
+    "base_prior_period_stale_surprise_rows": 3976955,
+    "active_current_period_surprise_rows": 1756064,
+    "active_guidance_age_p50_sessions": 41.0,
+    "active_guidance_age_gt_252_rows": 2064,
+    "active_guidance_age_gt_504_rows": 153,
+    "active_guidance_age_max_sessions": 606
+  },
+  "coverage_examples": {
+    "fin_total_assets_cny": 0.9765776425349194,
+    "fin_parent_net_profit_cny": 0.9644749406910317,
+    "fin_parent_net_profit_ex_nonrecurring_cny": 0.8182844384801408,
+    "official_guidance_surprise": 0.22160826462696903
+  },
+  "semantic_boundaries": {
+    "decision_time": "SESSION_T_CLOSE_INFORMATION_ONLY_EFFECTIVE_NEXT_TRADING_SESSION",
+    "strict_price_universe": "SSE_MAIN_A + SZSE_MAIN_A AND 0 < RAW_UNADJUSTED_CLOSE < 70 CNY",
+    "industry_identity": "EXCLUDED_PENDING_NORMALIZATION_PLUGIN",
+    "surprise": "ACTIVE_ONLY_WHEN_SURPRISE_ECONOMIC_DATE_EQUALS_CURRENT_LATEST_FINANCIAL_ECONOMIC_DATE",
+    "surprise_fixed_day_expiry": "NOT_INVENTED",
+    "financial_missing": "LATEST_REPORT_MISSING_STAYS_MISSING_NO_ZERO_FILL_OR_PRIOR_REPORT_CARRY",
+    "general_web_news": "EXCLUDED_FROM_ALPHA_V1",
+    "social_media": "EXCLUDED_FROM_ALPHA_V1"
+  },
+  "permissions": {
+    "stage4_v1_feature_set_complete": true,
+    "stage4_v1_feature_matrix_complete": true,
+    "alpha_training_preregistration_allowed": true,
+    "alpha_training_execution_allowed": false,
+    "live_signal_allowed": false,
+    "authoritative_model_output": false
+  },
+  "next_gate": "SEPARATE_STAGE4_ALPHA_V1_TRAINING_PREREGISTRATION_AND_OOS_DESIGN"
+}

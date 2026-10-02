@@ -1,0 +1,59 @@
+name: Stage4 Alpha V1 OOS Label Completion Preregistration V1.4
+
+on:
+  pull_request:
+    branches:
+      - agent/stage3-clean-integration
+    paths:
+      - 'governance/stage4_alpha_v1_oos_label_completion_preregistration_v1_4_supersession.json'
+      - 'scripts/audit_stage4_alpha_v1_oos_label_completion_preregistration_v1_4.py'
+      - '.github/workflows/stage4-alpha-v1-oos-label-completion-prereg-v1-4.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  preregistration-v1-4-static:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Audit V1.4 superseding preregistration
+        run: python scripts/audit_stage4_alpha_v1_oos_label_completion_preregistration_v1_4.py
+      - name: Prove governance-only and non-consuming
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e build/oos
+          test ! -e build/model
+          test ! -e build/runtime-veto
+          ! grep -n -E 'download-artifact|curl|wget|gh[[:space:]]+api|read_parquet\(|model\.predict\(|predict_proba\('             scripts/audit_stage4_alpha_v1_oos_label_completion_preregistration_v1_4.py             .github/workflows/stage4-alpha-v1-oos-label-completion-prereg-v1-4.yml | grep -v 'grep -n -E'
+      - name: Prove exact V1.4 governance triplet
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed.txt
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/stage4-alpha-v1-oos-label-completion-prereg-v1-4.yml
+          governance/stage4_alpha_v1_oos_label_completion_preregistration_v1_4_supersession.json
+          scripts/audit_stage4_alpha_v1_oos_label_completion_preregistration_v1_4.py
+          EOF
+          sort -o /tmp/expected.txt /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/changed.txt
+      - name: Prove frozen authority/data/implementation untouched
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden="$(git diff --name-only "$BASE_SHA" HEAD --             governance/accepted_project_state.json             governance/stage4_alpha_v1_oos_validation_consumed_incomplete_evidence.json             governance/stage4_alpha_v1_oos_label_completion_consumed_incomplete_evidence.json             governance/stage4_alpha_v1_oos_label_completion_authorization_v1.json             scripts/run_stage4_alpha_v1_oos_label_completion.py             scripts/stage4_alpha_v1_label_materialization.py             scripts/stage4_alpha_v1_alpha_evaluation.py             data/stage2_final data/stage3_final models)"
+          test -z "$forbidden"

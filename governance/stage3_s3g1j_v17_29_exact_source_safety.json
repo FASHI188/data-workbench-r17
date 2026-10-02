@@ -1,0 +1,230 @@
+{
+  "schema_version": 1,
+  "status": "MACHINE_ACCEPTED_PRE_CANDIDATE_SAFETY_DIAGNOSTIC_ONLY",
+  "gate": "S3G1J_V17_29_PRE_CANDIDATE_EXACT_SOURCE_SPLIT_EQUITY_SAFETY",
+  "diagnostic_pr": {
+    "number": 103,
+    "head_sha": "2fa1ae921059350d20c29bd8c31a3a2a48b4abf5",
+    "merge_authorized": false,
+    "disposition": "CLOSE_WITHOUT_MERGE_AFTER_GOVERNANCE_REGISTRATION"
+  },
+  "accepted_run": {
+    "run_id": 31113755244,
+    "workflow_name": "Stage3 S3G1J V17.29 Exact Source Safety",
+    "head_sha": "2fa1ae921059350d20c29bd8c31a3a2a48b4abf5",
+    "conclusion": "SUCCESS",
+    "artifact_id": 8972793068,
+    "artifact_name": "stage3-s3g1j-v17-29-exact-source-safety-v1",
+    "artifact_digest": "sha256:8fa30957758fcbc94fa77214a4a52f3a97335fbf27dda3d44e89afb81c2abf6d",
+    "artifact_size_bytes": 3449,
+    "created_at": "2026-08-06T15:01:11Z",
+    "retention_expires_at": "2026-11-04T15:00:50Z"
+  },
+  "supporting_exact_head_runs": {
+    "repository_safety": 31113756221,
+    "runtime_reproducibility": 31113750790,
+    "clean_s3g1j": 31113755010
+  },
+  "locked_inputs": {
+    "v17_28_full_basis": {
+      "run_id": 30997260730,
+      "head_sha": "611d402c3b61a35644a27fd33d3955b9976dec7c",
+      "artifact_id": 8927455692,
+      "artifact_name": "stage3-s3g1j-v17-28-full-final",
+      "artifact_digest": "sha256:82375169faada969ceafd4356ab0a2707aa14592d5db090c5d3910863d571c8b",
+      "documents_gzip_sha256": "7589750684ec26280c095d4b3a2d21b114c6bb77a882f4633c2ea128de5f38f3",
+      "documents_plaintext_sha256": "c4e251d769860f86f037889f0bcc58a76ee53526f1f0ac120aa2aa15a996cba5"
+    },
+    "v17_28_p0_root_cause": {
+      "run_id": 31111116235,
+      "head_sha": "c1e1a99533498c9e4eba7ae95323cc80586474c4",
+      "artifact_id": 8971708686,
+      "artifact_name": "stage3-s3g1j-v17-28-p0-pdf-root-cause-v1",
+      "artifact_digest": "sha256:c743dc725e15037eb761244e5e0e88d37075a1cf5eab366e5d64c9d7ac0627b8",
+      "root_cause_ledger_gzip_sha256": "e3ba4e23b81dcb24d24def114cd6a70289c2f7df654b1d81238638675ec1a92c",
+      "root_cause_ledger_plaintext_sha256": "0861076fdf2547d1269df2b6c6000fbf1ea3b5998ad1658ae3c7fa028157ce1a"
+    },
+    "formal_v17_28_parser": {
+      "path": "scripts/stage3_financial_pdf_parser_v20.py",
+      "git_blob_sha": "b299accbd9b19c6f909b883738378b0119f855b9",
+      "generation": "V17.28"
+    }
+  },
+  "full_population_routing": {
+    "document_rows": 121354,
+    "candidate_evidence_rows": 121985,
+    "route_counts": {
+      "DELEGATE_FORMAL_V17_28_UNCHANGED": 121347,
+      "V17_29_PRE_CANDIDATE_EXACT_SOURCE_DIAGNOSTIC": 7
+    },
+    "routing_semantic_sha256": "1fcc01726482afc7a5d08e33b68013140d7344a24b93b2b8953c7475c8e2cc1c",
+    "target_population_match_count": 7,
+    "all_target_population_matches_unique": true,
+    "all_non_targets_delegate_formal_v17_28_unchanged": true,
+    "formal_existing_target_overlap_count": 0
+  },
+  "activation_contract": {
+    "identity_fields": [
+      "source_sha256",
+      "source_bytes",
+      "economic_date"
+    ],
+    "scope": "EXACT_ALLOWLIST_ONLY",
+    "non_target_behavior": "RETURN_FORMAL_V17_28_OBJECT_UNCHANGED",
+    "mutated_sha_delegated": 7,
+    "wrong_bytes_delegated": 7,
+    "wrong_date_delegated": 7,
+    "accounting_tolerance": "0.005"
+  },
+  "targets": [
+    {
+      "announcement_id": "1215186538",
+      "source_code": "600243",
+      "report_family": "SEMI",
+      "economic_date": "2022-06-30",
+      "canonical_source_url": "https://static.cninfo.com.cn/finalpage/2022-11-24/1215186538.PDF",
+      "source_sha256": "c1856e15d16e6ede5f22a7a0c97dcfd540185573725b64861d8015fae1b4b920",
+      "source_bytes": 2711641,
+      "page_count": 132,
+      "current_identity_residual": "0.00",
+      "prior_identity_residual": "0.00",
+      "population_match_count": 1,
+      "candidate_experiment_eligible": true,
+      "candidate_parser_implementation_authorized": false
+    },
+    {
+      "announcement_id": "1219426855",
+      "source_code": "600310",
+      "report_family": "ANNUAL",
+      "economic_date": "2023-12-31",
+      "canonical_source_url": "https://static.cninfo.com.cn/finalpage/2024-03-28/1219426855.PDF",
+      "source_sha256": "3bf864bff6823fea99b258604061b24012b1ed666a0a1a690af76bf54cb5b6b6",
+      "source_bytes": 4817887,
+      "page_count": 296,
+      "current_identity_residual": "0.00",
+      "prior_identity_residual": "0.00",
+      "population_match_count": 1,
+      "candidate_experiment_eligible": true,
+      "candidate_parser_implementation_authorized": false
+    },
+    {
+      "announcement_id": "1219792633",
+      "source_code": "600200",
+      "report_family": "ANNUAL",
+      "economic_date": "2023-12-31",
+      "canonical_source_url": "https://static.cninfo.com.cn/finalpage/2024-04-25/1219792633.PDF",
+      "source_sha256": "2b2147c2d32df99613608371dea115dc09d49377c4ac423ce74d3b155207c5c3",
+      "source_bytes": 4643170,
+      "page_count": 219,
+      "current_identity_residual": "0.00",
+      "prior_identity_residual": "0.00",
+      "population_match_count": 1,
+      "candidate_experiment_eligible": true,
+      "candidate_parser_implementation_authorized": false
+    },
+    {
+      "announcement_id": "1219840508",
+      "source_code": "603661",
+      "report_family": "ANNUAL",
+      "economic_date": "2023-12-31",
+      "canonical_source_url": "https://static.cninfo.com.cn/finalpage/2024-04-26/1219840508.PDF",
+      "source_sha256": "e29963a1bd008369d15d817407cb6ff4ffe1ea7740883d69db702800fcb33532",
+      "source_bytes": 4502267,
+      "page_count": 257,
+      "current_identity_residual": "0.00",
+      "prior_identity_residual": "0.00",
+      "population_match_count": 1,
+      "candidate_experiment_eligible": true,
+      "candidate_parser_implementation_authorized": false
+    },
+    {
+      "announcement_id": "1219879687",
+      "source_code": "603297",
+      "report_family": "ANNUAL",
+      "economic_date": "2023-12-31",
+      "canonical_source_url": "https://static.cninfo.com.cn/finalpage/2024-04-27/1219879687.PDF",
+      "source_sha256": "0843638f31f9343156b7c87474918dd80604788bc8e8f479eca2882c5b95b534",
+      "source_bytes": 3970627,
+      "page_count": 224,
+      "current_identity_residual": "0.00",
+      "prior_identity_residual": "0.00",
+      "population_match_count": 1,
+      "candidate_experiment_eligible": true,
+      "candidate_parser_implementation_authorized": false
+    },
+    {
+      "announcement_id": "1220087244",
+      "source_code": "600310",
+      "report_family": "ANNUAL",
+      "economic_date": "2023-12-31",
+      "canonical_source_url": "https://static.cninfo.com.cn/finalpage/2024-05-18/1220087244.PDF",
+      "source_sha256": "a77b09fb00fb234ab1923ff42d9908786c71ee2154bb22cfce0d0490dbcfaacd",
+      "source_bytes": 4755545,
+      "page_count": 295,
+      "current_identity_residual": "0.00",
+      "prior_identity_residual": "0.00",
+      "population_match_count": 1,
+      "candidate_experiment_eligible": true,
+      "candidate_parser_implementation_authorized": false
+    },
+    {
+      "announcement_id": "1221006100",
+      "source_code": "600310",
+      "report_family": "SEMI",
+      "economic_date": "2024-06-30",
+      "canonical_source_url": "https://static.cninfo.com.cn/finalpage/2024-08-28/1221006100.PDF",
+      "source_sha256": "8679311bb2eb42e00d575404456fc5f0fb1a84d0ecab0ae3f6572b7962a1d806",
+      "source_bytes": 3650480,
+      "page_count": 204,
+      "current_identity_residual": "0.00",
+      "prior_identity_residual": "0.00",
+      "population_match_count": 1,
+      "candidate_experiment_eligible": true,
+      "candidate_parser_implementation_authorized": false
+    }
+  ],
+  "output_hashes": {
+    "target_ledger_gzip_sha256": "1621f7ee78056cebc04c435a267205ced088fcb6163ace7d485991d57fdc9470",
+    "target_ledger_plaintext_sha256": "2066886c7eb032d8dd7752d5cc94d06ef78bd435e4ca9a76b863e5e4e8750056",
+    "contract_json_sha256": "b8ed3394953c3ae9e8cfe111cb0e9ef57514a80c86940b0becb873404ac9cfc2",
+    "summary_json_sha256": "7505ac47be1d83335842fd04768393389917e6ce380539fc5779bf796d2348b8",
+    "artifact_zip_sha256": "8fa30957758fcbc94fa77214a4a52f3a97335fbf27dda3d44e89afb81c2abf6d"
+  },
+  "independent_verification": {
+    "artifact_downloaded_and_inspected": true,
+    "github_artifact_digest_matches_downloaded_archive": true,
+    "machine_outputs_byte_equal_local_read_only_reproduction": true,
+    "target_rows_recounted": 7,
+    "routing_counts_recomputed": true,
+    "negative_routes_recomputed": true,
+    "output_hashes_recomputed": true,
+    "errors": []
+  },
+  "authorization_boundary": {
+    "candidate_experiment_eligible": true,
+    "candidate_parser_implementation_authorized": false,
+    "candidate_parser_promotion_authorized": false,
+    "parser_implemented": false
+  },
+  "hard_boundaries": {
+    "diagnostic_only": true,
+    "formal_parser_changed": false,
+    "runtime_authority_changed": false,
+    "production_data_changed": false,
+    "trained_model_changed": false,
+    "live_configuration_changed": false,
+    "pdf_binaries_redownloaded": false,
+    "ocr_enabled": false,
+    "equity_inference_enabled": false,
+    "fuzzy_alias_matching_enabled": false,
+    "source_policy_changed": false,
+    "point_in_time_policy_changed": false,
+    "issuer_gate_changed": false,
+    "accounting_tolerance_changed": false,
+    "stage3_status": "NOT_READY",
+    "stage4_alpha_live_locked": true,
+    "main_changed": false,
+    "merge_to_main_authorized": false
+  },
+  "next_gate": "After this evidence is registered and PR #103 is closed without merge, a separate candidate implementation PR may be authorized for the exact seven SHA/date/byte identities. It must prove exact non-target output identity against formal V17.28 before any promotion consideration."
+}

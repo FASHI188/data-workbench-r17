@@ -1,0 +1,114 @@
+name: Stage3 S3G4 Final Governance Build
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/build_stage3_s3g4_final_governance.py'
+      - '.github/workflows/stage3-s3g4-final-governance-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  SOURCE_PR: '131'
+  SOURCE_HEAD: '8422f1ce24a19c80560ee9a626b14a7eb9b2a5be'
+  SOURCE_RUN: '31557145693'
+  ACCEPTANCE_PR: '132'
+  ACCEPTANCE_HEAD: 'fe722f82f599489f4fcf86cefc47afe1c9235b64'
+  ACCEPTANCE_RUN: '31557811596'
+  ARTIFACT_ID: '9126607328'
+  ARTIFACT_DIGEST: 'sha256:b87e822278f044f8fd6dd5a8cf7bb2e342890b27086951d377d73ed70c7bd4b3'
+  AUDIT_SHA: 'f3ab63e8e0fbb122f04bd1f9f2cde8a9c4ea9c66ab5ef1aa5d91eba9936f44c8'
+  FORECAST_LEDGER_SHA: '6912b2297b01c97a91b764e96d4d586982517ec68b20e25a24606cdc67ff74d6'
+  SURPRISE_LEDGER_SHA: '8c12874918139b159235f03e7071a1942f1d0888b4603a16c9858634bf65e072'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Lock closed-unmerged source and acceptance PRs
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$SOURCE_PR")
+          test "$(jq -r .state <<<"$src")" = closed
+          test "$(jq -r .merged <<<"$src")" = false
+          test "$(jq -r .head.sha <<<"$src")" = "$SOURCE_HEAD"
+          acc=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$ACCEPTANCE_PR")
+          test "$(jq -r .state <<<"$acc")" = closed
+          test "$(jq -r .merged <<<"$acc")" = false
+          test "$(jq -r .head.sha <<<"$acc")" = "$ACCEPTANCE_HEAD"
+          src_run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN")
+          test "$(jq -r .head_sha <<<"$src_run")" = "$SOURCE_HEAD"
+          test "$(jq -r .status <<<"$src_run")" = completed
+          test "$(jq -r .conclusion <<<"$src_run")" = failure
+          jobs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/jobs?per_page=100")
+          test "$(jq '[.jobs[] | select((.name|startswith("shard (")) and .conclusion=="success")] | length' <<<"$jobs")" = 64
+          acc_run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ACCEPTANCE_RUN")
+          test "$(jq -r .head_sha <<<"$acc_run")" = "$ACCEPTANCE_HEAD"
+          test "$(jq -r .status <<<"$acc_run")" = completed
+          test "$(jq -r .conclusion <<<"$acc_run")" = success
+      - name: Download and independently lock accepted S3G4 artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          a=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID")
+          test "$(jq -r .name <<<"$a")" = stage3-s3g4-earnings-surprise-final-acceptance
+          test "$(jq -r .expired <<<"$a")" = false
+          test "$(jq -r .workflow_run.id <<<"$a")" = "$ACCEPTANCE_RUN"
+          test "$(jq -r .workflow_run.head_sha <<<"$a")" = "$ACCEPTANCE_HEAD"
+          test "$(jq -r .digest <<<"$a")" = "$ARTIFACT_DIGEST"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" > s3g4.zip
+          test "sha256:$(sha256sum s3g4.zip | awk '{print $1}')" = "$ARTIFACT_DIGEST"
+          mkdir accepted && unzip -q s3g4.zip -d accepted
+          test "$(sha256sum accepted/stage3_earnings_surprise_audit.json | awk '{print $1}')" = "$AUDIT_SHA"
+          test "$(sha256sum accepted/stage3_earnings_forecast_parse_ledger.csv.gz | awk '{print $1}')" = "$FORECAST_LEDGER_SHA"
+          test "$(sha256sum accepted/stage3_earnings_surprise.csv.gz | awk '{print $1}')" = "$SURPRISE_LEDGER_SHA"
+      - name: Recheck exact accepted audit semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p=json.load(open('accepted/stage3_earnings_surprise_audit.json',encoding='utf-8'))
+          assert p['pass'] is True and p['errors']==[]
+          assert p['forecast_population']==51732 and p['source_pdf_fetch_completeness']==1.0
+          assert p['forecast_parser_status_counts']=={'FOUND':33679,'FOUND_POINT_ESTIMATE':3880,'NOT_FOUND':14173}
+          assert p['financial_parent_net_profit_observations_total']==118505
+          assert p['financial_actual_observations_eligible']==118501
+          assert p['surprise_observations']==29139 and p['actuals_without_prior_numeric_forecast']==89362
+          assert {x['announcement_id'] for x in p['financial_actual_pit_exclusions']}=={'1207046114','1208263921','1220457006','1221055839'}
+          assert p['identity_match_mode']=='EXACT_ISSUER_ORG_ID_AND_ECONOMIC_DATE'
+          assert p['expectation_is_strictly_prior'] is True and p['analyst_consensus_used'] is False
+          assert p['stage4_unlocked'] is False and p['alpha_training_allowed'] is False and p['live_signal_allowed'] is False
+          print('S3G4_ACCEPTED_AUDIT_RECHECK_PASS')
+          PY
+      - name: Build append-only component-gate governance projection
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = pull_request ]; then GOV_PR='${{ github.event.pull_request.number }}'; else GOV_PR=0; fi
+          rm -rf build/s3g4-governance
+          python scripts/build_stage3_s3g4_final_governance.py \
+            --authority governance/stage3_authority_map.json \
+            --lock config/stage3_final_lock.json \
+            --project data/project_status.json \
+            --audit accepted/stage3_earnings_surprise_audit.json \
+            --governance-pr "$GOV_PR" \
+            --out build/s3g4-governance
+          cat build/s3g4-governance/output_sha256.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-s3g4-final-governance-build
+          path: build/s3g4-governance
+          retention-days: 30
+          compression-level: 9

@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "evidence_id": "STAGE4_ALPHA_V1_OOS_VALIDATION_AUTHORIZATION_AUDIT",
+  "status": "PASS_FOR_GOVERNANCE_ACCEPTANCE_NO_OOS_ACCESS",
+  "authorization_contract": "governance/stage4_alpha_v1_oos_validation_authorization.json",
+  "authorization_fingerprint_expected": "d260f1179c6f0c8cac8e2900e11c8f4cc6439eedc5515e02a00b69abb332449d",
+  "audited_integration_base_sha": "3b5517bdb95e23564e28a1640d27840bcf29b5d6",
+  "checks": {
+    "prereg_v1_0_fingerprint_bound": true,
+    "boundary_v1_1_fingerprint_bound": true,
+    "effective_prereg_v1_2_fingerprint_bound": true,
+    "development_split_seal_hash_bound": true,
+    "feature_matrix_hash_bound": true,
+    "development_labels_hash_bound": true,
+    "development_pbo_pass_carried_without_recompute_or_reselection": true,
+    "development_dsr_pass_carried_without_recompute_or_reselection": true,
+    "c007_candidate_identity_exact": true,
+    "c007_model_sha256_exact": true,
+    "c007_final_preprocess_manifest_sha256_exact": true,
+    "c007_final_refit_execution_manifest_sha256_exact": true,
+    "model_fit_permission_closed": true,
+    "candidate_reselection_forbidden": true,
+    "hyperparameter_search_forbidden": true,
+    "oos_partition_matches_v1_1_boundary_seal": true,
+    "oos_market_read_upper_bound_excludes_2025_01_02_and_later": true,
+    "final_lockbox_remains_sealed": true,
+    "authorization_gate_oos_label_access_forbidden": true,
+    "authorization_gate_oos_prediction_generation_forbidden": true,
+    "separate_exact_head_execution_pr_required": true,
+    "single_label_bearing_execution_run_max": true,
+    "all_seven_preregistered_oos_gate_requirements_preserved": true,
+    "block_bootstrap_implementation_frozen_before_oos_open": true,
+    "quarter_gate_implementation_frozen_before_oos_open": true,
+    "coverage_rebalance_schedule_frozen_before_oos_open": true,
+    "sensitivity_sign_rule_frozen_before_oos_open": true,
+    "cost_model_frozen_before_oos_open": true,
+    "main_merge_forbidden": true,
+    "live_signal_forbidden": true,
+    "authoritative_model_output_forbidden": true
+  },
+  "fee_policy_verification": {
+    "stamp_duty_pre_2023_08_28": "0.001 SELL_ONLY",
+    "stamp_duty_from_2023_08_28": "0.0005 SELL_ONLY_BY_2023_HALF_RATE_POLICY",
+    "exchange_handling_pre_2023_08_28": "0.0000487 BOTH_SIDES",
+    "exchange_handling_from_2023_08_28": "0.0000341 BOTH_SIDES",
+    "broker_commission": "NOT_ASSUMED",
+    "official_sources": [
+      "https://fgk.chinatax.gov.cn/zcfgk/c102416/c5211343/content.html",
+      "https://www.sse.com.cn/lawandrules/sselawsrules2025/charge/c/c_20250610_10781461.shtml",
+      "https://www.szse.cn/disclosure/notice/t20230818_602805.html"
+    ]
+  },
+  "audit_conclusion": {
+    "authorization_contract_is_fail_closed": true,
+    "authorization_does_not_use_oos_results": true,
+    "authorization_does_not_modify_model": true,
+    "authorization_does_not_open_lockbox": true,
+    "authorization_is_single_use_for_later_execution": true,
+    "merge_accepts_only_the_contract_and_does_not_execute_oos": true,
+    "next_allowed_action_after_merge": "CREATE_SEPARATE_OOS_EXECUTION_PR_WITH_NO_AUTOMATIC_LABEL_BEARING_RUN; REVIEW_EXACT_HEAD; THEN ONE_WORKFLOW_DISPATCH_WITH_SELF_CHECKS"
+  }
+}

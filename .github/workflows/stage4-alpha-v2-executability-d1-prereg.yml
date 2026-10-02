@@ -1,0 +1,54 @@
+name: Stage4 Alpha V2 Executability D1 Preregistration
+on:
+  pull_request:
+    branches: [agent/stage3-clean-integration]
+    paths:
+      - '.github/workflows/stage4-alpha-v2-executability-d1-prereg.yml'
+      - 'governance/stage4_alpha_v2_executability_d1_preregistration.json'
+      - 'scripts/audit_stage4_alpha_v2_executability_d1_preregistration.py'
+permissions:
+  contents: read
+jobs:
+  static-preregistration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.13'
+      - name: Audit frozen D1 preregistration
+        run: python scripts/audit_stage4_alpha_v2_executability_d1_preregistration.py
+      - name: Prove governance-only no data execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e build/oos
+          test ! -e build/out
+          ! grep -n -E 'download-artifact|curl|wget|gh[[:space:]]+api|read_parquet\(|\.fit\(|\.predict\('             .github/workflows/stage4-alpha-v2-executability-d1-prereg.yml             scripts/audit_stage4_alpha_v2_executability_d1_preregistration.py | grep -v 'grep -n -E'
+      - name: Prove exact preregistration scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD | sort > /tmp/changed.txt
+          cat > /tmp/expected.txt <<'EOF'
+          .github/workflows/stage4-alpha-v2-executability-d1-prereg.yml
+          governance/stage4_alpha_v2_executability_d1_preregistration.json
+          scripts/audit_stage4_alpha_v2_executability_d1_preregistration.py
+          EOF
+          sort -o /tmp/expected.txt /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/changed.txt
+      - name: Prove V1 terminal result and frozen inputs untouched
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden="$(git diff --name-only "$BASE_SHA" HEAD --             governance/stage4_alpha_v1_oos_label_completion_result_v1_2.json             governance/stage4_alpha_v1_preregistration.json             governance/stage4_alpha_v1_training_execution_authorization.json             governance/stage4_alpha_v1_development_labels_evidence.json             governance/accepted_project_state.json             governance/project_module_index.json             data/stage2_final data/stage3_final models)"
+          test -z "$forbidden"

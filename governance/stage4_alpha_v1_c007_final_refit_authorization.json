@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_AUTHORIZATION_NO_FIT_IN_THIS_GATE",
+  "fingerprint_method": "SHA256_CANONICAL_JSON_SORT_KEYS_COMPACT_OVER_FINGERPRINT_BASIS",
+  "fingerprint": "7d5f88013329973c6c446d9210adbb9e60ba04a9fb615098e21318f1ab053295",
+  "fingerprint_basis": {
+    "authorization_id": "STAGE4_ALPHA_V1_C007_FINAL_DEVELOPMENT_REFIT_AUTHORIZATION",
+    "version": "V1.0",
+    "authority": {
+      "integration_base_sha": "0d4ee71b0a8f81111178c31d77d21a4fbf4704c3",
+      "effective_preregistration": {
+        "version": "V1.2",
+        "fingerprint": "b73f9b55efb04fac5416f6fdd39c17780b3f9e46c82d0da6b111547e3d258cf8"
+      },
+      "source_development_cv_authorization_fingerprint": "2056eae94770e9afa65367999adf05f57e799c6e6f2e88b501791f02b587706c",
+      "source_development_cv_evidence": "governance/stage4_alpha_v1_development_cv_evidence.json",
+      "source_development_cv_evidence_git_blob_sha": "6abc186d7553a3ae62ba0a75671595affb97b71f",
+      "development_cv_exact_head": "c733d455d1f61723f0783c1809aa52ec4b0078b3",
+      "development_cv_run_id": 31898964450,
+      "development_cv_aggregate_artifact_id": 9250847700,
+      "development_cv_aggregate_artifact_digest": "sha256:01eb4bd2e5e2a461e6cef09e4576b4b189622f52a70b210cee8b87887f2c80e1",
+      "candidate_selection_sha256": "1c6ea217913b28dcb5c84eed5862dff8d2cc05b7c344b90993afb31091e1418f",
+      "feature_matrix_artifact_id": 9168728086,
+      "feature_matrix_artifact_digest": "sha256:a4d3a10165bf3b369c77c7b4f77e97663bc3125f506d9203388e6f63198bda4a",
+      "feature_matrix_sha256": "c5fca80bc0f35c008590fe8f6cd7b8a16ab22e13b4978314a812f1ecb60b391c",
+      "development_labels_artifact_id": 9216418323,
+      "development_labels_artifact_digest": "sha256:c4c8c475d79e964265dceec66da1673f9327469edc33531d6a21df8b61627e88",
+      "development_labels_sha256": "092061da5666215dcc1f4fa75ec0b1cdbcc43969560755e7cdae6de55e64d673",
+      "development_labels_evidence": "governance/stage4_alpha_v1_development_labels_evidence.json"
+    },
+    "selected_candidate": {
+      "candidate_id": "C007",
+      "family": "HIST_GRADIENT_BOOSTING_V1",
+      "ordinal": 7,
+      "params": {
+        "loss": "squared_error",
+        "learning_rate": 0.03,
+        "max_iter": 200,
+        "max_leaf_nodes": 31,
+        "l2_regularization": 10.0,
+        "min_samples_leaf": 20,
+        "max_bins": 255,
+        "max_features": 1.0,
+        "categorical_features": null,
+        "early_stopping": false,
+        "random_state": 20260813
+      },
+      "selection_metric": "MEDIAN_OF_FIVE_SPLIT_MEAN_DAILY_SPEARMAN_IC_20D",
+      "primary_median_split_mean_daily_ic_20d": 0.09414053237378939,
+      "worst_split_mean_daily_ic_20d": 0.05311070572623114,
+      "selection_frozen": true,
+      "posthoc_parameter_changes_forbidden": true
+    },
+    "training_population": {
+      "partition": "DEVELOPMENT_ONLY",
+      "feature_date_start": "2015-01-05",
+      "feature_date_end": "2022-12-30",
+      "fit_filter": "valid_label_20d == true",
+      "expected_fit_rows": 5103016,
+      "expected_latest_valid_20d_decision": "2022-12-02",
+      "join_key": ["trade_date", "exchange", "code"],
+      "target": "excess_return_20d",
+      "secondary_label_not_used_for_fit": "excess_return_5d",
+      "use_oos_rows": false,
+      "use_lockbox_rows": false
+    },
+    "preprocessing": {
+      "contract_source": "INHERIT_EXACT_FEATURE_COLUMNS_AND_ROLES_FROM_AUTHORIZATION_2056EAE94770E9AFA65367999ADF05F57E799C6E6F2E88B501791F02B587706C",
+      "fit_scope": "ALL_VALID20_DEVELOPMENT_FIT_ROWS_ONLY",
+      "financial_absolute_cny_transform": "SIGNED_LOG1P",
+      "continuous_clip": "FIT_0_001_AND_0_999_QUANTILES_ON_ALL_FINAL_FIT_ROWS_ONLY",
+      "continuous_missing": "LEAVE_NAN_NATIVE_FOR_HIST_GRADIENT_BOOSTING",
+      "binary_missing_indicators": "PASS_THROUGH_0_1",
+      "regime_state": "ONE_HOT_LEXICOGRAPHIC_LEVELS_SEEN_IN_ALL_FINAL_FIT_ROWS_PLUS_EXPLICIT_UNKNOWN_FLAG",
+      "scaling": "NONE",
+      "dynamic_feature_selection_forbidden": true,
+      "oos_fitted_preprocessor_forbidden": true
+    },
+    "runtime": {
+      "os": "ubuntu-24.04",
+      "python": "3.12.13",
+      "numpy": "2.5.1",
+      "scipy": "1.17.0",
+      "scikit_learn": "1.9.0",
+      "pyarrow": "25.0.0",
+      "duckdb": "1.3.2",
+      "thread_env": {
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1"
+      }
+    },
+    "fit_execution": {
+      "fit_count_exact": 1,
+      "estimator": "sklearn.ensemble.HistGradientBoostingRegressor",
+      "candidate_id": "C007",
+      "final_development_refit_only": true,
+      "candidate_reselection_forbidden": true,
+      "hyperparameter_search_forbidden": true,
+      "performance_metric_used_to_change_model_forbidden": true,
+      "execution_must_be_separate_exact_head_pr": true,
+      "authorization_single_use": true
+    },
+    "output_contract": {
+      "research_model_weights_allowed": true,
+      "files_required": ["model.pkl", "final_preprocess_manifest.json", "final_refit_execution_manifest.json", "final_refit_independent_audit.json", "artifact_hashes.json"],
+      "model_serialization": "PYTHON_PICKLE_PROTOCOL_5",
+      "model_output_status": "RESEARCH_ONLY_NON_AUTHORITATIVE",
+      "training_prediction_performance_report_forbidden": true,
+      "oos_predictions_forbidden": true,
+      "lockbox_predictions_forbidden": true,
+      "artifact_hashes_required": true
+    },
+    "hard_boundaries": {
+      "no_fit_in_authorization_gate": true,
+      "oos_label_access_allowed": false,
+      "lockbox_label_access_allowed": false,
+      "live_signal_allowed": false,
+      "main_merge_allowed": false,
+      "authoritative_model_output_allowed": false,
+      "current_champion_unchanged": true
+    }
+  },
+  "next_gate": "SEPARATE_EXACT_HEAD_C007_FINAL_DEVELOPMENT_REFIT_EXECUTION_PR"
+}

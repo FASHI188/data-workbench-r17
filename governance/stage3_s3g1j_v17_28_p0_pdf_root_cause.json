@@ -1,0 +1,310 @@
+{
+  "schema_version": 1,
+  "status": "MACHINE_ACCEPTED_DIAGNOSTIC_ONLY_NO_PARSER_AUTHORIZATION",
+  "gate": "S3G1J_V17_28_P0_PDF_ROOT_CAUSE_DIAGNOSTIC",
+  "diagnostic_pr": {
+    "number": 101,
+    "head_sha": "c1e1a99533498c9e4eba7ae95323cc80586474c4",
+    "merge_authorized": false,
+    "disposition": "CLOSE_WITHOUT_MERGE_AFTER_GOVERNANCE_REGISTRATION"
+  },
+  "accepted_run": {
+    "run_id": 31111116235,
+    "workflow_name": "Stage3 S3G1J V17.28 P0 PDF Root Cause",
+    "head_sha": "c1e1a99533498c9e4eba7ae95323cc80586474c4",
+    "conclusion": "SUCCESS",
+    "artifact_id": 8971708686,
+    "artifact_name": "stage3-s3g1j-v17-28-p0-pdf-root-cause-v1",
+    "artifact_digest": "sha256:c743dc725e15037eb761244e5e0e88d37075a1cf5eab366e5d64c9d7ac0627b8",
+    "artifact_size_bytes": 4855,
+    "created_at": "2026-08-06T14:30:16Z",
+    "retention_expires_at": "2026-11-04T14:29:58Z"
+  },
+  "locked_inputs": {
+    "v17_28_residual_classification": {
+      "run_id": 31022605702,
+      "head_sha": "b997f7b91cb2a5fcbb5d8473f428effd26ed5bf0",
+      "artifact_id": 8937238672,
+      "artifact_name": "stage3-s3g1j-v17-28-residual-classification-v1",
+      "artifact_digest": "sha256:2c54496b329b719c09f299fe0c2d61ece4b05a0c8859b4a39441012abfb248ad",
+      "p0_ledger_gzip_sha256": "dc6cc9b10482406121e66772c38bf13e745e00ab0a80f4e324ccf9bb897bd922",
+      "p0_ledger_plaintext_sha256": "94c768d34844a7c47bdfaf6bfd4067b6533c572b4e30c2b0e00b554a09bb9ea1"
+    },
+    "v17_26_current_p0_exact_pdf_layout": {
+      "run_id": 30734944468,
+      "head_sha": "57cca23e3d7b390a93446dbd99438e3fcb7f6a6c",
+      "artifact_id": 8829316913,
+      "artifact_name": "stage3-s3g1j-v17-26-current-p0-diagnostic",
+      "artifact_digest": "sha256:08afc1cde3e48243a7914320baa6ef96b64cf41d55b000063091b3805d171046",
+      "report_sha256": "665161dc49a77559af43e055b8cb5a4a6bced857af540a96ca8f5a8747203049"
+    },
+    "v17_26_candidate_detail": {
+      "run_id": 30746041129,
+      "head_sha": "49a05c1b02bc6d4b49e8d825c3e23a092187f8db",
+      "artifact_id": 8832931244,
+      "artifact_name": "stage3-s3g1j-v17-26-p0-candidate-detail-v3",
+      "artifact_digest": "sha256:2b6a0086b8180c305531309fe76879d950c53169a46715a232802fe7eef26db5",
+      "accepted_report_sha256": "b3ab013938ad41c673e1125336b2abda1fde8edff68e21f8ef3ba8cbdee00b54",
+      "raw_report_sha256": "8a958ad58a89d6b911358aff472018dc39a62b2d3d3547ae7808db1b8fdbbfbe"
+    }
+  },
+  "classification_result": {
+    "target_count": 14,
+    "classification_counts": {
+      "SAFE_EXACT_SOURCE_CANDIDATE": 7,
+      "DIAGNOSTIC_ONLY": 6,
+      "DO_NOT_PROMOTE": 1
+    },
+    "safe_exact_source_announcement_ids": [
+      "1215186538",
+      "1219426855",
+      "1219792633",
+      "1219840508",
+      "1219879687",
+      "1220087244",
+      "1221006100"
+    ],
+    "diagnostic_only_announcement_ids": [
+      "1202799494",
+      "1204077386",
+      "1205543437",
+      "1209806910",
+      "1223347318",
+      "1223407043"
+    ],
+    "do_not_promote_announcement_ids": [
+      "1219834247"
+    ],
+    "safe_current_identity_zero_residual_count": 7,
+    "safe_prior_identity_zero_residual_count": 7
+  },
+  "safe_exact_source_targets": [
+    {
+      "announcement_id": "1215186538",
+      "source_code": "600243",
+      "report_family": "SEMI",
+      "economic_date": "2022-06-30",
+      "source_sha256": "c1856e15d16e6ede5f22a7a0c97dcfd540185573725b64861d8015fae1b4b920",
+      "source_bytes": 2711641,
+      "page_count": 132,
+      "root_cause": "SPLIT_GROUP_EQUITY_LABEL_AND_AMOUNT_LINES_NOT_JOINED_BY_V17_28",
+      "formal_group_title_proven": true,
+      "role_local_period_and_cny_unit_proven": true,
+      "explicit_group_assets_liabilities_equity_proven": true,
+      "current_identity_residual": "0.00",
+      "prior_identity_residual": "0.00",
+      "candidate_parser_authorized": false
+    },
+    {
+      "announcement_id": "1219426855",
+      "source_code": "600310",
+      "report_family": "ANNUAL",
+      "economic_date": "2023-12-31",
+      "source_sha256": "3bf864bff6823fea99b258604061b24012b1ed666a0a1a690af76bf54cb5b6b6",
+      "source_bytes": 4817887,
+      "page_count": 296,
+      "root_cause": "SPLIT_GROUP_EQUITY_LABEL_AND_AMOUNT_LINES_NOT_JOINED_BY_V17_28",
+      "formal_group_title_proven": true,
+      "role_local_period_and_cny_unit_proven": true,
+      "explicit_group_assets_liabilities_equity_proven": true,
+      "current_identity_residual": "0.00",
+      "prior_identity_residual": "0.00",
+      "candidate_parser_authorized": false
+    },
+    {
+      "announcement_id": "1219792633",
+      "source_code": "600200",
+      "report_family": "ANNUAL",
+      "economic_date": "2023-12-31",
+      "source_sha256": "2b2147c2d32df99613608371dea115dc09d49377c4ac423ce74d3b155207c5c3",
+      "source_bytes": 4643170,
+      "page_count": 219,
+      "root_cause": "SPLIT_GROUP_EQUITY_LABEL_AND_AMOUNT_LINES_NOT_JOINED_BY_V17_28",
+      "formal_group_title_proven": true,
+      "role_local_period_and_cny_unit_proven": true,
+      "explicit_group_assets_liabilities_equity_proven": true,
+      "current_identity_residual": "0.00",
+      "prior_identity_residual": "0.00",
+      "candidate_parser_authorized": false
+    },
+    {
+      "announcement_id": "1219840508",
+      "source_code": "603661",
+      "report_family": "ANNUAL",
+      "economic_date": "2023-12-31",
+      "source_sha256": "e29963a1bd008369d15d817407cb6ff4ffe1ea7740883d69db702800fcb33532",
+      "source_bytes": 4502267,
+      "page_count": 257,
+      "root_cause": "SPLIT_GROUP_EQUITY_LABEL_AND_AMOUNT_LINES_NOT_JOINED_BY_V17_28",
+      "formal_group_title_proven": true,
+      "role_local_period_and_cny_unit_proven": true,
+      "explicit_group_assets_liabilities_equity_proven": true,
+      "current_identity_residual": "0.00",
+      "prior_identity_residual": "0.00",
+      "candidate_parser_authorized": false
+    },
+    {
+      "announcement_id": "1219879687",
+      "source_code": "603297",
+      "report_family": "ANNUAL",
+      "economic_date": "2023-12-31",
+      "source_sha256": "0843638f31f9343156b7c87474918dd80604788bc8e8f479eca2882c5b95b534",
+      "source_bytes": 3970627,
+      "page_count": 224,
+      "root_cause": "SPLIT_GROUP_EQUITY_LABEL_AND_AMOUNT_LINES_NOT_JOINED_BY_V17_28",
+      "formal_group_title_proven": true,
+      "role_local_period_and_cny_unit_proven": true,
+      "explicit_group_assets_liabilities_equity_proven": true,
+      "current_identity_residual": "0.00",
+      "prior_identity_residual": "0.00",
+      "candidate_parser_authorized": false
+    },
+    {
+      "announcement_id": "1220087244",
+      "source_code": "600310",
+      "report_family": "ANNUAL",
+      "economic_date": "2023-12-31",
+      "source_sha256": "a77b09fb00fb234ab1923ff42d9908786c71ee2154bb22cfce0d0490dbcfaacd",
+      "source_bytes": 4755545,
+      "page_count": 295,
+      "root_cause": "SPLIT_GROUP_EQUITY_LABEL_AND_AMOUNT_LINES_NOT_JOINED_BY_V17_28",
+      "formal_group_title_proven": true,
+      "role_local_period_and_cny_unit_proven": true,
+      "explicit_group_assets_liabilities_equity_proven": true,
+      "current_identity_residual": "0.00",
+      "prior_identity_residual": "0.00",
+      "candidate_parser_authorized": false
+    },
+    {
+      "announcement_id": "1221006100",
+      "source_code": "600310",
+      "report_family": "SEMI",
+      "economic_date": "2024-06-30",
+      "source_sha256": "8679311bb2eb42e00d575404456fc5f0fb1a84d0ecab0ae3f6572b7962a1d806",
+      "source_bytes": 3650480,
+      "page_count": 204,
+      "root_cause": "SPLIT_GROUP_EQUITY_LABEL_AND_AMOUNT_LINES_NOT_JOINED_BY_V17_28",
+      "formal_group_title_proven": true,
+      "role_local_period_and_cny_unit_proven": true,
+      "explicit_group_assets_liabilities_equity_proven": true,
+      "current_identity_residual": "0.00",
+      "prior_identity_residual": "0.00",
+      "candidate_parser_authorized": false
+    }
+  ],
+  "non_promoted_targets": [
+    {
+      "announcement_id": "1202799494",
+      "source_code": "603023",
+      "report_family": "Q3",
+      "economic_date": "2016-09-30",
+      "source_sha256": "157c18169d22719986395fc1085acb25c6d90b5fd6bbce3f26d5bebd45f08e68",
+      "classification": "DIAGNOSTIC_ONLY",
+      "root_cause": "NO_FORMAL_GROUP_STATEMENT_ROLE_BINDING",
+      "candidate_parser_authorized": false
+    },
+    {
+      "announcement_id": "1204077386",
+      "source_code": "000708",
+      "report_family": "Q3",
+      "economic_date": "2017-09-30",
+      "source_sha256": "8e10d942b870e9ee9b874d94e8a58fb00b7d55757b7fdd5774615e75cc549608",
+      "classification": "DIAGNOSTIC_ONLY",
+      "root_cause": "GENERIC_GROUP_WITNESS_PRESENT_BUT_ROLE_LOCAL_PERIOD_MISSING",
+      "candidate_parser_authorized": false
+    },
+    {
+      "announcement_id": "1205543437",
+      "source_code": "000985",
+      "report_family": "Q3",
+      "economic_date": "2018-09-30",
+      "source_sha256": "4d87f58d20ce1b37c2d5edc129fb9b4f08769dc1614c76ff946c88f5ce8cc2de",
+      "classification": "DIAGNOSTIC_ONLY",
+      "root_cause": "GENERIC_GROUP_WITNESS_PRESENT_BUT_ROLE_LOCAL_PERIOD_MISSING",
+      "candidate_parser_authorized": false
+    },
+    {
+      "announcement_id": "1209806910",
+      "source_code": "600353",
+      "report_family": "Q1",
+      "economic_date": "2021-03-31",
+      "source_sha256": "b72f9603f124849fcd0d7be69ab5d35e0f04f12c530324a27dce1eab20e87a7f",
+      "classification": "DIAGNOSTIC_ONLY",
+      "root_cause": "NO_FORMAL_GROUP_STATEMENT_ROLE_BINDING",
+      "candidate_parser_authorized": false
+    },
+    {
+      "announcement_id": "1223347318",
+      "source_code": "605289",
+      "report_family": "Q1",
+      "economic_date": "2025-03-31",
+      "source_sha256": "d765c94532cd41a496d147da72cbff392bce4ff776b41b88d95dcf3f1fb697c8",
+      "classification": "DIAGNOSTIC_ONLY",
+      "root_cause": "FORMAL_GROUP_A_L_PRESENT_BUT_EXPLICIT_GROUP_EQUITY_PAIR_NOT_PROVEN",
+      "candidate_parser_authorized": false
+    },
+    {
+      "announcement_id": "1223407043",
+      "source_code": "605162",
+      "report_family": "ANNUAL",
+      "economic_date": "2024-12-31",
+      "source_sha256": "7540a56179783625ac256726480ef32faf85a893549057fe9e6546abfd6ee903",
+      "classification": "DIAGNOSTIC_ONLY",
+      "root_cause": "FORMAL_GROUP_A_L_PRESENT_BUT_EXPLICIT_GROUP_EQUITY_PAIR_NOT_PROVEN",
+      "candidate_parser_authorized": false
+    },
+    {
+      "announcement_id": "1219834247",
+      "source_code": "601860",
+      "report_family": "ANNUAL",
+      "economic_date": "2023-12-31",
+      "source_sha256": "2ffd3d78537ed62eac213f0c5fb2356926c625cd1e528d93b21f7b640ebe9773",
+      "classification": "DO_NOT_PROMOTE",
+      "root_cause": "BANK_SPECIFIC_STATEMENT_WITHOUT_FORMAL_GROUP_ALE_ROLE_BINDING",
+      "candidate_parser_authorized": false
+    }
+  ],
+  "output_hashes": {
+    "root_cause_ledger_gzip_sha256": "e3ba4e23b81dcb24d24def114cd6a70289c2f7df654b1d81238638675ec1a92c",
+    "root_cause_ledger_plaintext_sha256": "0861076fdf2547d1269df2b6c6000fbf1ea3b5998ad1658ae3c7fa028157ce1a",
+    "safe_target_manifest_sha256": "c3ed36d0bd79c0dacfbc3e5375612619c7cc429a09eb3c4b10fcde77886c8a34",
+    "summary_json_sha256": "2caaadaa1dec8faea6fb0b4c36cc5a0dd539b1738b1e788e1ec40a71ba8a476e",
+    "artifact_zip_sha256": "c743dc725e15037eb761244e5e0e88d37075a1cf5eab366e5d64c9d7ac0627b8",
+    "gzip_header_mtime": 0,
+    "gzip_embedded_filename": ""
+  },
+  "independent_verification": {
+    "artifact_downloaded_and_inspected": true,
+    "github_artifact_digest_matches_downloaded_archive": true,
+    "target_rows_recounted": 14,
+    "classification_counts_recomputed": true,
+    "safe_identity_residuals_recomputed": true,
+    "source_identity_locks_recomputed": true,
+    "errors": []
+  },
+  "evidence_boundary": {
+    "pdf_binaries_redownloaded": false,
+    "evidence_source": "ACCEPTED_FROZEN_EXACT_PDF_LAYOUT_ARTIFACTS",
+    "ocr_used": false,
+    "equity_inferred_from_assets_minus_liabilities": false,
+    "explicit_equity_amount_and_label_required": true
+  },
+  "hard_boundaries": {
+    "diagnostic_only": true,
+    "candidate_parser_authorized": false,
+    "formal_parser_changed": false,
+    "runtime_authority_changed": false,
+    "production_data_changed": false,
+    "trained_model_changed": false,
+    "live_configuration_changed": false,
+    "source_policy_changed": false,
+    "point_in_time_policy_changed": false,
+    "issuer_gate_changed": false,
+    "accounting_tolerance_changed": false,
+    "stage3_status": "NOT_READY",
+    "stage4_alpha_live_locked": true,
+    "main_changed": false,
+    "merge_to_main_authorized": false
+  },
+  "next_gate": "Run a separate exact-source split-equity safety diagnostic for the seven SHA-bound targets, prove bounded target-only behavior and exact non-target delegation, then decide whether a candidate parser experiment may be authorized."
+}
